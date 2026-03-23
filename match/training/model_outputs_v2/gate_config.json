@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "generated_at_utc": "2026-03-23T04:51:02.217877+00:00",
+  "source": {
+    "metric": "f1",
+    "odds": 1.91,
+    "min_coverage": 0.08,
+    "limit": 2000
+  },
+  "thresholds": {
+    "q3": {
+      "default": {
+        "min_graph_points": 12,
+        "min_pbp_events": 14,
+        "volatility_block_at": 0.76,
+        "min_edge": 0.05
+      }
+    },
+    "q4": {
+      "36": {
+        "min_graph_points": 22,
+        "min_pbp_events": 24,
+        "volatility_block_at": 0.62,
+        "min_edge": 0.05
+      }
+    }
+  }
+}

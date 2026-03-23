@@ -1,0 +1,86 @@
+{
+  "q3": {
+    "best_accuracy": {
+      "target": "q3",
+      "model": "ensemble_avg_prob",
+      "samples_total": "1479",
+      "samples_train": "1183",
+      "samples_test": "296",
+      "accuracy": "0.733108",
+      "log_loss": "0.551985",
+      "brier": "0.183838",
+      "version": "v1"
+    },
+    "best_f1": {
+      "target": "q3",
+      "model": "ensemble_avg_prob",
+      "samples_total": "1493",
+      "samples_train": "1194",
+      "samples_test": "299",
+      "accuracy": "0.729097",
+      "f1": "0.780488",
+      "precision": "0.75",
+      "recall": "0.813559",
+      "log_loss": "0.555815",
+      "brier": "0.185654",
+      "roc_auc": "0.785542",
+      "version": "v2"
+    },
+    "best_log_loss": {
+      "target": "q3",
+      "model": "logreg",
+      "samples_total": "1479",
+      "samples_train": "1183",
+      "samples_test": "296",
+      "accuracy": "0.72973",
+      "log_loss": "0.548135",
+      "brier": "0.179673",
+      "version": "v1"
+    },
+    "rows_compared": 12
+  },
+  "q4": {
+    "best_accuracy": {
+      "target": "q4",
+      "model": "logreg",
+      "samples_total": "1586",
+      "samples_train": "1268",
+      "samples_test": "318",
+      "accuracy": "0.748428",
+      "f1": "0.798995",
+      "precision": "0.729358",
+      "recall": "0.883333",
+      "log_loss": "0.52017",
+      "brier": "0.17407",
+      "roc_auc": "0.82194",
+      "version": "v4"
+    },
+    "best_f1": {
+      "target": "q4",
+      "model": "logreg",
+      "samples_total": "1586",
+      "samples_train": "1268",
+      "samples_test": "318",
+      "accuracy": "0.748428",
+      "f1": "0.798995",
+      "precision": "0.729358",
+      "recall": "0.883333",
+      "log_loss": "0.52017",
+      "brier": "0.17407",
+      "roc_auc": "0.82194",
+      "version": "v4"
+    },
+    "best_log_loss": {
+      "target": "q4",
+      "model": "logreg",
+      "samples_total": "1463",
+      "samples_train": "1170",
+      "samples_test": "293",
+      "accuracy": "0.730375",
+      "log_loss": "0.513944",
+      "brier": "0.172026",
+      "version": "v1"
+    },
+    "rows_compared": 12
+  }
+}

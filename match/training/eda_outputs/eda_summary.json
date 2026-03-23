@@ -1,0 +1,40 @@
+{
+  "db_path": "C:\\Users\\borre\\OneDrive\\OLD\\Escritorio\\pulpa\\match\\matches.db",
+  "n_matches": 2500,
+  "date_min": "2026-03-10",
+  "date_max": "2026-03-21",
+  "n_leagues": 301,
+  "gender_mix": {
+    "men_or_open": 2284,
+    "women": 216
+  },
+  "coverage": {
+    "play_by_play": {
+      "count": 1875,
+      "rate": 0.75
+    },
+    "graph_points": {
+      "count": 1718,
+      "rate": 0.6872
+    },
+    "has_q4": {
+      "count": 2255,
+      "rate": 0.902
+    },
+    "has_overtime": {
+      "count": 0,
+      "rate": 0.0
+    }
+  },
+  "baselines": {
+    "halftime_leader_accuracy": 0.806639,
+    "halftime_sample_non_tie": 2410,
+    "prior_strength_accuracy": 0.764706,
+    "prior_strength_sample": 51
+  },
+  "notes": [
+    "Gender bucket is heuristic based on league/team text markers.",
+    "Prior-strength baseline uses only short history in current DB window.",
+    "For production modeling, use time-based train/validation split."
+  ]
+}

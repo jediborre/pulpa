@@ -1,0 +1,5 @@
+match_id,quarter,quarter_index,league,home_team,away_team,q_home_score,q_away_score,q_score_diff_home,cum_home_score,cum_away_score,cum_score_diff_home,graph_points_count_to_q,graph_value_last_to_q,graph_peak_home_to_q,graph_peak_away_to_q,graph_swing_count_to_q,pbp_home_scoring_plays_to_q,pbp_away_scoring_plays_to_q,pbp_scoring_plays_total_to_q
+14442355,Q1,1,NBA,Brooklyn Nets,New York Knicks,22,14,8,22,14,8,12,8,8,1,1,9,7,16
+14442355,Q2,2,NBA,Brooklyn Nets,New York Knicks,28,30,-2,50,44,6,24,6,12,1,1,23,26,49
+14442355,Q3,3,NBA,Brooklyn Nets,New York Knicks,15,31,-16,65,75,-10,36,-10,12,10,6,31,42,73
+14442355,Q4,4,NBA,Brooklyn Nets,New York Knicks,27,18,9,92,93,-1,48,-1,12,11,8,44,53,97
