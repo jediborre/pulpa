@@ -1,0 +1,102 @@
+{
+  "metric": "f1",
+  "limit": 800,
+  "odds": 1.91,
+  "matches_seen": 800,
+  "targets": {
+    "q3": {
+      "v2": {
+        "samples": 498,
+        "bets": 346,
+        "coverage": 0.694779,
+        "hit_rate": 0.858382,
+        "roi_units_per_bet": 0.639509,
+        "profit_units": 221.27,
+        "accuracy_all": 0.779116
+      },
+      "v4": {
+        "samples": 498,
+        "bets": 358,
+        "coverage": 0.718876,
+        "hit_rate": 0.857542,
+        "roi_units_per_bet": 0.637905,
+        "profit_units": 228.37,
+        "accuracy_all": 0.783133
+      },
+      "hybrid": {
+        "samples": 498,
+        "bets": 346,
+        "coverage": 0.694779,
+        "hit_rate": 0.858382,
+        "roi_units_per_bet": 0.639509,
+        "profit_units": 221.27,
+        "accuracy_all": 0.779116
+      },
+      "delta_v4_minus_v2": {
+        "coverage": 0.024097,
+        "hit_rate": -0.00084,
+        "roi_units_per_bet": -0.001604,
+        "profit_units": 7.1,
+        "accuracy_all": 0.004017,
+        "bets": 12,
+        "samples": 0
+      },
+      "delta_hybrid_minus_v2": {
+        "coverage": 0.0,
+        "hit_rate": 0.0,
+        "roi_units_per_bet": 0.0,
+        "profit_units": 0.0,
+        "accuracy_all": 0.0,
+        "bets": 0,
+        "samples": 0
+      }
+    },
+    "q4": {
+      "v2": {
+        "samples": 502,
+        "bets": 368,
+        "coverage": 0.733068,
+        "hit_rate": 0.807065,
+        "roi_units_per_bet": 0.541495,
+        "profit_units": 199.27,
+        "accuracy_all": 0.772908
+      },
+      "v4": {
+        "samples": 502,
+        "bets": 350,
+        "coverage": 0.697211,
+        "hit_rate": 0.822857,
+        "roi_units_per_bet": 0.571657,
+        "profit_units": 200.08,
+        "accuracy_all": 0.790837
+      },
+      "hybrid": {
+        "samples": 502,
+        "bets": 350,
+        "coverage": 0.697211,
+        "hit_rate": 0.822857,
+        "roi_units_per_bet": 0.571657,
+        "profit_units": 200.08,
+        "accuracy_all": 0.790837
+      },
+      "delta_v4_minus_v2": {
+        "coverage": -0.035857,
+        "hit_rate": 0.015792,
+        "roi_units_per_bet": 0.030162,
+        "profit_units": 0.81,
+        "accuracy_all": 0.017929,
+        "bets": -18,
+        "samples": 0
+      },
+      "delta_hybrid_minus_v2": {
+        "coverage": -0.035857,
+        "hit_rate": 0.015792,
+        "roi_units_per_bet": 0.030162,
+        "profit_units": 0.81,
+        "accuracy_all": 0.017929,
+        "bets": -18,
+        "samples": 0
+      }
+    }
+  }
+}
