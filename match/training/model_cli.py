@@ -195,6 +195,8 @@ def cmd_eval_date(args: argparse.Namespace) -> None:
     ]
     if args.limit_matches is not None:
         cmd.extend(["--limit-matches", str(args.limit_matches)])
+    if args.result_tag:
+        cmd.extend(["--result-tag", args.result_tag])
     if args.json:
         cmd.append("--json")
 
@@ -368,10 +370,15 @@ def _interactive_menu() -> None:
 
                 raw_lim = input("Limit matches [none]: ").strip()
                 raw_odds = input("Assumed decimal odds [1.91]: ").strip()
+                result_tag = input(
+                    "Result tag for DB columns [auto]: "
+                ).strip()
                 json_out = _ask_yes_no("Raw JSON output?", False)
 
                 lim = int(raw_lim) if raw_lim else None
                 odds = float(raw_odds) if raw_odds else 1.91
+                if not result_tag:
+                    result_tag = None
 
                 cmd_eval_date(
                     argparse.Namespace(
@@ -380,6 +387,7 @@ def _interactive_menu() -> None:
                         force_version=force_version,
                         limit_matches=lim,
                         odds=odds,
+                        result_tag=result_tag,
                         json=json_out,
                     )
                 )
@@ -556,6 +564,14 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=1.91,
         help="Fixed decimal odds for ROI proxy",
+    )
+    p_eval.add_argument(
+        "--result-tag",
+        default=None,
+        help=(
+            "Tag for DB result columns "
+            "(default: <force-version>_<metric>)"
+        ),
     )
     p_eval.add_argument(
         "--json",

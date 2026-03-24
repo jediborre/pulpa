@@ -450,6 +450,45 @@ def _print_progress(
     )
 
 
+def _progress_line(
+    prefix: str,
+    current: int,
+    total: int,
+    width: int = 28,
+) -> str:
+    if total <= 0:
+        return f"[{prefix}] 0/0"
+    ratio = min(max(current / total, 0.0), 1.0)
+    filled = int(ratio * width)
+    bar = ("#" * filled) + ("-" * (width - filled))
+    pct = int(ratio * 100)
+    return f"[{prefix}] [{bar}] {current}/{total} ({pct}%)"
+
+
+def _print_dual_progress(
+    prefix: str,
+    current: int,
+    total: int,
+    errors: int,
+    *,
+    started: bool,
+) -> bool:
+    done_line = _progress_line(prefix, current, total)
+    den = current if current > 0 else 1
+    err_ratio = min(max(errors / den, 0.0), 1.0)
+    err_filled = int(err_ratio * 28)
+    err_bar = ("#" * err_filled) + ("-" * (28 - err_filled))
+    err_pct = int(err_ratio * 100)
+    err_line = (
+        f"[{prefix}-errors] [{err_bar}] {errors}/{current} "
+        f"({err_pct}%)"
+    )
+
+    _ = started
+    print(f"\r{done_line}  {err_line}", end="", flush=True)
+    return True
+
+
 def _finalize_eval(stats: dict, odds: float) -> dict:
     samples = int(stats["samples"])
     bets = int(stats["bets"])
@@ -489,11 +528,42 @@ def _print_eval_row(label: str, row: dict) -> None:
     )
 
 
+def _winner_from_scores(home: int | None, away: int | None) -> str:
+    if home is None or away is None:
+        return "unknown"
+    if home == away:
+        return "push"
+    return "home" if home > away else "away"
+
+
+def _quarter_score(data: dict | None, quarter: str) -> tuple[int | None, int | None]:
+    if not data:
+        return None, None
+    q = data.get("score", {}).get("quarters", {}).get(quarter)
+    if not q:
+        return None, None
+    return int(q.get("home", 0)), int(q.get("away", 0))
+
+
+def _preview_target(pred: dict) -> tuple[str, str]:
+    if not pred or not pred.get("available"):
+        return "unavailable", "NO_BET"
+    pick = str(pred.get("predicted_winner", "unavailable") or "unavailable")
+    signal = str(
+        pred.get("final_recommendation")
+        or pred.get("bet_signal")
+        or "NO_BET"
+    )
+    return pick, signal
+
+
 def cmd_eval_date(args: argparse.Namespace) -> None:
     eval_date = _parse_date(args.date).isoformat()
     conn = _open_db(args.db)
+    result_tag = args.result_tag or f"{args.force_version}_{args.metric}"
 
     print(f"[eval-date] date={eval_date}")
+    print(f"[eval-date] result_tag={result_tag}")
     rows = scraper_mod.fetch_finished_match_ids_for_date(eval_date)
     if args.limit_matches is not None:
         rows = rows[:args.limit_matches]
@@ -503,15 +573,30 @@ def cmd_eval_date(args: argparse.Namespace) -> None:
     ing_ok = 0
     ing_fail = 0
     already_ft_in_db = 0
+    ingest_error_samples: list[str] = []
     match_ids: list[str] = []
     total_rows = len(rows)
+    dual_started = False
     if total_rows:
-        _print_progress("ingest", 0, total_rows)
+        dual_started = _print_dual_progress(
+            "ingest",
+            0,
+            total_rows,
+            0,
+            started=dual_started,
+        )
 
     for idx, row in enumerate(rows, start=1):
         match_id = str(row.get("match_id", ""))
         if not match_id:
-            _print_progress("ingest", idx, total_rows)
+            if total_rows:
+                dual_started = _print_dual_progress(
+                    "ingest",
+                    idx,
+                    total_rows,
+                    ing_fail,
+                    started=dual_started,
+                )
             continue
         match_ids.append(match_id)
 
@@ -519,7 +604,14 @@ def cmd_eval_date(args: argparse.Namespace) -> None:
         if _is_ft_complete(existing):
             already_ft_in_db += 1
             db_mod.mark_discovered_processed(conn, match_id)
-            _print_progress("ingest", idx, total_rows)
+            if total_rows:
+                dual_started = _print_dual_progress(
+                    "ingest",
+                    idx,
+                    total_rows,
+                    ing_fail,
+                    started=dual_started,
+                )
             continue
 
         try:
@@ -536,10 +628,17 @@ def cmd_eval_date(args: argparse.Namespace) -> None:
                 if err_text
                 else "unknown_error"
             )
-            print()
-            print(f"[eval-date][ingest-error] {match_id}: {err_first}")
+            if len(ingest_error_samples) < 12:
+                ingest_error_samples.append(f"{match_id}: {err_first}")
         finally:
-            _print_progress("ingest", idx, total_rows)
+            if total_rows:
+                dual_started = _print_dual_progress(
+                    "ingest",
+                    idx,
+                    total_rows,
+                    ing_fail,
+                    started=dual_started,
+                )
 
     if total_rows:
         print()
@@ -548,6 +647,13 @@ def cmd_eval_date(args: argparse.Namespace) -> None:
         f"[eval-date] already_ft_in_db={already_ft_in_db} "
         f"ingested_ok={ing_ok} ingested_fail={ing_fail}"
     )
+    if ing_fail:
+        print(
+            f"[eval-date] ingest_error_samples="
+            f"{len(ingest_error_samples)}/{ing_fail}"
+        )
+        for sample in ingest_error_samples:
+            print(f"[eval-date][ingest-error] {sample}")
 
     infer_mod = importlib.import_module("training.infer_match")
     infer_mod.scraper_mod.fetch_event_snapshot = lambda _mid: None
@@ -563,12 +669,47 @@ def cmd_eval_date(args: argparse.Namespace) -> None:
         _print_progress("eval", 0, total_eval)
 
     for idx, match_id in enumerate(match_ids, start=1):
+        match_blob = db_mod.get_match(conn, match_id)
+        match_meta = (match_blob or {}).get("match", {})
+        home_team = str(match_meta.get("home_team", ""))
+        away_team = str(match_meta.get("away_team", ""))
+        q3h, q3a = _quarter_score(match_blob, "Q3")
+        q4h, q4a = _quarter_score(match_blob, "Q4")
+        q3_winner = _winner_from_scores(q3h, q3a)
+        q4_winner = _winner_from_scores(q4h, q4a)
+
         res = infer_mod.run_inference(
             match_id=match_id,
             metric=args.metric,
             fetch_missing=False,
             force_version=args.force_version,
         )
+
+        predictions = res.get("predictions", {}) if res.get("ok") else {}
+        db_mod.save_eval_match_result(
+            conn,
+            event_date=eval_date,
+            match_id=match_id,
+            home_team=home_team,
+            away_team=away_team,
+            q3_home_score=q3h,
+            q3_away_score=q3a,
+            q4_home_score=q4h,
+            q4_away_score=q4a,
+            result_tag=result_tag,
+            predictions=predictions,
+        )
+
+        q3_pick, q3_signal = _preview_target(predictions.get("q3", {}))
+        q4_pick, q4_signal = _preview_target(predictions.get("q4", {}))
+        print()
+        print(
+            f"[eval-live] {idx}/{total_eval} "
+            f"local={home_team} visitante={away_team} "
+            f"q3={q3_pick} ({q3_signal}) q3_gano={q3_winner} "
+            f"q4={q4_pick} ({q4_signal}) q4_gano={q4_winner}"
+        )
+
         if not res.get("ok"):
             _print_progress("eval", idx, total_eval)
             continue
@@ -613,6 +754,7 @@ def cmd_eval_date(args: argparse.Namespace) -> None:
 
     out = {
         "date": eval_date,
+        "result_tag": result_tag,
         "metric": args.metric,
         "force_version": args.force_version,
         "odds": args.odds,
@@ -820,6 +962,14 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         default=1.91,
         help="Fixed decimal odds for ROI proxy (default: 1.91)",
+    )
+    p_eval.add_argument(
+        "--result-tag",
+        default=None,
+        help=(
+            "Tag for DB result columns "
+            "(default: <force-version>_<metric>)"
+        ),
     )
     p_eval.add_argument(
         "--json",

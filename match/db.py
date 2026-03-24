@@ -8,8 +8,10 @@ Schema:
     graph_points   – match pressure/momentum graph points, FK → matches
     discovered_ft_matches – finished match IDs discovered by date crawl
     backfill_state – key/value state checkpoints for resumable jobs
+        eval_match_results – per-date per-match eval outputs (+ dynamic model columns)
 """
 
+import re
 import sqlite3
 
 
@@ -85,8 +87,171 @@ def init_db(conn: sqlite3.Connection) -> None:
             state_value TEXT,
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
+
+            CREATE TABLE IF NOT EXISTS eval_match_results (
+                event_date      TEXT NOT NULL,
+                match_id        TEXT NOT NULL,
+                home_team       TEXT,
+                away_team       TEXT,
+                q3_home_score   INTEGER,
+                q3_away_score   INTEGER,
+                q3_winner       TEXT,
+                q4_home_score   INTEGER,
+                q4_away_score   INTEGER,
+                q4_winner       TEXT,
+                created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (event_date, match_id)
+            );
     """)
     conn.commit()
+
+
+def _winner_from_scores(home: int | None, away: int | None) -> str | None:
+    if home is None or away is None:
+        return None
+    if home == away:
+        return "push"
+    return "home" if home > away else "away"
+
+
+def _sanitize_result_tag(tag: str) -> str:
+    cleaned = re.sub(r"[^a-zA-Z0-9_]+", "_", (tag or "").strip().lower())
+    cleaned = cleaned.strip("_")
+    if not cleaned:
+        cleaned = "default"
+    if cleaned[0].isdigit():
+        cleaned = f"m_{cleaned}"
+    return cleaned[:48]
+
+
+def _quote_ident(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
+
+
+def _ensure_eval_result_columns(
+    conn: sqlite3.Connection,
+    safe_tag: str,
+) -> dict[str, str]:
+    col_map = {
+        "q3_pick": f"q3_pick__{safe_tag}",
+        "q3_signal": f"q3_signal__{safe_tag}",
+        "q3_outcome": f"q3_outcome__{safe_tag}",
+        "q3_available": f"q3_available__{safe_tag}",
+        "q4_pick": f"q4_pick__{safe_tag}",
+        "q4_signal": f"q4_signal__{safe_tag}",
+        "q4_outcome": f"q4_outcome__{safe_tag}",
+        "q4_available": f"q4_available__{safe_tag}",
+    }
+    column_types = {
+        col_map["q3_pick"]: "TEXT",
+        col_map["q3_signal"]: "TEXT",
+        col_map["q3_outcome"]: "TEXT",
+        col_map["q3_available"]: "INTEGER",
+        col_map["q4_pick"]: "TEXT",
+        col_map["q4_signal"]: "TEXT",
+        col_map["q4_outcome"]: "TEXT",
+        col_map["q4_available"]: "INTEGER",
+    }
+
+    existing = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(eval_match_results)").fetchall()
+    }
+    for col_name, col_type in column_types.items():
+        if col_name in existing:
+            continue
+        conn.execute(
+            f"ALTER TABLE eval_match_results ADD COLUMN {_quote_ident(col_name)} {col_type}"
+        )
+    conn.commit()
+    return col_map
+
+
+def save_eval_match_result(
+    conn: sqlite3.Connection,
+    *,
+    event_date: str,
+    match_id: str,
+    home_team: str,
+    away_team: str,
+    q3_home_score: int | None,
+    q3_away_score: int | None,
+    q4_home_score: int | None,
+    q4_away_score: int | None,
+    result_tag: str,
+    predictions: dict,
+) -> str:
+    safe_tag = _sanitize_result_tag(result_tag)
+    col_map = _ensure_eval_result_columns(conn, safe_tag)
+
+    pred_q3 = (predictions or {}).get("q3", {})
+    pred_q4 = (predictions or {}).get("q4", {})
+
+    def pred_fields(pred: dict) -> tuple[str | None, str, str, int]:
+        available = 1 if pred.get("available") else 0
+        if available:
+            pick = pred.get("predicted_winner")
+            signal = (
+                pred.get("final_recommendation")
+                or pred.get("bet_signal")
+                or "NO_BET"
+            )
+            outcome = str(pred.get("result", "pending") or "pending")
+        else:
+            pick = None
+            signal = "NO_BET"
+            outcome = str(pred.get("reason", "unavailable") or "unavailable")
+        return pick, signal, outcome, available
+
+    q3_pick, q3_signal, q3_outcome, q3_available = pred_fields(pred_q3)
+    q4_pick, q4_signal, q4_outcome, q4_available = pred_fields(pred_q4)
+
+    q3_winner = _winner_from_scores(q3_home_score, q3_away_score)
+    q4_winner = _winner_from_scores(q4_home_score, q4_away_score)
+
+    row_values = {
+        "event_date": event_date,
+        "match_id": match_id,
+        "home_team": home_team,
+        "away_team": away_team,
+        "q3_home_score": q3_home_score,
+        "q3_away_score": q3_away_score,
+        "q3_winner": q3_winner,
+        "q4_home_score": q4_home_score,
+        "q4_away_score": q4_away_score,
+        "q4_winner": q4_winner,
+        col_map["q3_pick"]: q3_pick,
+        col_map["q3_signal"]: q3_signal,
+        col_map["q3_outcome"]: q3_outcome,
+        col_map["q3_available"]: q3_available,
+        col_map["q4_pick"]: q4_pick,
+        col_map["q4_signal"]: q4_signal,
+        col_map["q4_outcome"]: q4_outcome,
+        col_map["q4_available"]: q4_available,
+    }
+
+    all_cols = list(row_values.keys())
+    insert_cols = ", ".join(_quote_ident(c) for c in all_cols)
+    placeholders = ", ".join("?" for _ in all_cols)
+
+    update_cols = [c for c in all_cols if c not in ("event_date", "match_id")]
+    update_clause = ", ".join(
+        f"{_quote_ident(c)} = excluded.{_quote_ident(c)}"
+        for c in update_cols
+    )
+    update_clause += ", updated_at = datetime('now')"
+
+    sql = (
+        f"INSERT INTO eval_match_results ({insert_cols}) "
+        f"VALUES ({placeholders}) "
+        "ON CONFLICT(event_date, match_id) DO UPDATE SET "
+        f"{update_clause}"
+    )
+
+    conn.execute(sql, [row_values[c] for c in all_cols])
+    conn.commit()
+    return safe_tag
 
 
 def save_match(conn: sqlite3.Connection, match_id: str, data: dict) -> None:

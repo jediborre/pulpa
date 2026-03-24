@@ -102,12 +102,21 @@ Evaluacion diaria por fecha (descubre/ingesta/evalua):
 ```bash
 python training/model_cli.py eval-date --date 2026-03-23 --force-version hybrid
 python training/model_cli.py eval-date --date 2026-03-23 --force-version hybrid --limit-matches 50 --json
+python training/model_cli.py eval-date --date 2026-03-23 --force-version hybrid --result-tag hybrid_f1_v1
 ```
 
 Notas:
 
 - Muestra barra de progreso en ingesta y evaluacion.
+- En ingesta muestra dos barras: progreso y errores.
 - Si un partido ya esta FT completo en DB (Q1-Q4), no lo re-descarga.
+- Los errores de ingesta se agregan y se muestran en resumen para evitar spam de log.
+- Muestra preview por partido mientras evalua:
+  - local, visitante, q3 (pick + signal), q3_gano, q4 (pick + signal), q4_gano.
+- Guarda resultados en DB en `eval_match_results` con PK (`event_date`, `match_id`).
+- Cada iteracion/modelo usa columnas dinamicas por `--result-tag`.
+  - Si no pasas `--result-tag`, usa `<force-version>_<metric>`.
+- Si no hay BET, tambien se guarda como `NO_BET`.
 
 Cada corrida guarda historial automaticamente en:
 
