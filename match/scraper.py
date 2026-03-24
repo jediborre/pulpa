@@ -41,7 +41,7 @@ _PERIOD: dict[int | str, str] = {
 }
 
 
-# ── helpers ───────────────────────────────────────────────────────────────────
+# ── helpers ───────────────────────────────────────────────
 
 def parse_match_id(url: str) -> str:
     """Extract the numeric match ID from any SofaScore match URL."""
@@ -108,7 +108,7 @@ def _time_str(inc: dict) -> str:
     return f"{t}:00"
 
 
-# ── core parser ───────────────────────────────────────────────────────────────
+# ── core parser ──────────────────────────────────────────
 
 def _parse(event_json: dict, incidents: list, graph_points: list | None = None) -> dict:
     """
