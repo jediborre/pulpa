@@ -45,6 +45,7 @@ Examples
 """
 
 import argparse
+import importlib
 import json
 import sys
 from datetime import datetime, timedelta, timezone
@@ -151,7 +152,7 @@ def _ingest_pending_matches(
     date_from: str,
     date_to: str,
     limit: int,
-) -> tuple[int, int, int]:
+) -> tuple[int, int, int, int]:
     pending = db_mod.list_pending_discovered_ft(
         conn,
         date_from,
@@ -162,20 +163,42 @@ def _ingest_pending_matches(
 
     ing_ok = 0
     ing_fail = 0
-    for row in pending:
+    skipped_ft = 0
+    total = len(pending)
+    if total:
+        _print_progress("ingest", 0, total)
+
+    for idx, row in enumerate(pending, start=1):
         match_id = row["match_id"]
+        existing = db_mod.get_match(conn, match_id)
+        if _is_ft_complete(existing):
+            db_mod.mark_discovered_processed(conn, match_id)
+            skipped_ft += 1
+            _print_progress("ingest", idx, total)
+            continue
+
         try:
             data = scraper_mod.fetch_match_by_id(match_id)
             db_mod.save_match(conn, match_id, data)
             db_mod.mark_discovered_processed(conn, match_id)
             ing_ok += 1
-            print(f"[ingest][ok] {match_id}")
+        except KeyboardInterrupt:
+            print()
+            print("[ingest] interrupted by user")
+            _print_progress("ingest", idx - 1, total)
+            break
         except Exception as e:
             db_mod.mark_discovered_error(conn, match_id, str(e))
             ing_fail += 1
+            print()
             print(f"[ingest][error] {match_id}: {e}")
+        finally:
+            _print_progress("ingest", idx, total)
 
-    return len(pending), ing_ok, ing_fail
+    if total:
+        print()
+
+    return len(pending), ing_ok, ing_fail, skipped_ft
 
 
 # ── command handlers ──────────────────────────────────────────────────────────
@@ -308,8 +331,9 @@ def cmd_backfill_ft(args: argparse.Namespace) -> None:
     pending_count = 0
     ing_ok = 0
     ing_fail = 0
+    skipped_ft = 0
     if not args.no_ingest:
-        pending_count, ing_ok, ing_fail = _ingest_pending_matches(
+        pending_count, ing_ok, ing_fail, skipped_ft = _ingest_pending_matches(
             conn,
             stop.isoformat(),
             _utc_yesterday().isoformat(),
@@ -326,7 +350,10 @@ def cmd_backfill_ft(args: argparse.Namespace) -> None:
         f"days_processed={days_processed}"
     )
     print(f"[backfill-ft] pending_seen={pending_count}")
-    print(f"[backfill-ft] ingested_ok={ing_ok} ingested_fail={ing_fail}")
+    print(
+        f"[backfill-ft] ingested_ok={ing_ok} "
+        f"ingested_fail={ing_fail} skipped_ft={skipped_ft}"
+    )
     print(
         f"[backfill-ft] total={stats['total']} processed={stats['processed']} "
         f"pending={stats['pending']} pending_with_error={stats['pending_with_error']}"
@@ -357,7 +384,7 @@ def cmd_process_pending(args: argparse.Namespace) -> None:
     min_date = stats_before["min_date"] or "2000-01-01"
     max_date = stats_before["max_date"] or _utc_yesterday().isoformat()
 
-    pending_count, ing_ok, ing_fail = _ingest_pending_matches(
+    pending_count, ing_ok, ing_fail, skipped_ft = _ingest_pending_matches(
         conn,
         min_date,
         max_date,
@@ -369,12 +396,254 @@ def cmd_process_pending(args: argparse.Namespace) -> None:
 
     print("[process-pending] done")
     print(f"[process-pending] pending_seen={pending_count}")
-    print(f"[process-pending] ingested_ok={ing_ok} ingested_fail={ing_fail}")
+    print(
+        f"[process-pending] ingested_ok={ing_ok} "
+        f"ingested_fail={ing_fail} skipped_ft={skipped_ft}"
+    )
     print(
         f"[process-pending] total={stats_after['total']} "
         f"processed={stats_after['processed']} pending={stats_after['pending']} "
         f"pending_with_error={stats_after['pending_with_error']}"
     )
+
+
+def _empty_eval_stats() -> dict:
+    return {
+        "samples": 0,
+        "bets": 0,
+        "hits_all": 0,
+        "misses_all": 0,
+        "hits_bet": 0,
+        "losses_bet": 0,
+    }
+
+
+def _safe_rate(num: float, den: float) -> float:
+    return float(num / den) if den else 0.0
+
+
+def _is_ft_complete(data: dict | None) -> bool:
+    if not data:
+        return False
+    quarters = data.get("score", {}).get("quarters", {})
+    required = ("Q1", "Q2", "Q3", "Q4")
+    return all(q in quarters for q in required)
+
+
+def _print_progress(
+    prefix: str,
+    current: int,
+    total: int,
+    width: int = 28,
+) -> None:
+    if total <= 0:
+        print(f"\r[{prefix}] 0/0", end="", flush=True)
+        return
+    ratio = min(max(current / total, 0.0), 1.0)
+    filled = int(ratio * width)
+    bar = ("#" * filled) + ("-" * (width - filled))
+    pct = int(ratio * 100)
+    print(
+        f"\r[{prefix}] [{bar}] {current}/{total} ({pct}%)",
+        end="",
+        flush=True,
+    )
+
+
+def _finalize_eval(stats: dict, odds: float) -> dict:
+    samples = int(stats["samples"])
+    bets = int(stats["bets"])
+    hits_all = int(stats["hits_all"])
+    misses_all = int(stats["misses_all"])
+    hits_bet = int(stats["hits_bet"])
+    losses_bet = int(stats["losses_bet"])
+
+    if bets:
+        profit_units = (hits_bet * (odds - 1.0)) - losses_bet
+        roi_units_per_bet = profit_units / bets
+    else:
+        profit_units = 0.0
+        roi_units_per_bet = 0.0
+
+    return {
+        "samples": samples,
+        "bets": bets,
+        "coverage": round(_safe_rate(bets, samples), 6),
+        "accuracy_all": round(_safe_rate(hits_all, hits_all + misses_all), 6),
+        "hit_rate_bet": round(_safe_rate(hits_bet, bets), 6),
+        "roi_units_per_bet": round(roi_units_per_bet, 6),
+        "profit_units": round(profit_units, 6),
+    }
+
+
+def _print_eval_row(label: str, row: dict) -> None:
+    print(
+        f"{label:<8} "
+        f"samples={row['samples']:<4} "
+        f"bets={row['bets']:<4} "
+        f"coverage={row['coverage']:<8} "
+        f"acc_all={row['accuracy_all']:<8} "
+        f"hit_bet={row['hit_rate_bet']:<8} "
+        f"roi/bet={row['roi_units_per_bet']:<8} "
+        f"profit={row['profit_units']}"
+    )
+
+
+def cmd_eval_date(args: argparse.Namespace) -> None:
+    eval_date = _parse_date(args.date).isoformat()
+    conn = _open_db(args.db)
+
+    print(f"[eval-date] date={eval_date}")
+    rows = scraper_mod.fetch_finished_match_ids_for_date(eval_date)
+    if args.limit_matches is not None:
+        rows = rows[:args.limit_matches]
+    discovered = db_mod.save_discovered_ft_matches(conn, rows)
+    print(f"[eval-date] discovered_finished={discovered}")
+
+    ing_ok = 0
+    ing_fail = 0
+    already_ft_in_db = 0
+    match_ids: list[str] = []
+    total_rows = len(rows)
+    if total_rows:
+        _print_progress("ingest", 0, total_rows)
+
+    for idx, row in enumerate(rows, start=1):
+        match_id = str(row.get("match_id", ""))
+        if not match_id:
+            _print_progress("ingest", idx, total_rows)
+            continue
+        match_ids.append(match_id)
+
+        existing = db_mod.get_match(conn, match_id)
+        if _is_ft_complete(existing):
+            already_ft_in_db += 1
+            db_mod.mark_discovered_processed(conn, match_id)
+            _print_progress("ingest", idx, total_rows)
+            continue
+
+        try:
+            data = scraper_mod.fetch_match_by_id(match_id)
+            db_mod.save_match(conn, match_id, data)
+            db_mod.mark_discovered_processed(conn, match_id)
+            ing_ok += 1
+        except Exception as e:
+            err_text = str(e)
+            db_mod.mark_discovered_error(conn, match_id, err_text)
+            ing_fail += 1
+            err_first = (
+                err_text.splitlines()[0]
+                if err_text
+                else "unknown_error"
+            )
+            print()
+            print(f"[eval-date][ingest-error] {match_id}: {err_first}")
+        finally:
+            _print_progress("ingest", idx, total_rows)
+
+    if total_rows:
+        print()
+
+    print(
+        f"[eval-date] already_ft_in_db={already_ft_in_db} "
+        f"ingested_ok={ing_ok} ingested_fail={ing_fail}"
+    )
+
+    infer_mod = importlib.import_module("training.infer_match")
+    infer_mod.scraper_mod.fetch_event_snapshot = lambda _mid: None
+
+    stats = {
+        "q3": _empty_eval_stats(),
+        "q4": _empty_eval_stats(),
+        "overall": _empty_eval_stats(),
+    }
+
+    total_eval = len(match_ids)
+    if total_eval:
+        _print_progress("eval", 0, total_eval)
+
+    for idx, match_id in enumerate(match_ids, start=1):
+        res = infer_mod.run_inference(
+            match_id=match_id,
+            metric=args.metric,
+            fetch_missing=False,
+            force_version=args.force_version,
+        )
+        if not res.get("ok"):
+            _print_progress("eval", idx, total_eval)
+            continue
+
+        for target in ("q3", "q4"):
+            pred = res.get("predictions", {}).get(target, {})
+            if not pred.get("available"):
+                continue
+
+            outcome = str(pred.get("result", ""))
+            if outcome in ("", "pending", "push"):
+                continue
+
+            for bucket in (target, "overall"):
+                s = stats[bucket]
+                s["samples"] += 1
+                if outcome == "hit":
+                    s["hits_all"] += 1
+                elif outcome == "miss":
+                    s["misses_all"] += 1
+
+                if pred.get("final_recommendation") == "BET":
+                    s["bets"] += 1
+                    if outcome == "hit":
+                        s["hits_bet"] += 1
+                    elif outcome == "miss":
+                        s["losses_bet"] += 1
+
+        _print_progress("eval", idx, total_eval)
+
+    if total_eval:
+        print()
+
+    q3_row = _finalize_eval(stats["q3"], odds=args.odds)
+    q4_row = _finalize_eval(stats["q4"], odds=args.odds)
+    all_row = _finalize_eval(stats["overall"], odds=args.odds)
+
+    print("[eval-date] summary")
+    _print_eval_row("Q3", q3_row)
+    _print_eval_row("Q4", q4_row)
+    _print_eval_row("TOTAL", all_row)
+
+    out = {
+        "date": eval_date,
+        "metric": args.metric,
+        "force_version": args.force_version,
+        "odds": args.odds,
+        "limit_matches": args.limit_matches,
+        "discovered_finished": discovered,
+        "already_ft_in_db": already_ft_in_db,
+        "ingested_ok": ing_ok,
+        "ingested_fail": ing_fail,
+        "summary": {
+            "q3": q3_row,
+            "q4": q4_row,
+            "overall": all_row,
+        },
+    }
+
+    out_dir = Path(__file__).parent / "training" / "model_comparison"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_file = (
+        out_dir
+        / (
+            f"daily_eval_{eval_date}_{args.force_version}_{args.metric}.json"
+        )
+    )
+    with out_file.open("w", encoding="utf-8") as f:
+        json.dump(out, f, indent=2, ensure_ascii=False)
+    print(f"[eval-date] saved={out_file}")
+
+    if args.json:
+        print(json.dumps(out, indent=2, ensure_ascii=False))
+
+    conn.close()
 
 
 # ── argument parser ───────────────────────────────────────────────────────────
@@ -516,6 +785,48 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Max pending matches to ingest in this run (default: 200)",
     )
     p_pending.set_defaults(func=cmd_process_pending)
+
+    # eval-date
+    p_eval = sub.add_parser(
+        "eval-date",
+        help="Discover+ingest+evaluate one date (Q3/Q4 summary)",
+    )
+    p_eval.add_argument(
+        "--date",
+        required=True,
+        metavar="YYYY-MM-DD",
+        help="UTC date to evaluate",
+    )
+    p_eval.add_argument(
+        "--metric",
+        choices=["accuracy", "f1", "log_loss"],
+        default="f1",
+        help="Metric for model selection context (default: f1)",
+    )
+    p_eval.add_argument(
+        "--limit-matches",
+        type=int,
+        default=None,
+        help="Max finished matches to process from that date",
+    )
+    p_eval.add_argument(
+        "--force-version",
+        choices=["auto", "v1", "v2", "v4", "hybrid"],
+        default="hybrid",
+        help="Inference policy (default: hybrid)",
+    )
+    p_eval.add_argument(
+        "--odds",
+        type=float,
+        default=1.91,
+        help="Fixed decimal odds for ROI proxy (default: 1.91)",
+    )
+    p_eval.add_argument(
+        "--json",
+        action="store_true",
+        help="Also print JSON summary",
+    )
+    p_eval.set_defaults(func=cmd_eval_date)
 
     # plot-graph
     p_plot = sub.add_parser(

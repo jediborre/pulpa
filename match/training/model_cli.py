@@ -19,6 +19,7 @@ SCRIPT_TRAIN_V4 = TRAINING_DIR / "train_q3_q4_models_v4.py"
 SCRIPT_COMPARE = TRAINING_DIR / "compare_model_versions.py"
 SCRIPT_INFER = TRAINING_DIR / "infer_match.py"
 SCRIPT_CALIBRATE = TRAINING_DIR / "calibrate_gate.py"
+SCRIPT_MAIN_CLI = ROOT / "cli.py"
 
 COMPARE_JSON = TRAINING_DIR / "model_comparison" / "version_comparison.json"
 
@@ -137,6 +138,8 @@ def cmd_infer(args: argparse.Namespace) -> None:
         cmd.extend(["--force-version", args.force_version])
     if args.no_fetch:
         cmd.append("--no-fetch")
+    if getattr(args, "refresh", False):
+        cmd.append("--refresh")
     if args.json:
         cmd.append("--json")
 
@@ -163,6 +166,35 @@ def cmd_calibrate(args: argparse.Namespace) -> None:
         "--min-coverage",
         str(args.min_coverage),
     ]
+    if args.json:
+        cmd.append("--json")
+
+    result = subprocess.run(cmd, cwd=str(ROOT), check=False)
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"Command failed ({result.returncode}): {' '.join(cmd)}"
+        )
+
+
+def cmd_eval_date(args: argparse.Namespace) -> None:
+    if not SCRIPT_MAIN_CLI.exists():
+        raise FileNotFoundError(f"Script not found: {SCRIPT_MAIN_CLI}")
+
+    cmd = [
+        sys.executable,
+        str(SCRIPT_MAIN_CLI),
+        "eval-date",
+        "--date",
+        args.date,
+        "--metric",
+        args.metric,
+        "--force-version",
+        args.force_version,
+        "--odds",
+        str(args.odds),
+    ]
+    if args.limit_matches is not None:
+        cmd.extend(["--limit-matches", str(args.limit_matches)])
     if args.json:
         cmd.append("--json")
 
@@ -200,6 +232,7 @@ def _interactive_menu() -> None:
         "8": "infer",
         "9": "all",
         "10": "calibrate",
+        "11": "eval-date",
         "0": "exit",
     }
 
@@ -215,6 +248,7 @@ def _interactive_menu() -> None:
         print("8) Infer by match_id")
         print("9) Run all")
         print("10) Calibrate gate thresholds")
+        print("11) Evaluate one date")
         print("0) Exit")
 
         choice = input("Select option: ").strip()
@@ -264,6 +298,9 @@ def _interactive_menu() -> None:
                 if not force_version:
                     force_version = "auto"
                 no_fetch = _ask_yes_no("Disable auto-fetch if missing?", False)
+                refresh = _ask_yes_no(
+                    "Force refresh (re-fetch even if exists in DB)?", False
+                )
                 json_out = _ask_yes_no("Raw JSON output?", False)
                 cmd_infer(
                     argparse.Namespace(
@@ -271,6 +308,7 @@ def _interactive_menu() -> None:
                         metric=metric,
                         force_version=force_version,
                         no_fetch=no_fetch,
+                        refresh=refresh,
                         json=json_out,
                     )
                 )
@@ -304,6 +342,44 @@ def _interactive_menu() -> None:
                         limit=limit,
                         odds=odds,
                         min_coverage=min_cov,
+                        json=json_out,
+                    )
+                )
+            elif action == "eval-date":
+                date_txt = input("Date (YYYY-MM-DD): ").strip()
+                if not date_txt:
+                    print("Date is required.")
+                    continue
+                metric = _ask_metric()
+                force_version = input(
+                    "Force version (auto|v1|v2|v4|hybrid) [hybrid]: "
+                ).strip().lower()
+                if not force_version:
+                    force_version = "hybrid"
+                if force_version not in (
+                    "auto",
+                    "v1",
+                    "v2",
+                    "v4",
+                    "hybrid",
+                ):
+                    print("Invalid force-version. Using hybrid.")
+                    force_version = "hybrid"
+
+                raw_lim = input("Limit matches [none]: ").strip()
+                raw_odds = input("Assumed decimal odds [1.91]: ").strip()
+                json_out = _ask_yes_no("Raw JSON output?", False)
+
+                lim = int(raw_lim) if raw_lim else None
+                odds = float(raw_odds) if raw_odds else 1.91
+
+                cmd_eval_date(
+                    argparse.Namespace(
+                        date=date_txt,
+                        metric=metric,
+                        force_version=force_version,
+                        limit_matches=lim,
+                        odds=odds,
                         json=json_out,
                     )
                 )
@@ -402,6 +478,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Do not fetch with scraper if match is missing in DB",
     )
     p_infer.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Force re-fetch and overwrite DB even if match already exists",
+    )
+    p_infer.add_argument(
         "--json",
         action="store_true",
         help="Return raw JSON output",
@@ -442,6 +523,46 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Return raw JSON output",
     )
     p_cal.set_defaults(func=cmd_calibrate)
+
+    p_eval = sub.add_parser(
+        "eval-date",
+        help="Discover+ingest+evaluate one date via root cli",
+    )
+    p_eval.add_argument(
+        "--date",
+        required=True,
+        help="UTC date to evaluate (YYYY-MM-DD)",
+    )
+    p_eval.add_argument(
+        "--metric",
+        choices=["accuracy", "f1", "log_loss"],
+        default="f1",
+        help="Metric for model selection context",
+    )
+    p_eval.add_argument(
+        "--force-version",
+        choices=["auto", "v1", "v2", "v4", "hybrid"],
+        default="hybrid",
+        help="Inference policy",
+    )
+    p_eval.add_argument(
+        "--limit-matches",
+        type=int,
+        default=None,
+        help="Max finished matches to process from that date",
+    )
+    p_eval.add_argument(
+        "--odds",
+        type=float,
+        default=1.91,
+        help="Fixed decimal odds for ROI proxy",
+    )
+    p_eval.add_argument(
+        "--json",
+        action="store_true",
+        help="Return raw JSON output",
+    )
+    p_eval.set_defaults(func=cmd_eval_date)
 
     return parser
 

@@ -56,6 +56,7 @@ python training/model_cli.py compare
 python training/model_cli.py summary --metric f1
 python training/model_cli.py infer 14442355 --metric f1
 python training/model_cli.py calibrate --metric f1
+python training/model_cli.py eval-date --date 2026-03-23 --force-version hybrid
 python training/model_cli.py all
 ```
 
@@ -76,6 +77,13 @@ Para desactivar auto-fetch cuando no existe en DB:
 python training/model_cli.py infer <match_id> --no-fetch
 ```
 
+Para forzar re-extraccion aunque el partido ya este en DB (datos stale, Q3 faltante):
+
+```bash
+python training/model_cli.py infer <match_id> --refresh
+python training/model_cli.py infer <match_id> --metric f1 --force-version hybrid --refresh
+```
+
 Para comparar versiones en el mismo partido:
 
 ```bash
@@ -87,6 +95,23 @@ Opciones de force-version:
 
 - auto (default): usa la mejor version segun compare.
 - v1, v2, v4: fuerza version estatica para comparar head-to-head.
+- hybrid: fuerza q3=v2 y q4=v4.
+
+Evaluacion diaria por fecha (descubre/ingesta/evalua):
+
+```bash
+python training/model_cli.py eval-date --date 2026-03-23 --force-version hybrid
+python training/model_cli.py eval-date --date 2026-03-23 --force-version hybrid --limit-matches 50 --json
+```
+
+Notas:
+
+- Muestra barra de progreso en ingesta y evaluacion.
+- Si un partido ya esta FT completo en DB (Q1-Q4), no lo re-descarga.
+
+Cada corrida guarda historial automaticamente en:
+
+- `training/model_comparison/daily_eval_<YYYY-MM-DD>_<policy>_<metric>.json`
 
 Pipeline completo sin repetir todo:
 

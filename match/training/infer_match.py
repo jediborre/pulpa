@@ -466,13 +466,15 @@ def _load_match(
     conn,
     match_id: str,
     fetch_missing: bool,
+    refresh: bool = False,
 ) -> tuple[dict | None, bool]:
     data = db_mod.get_match(conn, match_id)
-    if data is not None:
+    if data is not None and not refresh:
         return data, False
 
     if not fetch_missing:
-        return None, False
+        # refresh requested but fetch disabled: return existing or None
+        return data, False
 
     scraped = scraper_mod.fetch_match_by_id(match_id)
     db_mod.save_match(conn, match_id, scraped)
@@ -1097,6 +1099,7 @@ def run_inference(
     metric: str,
     fetch_missing: bool,
     force_version: str,
+    refresh: bool = False,
 ) -> dict:
     if not COMPARE_JSON.exists():
         raise FileNotFoundError(
@@ -1110,7 +1113,7 @@ def run_inference(
     conn = db_mod.get_conn(str(DB_PATH))
     db_mod.init_db(conn)
 
-    match_data, fetched = _load_match(conn, match_id, fetch_missing)
+    match_data, fetched = _load_match(conn, match_id, fetch_missing, refresh)
     if not match_data:
         conn.close()
         return {
@@ -1298,6 +1301,11 @@ def main() -> None:
         help="Do not scrape when match_id is missing in DB",
     )
     parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Force re-fetch from source and overwrite DB even if match exists",
+    )
+    parser.add_argument(
         "--force-version",
         choices=["auto", "v1", "v2", "v4", "hybrid"],
         default="auto",
@@ -1315,6 +1323,7 @@ def main() -> None:
         metric=args.metric,
         fetch_missing=not args.no_fetch,
         force_version=args.force_version,
+        refresh=args.refresh,
     )
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
