@@ -1,0 +1,41 @@
+{
+  "date": "2026-03-24",
+  "result_tag": "auto_f1",
+  "metric": "f1",
+  "force_version": "auto",
+  "odds": 1.91,
+  "limit_matches": null,
+  "discovered_finished": 299,
+  "already_ft_in_db": 95,
+  "ingested_ok": 172,
+  "ingested_fail": 32,
+  "summary": {
+    "q3": {
+      "samples": 197,
+      "bets": 135,
+      "coverage": 0.685279,
+      "accuracy_all": 0.634518,
+      "hit_rate_bet": 0.711111,
+      "roi_units_per_bet": 0.358222,
+      "profit_units": 48.36
+    },
+    "q4": {
+      "samples": 187,
+      "bets": 133,
+      "coverage": 0.71123,
+      "accuracy_all": 0.716578,
+      "hit_rate_bet": 0.796992,
+      "roi_units_per_bet": 0.522256,
+      "profit_units": 69.46
+    },
+    "overall": {
+      "samples": 384,
+      "bets": 268,
+      "coverage": 0.697917,
+      "accuracy_all": 0.674479,
+      "hit_rate_bet": 0.753731,
+      "roi_units_per_bet": 0.439627,
+      "profit_units": 117.82
+    }
+  }
+}
