@@ -27,6 +27,12 @@ def init_db(conn: sqlite3.Connection) -> None:
             match_id    TEXT PRIMARY KEY,
             home_team   TEXT NOT NULL,
             away_team   TEXT NOT NULL,
+            home_slug   TEXT,
+            away_slug   TEXT,
+            event_slug  TEXT,
+            custom_id   TEXT,
+            status_type TEXT,
+            status_description TEXT,
             date        TEXT NOT NULL,
             time        TEXT NOT NULL,
             venue       TEXT,
@@ -104,6 +110,27 @@ def init_db(conn: sqlite3.Connection) -> None:
                 PRIMARY KEY (event_date, match_id)
             );
     """)
+    _ensure_match_columns(conn)
+    conn.commit()
+
+
+def _ensure_match_columns(conn: sqlite3.Connection) -> None:
+    existing = {
+        row["name"] for row in conn.execute("PRAGMA table_info(matches)").fetchall()
+    }
+    for col_name in (
+        "home_slug",
+        "away_slug",
+        "event_slug",
+        "custom_id",
+        "status_type",
+        "status_description",
+    ):
+        if col_name in existing:
+            continue
+        conn.execute(
+            f"ALTER TABLE matches ADD COLUMN {_quote_ident(col_name)} TEXT"
+        )
     conn.commit()
 
 
@@ -138,20 +165,32 @@ def _ensure_eval_result_columns(
         "q3_signal": f"q3_signal__{safe_tag}",
         "q3_outcome": f"q3_outcome__{safe_tag}",
         "q3_available": f"q3_available__{safe_tag}",
+        "q3_confidence": f"q3_confidence__{safe_tag}",
+        "q3_threshold_lean": f"q3_threshold_lean__{safe_tag}",
+        "q3_threshold_bet": f"q3_threshold_bet__{safe_tag}",
         "q4_pick": f"q4_pick__{safe_tag}",
         "q4_signal": f"q4_signal__{safe_tag}",
         "q4_outcome": f"q4_outcome__{safe_tag}",
         "q4_available": f"q4_available__{safe_tag}",
+        "q4_confidence": f"q4_confidence__{safe_tag}",
+        "q4_threshold_lean": f"q4_threshold_lean__{safe_tag}",
+        "q4_threshold_bet": f"q4_threshold_bet__{safe_tag}",
     }
     column_types = {
         col_map["q3_pick"]: "TEXT",
         col_map["q3_signal"]: "TEXT",
         col_map["q3_outcome"]: "TEXT",
         col_map["q3_available"]: "INTEGER",
+        col_map["q3_confidence"]: "REAL",
+        col_map["q3_threshold_lean"]: "REAL",
+        col_map["q3_threshold_bet"]: "REAL",
         col_map["q4_pick"]: "TEXT",
         col_map["q4_signal"]: "TEXT",
         col_map["q4_outcome"]: "TEXT",
         col_map["q4_available"]: "INTEGER",
+        col_map["q4_confidence"]: "REAL",
+        col_map["q4_threshold_lean"]: "REAL",
+        col_map["q4_threshold_bet"]: "REAL",
     }
 
     existing = {
@@ -188,7 +227,7 @@ def save_eval_match_result(
     pred_q3 = (predictions or {}).get("q3", {})
     pred_q4 = (predictions or {}).get("q4", {})
 
-    def pred_fields(pred: dict) -> tuple[str | None, str, str, int]:
+    def pred_fields(pred: dict) -> tuple[str | None, str, str, int, float | None, float | None, float | None]:
         available = 1 if pred.get("available") else 0
         if available:
             pick = pred.get("predicted_winner")
@@ -198,14 +237,20 @@ def save_eval_match_result(
                 or "NO_BET"
             )
             outcome = str(pred.get("result", "pending") or "pending")
+            confidence = pred.get("confidence")
+            threshold_lean = pred.get("threshold_lean")
+            threshold_bet = pred.get("threshold_bet")
         else:
             pick = None
             signal = "NO_BET"
             outcome = str(pred.get("reason", "unavailable") or "unavailable")
-        return pick, signal, outcome, available
+            confidence = None
+            threshold_lean = None
+            threshold_bet = None
+        return pick, signal, outcome, available, confidence, threshold_lean, threshold_bet
 
-    q3_pick, q3_signal, q3_outcome, q3_available = pred_fields(pred_q3)
-    q4_pick, q4_signal, q4_outcome, q4_available = pred_fields(pred_q4)
+    q3_pick, q3_signal, q3_outcome, q3_available, q3_confidence, q3_threshold_lean, q3_threshold_bet = pred_fields(pred_q3)
+    q4_pick, q4_signal, q4_outcome, q4_available, q4_confidence, q4_threshold_lean, q4_threshold_bet = pred_fields(pred_q4)
 
     q3_winner = _winner_from_scores(q3_home_score, q3_away_score)
     q4_winner = _winner_from_scores(q4_home_score, q4_away_score)
@@ -225,10 +270,16 @@ def save_eval_match_result(
         col_map["q3_signal"]: q3_signal,
         col_map["q3_outcome"]: q3_outcome,
         col_map["q3_available"]: q3_available,
+        col_map["q3_confidence"]: q3_confidence,
+        col_map["q3_threshold_lean"]: q3_threshold_lean,
+        col_map["q3_threshold_bet"]: q3_threshold_bet,
         col_map["q4_pick"]: q4_pick,
         col_map["q4_signal"]: q4_signal,
         col_map["q4_outcome"]: q4_outcome,
         col_map["q4_available"]: q4_available,
+        col_map["q4_confidence"]: q4_confidence,
+        col_map["q4_threshold_lean"]: q4_threshold_lean,
+        col_map["q4_threshold_bet"]: q4_threshold_bet,
     }
 
     all_cols = list(row_values.keys())
@@ -259,16 +310,21 @@ def save_match(conn: sqlite3.Connection, match_id: str, data: dict) -> None:
     m = data["match"]
     s = data["score"]
 
+    _ensure_match_columns(conn)
+
     conn.execute(
         """
         INSERT OR REPLACE INTO matches
-          (match_id, home_team, away_team, date, time, venue, league,
+                    (match_id, home_team, away_team, home_slug, away_slug, event_slug, custom_id, status_type, status_description, date, time, venue, league,
            home_record, away_record, home_score, away_score)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """,
         (
             match_id,
             m["home_team"], m["away_team"],
+            m.get("home_slug", "unknown"), m.get("away_slug", "unknown"),
+                        m.get("event_slug", "unknown"), m.get("custom_id", ""),
+                        m.get("status_type", ""), m.get("status_description", ""),
             m["date"], m["time"],
             m.get("venue", ""), m.get("league", ""),
             m.get("home_record", ""), m.get("away_record", ""),
@@ -320,6 +376,7 @@ def save_match(conn: sqlite3.Connection, match_id: str, data: dict) -> None:
 
 def get_match(conn: sqlite3.Connection, match_id: str) -> dict | None:
     """Reconstruct the full match dict from the DB (same shape as scraper output)."""
+    _ensure_match_columns(conn)
     row = conn.execute(
         "SELECT * FROM matches WHERE match_id = ?", (match_id,)
     ).fetchone()
@@ -360,6 +417,12 @@ def get_match(conn: sqlite3.Connection, match_id: str) -> dict | None:
         "match": {
             "home_team": row["home_team"],
             "away_team": row["away_team"],
+            "home_slug": row["home_slug"] or "unknown",
+            "away_slug": row["away_slug"] or "unknown",
+            "event_slug": row["event_slug"] or "unknown",
+            "custom_id": row["custom_id"] or "",
+            "status_type": row["status_type"] or "",
+            "status_description": row["status_description"] or "",
             "date": row["date"],
             "time": row["time"],
             "venue": row["venue"],
@@ -430,6 +493,7 @@ def list_pending_discovered_ft(
     sql = (
         "SELECT * FROM discovered_ft_matches "
         "WHERE processed = 0 AND event_date BETWEEN ? AND ? "
+        "AND UPPER(COALESCE(last_error, '')) NOT LIKE '%HTTP 404%' "
         "ORDER BY event_date DESC, match_id DESC"
     )
     params: list = [date_from, date_to]
@@ -460,6 +524,24 @@ def mark_discovered_error(
     match_id: str,
     error_text: str,
 ) -> None:
+    err = (error_text or "")[:1000]
+    upper_err = err.upper()
+    is_non_retryable_404 = "HTTP 404" in upper_err
+
+    if is_non_retryable_404:
+        conn.execute(
+            """
+            UPDATE discovered_ft_matches
+            SET processed = 1,
+                processed_at = datetime('now'),
+                last_error = ?
+            WHERE match_id = ?
+            """,
+            (err, match_id),
+        )
+        conn.commit()
+        return
+
     conn.execute(
         """
         UPDATE discovered_ft_matches
@@ -468,9 +550,24 @@ def mark_discovered_error(
             last_error = ?
         WHERE match_id = ?
         """,
-        (error_text[:1000], match_id),
+        (err, match_id),
     )
     conn.commit()
+
+
+def mark_http_404_errors_processed(conn: sqlite3.Connection) -> int:
+    """Mark legacy pending rows with HTTP 404 errors as processed/non-retryable."""
+    cur = conn.execute(
+        """
+        UPDATE discovered_ft_matches
+        SET processed = 1,
+            processed_at = datetime('now')
+        WHERE processed = 0
+          AND UPPER(COALESCE(last_error, '')) LIKE '%HTTP 404%'
+        """
+    )
+    conn.commit()
+    return int(cur.rowcount or 0)
 
 
 def get_state(conn: sqlite3.Connection, key: str) -> str | None:

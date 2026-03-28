@@ -1,3 +1,5 @@
 /.vscode
 /.venv
 /match/__pycache__
+/match/.env
+/.env

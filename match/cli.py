@@ -22,6 +22,9 @@ Commands
     process-pending [--db PATH] [--limit N]
         Ingest only already-discovered pending FT matches.
 
+    backfill-links [--db PATH] [--limit N]
+        Refresh stored matches missing SofaScore event slug/customId.
+
     plot-graph <match_id> [--db PATH] [--out PATH]
         Reconstruct the SofaScore pressure graph using seaborn.
 
@@ -41,12 +44,14 @@ Examples
         python cli.py backfill-ft --days 7 --ingest-limit 200
         python cli.py backfill-status
     python cli.py process-pending --limit 500
+    python cli.py backfill-links --limit 200
     python cli.py plot-graph 14442355 --out graph_14442355.png
 """
 
 import argparse
 import importlib
 import json
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -152,7 +157,11 @@ def _ingest_pending_matches(
     date_from: str,
     date_to: str,
     limit: int,
-) -> tuple[int, int, int, int]:
+) -> tuple[int, int, int, int, list[str]]:
+    ignored_404 = db_mod.mark_http_404_errors_processed(conn)
+    if ignored_404:
+        print(f"[ingest] 404_no_retry_marked={ignored_404}")
+
     pending = db_mod.list_pending_discovered_ft(
         conn,
         date_from,
@@ -164,9 +173,17 @@ def _ingest_pending_matches(
     ing_ok = 0
     ing_fail = 0
     skipped_ft = 0
+    ingest_error_samples: list[str] = []
     total = len(pending)
+    dual_started = False
     if total:
-        _print_progress("ingest", 0, total)
+        dual_started = _print_dual_progress(
+            "ingest",
+            0,
+            total,
+            0,
+            started=dual_started,
+        )
 
     for idx, row in enumerate(pending, start=1):
         match_id = row["match_id"]
@@ -174,7 +191,13 @@ def _ingest_pending_matches(
         if _is_ft_complete(existing):
             db_mod.mark_discovered_processed(conn, match_id)
             skipped_ft += 1
-            _print_progress("ingest", idx, total)
+            dual_started = _print_dual_progress(
+                "ingest",
+                idx,
+                total,
+                ing_fail,
+                started=dual_started,
+            )
             continue
 
         try:
@@ -185,20 +208,38 @@ def _ingest_pending_matches(
         except KeyboardInterrupt:
             print()
             print("[ingest] interrupted by user")
-            _print_progress("ingest", idx - 1, total)
+            _print_dual_progress(
+                "ingest",
+                idx - 1,
+                total,
+                ing_fail,
+                started=dual_started,
+            )
             break
         except Exception as e:
             db_mod.mark_discovered_error(conn, match_id, str(e))
             ing_fail += 1
-            print()
-            print(f"[ingest][error] {match_id}: {e}")
+            err_text = str(e)
+            err_first = (
+                err_text.splitlines()[0]
+                if err_text
+                else "unknown_error"
+            )
+            if len(ingest_error_samples) < 12:
+                ingest_error_samples.append(f"{match_id}: {err_first}")
         finally:
-            _print_progress("ingest", idx, total)
+            dual_started = _print_dual_progress(
+                "ingest",
+                idx,
+                total,
+                ing_fail,
+                started=dual_started,
+            )
 
     if total:
         print()
 
-    return len(pending), ing_ok, ing_fail, skipped_ft
+    return len(pending), ing_ok, ing_fail, skipped_ft, ingest_error_samples
 
 
 # ── command handlers ──────────────────────────────────────────────────────────
@@ -333,12 +374,20 @@ def cmd_backfill_ft(args: argparse.Namespace) -> None:
     ing_fail = 0
     skipped_ft = 0
     if not args.no_ingest:
-        pending_count, ing_ok, ing_fail, skipped_ft = _ingest_pending_matches(
+        (
+            pending_count,
+            ing_ok,
+            ing_fail,
+            skipped_ft,
+            ingest_error_samples,
+        ) = _ingest_pending_matches(
             conn,
             stop.isoformat(),
             _utc_yesterday().isoformat(),
             args.ingest_limit,
         )
+    else:
+        ingest_error_samples = []
 
     stats = db_mod.get_discovered_stats(conn)
     next_cursor = db_mod.get_state(conn, cursor_key)
@@ -358,6 +407,13 @@ def cmd_backfill_ft(args: argparse.Namespace) -> None:
         f"[backfill-ft] total={stats['total']} processed={stats['processed']} "
         f"pending={stats['pending']} pending_with_error={stats['pending_with_error']}"
     )
+    if ing_fail:
+        print(
+            f"[backfill-ft] ingest_error_samples="
+            f"{len(ingest_error_samples)}/{ing_fail}"
+        )
+        for sample in ingest_error_samples:
+            print(f"[backfill-ft][ingest-error] {sample}")
     print(f"[backfill-ft] resume_cursor={next_cursor}")
 
 
@@ -384,7 +440,13 @@ def cmd_process_pending(args: argparse.Namespace) -> None:
     min_date = stats_before["min_date"] or "2000-01-01"
     max_date = stats_before["max_date"] or _utc_yesterday().isoformat()
 
-    pending_count, ing_ok, ing_fail, skipped_ft = _ingest_pending_matches(
+    (
+        pending_count,
+        ing_ok,
+        ing_fail,
+        skipped_ft,
+        ingest_error_samples,
+    ) = _ingest_pending_matches(
         conn,
         min_date,
         max_date,
@@ -405,6 +467,77 @@ def cmd_process_pending(args: argparse.Namespace) -> None:
         f"processed={stats_after['processed']} pending={stats_after['pending']} "
         f"pending_with_error={stats_after['pending_with_error']}"
     )
+    if ing_fail:
+        print(
+            f"[process-pending] ingest_error_samples="
+            f"{len(ingest_error_samples)}/{ing_fail}"
+        )
+        for sample in ingest_error_samples:
+            print(f"[process-pending][ingest-error] {sample}")
+
+
+def cmd_backfill_links(args: argparse.Namespace) -> None:
+    conn = _open_db(args.db)
+    missing_rows = conn.execute(
+        """
+        SELECT match_id, home_team, away_team
+        FROM matches
+        WHERE COALESCE(NULLIF(TRIM(event_slug), ''), 'unknown') = 'unknown'
+           OR COALESCE(NULLIF(TRIM(custom_id), ''), '') = ''
+        ORDER BY date DESC, time DESC, match_id DESC
+        """
+    ).fetchall()
+
+    total_missing = len(missing_rows)
+    rows_to_process = missing_rows[: args.limit] if args.limit else missing_rows
+    print(
+        f"[backfill-links] missing_total={total_missing} "
+        f"selected={len(rows_to_process)}"
+    )
+
+    updated = 0
+    failed = 0
+    error_samples: list[str] = []
+
+    for index, row in enumerate(rows_to_process, start=1):
+        match_id = str(row["match_id"])
+        home_team = str(row["home_team"] or "")
+        away_team = str(row["away_team"] or "")
+        print(
+            f"[backfill-links] {index}/{len(rows_to_process)} "
+            f"match_id={match_id} {home_team} vs {away_team}"
+        )
+        try:
+            data = scraper_mod.fetch_match_by_id(match_id)
+            db_mod.save_match(conn, match_id, data)
+            updated += 1
+        except KeyboardInterrupt:
+            print("[backfill-links] interrupted by user")
+            break
+        except Exception as exc:
+            failed += 1
+            err_text = str(exc).splitlines()[0] if str(exc) else "unknown_error"
+            if len(error_samples) < 12:
+                error_samples.append(f"{match_id}: {err_text}")
+
+    remaining = total_missing - updated
+    if remaining < 0:
+        remaining = 0
+
+    conn.close()
+
+    print("[backfill-links] done")
+    print(
+        f"[backfill-links] updated={updated} failed={failed} "
+        f"remaining_estimate={remaining}"
+    )
+    if failed:
+        print(
+            f"[backfill-links] error_samples="
+            f"{len(error_samples)}/{failed}"
+        )
+        for sample in error_samples:
+            print(f"[backfill-links][error] {sample}")
 
 
 def _empty_eval_stats() -> dict:
@@ -788,6 +921,194 @@ def cmd_eval_date(args: argparse.Namespace) -> None:
     conn.close()
 
 
+def cmd_run_bot(args: argparse.Namespace) -> None:
+    """Run the Telegram bot process from this CLI."""
+    if args.db and not os.getenv("MATCH_DB_PATH"):
+        os.environ["MATCH_DB_PATH"] = args.db
+
+    bot_mod = importlib.import_module("telegram_bot")
+    bot_mod.main()
+
+
+def _ask(prompt: str, default: str | None = None) -> str:
+    hint = f" [{default}]" if default is not None else ""
+    value = input(f"{prompt}{hint}: ").strip()
+    if not value and default is not None:
+        return default
+    return value
+
+
+def _apply_defaults(tokens: list[str], db_path: str | None) -> list[str]:
+    if db_path:
+        return ["--db", db_path] + tokens
+    return tokens
+
+
+def _run_tokens(parser: argparse.ArgumentParser, tokens: list[str]) -> None:
+    try:
+        args = parser.parse_args(tokens)
+    except SystemExit:
+        print("[menu] comando invalido, revisa los datos y prueba de nuevo")
+        return
+    args.func(args)
+
+
+def _interactive_menu(parser: argparse.ArgumentParser, db_path: str) -> None:
+    while True:
+        print("\n=== SofaScore CLI Menu ===")
+        print("1) scrape")
+        print("2) show")
+        print("3) list")
+        print("4) export-features")
+        print("5) export-features-quarters")
+        print("6) backfill-ft")
+        print("7) backfill-status")
+        print("8) process-pending")
+        print("9) eval-date")
+        print("10) plot-graph")
+        print("11) run-bot")
+        print("12) help")
+        print("0) salir")
+
+        opt = input("Selecciona opcion: ").strip()
+        if opt == "0":
+            print("[menu] bye")
+            return
+
+        if opt == "12":
+            parser.print_help()
+            continue
+
+        if opt == "1":
+            url = _ask("URL SofaScore")
+            tokens = _apply_defaults(["scrape", url], db_path)
+            _run_tokens(parser, tokens)
+            continue
+
+        if opt == "2":
+            match_id = _ask("Match ID")
+            tokens = _apply_defaults(["show", match_id], db_path)
+            _run_tokens(parser, tokens)
+            continue
+
+        if opt == "3":
+            tokens = _apply_defaults(["list"], db_path)
+            _run_tokens(parser, tokens)
+            continue
+
+        if opt == "4":
+            out = _ask("Output path", "features.csv")
+            fmt = _ask("Format (csv/jsonl)", "csv")
+            tokens = _apply_defaults(
+                ["export-features", "--out", out, "--format", fmt],
+                db_path,
+            )
+            _run_tokens(parser, tokens)
+            continue
+
+        if opt == "5":
+            out = _ask("Output path", "features_quarters.csv")
+            fmt = _ask("Format (csv/jsonl)", "csv")
+            tokens = _apply_defaults(
+                [
+                    "export-features-quarters",
+                    "--out",
+                    out,
+                    "--format",
+                    fmt,
+                ],
+                db_path,
+            )
+            _run_tokens(parser, tokens)
+            continue
+
+        if opt == "6":
+            days = _ask("Days", "1")
+            ingest_limit = _ask("Ingest limit", "200")
+            start_date = _ask("Start date YYYY-MM-DD (opcional)", "")
+            stop_date = _ask("Stop date YYYY-MM-DD (opcional)", "")
+            no_ingest = _ask("No ingest? (y/n)", "n").lower() == "y"
+
+            tokens = [
+                "backfill-ft",
+                "--days",
+                days,
+                "--ingest-limit",
+                ingest_limit,
+            ]
+            if start_date:
+                tokens += ["--start-date", start_date]
+            if stop_date:
+                tokens += ["--stop-date", stop_date]
+            if no_ingest:
+                tokens += ["--no-ingest"]
+
+            tokens = _apply_defaults(tokens, db_path)
+            _run_tokens(parser, tokens)
+            continue
+
+        if opt == "7":
+            tokens = _apply_defaults(["backfill-status"], db_path)
+            _run_tokens(parser, tokens)
+            continue
+
+        if opt == "8":
+            limit = _ask("Limit", "200")
+            tokens = _apply_defaults(
+                ["process-pending", "--limit", limit],
+                db_path,
+            )
+            _run_tokens(parser, tokens)
+            continue
+
+        if opt == "9":
+            date = _ask("Date YYYY-MM-DD")
+            metric = _ask("Metric (accuracy/f1/log_loss)", "f1")
+            version = _ask("Version (auto/v1/v2/v4/hybrid)", "hybrid")
+            odds = _ask("Odds", "1.91")
+            limit_matches = _ask("Limit matches (opcional)", "")
+
+            tokens = [
+                "eval-date",
+                "--date",
+                date,
+                "--metric",
+                metric,
+                "--force-version",
+                version,
+                "--odds",
+                odds,
+            ]
+            if limit_matches:
+                tokens += ["--limit-matches", limit_matches]
+
+            tokens = _apply_defaults(tokens, db_path)
+            _run_tokens(parser, tokens)
+            continue
+
+        if opt == "10":
+            match_id = _ask("Match ID")
+            out = _ask("Output png path (opcional)", "")
+            tokens = ["plot-graph", match_id]
+            if out:
+                tokens += ["--out", out]
+            tokens = _apply_defaults(tokens, db_path)
+            _run_tokens(parser, tokens)
+            continue
+
+        if opt == "11":
+            tokens = _apply_defaults(["run-bot"], db_path)
+            _run_tokens(parser, tokens)
+            continue
+
+        print("[menu] opcion invalida")
+
+
+def cmd_menu(args: argparse.Namespace) -> None:
+    parser = _build_parser()
+    _interactive_menu(parser, args.db)
+
+
 # ── argument parser ───────────────────────────────────────────────────────────
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -928,6 +1249,19 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_pending.set_defaults(func=cmd_process_pending)
 
+    # backfill-links
+    p_links = sub.add_parser(
+        "backfill-links",
+        help="Backfill SofaScore event slug/customId for stored matches",
+    )
+    p_links.add_argument(
+        "--limit",
+        type=int,
+        default=200,
+        help="Max stored matches to refresh in this run (default: 200)",
+    )
+    p_links.set_defaults(func=cmd_backfill_links)
+
     # eval-date
     p_eval = sub.add_parser(
         "eval-date",
@@ -992,11 +1326,30 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_plot.set_defaults(func=cmd_plot_graph)
 
+    # run-bot
+    p_bot = sub.add_parser(
+        "run-bot",
+        help="Run Telegram bot (reads TELEGRAM_BOT_TOKEN from .env)",
+    )
+    p_bot.set_defaults(func=cmd_run_bot)
+
+    # menu
+    p_menu = sub.add_parser(
+        "menu",
+        help="Open interactive menu mode",
+    )
+    p_menu.set_defaults(func=cmd_menu)
+
     return parser
 
 
 def main() -> None:
-    args = _build_parser().parse_args()
+    parser = _build_parser()
+    if len(sys.argv) == 1:
+        _interactive_menu(parser, DEFAULT_DB)
+        return
+
+    args = parser.parse_args()
     args.func(args)
 
 

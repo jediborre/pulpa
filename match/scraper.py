@@ -124,6 +124,13 @@ def _parse(event_json: dict, incidents: list, graph_points: list | None = None) 
 
     home = ev["homeTeam"]["name"]
     away = ev["awayTeam"]["name"]
+    home_slug = ev["homeTeam"].get("slug", "unknown")
+    away_slug = ev["awayTeam"].get("slug", "unknown")
+    event_slug = ev.get("slug", "unknown")
+    custom_id = ev.get("customId", "")
+    status = ev.get("status") or {}
+    status_type = status.get("type", "")
+    status_description = status.get("description", "")
 
     ts = ev.get("startTimestamp", 0)
     dt = datetime.fromtimestamp(ts, tz=timezone.utc)
@@ -189,6 +196,12 @@ def _parse(event_json: dict, incidents: list, graph_points: list | None = None) 
         "match": {
             "home_team": home,
             "away_team": away,
+            "home_slug": home_slug,
+            "away_slug": away_slug,
+            "event_slug": event_slug,
+            "custom_id": custom_id,
+            "status_type": status_type,
+            "status_description": status_description,
             "date": dt.strftime("%Y-%m-%d"),
             "time": dt.strftime("%H:%M"),
             "venue": venue,
@@ -366,6 +379,153 @@ def fetch_finished_match_ids_for_date(date_str: str) -> list[dict]:
         })
 
     return [m for m in out if m["match_id"]]
+
+
+def fetch_live_match_ids() -> list[dict]:
+    """Return currently live basketball matches from SofaScore."""
+    from playwright.sync_api import sync_playwright
+
+    extra_headers = {
+        "Referer": "https://www.sofascore.com/",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+
+    api_url = "https://api.sofascore.com/api/v1/sport/basketball/events/live"
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        ctx = browser.new_context(user_agent=STANDARD_UA)
+        page = ctx.new_page()
+
+        try:
+            page.goto(
+                "https://www.sofascore.com/basketball",
+                wait_until="networkidle",
+                timeout=45_000,
+            )
+        except Exception:
+            pass
+
+        resp = ctx.request.get(api_url, headers=extra_headers, timeout=30_000)
+        if not resp.ok:
+            browser.close()
+            raise RuntimeError(
+                f"Live events API returned HTTP {resp.status}"
+            )
+
+        body = resp.json() or {}
+        events = body.get("events", []) if isinstance(body, dict) else []
+        browser.close()
+
+    out = []
+    for ev in events:
+        match_id = str(ev.get("id", "") or "")
+        if not match_id:
+            continue
+        status = (ev.get("status") or {})
+        time_info = ev.get("time") or {}
+        hs = (ev.get("homeScore") or {}).get("current")
+        as_ = (ev.get("awayScore") or {}).get("current")
+        out.append({
+            "match_id": match_id,
+            "event_date": "",
+            "status_type": status.get("type", ""),
+            "status_description": status.get("description", ""),
+            "played_seconds": time_info.get("played"),
+            "home_team": (ev.get("homeTeam") or {}).get("name", ""),
+            "away_team": (ev.get("awayTeam") or {}).get("name", ""),
+            "league": ((ev.get("tournament") or {}).get("name", "")),
+            "home_score": hs,
+            "away_score": as_,
+        })
+
+    return out
+
+
+def fetch_matches_by_ids(match_ids: list[str]) -> list[tuple[str, dict | None, str | None]]:
+    """Fetch multiple matches reusing one browser session.
+
+    Returns a list of tuples: (match_id, parsed_data_or_none, error_or_none).
+    """
+    from playwright.sync_api import sync_playwright
+
+    extra_headers = {
+        "Referer": "https://www.sofascore.com/",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+
+    ids = [str(mid).strip() for mid in match_ids if str(mid).strip()]
+    if not ids:
+        return []
+
+    out: list[tuple[str, dict | None, str | None]] = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        ctx = browser.new_context(user_agent=STANDARD_UA)
+        page = ctx.new_page()
+
+        try:
+            page.goto(
+                "https://www.sofascore.com/basketball",
+                wait_until="domcontentloaded",
+                timeout=20_000,
+            )
+        except Exception:
+            pass
+
+        for match_id in ids:
+            try:
+                resp_event = ctx.request.get(
+                    f"https://api.sofascore.com/api/v1/event/{match_id}",
+                    headers=extra_headers,
+                    timeout=15_000,
+                )
+                if not resp_event.ok:
+                    raise RuntimeError(
+                        f"Event API returned HTTP {resp_event.status} for match {match_id}"
+                    )
+                event_json: dict = resp_event.json()
+
+                resp_inc = ctx.request.get(
+                    f"https://api.sofascore.com/api/v1/event/{match_id}/incidents",
+                    headers=extra_headers,
+                    timeout=20_000,
+                )
+                if not resp_inc.ok:
+                    raise RuntimeError(
+                        f"Incidents API returned HTTP {resp_inc.status} for match {match_id}"
+                    )
+                incidents_json: dict = resp_inc.json()
+
+                resp_graph = ctx.request.get(
+                    f"https://api.sofascore.com/api/v1/event/{match_id}/graph",
+                    headers=extra_headers,
+                    timeout=20_000,
+                )
+                graph_json: dict = (
+                    resp_graph.json() if resp_graph.ok else {"graphPoints": []}
+                )
+
+                out.append(
+                    (
+                        match_id,
+                        _parse(
+                            event_json,
+                            incidents_json.get("incidents", []),
+                            graph_json.get("graphPoints", []),
+                        ),
+                        None,
+                    )
+                )
+            except Exception as exc:
+                out.append((match_id, None, str(exc)))
+
+        browser.close()
+
+    return out
 
 
 def _fetch_match_payloads(warmup_url: str, match_id: str) -> tuple[dict, dict, dict]:

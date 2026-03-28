@@ -229,8 +229,9 @@ def plot_graph(match_data: dict, out_path: str) -> str:
     Positive values are interpreted as home-team pressure advantage,
     negative values as away-team pressure advantage.
     """
+    import matplotlib
+    matplotlib.use("Agg", force=True)
     import matplotlib.pyplot as plt
-    import seaborn as sns
 
     graph_points = match_data.get("graph_points", [])
     if not graph_points:
@@ -242,29 +243,120 @@ def plot_graph(match_data: dict, out_path: str) -> str:
     m = match_data["match"]
     s = match_data["score"]
 
-    sns.set_theme(style="darkgrid", context="notebook")
-    fig, ax = plt.subplots(figsize=(11, 4.5))
+    figure_bg = "#0C141B"
+    axes_bg = "#111A22"
+    quarter_bg_a = "#132031"
+    quarter_bg_b = "#101B29"
+    future_bg = "#2A323B"
+    text_color = "#E2E8F0"
+    muted_text_color = "#8FA0B4"
+    positive_fill = "#4CD05E"
+    negative_fill = "#7882EB"
+    line_color = "#4FD3FF"
+    baseline_color = "#8FA4BD"
+    halftime_color = "#FF4D57"
 
-    sns.lineplot(x=minutes, y=values, linewidth=2.2, color="#2F80ED", ax=ax)
-    ax.fill_between(minutes, values, 0, where=[v >= 0 for v in values],
-                    color="#2ECC71", alpha=0.35, interpolate=True)
-    ax.fill_between(minutes, values, 0, where=[v < 0 for v in values],
-                    color="#5B7CFA", alpha=0.35, interpolate=True)
+    fig, ax = plt.subplots(figsize=(11, 4.2), constrained_layout=True)
+    fig.patch.set_facecolor(figure_bg)
+    ax.set_facecolor(axes_bg)
+    ax.set_aspect("auto")
+
+    max_minute = max(minutes)
+    x_start = 0.0
+    x_end = 48.0
+
+    quarter_spans = [(0, 12), (12, 24), (24, 36), (36, 48)]
+    for i, (q_start, q_end) in enumerate(quarter_spans):
+        bg = quarter_bg_a if i % 2 == 0 else quarter_bg_b
+        if q_start >= max_minute:
+            bg = future_bg
+        ax.axvspan(q_start, q_end, color=bg, alpha=0.95, zorder=0)
 
     for x in (12, 24, 36):
-        ax.axvline(x=x, color="#777777", linestyle="--", linewidth=1)
+        ax.axvline(x=x, color="#2B3C4F", linewidth=1.0, zorder=1)
+
+    ax.plot(minutes, values, linewidth=2.2, color=line_color, zorder=4)
+    ax.fill_between(
+        minutes,
+        values,
+        0,
+        where=[v >= 0 for v in values],
+        color=positive_fill,
+        alpha=0.88,
+        interpolate=True,
+        zorder=3,
+    )
+    ax.fill_between(
+        minutes,
+        values,
+        0,
+        where=[v < 0 for v in values],
+        color=negative_fill,
+        alpha=0.88,
+        interpolate=True,
+        zorder=3,
+    )
 
     ymax = max(values) if values else 1
     ymin = min(values) if values else -1
-    y_text = ymax - (ymax - ymin) * 0.08
+    y_text = ymax - (ymax - ymin) * 0.1
     for label, x in (("Q1", 6), ("Q2", 18), ("Q3", 30), ("Q4", 42)):
-        ax.text(x, y_text, label, ha="center", va="center", fontsize=9,
-                color="#555555")
+        ax.text(
+            x,
+            y_text,
+            label,
+            ha="center",
+            va="center",
+            fontsize=11,
+            color=muted_text_color,
+            zorder=5,
+        )
 
-    ax.axhline(y=0, color="#333333", linewidth=1)
-    ax.set_xlim(min(minutes), max(minutes))
-    ax.set_xlabel("Game minute")
-    ax.set_ylabel("Pressure / momentum value")
+    ax.axhline(y=0, color=baseline_color, linewidth=1.2, alpha=0.8, zorder=2)
+    ax.set_xlim(x_start, x_end)
+
+    peak_abs = max(abs(ymax), abs(ymin), 1)
+    y_pad = max(2, int(peak_abs * 0.12))
+    ax.set_ylim(-peak_abs - y_pad, peak_abs + y_pad)
+
+    ax.set_xticks([0, 48])
+    ax.set_xticklabels(["0:00", "FT"], color=muted_text_color, fontsize=10)
+    ax.yaxis.tick_right()
+    ax.set_yticks([peak_abs, 0, -peak_abs])
+    ax.set_yticklabels(
+        [str(peak_abs), "0", str(peak_abs)],
+        color=muted_text_color,
+        fontsize=10,
+    )
+    ax.tick_params(axis="both", length=0)
+    ax.set_xlabel("")
+    ax.set_ylabel("")
+
+    halftime_x = 24
+    ax.axvline(halftime_x, color=halftime_color, linewidth=1.4, zorder=6)
+    ax.plot(
+        halftime_x,
+        peak_abs + y_pad * 0.05,
+        marker="o",
+        markersize=5,
+        markerfacecolor=axes_bg,
+        markeredgewidth=1.4,
+        markeredgecolor=halftime_color,
+        zorder=7,
+        clip_on=False,
+    )
+    ax.text(
+        halftime_x,
+        peak_abs + y_pad * 0.45,
+        "Halftime",
+        ha="center",
+        va="bottom",
+        color=halftime_color,
+        fontsize=11,
+        fontweight="bold",
+        zorder=7,
+        clip_on=False,
+    )
     quarters = s.get("quarters", {})
     q_order = ["Q1", "Q2", "Q3", "Q4"]
     q_parts = []
@@ -278,11 +370,24 @@ def plot_graph(match_data: dict, out_path: str) -> str:
     else:
         score_line = f"FT {s['home']}-{s['away']}"
 
-    ax.set_title(f"{m['home_team']} vs {m['away_team']}\n{score_line}")
+    ax.set_title(
+        f"{m['home_team']} vs {m['away_team']}\n{score_line}",
+        color=text_color,
+        pad=18,
+        fontsize=18,
+        fontweight="semibold",
+    )
+
+    for spine in ax.spines.values():
+        spine.set_visible(False)
 
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
-    fig.tight_layout()
-    fig.savefig(out, dpi=150)
+    fig.savefig(
+        out,
+        dpi=150,
+        facecolor=fig.get_facecolor(),
+        bbox_inches="tight",
+    )
     plt.close(fig)
     return str(out)

@@ -1,13 +1,13 @@
 {
-  "generated_at_utc": "2026-03-23T04:51:02.217877+00:00",
+  "generated_at_utc": "2026-03-26T18:14:19.073570+00:00",
   "metric": "f1",
   "odds": 1.91,
   "min_coverage": 0.08,
   "targets": {
     "q3": {
-      "samples_total": 1174,
-      "samples_train": 939,
-      "samples_val": 235,
+      "samples_total": 1799,
+      "samples_train": 1439,
+      "samples_val": 360,
       "default_params": {
         "min_graph_points": 18,
         "min_pbp_events": 20,
@@ -17,64 +17,64 @@
       "best_params": {
         "min_graph_points": 12,
         "min_pbp_events": 14,
-        "volatility_block_at": 0.76,
+        "volatility_block_at": 0.62,
         "min_edge": 0.05
       },
       "train_best": {
-        "samples": 939,
-        "bets": 679,
-        "coverage": 0.72311,
-        "wins": 631,
-        "losses": 48,
-        "hit_rate": 0.929308,
-        "roi_units_per_bet": 0.774978,
-        "profit_units": 526.21
+        "samples": 1439,
+        "bets": 981,
+        "coverage": 0.681723,
+        "wins": 879,
+        "losses": 102,
+        "hit_rate": 0.896024,
+        "roi_units_per_bet": 0.711407,
+        "profit_units": 697.89
       },
       "val_default": {
-        "samples": 235,
-        "bets": 162,
-        "coverage": 0.689362,
-        "wins": 128,
-        "losses": 34,
-        "hit_rate": 0.790123,
-        "roi_units_per_bet": 0.509136,
-        "profit_units": 82.48
+        "samples": 360,
+        "bets": 260,
+        "coverage": 0.722222,
+        "wins": 195,
+        "losses": 65,
+        "hit_rate": 0.75,
+        "roi_units_per_bet": 0.4325,
+        "profit_units": 112.45
       },
       "val_best": {
-        "samples": 235,
-        "bets": 163,
-        "coverage": 0.693617,
-        "wins": 129,
-        "losses": 34,
-        "hit_rate": 0.791411,
-        "roi_units_per_bet": 0.511595,
-        "profit_units": 83.39
+        "samples": 360,
+        "bets": 245,
+        "coverage": 0.680556,
+        "wins": 186,
+        "losses": 59,
+        "hit_rate": 0.759184,
+        "roi_units_per_bet": 0.450041,
+        "profit_units": 110.26
       },
       "full_default": {
-        "samples": 1174,
-        "bets": 838,
-        "coverage": 0.713799,
-        "wins": 756,
-        "losses": 82,
-        "hit_rate": 0.902148,
-        "roi_units_per_bet": 0.723103,
-        "profit_units": 605.96
+        "samples": 1799,
+        "bets": 1301,
+        "coverage": 0.72318,
+        "wins": 1126,
+        "losses": 175,
+        "hit_rate": 0.865488,
+        "roi_units_per_bet": 0.653082,
+        "profit_units": 849.66
       },
       "full_best": {
-        "samples": 1174,
-        "bets": 842,
-        "coverage": 0.717206,
-        "wins": 760,
-        "losses": 82,
-        "hit_rate": 0.902613,
-        "roi_units_per_bet": 0.72399,
-        "profit_units": 609.6
+        "samples": 1799,
+        "bets": 1226,
+        "coverage": 0.68149,
+        "wins": 1065,
+        "losses": 161,
+        "hit_rate": 0.868679,
+        "roi_units_per_bet": 0.659176,
+        "profit_units": 808.15
       }
     },
     "q4": {
-      "samples_total": 1162,
-      "samples_train": 929,
-      "samples_val": 233,
+      "samples_total": 1774,
+      "samples_train": 1419,
+      "samples_val": 355,
       "default_params": {
         "min_graph_points": 30,
         "min_pbp_events": 32,
@@ -84,58 +84,58 @@
       "best_params": {
         "min_graph_points": 22,
         "min_pbp_events": 24,
-        "volatility_block_at": 0.62,
+        "volatility_block_at": 0.66,
         "min_edge": 0.05
       },
       "train_best": {
-        "samples": 929,
-        "bets": 692,
-        "coverage": 0.744887,
-        "wins": 598,
-        "losses": 94,
-        "hit_rate": 0.864162,
-        "roi_units_per_bet": 0.650549,
-        "profit_units": 450.18
+        "samples": 1419,
+        "bets": 1126,
+        "coverage": 0.793517,
+        "wins": 939,
+        "losses": 187,
+        "hit_rate": 0.833925,
+        "roi_units_per_bet": 0.592798,
+        "profit_units": 667.49
       },
       "val_default": {
-        "samples": 233,
-        "bets": 189,
-        "coverage": 0.811159,
-        "wins": 143,
-        "losses": 46,
-        "hit_rate": 0.756614,
-        "roi_units_per_bet": 0.445132,
-        "profit_units": 84.13
+        "samples": 355,
+        "bets": 289,
+        "coverage": 0.814085,
+        "wins": 223,
+        "losses": 66,
+        "hit_rate": 0.771626,
+        "roi_units_per_bet": 0.473806,
+        "profit_units": 136.93
       },
       "val_best": {
-        "samples": 233,
-        "bets": 169,
-        "coverage": 0.725322,
-        "wins": 130,
-        "losses": 39,
-        "hit_rate": 0.769231,
-        "roi_units_per_bet": 0.469231,
-        "profit_units": 79.3
+        "samples": 355,
+        "bets": 279,
+        "coverage": 0.785915,
+        "wins": 215,
+        "losses": 64,
+        "hit_rate": 0.770609,
+        "roi_units_per_bet": 0.471864,
+        "profit_units": 131.65
       },
       "full_default": {
-        "samples": 1162,
-        "bets": 968,
-        "coverage": 0.833046,
-        "wins": 813,
-        "losses": 155,
-        "hit_rate": 0.839876,
-        "roi_units_per_bet": 0.604163,
-        "profit_units": 584.83
+        "samples": 1774,
+        "bets": 1492,
+        "coverage": 0.841037,
+        "wins": 1222,
+        "losses": 270,
+        "hit_rate": 0.819035,
+        "roi_units_per_bet": 0.564357,
+        "profit_units": 842.02
       },
       "full_best": {
-        "samples": 1162,
-        "bets": 861,
-        "coverage": 0.740964,
-        "wins": 728,
-        "losses": 133,
-        "hit_rate": 0.845528,
-        "roi_units_per_bet": 0.614959,
-        "profit_units": 529.48
+        "samples": 1774,
+        "bets": 1405,
+        "coverage": 0.791995,
+        "wins": 1154,
+        "losses": 251,
+        "hit_rate": 0.821352,
+        "roi_units_per_bet": 0.568783,
+        "profit_units": 799.14
       }
     }
   }

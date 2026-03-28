@@ -482,7 +482,40 @@ def _load_match(
     return data, True
 
 
-def _actual_quarter_outcome(data: dict, quarter: str) -> str | None:
+def _quarter_is_finalized(
+    data: dict,
+    quarter: str,
+    state_info: dict | None = None,
+) -> bool:
+    quarters = (data.get("score") or {}).get("quarters", {})
+    if quarter not in quarters:
+        return False
+
+    state = str((state_info or {}).get("state") or "")
+    if state == "finished":
+        return True
+
+    minute_est = (state_info or {}).get("minute_estimate")
+    status_desc = str((state_info or {}).get("status_description") or "")
+
+    if quarter == "Q4":
+        return False
+    if quarter == "Q3":
+        if "Q4" in quarters or "OT" in quarters:
+            return True
+        if "Q4" in status_desc or "OT" in status_desc:
+            return True
+        return minute_est is not None and int(minute_est) >= 36
+    return True
+
+
+def _actual_quarter_outcome(
+    data: dict,
+    quarter: str,
+    state_info: dict | None = None,
+) -> str | None:
+    if not _quarter_is_finalized(data, quarter, state_info):
+        return None
     h, a = _quarter_points(data, quarter)
     if h is None or a is None:
         return None
@@ -1269,7 +1302,7 @@ def run_inference(
         )
 
         quarter = "Q3" if target == "q3" else "Q4"
-        actual = _actual_quarter_outcome(match_data, quarter)
+        actual = _actual_quarter_outcome(match_data, quarter, state_info)
         if actual is None:
             out["predictions"][target]["result"] = "pending"
         elif actual == "push":

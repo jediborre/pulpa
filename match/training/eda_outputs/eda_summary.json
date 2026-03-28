@@ -1,25 +1,25 @@
 {
   "db_path": "C:\\Users\\borre\\OneDrive\\OLD\\Escritorio\\pulpa\\match\\matches.db",
-  "n_matches": 2500,
-  "date_min": "2026-03-10",
-  "date_max": "2026-03-21",
-  "n_leagues": 301,
+  "n_matches": 4468,
+  "date_min": "2026-03-07",
+  "date_max": "2026-03-29",
+  "n_leagues": 390,
   "gender_mix": {
-    "men_or_open": 2284,
-    "women": 216
+    "men_or_open": 4019,
+    "women": 449
   },
   "coverage": {
     "play_by_play": {
-      "count": 1875,
-      "rate": 0.75
+      "count": 3272,
+      "rate": 0.732319
     },
     "graph_points": {
-      "count": 1718,
-      "rate": 0.6872
+      "count": 2956,
+      "rate": 0.661594
     },
     "has_q4": {
-      "count": 2255,
-      "rate": 0.902
+      "count": 3997,
+      "rate": 0.894584
     },
     "has_overtime": {
       "count": 0,
@@ -27,10 +27,10 @@
     }
   },
   "baselines": {
-    "halftime_leader_accuracy": 0.806639,
-    "halftime_sample_non_tie": 2410,
-    "prior_strength_accuracy": 0.764706,
-    "prior_strength_sample": 51
+    "halftime_leader_accuracy": 0.799674,
+    "halftime_sample_non_tie": 4298,
+    "prior_strength_accuracy": 0.64042,
+    "prior_strength_sample": 381
   },
   "notes": [
     "Gender bucket is heuristic based on league/team text markers.",

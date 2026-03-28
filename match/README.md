@@ -57,6 +57,79 @@ Si usas el entorno virtual del proyecto en Windows:
 .venv\Scripts\playwright.exe install chromium
 ```
 
+## Bot de Telegram
+
+El bot permite:
+
+1. Ver matches por fecha (con conteos de Q3/Q4).
+2. Buscar match por ID.
+3. Lanzar reentreno base (`train-v4`).
+4. Traer partidos de una fecha nueva (YYYY-MM-DD) e ingerirlos.
+
+En "Traer fecha nueva" puedes enviar:
+
+- `YYYY-MM-DD`
+- `YYYY-MM-DD N` para limitar cantidad (ejemplo: `2026-03-26 200`)
+
+En el detalle de match, el bot envia tambien la imagen de la grafica
+de presion (igual que `plot-graph` del CLI) si el match tiene
+`graph_points`.
+
+Ademas, en el detalle muestra predicciones Q3/Q4 tomadas de
+`eval_match_results`. Si no existen para ese match, el bot calcula
+prediccion (`hybrid` + `f1`), la guarda en DB (`result_tag=bot_hybrid_f1`)
+y luego la muestra.
+
+Formato de prediccion en detalle:
+
+- `Q3: BET home (64%) ✅`
+- `Q4: LEAN away (57%) ❌`
+
+Sin linea de `tag=... updated=...`.
+
+El detalle incluye tambien dos botones:
+
+- `Refresh datos + pred`: vuelve a descargar el match, actualiza la DB,
+   recalcula prediccion y reenvia la grafica.
+- `Refresh pred`: recalcula solo la prediccion usando los datos actuales
+   de la DB.
+
+### Variables de entorno
+
+Crear `match/.env` con:
+
+```text
+TELEGRAM_BOT_TOKEN=tu_token
+MATCH_DB_PATH=matches.db
+TELEGRAM_ALLOWED_CHAT_IDS=123456789,987654321
+```
+
+`TELEGRAM_ALLOWED_CHAT_IDS` aplica restriccion para reentreno.
+Si lo dejas vacio, cualquier chat puede usar `train-v4`.
+
+### Ejecutar
+
+```bash
+cd match
+python telegram_bot.py
+```
+
+O desde el CLI principal:
+
+```bash
+python cli.py run-bot
+```
+
+En Telegram abre el bot y escribe `/start`.
+
+El bot deja un boton persistente `Menu` en el teclado de Telegram para
+volver al menu principal en cualquier momento.
+
+Comandos utiles:
+
+- `/myid`: muestra tu `chat_id` y `user_id`.
+- `/trainstatus`: muestra estado del ultimo reentreno.
+
 ## Ejecucion basica
 
 Entrar a la carpeta del proyecto:
@@ -69,6 +142,53 @@ Ver ayuda general:
 
 ```bash
 python cli.py --help
+```
+
+## Modo menu interactivo (nuevo)
+
+Si no recuerdas parametros, puedes abrir un menu con opciones:
+
+```bash
+python cli.py
+```
+
+Tambien disponible como subcomando explicito:
+
+```bash
+python cli.py menu
+```
+
+Desde ese menu puedes ejecutar:
+
+1. `scrape`
+2. `show`
+3. `list`
+4. `export-features`
+5. `export-features-quarters`
+6. `backfill-ft`
+7. `backfill-status`
+8. `process-pending`
+9. `eval-date`
+10. `plot-graph`
+11. `run-bot`
+
+El menu te pregunta los datos necesarios y ejecuta el comando por ti.
+
+## Referencia rapida de comandos CLI
+
+```text
+python cli.py scrape <URL> [--db PATH]
+python cli.py show <match_id> [--db PATH]
+python cli.py list [--db PATH]
+python cli.py export-features [--db PATH] [--out PATH] [--format csv|jsonl]
+python cli.py export-features-quarters [--db PATH] [--out PATH] [--format csv|jsonl]
+python cli.py backfill-ft [--db PATH] [--days N] [--start-date YYYY-MM-DD] [--stop-date YYYY-MM-DD] [--ingest-limit N] [--no-ingest]
+python cli.py backfill-status [--db PATH]
+python cli.py process-pending [--db PATH] [--limit N]
+python cli.py eval-date --date YYYY-MM-DD [--db PATH] [--metric accuracy|f1|log_loss] [--force-version auto|v1|v2|v4|hybrid] [--odds FLOAT] [--limit-matches N] [--result-tag TAG] [--json]
+python cli.py plot-graph <match_id> [--db PATH] [--out PATH]
+python cli.py run-bot [--db PATH]
+python cli.py menu [--db PATH]
 ```
 
 ## 1. Extraer un partido individual por URL
