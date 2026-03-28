@@ -243,11 +243,33 @@ def plot_graph(match_data: dict, out_path: str) -> str:
     m = match_data["match"]
     s = match_data["score"]
 
+    status_type = str(m.get("status_type", "") or "").strip().lower()
+    quarters = s.get("quarters", {}) if isinstance(s, dict) else {}
+    q4 = quarters.get("Q4") if isinstance(quarters, dict) else None
+    q4_complete = (
+        isinstance(q4, dict)
+        and q4.get("home") is not None
+        and q4.get("away") is not None
+    )
+    extended_to_ft = False
+    extend_start_minute = 0
+    extend_start_value = 0
+    # Some FT matches come with graph_points ending before 48 (e.g. minute 40).
+    # Extend the last value to FT so the chart does not look like an incomplete Q4.
+    if minutes and max(minutes) < 48 and (status_type == "finished" or q4_complete):
+        extend_start_minute = int(minutes[-1])
+        extend_start_value = int(values[-1])
+        extended_to_ft = True
+        minutes = [*minutes, 48]
+        values = [*values, values[-1]]
+
     figure_bg = "#0C141B"
     axes_bg = "#111A22"
     quarter_bg_a = "#132031"
     quarter_bg_b = "#101B29"
     future_bg = "#2A323B"
+    top_zone_bg = "#234A2F"
+    bottom_zone_bg = "#343C6B"
     text_color = "#E2E8F0"
     muted_text_color = "#8FA0B4"
     positive_fill = "#4CD05E"
@@ -261,6 +283,11 @@ def plot_graph(match_data: dict, out_path: str) -> str:
     ax.set_facecolor(axes_bg)
     ax.set_aspect("auto")
 
+    ymax = max(values) if values else 1
+    ymin = min(values) if values else -1
+    peak_abs = max(abs(ymax), abs(ymin), 1)
+    y_pad = max(2, int(peak_abs * 0.12))
+
     max_minute = max(minutes)
     x_start = 0.0
     x_end = 48.0
@@ -272,10 +299,28 @@ def plot_graph(match_data: dict, out_path: str) -> str:
             bg = future_bg
         ax.axvspan(q_start, q_end, color=bg, alpha=0.95, zorder=0)
 
+    # Split background in upper/lower panels to resemble SofaScore visual language.
+    ax.axhspan(0, peak_abs + y_pad, color=top_zone_bg, alpha=0.16, zorder=0.4)
+    ax.axhspan(-peak_abs - y_pad, 0, color=bottom_zone_bg, alpha=0.20, zorder=0.4)
+
     for x in (12, 24, 36):
         ax.axvline(x=x, color="#2B3C4F", linewidth=1.0, zorder=1)
 
-    ax.plot(minutes, values, linewidth=2.2, color=line_color, zorder=4)
+    if extended_to_ft and len(minutes) >= 2:
+        # Real feed segment
+        ax.plot(minutes[:-1], values[:-1], linewidth=2.2, color=line_color, zorder=4)
+        # Extrapolated segment to FT
+        ax.plot(
+            [extend_start_minute, 48],
+            [extend_start_value, extend_start_value],
+            linewidth=2.2,
+            color=line_color,
+            linestyle="--",
+            alpha=0.95,
+            zorder=5,
+        )
+    else:
+        ax.plot(minutes, values, linewidth=2.2, color=line_color, zorder=4)
     ax.fill_between(
         minutes,
         values,
@@ -297,8 +342,6 @@ def plot_graph(match_data: dict, out_path: str) -> str:
         zorder=3,
     )
 
-    ymax = max(values) if values else 1
-    ymin = min(values) if values else -1
     y_text = ymax - (ymax - ymin) * 0.1
     for label, x in (("Q1", 6), ("Q2", 18), ("Q3", 30), ("Q4", 42)):
         ax.text(
@@ -315,8 +358,6 @@ def plot_graph(match_data: dict, out_path: str) -> str:
     ax.axhline(y=0, color=baseline_color, linewidth=1.2, alpha=0.8, zorder=2)
     ax.set_xlim(x_start, x_end)
 
-    peak_abs = max(abs(ymax), abs(ymin), 1)
-    y_pad = max(2, int(peak_abs * 0.12))
     ax.set_ylim(-peak_abs - y_pad, peak_abs + y_pad)
 
     ax.set_xticks([0, 48])

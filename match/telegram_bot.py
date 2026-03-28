@@ -1,6 +1,7 @@
 import asyncio
 import csv
 from datetime import datetime, timedelta
+import html
 import importlib
 import json
 import logging
@@ -75,7 +76,11 @@ DATE_INGEST_STATUS_INTERVAL_SECONDS = 4
 REFRESH_DATE_STATUS_INTERVAL_SECONDS = 4
 DATE_INGEST_JOBS: dict[int, dict[str, object]] = {}
 REFRESH_JOBS: dict[int, dict[str, object]] = {}
+FOLLOW_JOBS: dict[int, dict[str, object]] = {}
 MODEL_OUTPUTS_V4_DIR = BASE_DIR / "training" / "model_outputs_v4"
+MODEL_OUTPUTS_V2_DIR = BASE_DIR / "training" / "model_outputs_v2"
+FOLLOW_REFRESH_SECONDS = 45
+FOLLOW_STALE_CYCLES_LIMIT = 8
 
 
 def _log_raw_inference_result(match_id: str, source: str, infer_result: object) -> None:
@@ -314,6 +319,8 @@ def _fetch_date_pred_outcomes(event_date: str) -> dict[str, dict]:
                 "q4_signal": _row_value(row, f"q4_signal__{tag}"),
                 "q3_outcome": _row_value(row, f"q3_outcome__{tag}") if q3_av else None,
                 "q4_outcome": _row_value(row, f"q4_outcome__{tag}") if q4_av else None,
+                "q3_pick": _row_value(row, f"q3_pick__{tag}") if q3_av else None,
+                "q4_pick": _row_value(row, f"q4_pick__{tag}") if q4_av else None,
             }
 
             if q3_av or q4_av:
@@ -335,9 +342,29 @@ def _pred_stats_text(pred_map: dict, total_matches: int) -> str:
             return "0.0%"
         return f"{(count * 100.0 / total):.1f}%"
 
+    def _table(headers: list[str], rows: list[list[str]]) -> list[str]:
+        widths = [len(h) for h in headers]
+        for row in rows:
+            for i, cell in enumerate(row):
+                widths[i] = max(widths[i], len(cell))
+        head = " | ".join(h.ljust(widths[i]) for i, h in enumerate(headers))
+        sep = "-+-".join("-" * w for w in widths)
+        out = [head, sep]
+        for row in rows:
+            out.append(" | ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)))
+        return out
+
+    def _profit_text(hit: int, miss: int, push: int) -> str:
+        stake = 20.0
+        odds = 1.91
+        # 1X2 simulation: tie/push counts as lost ticket when betting side 1 or 2.
+        net = hit * (stake * (odds - 1.0)) - (miss + push) * stake
+        sign = "+" if net >= 0 else ""
+        return f"{sign}${net:.1f}"
+
     stats = {
-        "q3": {"hit": 0, "miss": 0, "pending": 0, "no_bet": 0},
-        "q4": {"hit": 0, "miss": 0, "pending": 0, "no_bet": 0},
+        "q3": {"hit": 0, "miss": 0, "push": 0, "pending": 0, "no_bet": 0},
+        "q4": {"hit": 0, "miss": 0, "push": 0, "pending": 0, "no_bet": 0},
     }
 
     for match_id, pred in pred_map.items():
@@ -353,6 +380,8 @@ def _pred_stats_text(pred_map: dict, total_matches: int) -> str:
                 stats[quarter]["hit"] += 1
             elif outcome == "miss":
                 stats[quarter]["miss"] += 1
+            elif outcome == "push":
+                stats[quarter]["push"] += 1
             else:
                 stats[quarter]["pending"] += 1
 
@@ -360,39 +389,78 @@ def _pred_stats_text(pred_map: dict, total_matches: int) -> str:
     stats["q3"]["no_bet"] += missing
     stats["q4"]["no_bet"] += missing
 
-    lines: list[str] = []
+    total_hit = stats["q3"]["hit"] + stats["q4"]["hit"]
+    total_miss = stats["q3"]["miss"] + stats["q4"]["miss"]
+    total_push = stats["q3"]["push"] + stats["q4"]["push"]
+    total_pending = stats["q3"]["pending"] + stats["q4"]["pending"]
+    resolved_total = total_hit + total_miss + total_push
+
+    headers = ["Filtro", "W", "L", "P", "NB", "%W", "Ganancia"]
+    rows: list[list[str]] = []
     for quarter in ("q3", "q4"):
         s = stats[quarter]
-        q = quarter.upper()
-        available = max(total_matches - s["no_bet"], 0)
-        resolved = max(s["hit"] + s["miss"], 0)
-        lines.extend(
+        resolved = max(s["hit"] + s["miss"] + s["push"], 0)
+        no_bet_total = s["no_bet"] + s["pending"]
+        rows.append(
             [
-                f"{q}",
-                f"{s['hit']} ✅ {_pct(s['hit'], resolved)}",
-                f"{s['miss']} ❌ {_pct(s['miss'], resolved)}",
-                f"{s['pending']} ➖ {_pct(s['pending'], available)}",
-                f"{s['no_bet']} 🚫 {_pct(s['no_bet'], total_matches)}",
-                "",
+                quarter.upper(),
+                str(s["hit"]),
+                str(s["miss"]),
+                str(s["push"]),
+                str(no_bet_total),
+                _pct(s["hit"], resolved),
+                _profit_text(s["hit"], s["miss"], s["push"]),
             ]
         )
 
-    total_hit = stats["q3"]["hit"] + stats["q4"]["hit"]
-    total_miss = stats["q3"]["miss"] + stats["q4"]["miss"]
-    total_pending = stats["q3"]["pending"] + stats["q4"]["pending"]
-    resolved_total = total_hit + total_miss
-    lines.extend(
+    rows.append(
         [
-            "GLOBAL (Q3+Q4 sin pendientes)",
-            f"{total_hit} ✅ {_pct(total_hit, resolved_total)}",
-            f"{total_miss} ❌ {_pct(total_miss, resolved_total)}",
-            f"{total_pending} ➖ (sin contar en efectividad)",
+            "GLOBAL",
+            str(total_hit),
+            str(total_miss),
+            str(total_push),
+            str(total_pending),
+            _pct(total_hit, resolved_total),
+            _profit_text(total_hit, total_miss, total_push),
         ]
     )
 
-    while lines and lines[-1] == "":
-        lines.pop()
-    return "\n".join(lines)
+    return "\n".join(_table(headers, rows))
+
+
+def _event_date_title_es(event_date: str, total_matches: int) -> str:
+    try:
+        dt = datetime.strptime(event_date, "%Y-%m-%d")
+    except ValueError:
+        return f"Matches del {event_date} [{total_matches}]"
+
+    weekdays = [
+        "Lunes",
+        "Martes",
+        "Miercoles",
+        "Jueves",
+        "Viernes",
+        "Sabado",
+        "Domingo",
+    ]
+    months = [
+        "Enero",
+        "Febrero",
+        "Marzo",
+        "Abril",
+        "Mayo",
+        "Junio",
+        "Julio",
+        "Agosto",
+        "Septiembre",
+        "Octubre",
+        "Noviembre",
+        "Diciembre",
+    ]
+
+    wd = weekdays[dt.weekday()]
+    month = months[dt.month - 1]
+    return f"Matches de {wd} {dt.day:02d} {month} {dt.year} [{total_matches}]"
 
 
 def _refresh_recent_dates(
@@ -1113,6 +1181,153 @@ def _refresh_job_status_text(job: dict[str, object]) -> str:
     return _refresh_date_progress_text(event_date, progress_state)
 
 
+def _follow_status_text(job: dict[str, object]) -> str:
+    match_id = str(job.get("match_id") or "-")
+    phase = str(job.get("phase") or "running")
+    reason = str(job.get("stop_reason") or "")
+    cycles = int(job.get("cycles") or 0)
+    unchanged = int(job.get("unchanged_cycles") or 0)
+    last_tick = str(job.get("last_tick_utc") or "-")
+    score = str(job.get("last_score") or "-")
+    status = str(job.get("last_status") or "-")
+    minute_est = job.get("minute_est")
+    minute_txt = f"{minute_est}" if minute_est is not None else "-"
+
+    lines = [
+        f"Seguimiento match_id={match_id}",
+        f"estado={phase}",
+        f"status={status} minuto={minute_txt} score={score}",
+        f"ciclos={cycles} sin_cambios={unchanged}",
+        f"ultimo_tick_utc={last_tick}",
+    ]
+    if reason:
+        lines.append(f"motivo={reason}")
+    return "\n".join(lines)
+
+
+def _follow_status_keyboard(job: dict[str, object]) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    phase = str(job.get("phase") or "running")
+    if phase == "running":
+        rows.append([InlineKeyboardButton("Detener seguimiento", callback_data="follow:stop")])
+
+    match_id = str(job.get("match_id") or "")
+    event_token = str(job.get("event_token") or "_")
+    page = int(job.get("page") or 0)
+    if match_id:
+        rows.append([InlineKeyboardButton("Abrir match seguido", callback_data=f"follow:open:{match_id}:{event_token}:{page}")])
+
+    rows.append([InlineKeyboardButton("Menu principal", callback_data="nav:main")])
+    return InlineKeyboardMarkup(rows)
+
+
+async def _run_follow_match_job(app: Application, chat_id: int) -> None:
+    job = FOLLOW_JOBS.get(chat_id)
+    if not isinstance(job, dict):
+        return
+
+    match_id = str(job.get("match_id") or "")
+    interval = int(job.get("interval_seconds") or FOLLOW_REFRESH_SECONDS)
+    stale_limit = int(job.get("stale_cycles_limit") or FOLLOW_STALE_CYCLES_LIMIT)
+
+    job["phase"] = "running"
+    job["started_utc"] = datetime.utcnow().isoformat(timespec="seconds")
+    job["cycles"] = 0
+    job["unchanged_cycles"] = 0
+    job["stop_reason"] = ""
+    last_fp: tuple | None = None
+    consecutive_errors = 0
+
+    try:
+        while True:
+            current = FOLLOW_JOBS.get(chat_id)
+            if current is not job:
+                return
+
+            if bool(job.get("stop_requested")):
+                job["phase"] = "stopped"
+                job["stop_reason"] = "manual"
+                break
+
+            data = None
+            try:
+                data = await asyncio.to_thread(_refresh_match_data, match_id)
+                if data is None:
+                    data = _get_match_detail(match_id)
+                if data is None:
+                    raise RuntimeError("match no encontrado al refrescar")
+
+                await asyncio.to_thread(_get_or_compute_predictions, match_id, data)
+                consecutive_errors = 0
+            except Exception as exc:
+                consecutive_errors += 1
+                job["last_error"] = str(exc)
+                if consecutive_errors >= 5:
+                    job["phase"] = "stopped"
+                    job["stop_reason"] = "errores_consecutivos"
+                    break
+                await asyncio.sleep(interval)
+                continue
+
+            m = data.get("match", {}) if isinstance(data, dict) else {}
+            s = data.get("score", {}) if isinstance(data, dict) else {}
+            graph_points = data.get("graph_points", []) if isinstance(data, dict) else []
+            minute_est = None
+            if graph_points:
+                try:
+                    minute_est = int(graph_points[-1].get("minute", 0))
+                except (TypeError, ValueError):
+                    minute_est = None
+
+            status_type = str(m.get("status_type", "") or "").lower()
+            status_desc = str(m.get("status_description", "") or "")
+            home_score = _safe_int(s.get("home"))
+            away_score = _safe_int(s.get("away"))
+            score_txt = f"{home_score if home_score is not None else '-'}-{away_score if away_score is not None else '-'}"
+
+            fp = (
+                status_type,
+                status_desc,
+                home_score,
+                away_score,
+                minute_est,
+                len(graph_points),
+            )
+            if fp == last_fp:
+                job["unchanged_cycles"] = int(job.get("unchanged_cycles") or 0) + 1
+            else:
+                job["unchanged_cycles"] = 0
+                last_fp = fp
+                job["last_change_utc"] = datetime.utcnow().isoformat(timespec="seconds")
+
+            job["cycles"] = int(job.get("cycles") or 0) + 1
+            job["last_tick_utc"] = datetime.utcnow().isoformat(timespec="seconds")
+            job["last_status"] = status_type or status_desc or "live"
+            job["last_score"] = score_txt
+            job["minute_est"] = minute_est
+
+            if status_type == "finished":
+                job["phase"] = "done"
+                job["stop_reason"] = "match_finished"
+                break
+
+            if int(job.get("unchanged_cycles") or 0) >= stale_limit:
+                job["phase"] = "stopped"
+                job["stop_reason"] = "sin_cambios"
+                break
+
+            await asyncio.sleep(interval)
+    finally:
+        final_job = FOLLOW_JOBS.get(chat_id)
+        if final_job is job:
+            summary = _follow_status_text(job)
+            try:
+                await app.bot.send_message(chat_id=chat_id, text=summary)
+            except Exception:
+                pass
+            FOLLOW_JOBS.pop(chat_id, None)
+
+
 async def _run_refresh_date_job(
     app: Application,
     chat_id: int,
@@ -1415,6 +1630,15 @@ def _main_menu_keyboard(chat_id: int | None = None) -> InlineKeyboardMarkup:
                 )
             ]
         )
+    if chat_id is not None and chat_id in FOLLOW_JOBS:
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    "9) Status seguimiento",
+                    callback_data="menu:follow:status",
+                )
+            ]
+        )
     return InlineKeyboardMarkup(rows)
 
 
@@ -1422,6 +1646,21 @@ def _live_minute_text(row: dict) -> str:
     def _fmt_mmss(total_seconds: int) -> str:
         minutes, seconds = divmod(max(total_seconds, 0), 60)
         return f"{minutes}:{seconds:02d}"
+
+    def _bet_badge(match_id: str, quarter: str) -> str:
+        if not match_id:
+            return ""
+        try:
+            pred_row = _read_prediction_row(match_id)
+            pred = (pred_row or {}).get(quarter, {}) if isinstance(pred_row, dict) else {}
+            if not isinstance(pred, dict) or not pred.get("available"):
+                return ""
+            signal = str(pred.get("signal") or "").strip().upper().replace("_", " ")
+            if signal in {"BET", "APUESTA"}:
+                return "🟢"
+        except Exception:
+            return ""
+        return ""
 
     def _period_short(status_desc: str) -> str:
         value = status_desc.strip().lower()
@@ -1440,6 +1679,7 @@ def _live_minute_text(row: dict) -> str:
 
     played_seconds = _safe_int(row.get("played_seconds"))
     status_desc = str(row.get("status_description", "") or "")
+    match_id = str(row.get("match_id", "") or "")
     if played_seconds is None:
         return _period_short(status_desc)
 
@@ -1447,9 +1687,20 @@ def _live_minute_text(row: dict) -> str:
 
     q3_diff = 24 * 60 - played_seconds
     q4_diff = 36 * 60 - played_seconds
-    q3_txt = "Q3 ok" if q3_diff <= 0 else f"aQ3 {_fmt_mmss(q3_diff)}"
-    q4_txt = "Q4 ok" if q4_diff <= 0 else f"aQ4 {_fmt_mmss(q4_diff)}"
-    return f"{now_txt} | {q3_txt} | {q4_txt}"
+    q3_badge = _bet_badge(match_id, "q3")
+    q4_badge = _bet_badge(match_id, "q4")
+    q3_txt = f"Q3{q3_badge} ok" if q3_diff <= 0 else f"aQ3{q3_badge} {_fmt_mmss(q3_diff)}"
+    q4_txt = f"Q4{q4_badge} ok" if q4_diff <= 0 else f"aQ4{q4_badge} {_fmt_mmss(q4_diff)}"
+
+    # First segment: nearest betting quarter ETA (Q3, then Q4)
+    if q3_diff > 0:
+        nearest_txt = f"aQ3{q3_badge} {_fmt_mmss(q3_diff)}"
+    elif q4_diff > 0:
+        nearest_txt = f"aQ4{q4_badge} {_fmt_mmss(q4_diff)}"
+    else:
+        nearest_txt = f"Q4{q4_badge} ok"
+
+    return f"{nearest_txt} | {now_txt} | {q3_txt} | {q4_txt}"
 
 
 def _live_sort_key(row: dict) -> tuple[int, int, int]:
@@ -1611,7 +1862,40 @@ async def _render_live(
     )
 
 
-def _live_detail_keyboard(match_id: str, page: int, match_data: dict | None = None) -> InlineKeyboardMarkup:
+def _follow_toggle_button(
+    chat_id: int | None,
+    match_id: str,
+    event_token: str,
+    page: int,
+) -> InlineKeyboardButton:
+    if chat_id is not None:
+        job = FOLLOW_JOBS.get(chat_id)
+        if isinstance(job, dict):
+            followed_match_id = str(job.get("match_id") or "")
+            phase = str(job.get("phase") or "")
+            stop_requested = bool(job.get("stop_requested"))
+            if (
+                followed_match_id == str(match_id)
+                and phase in {"starting", "running"}
+                and not stop_requested
+            ):
+                return InlineKeyboardButton(
+                    "Detener seguimiento",
+                    callback_data="follow:stop",
+                )
+
+    return InlineKeyboardButton(
+        "Iniciar seguimiento",
+        callback_data=f"follow:start:{match_id}:{event_token}:{page}",
+    )
+
+
+def _live_detail_keyboard(
+    match_id: str,
+    page: int,
+    match_data: dict | None = None,
+    chat_id: int | None = None,
+) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
             [
@@ -1629,6 +1913,13 @@ def _live_detail_keyboard(match_id: str, page: int, match_data: dict | None = No
                     "Refresh pred",
                     callback_data=f"refreshlive:pred:{match_id}:{page}",
                 ),
+            ],
+            [_follow_toggle_button(chat_id, match_id, "_", page)],
+            [
+                InlineKeyboardButton(
+                    "Borrar match de la base",
+                    callback_data=f"dellive:confirm:{match_id}:{page}",
+                )
             ],
             [InlineKeyboardButton("Volver a live", callback_data=f"livepage:{page}")],
             [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
@@ -1649,7 +1940,12 @@ async def _send_live_detail_message(
         return
 
     detail_text = _detail_text(match_id, data, pred_row)
-    keyboard = _live_detail_keyboard(match_id, page, match_data=data)
+    keyboard = _live_detail_keyboard(
+        match_id,
+        page,
+        match_data=data,
+        chat_id=chat_id,
+    )
 
     image_path: Path | None = None
     try:
@@ -1727,6 +2023,7 @@ async def _refresh_live_detail(
     match_id: str,
     page: int,
 ) -> None:
+    chat_id = update.effective_chat.id if update.effective_chat else None
     cached = _get_match_detail(match_id)
     await _set_waiting_state(update, text=_refresh_waiting_text(match_id, cached))
 
@@ -1737,7 +2034,7 @@ async def _refresh_live_detail(
             await _replace_callback_message(
                 update,
                 text=f"No pude refrescar datos de {match_id}: {exc}",
-                reply_markup=_live_detail_keyboard(match_id, page),
+                reply_markup=_live_detail_keyboard(match_id, page, chat_id=chat_id),
             )
             return
         pred_row = _refresh_predictions(match_id, data)
@@ -1755,7 +2052,7 @@ async def _refresh_live_detail(
         await _replace_callback_message(
             update,
             text=f"No se encontro el match {match_id}.",
-            reply_markup=_live_detail_keyboard(match_id, page),
+            reply_markup=_live_detail_keyboard(match_id, page, chat_id=chat_id),
         )
         return
 
@@ -1777,18 +2074,30 @@ def _menu_reply_keyboard() -> ReplyKeyboardMarkup:
     )
 
 
-def _train_confirm_keyboard() -> InlineKeyboardMarkup:
+def _train_submenu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton("Confirmar train-v4", callback_data="train:run")],
             [
                 InlineKeyboardButton(
-                    "Vaciar resultados + recalcular universo",
+                    "Entrenar (v2 + v4 + calibrar)",
+                    callback_data="train:run",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "Vaciar Resultados",
+                    callback_data="train:clear:confirm",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "Recalcular universo",
                     callback_data="train:recalc:confirm",
                 )
             ],
+            [InlineKeyboardButton("Stats Modelo", callback_data="train:stats")],
             [InlineKeyboardButton("Estado entrenamiento", callback_data="train:status")],
-            [InlineKeyboardButton("Cancelar", callback_data="nav:main")],
+            [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
         ]
     )
 
@@ -1798,8 +2107,23 @@ def _train_recalc_confirm_keyboard() -> InlineKeyboardMarkup:
         [
             [
                 InlineKeyboardButton(
-                    "Confirmar vaciar + recalcular",
+                    "Confirmar recalcular universo",
                     callback_data="train:recalc:run",
+                )
+            ],
+            [InlineKeyboardButton("Volver", callback_data="menu:train")],
+            [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
+        ]
+    )
+
+
+def _train_clear_confirm_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    "Confirmar vaciar resultados",
+                    callback_data="train:clear:run",
                 )
             ],
             [InlineKeyboardButton("Volver", callback_data="menu:train")],
@@ -1912,6 +2236,27 @@ def _matches_keyboard(
             q3e = ""
         if not is_finished:
             q4e = ""
+        # Resolve ⏳ from actual scores when available
+        if q3e == "⏳" and pred.get("q3_available") and q4_started:
+            _q3h_r = _safe_int(row.get("q3_home"))
+            _q3a_r = _safe_int(row.get("q3_away"))
+            _q3p_r = str(pred.get("q3_pick") or "").lower()
+            if _q3h_r is not None and _q3a_r is not None and _q3p_r in ("home", "away"):
+                _q3w_r = _winner_from_scores(_q3h_r, _q3a_r)
+                if _q3w_r == "push":
+                    q3e = "➖"
+                elif _q3w_r in ("home", "away"):
+                    q3e = "✅" if _q3w_r == _q3p_r else "❌"
+        if q4e == "⏳" and pred.get("q4_available") and is_finished:
+            _q4h_r = _safe_int(row.get("q4_home"))
+            _q4a_r = _safe_int(row.get("q4_away"))
+            _q4p_r = str(pred.get("q4_pick") or "").lower()
+            if _q4h_r is not None and _q4a_r is not None and _q4p_r in ("home", "away"):
+                _q4w_r = _winner_from_scores(_q4h_r, _q4a_r)
+                if _q4w_r == "push":
+                    q4e = "➖"
+                elif _q4w_r in ("home", "away"):
+                    q4e = "✅" if _q4w_r == _q4p_r else "❌"
         label = f"{tipoff} {league_short} | {home} vs {away} | Q3:{q3}{q3e} Q4:{q4}{q4e}"
         callback = f"match:{match_id}:{event_date}:{page}"
         keyboard.append([InlineKeyboardButton(label, callback_data=callback)])
@@ -1943,7 +2288,7 @@ def _matches_keyboard(
         [InlineKeyboardButton("Volver a fechas", callback_data="dates:0")]
     )
     keyboard.append(
-        [InlineKeyboardButton("🧠 Calcular apuestas del dia", callback_data=f"calc:date:{event_date}")]
+        [InlineKeyboardButton("🧠 Recalcular apuestas del dia", callback_data=f"calc:date:{event_date}")]
     )
     keyboard.append(
         [InlineKeyboardButton("⬇️ Descargar pendientes del dia", callback_data=f"refresh:date:{event_date}")]
@@ -1952,15 +2297,15 @@ def _matches_keyboard(
     return InlineKeyboardMarkup(keyboard)
 
 
-def _calc_date_predictions(event_date: str) -> dict:
+def _calc_date_predictions(event_date: str, *, force_recalc: bool = True) -> dict:
     rows = _fetch_matches_for_date(event_date)
     existing = _fetch_date_pred_outcomes(event_date)
-    done = ok = fail = skipped = 0
+    ok = fail = skipped = 0
     for row in rows:
         match_id = str(row.get("match_id", ""))
         if not match_id:
             continue
-        if match_id in existing:
+        if (not force_recalc) and (match_id in existing):
             skipped += 1
             continue
         data = _get_match_detail(match_id)
@@ -1975,9 +2320,9 @@ def _calc_date_predictions(event_date: str) -> dict:
                 fail += 1
         except Exception:
             fail += 1
-        done += 1
     return {
         "total": len(rows),
+        "recalculated": ok + fail,
         "skipped": skipped,
         "ok": ok,
         "fail": fail,
@@ -2359,6 +2704,19 @@ def _get_or_compute_predictions(match_id: str, data: dict) -> dict | None:
         and not _needs_unavailable_reason(from_db)
         and not _missing_prediction_confidence(from_db)
     ):
+        # If the match is finished and outcomes are still pending, recompute to resolve them
+        is_ft = str((data or {}).get("match", {}).get("status_type", "") or "").lower() == "finished"
+        if is_ft:
+            q3_out = str((from_db.get("q3") or {}).get("outcome") or "").lower()
+            q4_out = str((from_db.get("q4") or {}).get("outcome") or "").lower()
+            has_pending = q3_out in ("pending", "") or q4_out in ("pending", "")
+            if has_pending:
+                try:
+                    refreshed = _compute_and_store_predictions(match_id, data)
+                    if refreshed is not None:
+                        return refreshed
+                except Exception:
+                    pass
         return from_db
     if from_db is not None:
         try:
@@ -2473,6 +2831,34 @@ def _prediction_text(pred_row: dict | None, data: dict | None = None) -> str:
             q4_waiting_preverdict = True
         if isinstance(q3_pred, dict) and q3_pred.get("available") and status_type != "finished" and not q4_started:
             q3_pred["outcome"] = "pending"
+
+        # Resolve Q3 outcome from actual scores once Q3 is over
+        if isinstance(q3_pred, dict) and q3_pred.get("available"):
+            q3_done = status_type == "finished" or q4_started
+            if q3_done:
+                _q3_sc = (data.get("score", {}).get("quarters", {}) or {}).get("Q3", {})
+                _q3h = _safe_int((_q3_sc or {}).get("home"))
+                _q3a = _safe_int((_q3_sc or {}).get("away"))
+                if _q3h is not None and _q3a is not None:
+                    _q3_pick = str(q3_pred.get("pick") or "").lower()
+                    _q3_winner = _winner_from_scores(_q3h, _q3a)
+                    if _q3_winner == "push":
+                        q3_pred["outcome"] = "push"
+                    elif _q3_winner in ("home", "away") and _q3_pick in ("home", "away"):
+                        q3_pred["outcome"] = "hit" if _q3_winner == _q3_pick else "miss"
+
+        # Resolve Q4 outcome from actual scores once game is finished
+        if isinstance(q4_pred, dict) and q4_pred.get("available") and status_type == "finished":
+            _q4_sc = (data.get("score", {}).get("quarters", {}) or {}).get("Q4", {})
+            _q4h = _safe_int((_q4_sc or {}).get("home"))
+            _q4a = _safe_int((_q4_sc or {}).get("away"))
+            if _q4h is not None and _q4a is not None:
+                _q4_pick = str(q4_pred.get("pick") or "").lower()
+                _q4_winner = _winner_from_scores(_q4h, _q4a)
+                if _q4_winner == "push":
+                    q4_pred["outcome"] = "push"
+                elif _q4_winner in ("home", "away") and _q4_pick in ("home", "away"):
+                    q4_pred["outcome"] = "hit" if _q4_winner == _q4_pick else "miss"
 
     def _emoji(outcome: str) -> str:
         e = _outcome_emoji(outcome)
@@ -2720,6 +3106,7 @@ async def _replace_callback_message(
     update: Update,
     text: str,
     reply_markup: InlineKeyboardMarkup,
+    parse_mode: str | None = None,
 ) -> None:
     query = update.callback_query
     if not query:
@@ -2734,6 +3121,7 @@ async def _replace_callback_message(
             chat_id=chat_id,
             text=text,
             reply_markup=reply_markup,
+            parse_mode=parse_mode,
         )
         try:
             await message.delete()
@@ -2741,7 +3129,11 @@ async def _replace_callback_message(
             pass
         return
 
-    await query.edit_message_text(text=text, reply_markup=reply_markup)
+    await query.edit_message_text(
+        text=text,
+        reply_markup=reply_markup,
+        parse_mode=parse_mode,
+    )
 
 
 async def _send_detail_message(
@@ -2763,6 +3155,7 @@ async def _send_detail_message(
         event_date=event_date,
         page=page,
         match_data=data,
+        chat_id=chat_id,
     )
 
     image_path: Path | None = None
@@ -2842,6 +3235,7 @@ def _detail_keyboard(
     event_date: str | None = None,
     page: int = 0,
     match_data: dict | None = None,
+    chat_id: int | None = None,
 ) -> InlineKeyboardMarkup:
     rows: list[list[InlineKeyboardButton]] = []
     token = _detail_token(event_date)
@@ -2863,6 +3257,15 @@ def _detail_keyboard(
                 "Refresh pred",
                 callback_data=f"refresh:pred:{match_id}:{token}:{page}",
             ),
+        ]
+    )
+    rows.append([_follow_toggle_button(chat_id, match_id, token, page)])
+    rows.append(
+        [
+            InlineKeyboardButton(
+                "Borrar match de la base",
+                callback_data=f"delmatch:confirm:{match_id}:{token}:{page}",
+            )
         ]
     )
     if event_date:
@@ -2944,13 +3347,14 @@ async def _render_matches_for_date(update: Update, event_date: str, page: int) -
 
     pred_map = _fetch_date_pred_outcomes(event_date)
     stats = _pred_stats_text(pred_map, len(rows))
-    header = f"Matches del {event_date}:"
+    header = _event_date_title_es(event_date, len(rows))
     if stats:
-        header += f"\n{stats}"
+        header += f"\n<pre>{html.escape(stats)}</pre>"
     await _replace_callback_message(
         update,
         text=header,
         reply_markup=_matches_keyboard(rows, event_date, page, pred_map),
+        parse_mode="HTML",
     )
 
 
@@ -2964,6 +3368,7 @@ async def _render_match_detail(
     pred_row: dict | None = None,
     send_graph: bool = True,
 ) -> None:
+    chat_id = update.effective_chat.id if update.effective_chat else None
     await _set_waiting_state(update)
     data = _get_match_detail(match_id)
     if not data:
@@ -2974,6 +3379,7 @@ async def _render_match_detail(
                 match_id,
                 event_date=event_date,
                 page=page,
+                chat_id=chat_id,
             ),
         )
         return
@@ -3007,6 +3413,7 @@ async def _refresh_detail(
     query = update.callback_query
     if not query:
         return
+    chat_id = update.effective_chat.id if update.effective_chat else None
 
     logger.info(f"[REFRESH_DETAIL] Callback for mode={mode} match={match_id} event_date={event_date}")
     cached = _get_match_detail(match_id)
@@ -3026,6 +3433,7 @@ async def _refresh_detail(
                         match_id,
                         event_date=event_date,
                         page=page,
+                        chat_id=chat_id,
                     ),
                 )
                 return
@@ -3039,6 +3447,7 @@ async def _refresh_detail(
                     match_id,
                     event_date=event_date,
                     page=page,
+                    chat_id=chat_id,
                 ),
             )
             return
@@ -3067,6 +3476,7 @@ async def _refresh_detail(
                 match_id,
                 event_date=event_date,
                 page=page,
+                chat_id=chat_id,
             ),
         )
         return
@@ -3149,6 +3559,45 @@ def _clear_eval_results_table() -> int:
     return before
 
 
+def _delete_match_cascade(match_id: str) -> dict[str, int]:
+    conn = _open_conn()
+
+    def _del(sql: str, params: tuple[object, ...]) -> int:
+        cur = conn.execute(sql, params)
+        affected = int(cur.rowcount or 0)
+        return affected if affected >= 0 else 0
+
+    counts = {
+        "eval_match_results": _del(
+            "DELETE FROM eval_match_results WHERE match_id = ?",
+            (match_id,),
+        ),
+        "discovered_ft_matches": _del(
+            "DELETE FROM discovered_ft_matches WHERE match_id = ?",
+            (match_id,),
+        ),
+        "play_by_play": _del(
+            "DELETE FROM play_by_play WHERE match_id = ?",
+            (match_id,),
+        ),
+        "graph_points": _del(
+            "DELETE FROM graph_points WHERE match_id = ?",
+            (match_id,),
+        ),
+        "quarter_scores": _del(
+            "DELETE FROM quarter_scores WHERE match_id = ?",
+            (match_id,),
+        ),
+        "matches": _del(
+            "DELETE FROM matches WHERE match_id = ?",
+            (match_id,),
+        ),
+    }
+    conn.commit()
+    conn.close()
+    return counts
+
+
 def _list_candidate_match_ids_for_universe() -> list[str]:
     conn = _open_conn()
     rows = conn.execute(
@@ -3160,6 +3609,149 @@ def _list_candidate_match_ids_for_universe() -> list[str]:
     ).fetchall()
     conn.close()
     return [str(r["match_id"]) for r in rows if r["match_id"] is not None]
+
+
+def _build_universe_stats_text() -> str:
+    conn = _open_conn()
+    try:
+        total = conn.execute("SELECT COUNT(*) AS n FROM matches").fetchone()["n"]
+        finished = conn.execute(
+            "SELECT COUNT(*) AS n FROM matches WHERE status_type='finished'"
+        ).fetchone()["n"]
+        with_q4 = conn.execute(
+            """
+            SELECT COUNT(DISTINCT match_id) AS n FROM quarter_scores
+            WHERE quarter='Q4'
+            """
+        ).fetchone()["n"]
+        full_qs = conn.execute(
+            """
+            SELECT COUNT(*) AS n FROM (
+                SELECT match_id
+                FROM quarter_scores
+                WHERE quarter IN ('Q1','Q2','Q3','Q4') AND home IS NOT NULL AND away IS NOT NULL
+                GROUP BY match_id
+                HAVING COUNT(DISTINCT quarter) = 4
+            )
+            """
+        ).fetchone()["n"]
+        with_pbp = conn.execute(
+            "SELECT COUNT(DISTINCT match_id) AS n FROM play_by_play"
+        ).fetchone()["n"]
+        with_gp = conn.execute(
+            "SELECT COUNT(DISTINCT match_id) AS n FROM graph_points"
+        ).fetchone()["n"]
+        eval_rows = conn.execute(
+            "SELECT COUNT(*) AS n FROM eval_match_results"
+        ).fetchone()["n"]
+        date_range = conn.execute(
+            "SELECT MIN(date) AS d_min, MAX(date) AS d_max FROM matches"
+        ).fetchone()
+        d_min = date_range["d_min"] or "?"
+        d_max = date_range["d_max"] or "?"
+    finally:
+        conn.close()
+
+    lines = [
+        "Universo DB:",
+        f"  Total matches: {total}",
+        f"  Status finished: {finished}",
+        f"  Con Q1-Q4 completo: {full_qs}",
+        f"  Con play-by-play: {with_pbp}",
+        f"  Con graph_points: {with_gp}",
+        f"  Eval calculados: {eval_rows}",
+        f"  Rango fechas: {d_min} a {d_max}",
+    ]
+    return "\n".join(lines)
+
+
+def _build_model_stats_text() -> str:
+    def _table(headers: list[str], rows: list[list[str]]) -> list[str]:
+        widths = [len(h) for h in headers]
+        for row in rows:
+            for i, cell in enumerate(row):
+                widths[i] = max(widths[i], len(cell))
+        head = " | ".join(h.ljust(widths[i]) for i, h in enumerate(headers))
+        sep = "-+-".join("-" * w for w in widths)
+        out = [head, sep]
+        for row in rows:
+            out.append(" | ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)))
+        return out
+
+    # Model metrics from CSVs (v2 and v4)
+    metrics_sections: list[str] = []
+    version_dirs = [
+        ("v2", MODEL_OUTPUTS_V2_DIR),
+        ("v4", MODEL_OUTPUTS_V4_DIR),
+    ]
+    headers = ["Filtro", "F1", "ACC", "ROC", "Ntrain", "Ntest", "Ntotal"]
+    for version_name, version_dir in version_dirs:
+        metrics_sections.append(f"Modelos {version_name}:")
+        for target in ("q3", "q4"):
+            csv_path = version_dir / f"{target}_metrics.csv"
+            if not csv_path.exists():
+                metrics_sections.append(f"{target.upper()}: metrics no encontrado")
+                continue
+
+            parsed_rows: list[dict[str, str]] = []
+            with csv_path.open("r", encoding="utf-8", newline="") as f:
+                for row in csv.DictReader(f):
+                    parsed_rows.append(row)
+            if not parsed_rows:
+                metrics_sections.append(f"{target.upper()}: sin filas")
+                continue
+
+            table_rows: list[list[str]] = []
+            for row in parsed_rows:
+                table_rows.append(
+                    [
+                        str(row.get("model", "?")),
+                        _safe_pct_from_csv(row.get("f1")),
+                        _safe_pct_from_csv(row.get("accuracy")),
+                        _safe_pct_from_csv(row.get("roc_auc")),
+                        str(row.get("samples_train", "?")),
+                        str(row.get("samples_test", "?")),
+                        str(row.get("samples_total", "?")),
+                    ]
+                )
+
+            metrics_sections.append(f"{target.upper()} (test):")
+            metrics_sections.extend(_table(headers, table_rows))
+            metrics_sections.append("")
+
+    # Gate config
+    gate_lines: list[str] = []
+    gate_path = BASE_DIR / "training" / "model_outputs_v2" / "gate_config.json"
+    if gate_path.exists():
+        try:
+            with gate_path.open("r", encoding="utf-8") as f:
+                gcfg = json.load(f)
+            gen_at = str(gcfg.get("generated_at_utc", "?"))[:19]
+            thresholds = gcfg.get("thresholds", {})
+            q3_thr = (thresholds.get("q3") or {}).get("default") or {}
+            q4_thr = (thresholds.get("q4") or {}).get("36") or {}
+            gate_lines.append(f"Gate calibrado: {gen_at}")
+            if q3_thr:
+                gate_lines.append(
+                    f"  Q3: edge>={_safe_pct_from_csv(q3_thr.get('min_edge'))}"
+                    f" vol<{q3_thr.get('volatility_block_at')}"
+                    f" gp>={q3_thr.get('min_graph_points')}"
+                    f" pbp>={q3_thr.get('min_pbp_events')}"
+                )
+            if q4_thr:
+                gate_lines.append(
+                    f"  Q4: edge>={_safe_pct_from_csv(q4_thr.get('min_edge'))}"
+                    f" vol<{q4_thr.get('volatility_block_at')}"
+                    f" gp>={q4_thr.get('min_graph_points')}"
+                    f" pbp>={q4_thr.get('min_pbp_events')}"
+                )
+        except Exception:
+            gate_lines.append("Gate config: error leyendo archivo")
+    else:
+        gate_lines.append("Gate config: no encontrado")
+
+    sections = metrics_sections + gate_lines
+    return "\n".join(sections)
 
 
 def _train_status_text() -> str:
@@ -3201,48 +3793,102 @@ def _is_train_allowed(chat_id: int | None) -> bool:
     return chat_id in ALLOWED_CHAT_IDS
 
 
-async def _run_train_v4(chat_id: int, app: Application) -> None:
+async def _stream_process_output(
+    stream: asyncio.StreamReader | None,
+    task_label: str,
+    is_stderr: bool = False,
+) -> str:
+    if stream is None:
+        return ""
+
+    chunks: list[str] = []
+    while True:
+        raw = await stream.readline()
+        if not raw:
+            break
+        line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
+        if not line:
+            continue
+        chunks.append(line)
+        if is_stderr:
+            logger.warning("[TRAIN_PIPE][%s][stderr] %s", task_label, line)
+        else:
+            logger.info("[TRAIN_PIPE][%s] %s", task_label, line)
+    return "\n".join(chunks)
+
+
+async def _run_train_pipeline(chat_id: int, app: Application) -> None:
+    """Run full training pipeline: train-v2 → train-v4 → compare → calibrate."""
+    pipeline_steps = [
+        ("1/4 train-v2", ["training/model_cli.py", "train-v2"]),
+        ("2/4 train-v4", ["training/model_cli.py", "train-v4"]),
+        ("3/4 compare",  ["training/model_cli.py", "compare"]),
+        ("4/4 calibrate", ["training/calibrate_gate.py"]),
+    ]
     async with RETRAIN_LOCK:
         TRAIN_STATUS["running"] = True
         TRAIN_STATUS["owner_chat_id"] = chat_id
         TRAIN_STATUS["last_error_tail"] = ""
-        TRAIN_STATUS["current_task"] = "train-v4"
         TRAIN_STATUS["progress_done"] = 0
-        TRAIN_STATUS["progress_total"] = 0
-        proc = await asyncio.create_subprocess_exec(
-            sys.executable,
-            "training/model_cli.py",
-            "train-v4",
-            cwd=str(BASE_DIR),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout_bytes, stderr_bytes = await proc.communicate()
+        TRAIN_STATUS["progress_total"] = len(pipeline_steps)
 
-        stdout_text = stdout_bytes.decode("utf-8", errors="replace")
-        stderr_text = stderr_bytes.decode("utf-8", errors="replace")
+        failed_step: tuple[str, int, str] | None = None
 
-        if proc.returncode == 0:
+        for i, (task_label, script_args) in enumerate(pipeline_steps, start=1):
+            TRAIN_STATUS["current_task"] = task_label
+            TRAIN_STATUS["progress_done"] = i - 1
+            cmd_display = " ".join([sys.executable, "-u", *script_args])
+            logger.info("[TRAIN_PIPE] start step=%s cmd=%s", task_label, cmd_display)
+            proc = await asyncio.create_subprocess_exec(
+                sys.executable,
+                "-u",
+                *script_args,
+                cwd=str(BASE_DIR),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout_task = asyncio.create_task(
+                _stream_process_output(proc.stdout, task_label, is_stderr=False)
+            )
+            stderr_task = asyncio.create_task(
+                _stream_process_output(proc.stderr, task_label, is_stderr=True)
+            )
+            stdout_text, stderr_text = await asyncio.gather(stdout_task, stderr_task)
+            return_code = await proc.wait()
+            logger.info(
+                "[TRAIN_PIPE] end step=%s exit=%s",
+                task_label,
+                return_code,
+            )
+
+            if return_code != 0:
+                failed_step = (task_label, return_code, stderr_text or stdout_text)
+                break
+
+        TRAIN_STATUS["progress_done"] = len(pipeline_steps)
+
+        if failed_step is None:
             metrics_summary = _read_train_v4_effectiveness_summary()
             msg = (
-                "Reentreno finalizado OK (train-v4).\n"
+                "Pipeline entrenamiento finalizado OK.\n"
+                "Pasos: train-v2, train-v4, compare, calibrate.\n"
                 "Efectividad final (test):\n"
-                f"{metrics_summary}\n\n"
-                "Salida final:\n"
-                f"{_tail_lines(stdout_text)}"
+                f"{metrics_summary}"
             )
             TRAIN_STATUS["last_error_tail"] = ""
+            TRAIN_STATUS["last_exit_code"] = 0
         else:
+            label, code, stderr_text = failed_step
             err_tail = _tail_lines(stderr_text)
             msg = (
-                f"Reentreno fallo (exit={proc.returncode}).\n"
+                f"Pipeline fallo en: {label} (exit={code}).\n"
                 "STDERR:\n"
                 f"{err_tail}"
             )
             TRAIN_STATUS["last_error_tail"] = err_tail
+            TRAIN_STATUS["last_exit_code"] = code
 
         TRAIN_STATUS["running"] = False
-        TRAIN_STATUS["last_exit_code"] = proc.returncode
         TRAIN_STATUS["last_finished_utc"] = datetime.utcnow().isoformat(
             timespec="seconds"
         )
@@ -3263,7 +3909,6 @@ async def _run_recalc_universe(chat_id: int, app: Application) -> None:
         TRAIN_STATUS["progress_total"] = 0
 
         try:
-            deleted_rows = await asyncio.to_thread(_clear_eval_results_table)
             match_ids = await asyncio.to_thread(_list_candidate_match_ids_for_universe)
             total = len(match_ids)
             TRAIN_STATUS["progress_total"] = total
@@ -3296,7 +3941,6 @@ async def _run_recalc_universe(chat_id: int, app: Application) -> None:
 
             msg = (
                 "Recalculo universo finalizado.\n"
-                f"vacios_previos={deleted_rows}\n"
                 f"candidatos={total}\n"
                 f"recalculados_ok={ok}\n"
                 f"fallidos={fail}\n"
@@ -3422,6 +4066,23 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await query.edit_message_text(
             text=text,
             reply_markup=_refresh_job_progress_keyboard(),
+        )
+        return
+
+    if data == "menu:follow:status":
+        chat_id = update.effective_chat.id if update.effective_chat else None
+        job = FOLLOW_JOBS.get(chat_id) if chat_id is not None else None
+        if not isinstance(job, dict):
+            await query.edit_message_text(
+                text="No hay seguimiento activo.",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
+                ),
+            )
+            return
+        await query.edit_message_text(
+            text=_follow_status_text(job),
+            reply_markup=_follow_status_keyboard(job),
         )
         return
 
@@ -3554,17 +4215,32 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             return
         await query.edit_message_text(
             text=(
-                "Vas a ejecutar reentreno base con train-v4.\n"
-                "Puede demorar varios minutos."
+                "Re-entrenar base.\n"
+                "Elige una opcion:"
             ),
-            reply_markup=_train_confirm_keyboard(),
+            reply_markup=_train_submenu_keyboard(),
         )
         return
 
     if data == "train:status":
         await query.edit_message_text(
             text=_train_status_text(),
-            reply_markup=_train_confirm_keyboard(),
+            reply_markup=_train_submenu_keyboard(),
+        )
+        return
+
+    if data == "train:stats":
+        try:
+            model_txt = await asyncio.to_thread(_build_model_stats_text)
+            universe_txt = await asyncio.to_thread(_build_universe_stats_text)
+            stats_txt = model_txt + "\n\n" + universe_txt
+            stats_render = f"<pre>{html.escape(stats_txt)}</pre>"
+        except Exception as exc:
+            stats_render = f"Error al leer stats: {exc}"
+        await query.edit_message_text(
+            text=stats_render,
+            parse_mode="HTML",
+            reply_markup=_train_submenu_keyboard(),
         )
         return
 
@@ -3593,22 +4269,65 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             return
 
         await query.edit_message_text(
-            text="Reentreno train-v4 iniciado. Te aviso al terminar.",
+            text=(
+                "Pipeline entrenamiento iniciado en background.\n"
+                "Pasos: train-v2 → train-v4 → compare → calibrate.\n"
+                "Te aviso al terminar."
+            ),
             reply_markup=InlineKeyboardMarkup(
                 [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
             ),
         )
         safe_chat_id = int(chat_id) if chat_id is not None else 0
         context.application.create_task(
-            _run_train_v4(safe_chat_id, context.application)
+            _run_train_pipeline(safe_chat_id, context.application)
         )
+        return
+
+    if data == "train:clear:confirm":
+        await query.edit_message_text(
+            text=(
+                "Vas a vaciar la tabla de eval_match_results.\n"
+                "Esta accion elimina todos los resultados calculados.\n"
+                "No se puede deshacer."
+            ),
+            reply_markup=_train_clear_confirm_keyboard(),
+        )
+        return
+
+    if data == "train:clear:run":
+        chat_id = update.effective_chat.id if update.effective_chat else None
+        if not _is_train_allowed(chat_id):
+            await query.edit_message_text(
+                text=(
+                    "No autorizado.\n"
+                    f"Tu chat_id es {chat_id}.\n"
+                    "Agregalo en TELEGRAM_ALLOWED_CHAT_IDS del .env"
+                ),
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
+                ),
+            )
+            return
+        try:
+            deleted_rows = await asyncio.to_thread(_clear_eval_results_table)
+            await query.edit_message_text(
+                text=f"Tabla vaciada. Filas eliminadas: {deleted_rows}.",
+                reply_markup=_train_submenu_keyboard(),
+            )
+        except Exception as exc:
+            await query.edit_message_text(
+                text=f"Error al vaciar tabla: {exc}",
+                reply_markup=_train_submenu_keyboard(),
+            )
         return
 
     if data == "train:recalc:confirm":
         await query.edit_message_text(
             text=(
-                "Vas a vaciar eval_match_results y recalcular resultados del universo.\n"
-                "El proceso corre en background y puede tardar bastante."
+                "Vas a recalcular predicciones del universo.\n"
+                "El proceso corre en background y puede tardar bastante.\n"
+                "Los resultados existentes se sobreescriben si el match ya tiene calculo."
             ),
             reply_markup=_train_recalc_confirm_keyboard(),
         )
@@ -3724,11 +4443,219 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         return
 
+    if data.startswith("follow:start:"):
+        try:
+            _, _, match_id, event_token, page_text = data.split(":", maxsplit=4)
+            page = int(page_text)
+        except (ValueError, TypeError):
+            await _render_main_menu(update, context)
+            return
+
+        chat_id = update.effective_chat.id if update.effective_chat else None
+        if chat_id is None:
+            await _replace_callback_message(
+                update,
+                text="No pude identificar el chat para iniciar seguimiento.",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
+                ),
+            )
+            return
+
+        existing = FOLLOW_JOBS.get(chat_id)
+        if isinstance(existing, dict) and str(existing.get("phase") or "") == "running":
+            existing_mid = str(existing.get("match_id") or "")
+            if existing_mid != match_id:
+                await _replace_callback_message(
+                    update,
+                    text=(
+                        f"Ya hay seguimiento activo para {existing_mid}.\n"
+                        "Detenlo antes de iniciar otro."
+                    ),
+                    reply_markup=_follow_status_keyboard(existing),
+                )
+                return
+
+        data_row = _get_match_detail(match_id)
+        status_type = str((data_row or {}).get("match", {}).get("status_type", "") or "").lower()
+        if status_type == "finished":
+            await _replace_callback_message(
+                update,
+                text=f"El match {match_id} ya esta finalizado. No requiere seguimiento.",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
+                ),
+            )
+            return
+
+        FOLLOW_JOBS[chat_id] = {
+            "match_id": match_id,
+            "event_token": event_token,
+            "page": page,
+            "phase": "starting",
+            "stop_requested": False,
+            "interval_seconds": FOLLOW_REFRESH_SECONDS,
+            "stale_cycles_limit": FOLLOW_STALE_CYCLES_LIMIT,
+        }
+        context.application.create_task(_run_follow_match_job(context.application, chat_id))
+
+        job = FOLLOW_JOBS.get(chat_id)
+        if not isinstance(job, dict):
+            await _render_main_menu(update, context)
+            return
+
+        await _replace_callback_message(
+            update,
+            text=(
+                f"Seguimiento iniciado para {match_id}.\n"
+                f"Refresco cada {FOLLOW_REFRESH_SECONDS}s."
+            ),
+            reply_markup=_follow_status_keyboard(job),
+        )
+        return
+
+    if data == "follow:stop":
+        chat_id = update.effective_chat.id if update.effective_chat else None
+        job = FOLLOW_JOBS.get(chat_id) if chat_id is not None else None
+        if not isinstance(job, dict):
+            await _replace_callback_message(
+                update,
+                text="No hay seguimiento activo para detener.",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
+                ),
+            )
+            return
+
+        job["stop_requested"] = True
+        await _replace_callback_message(
+            update,
+            text="Deteniendo seguimiento...",
+            reply_markup=_follow_status_keyboard(job),
+        )
+        return
+
+    if data.startswith("follow:open:"):
+        try:
+            _, _, match_id, event_token, page_text = data.split(":", maxsplit=4)
+            page = int(page_text)
+        except (ValueError, TypeError):
+            await _render_main_menu(update, context)
+            return
+
+        event_date = None if event_token == "_" else event_token
+        if event_date is None:
+            await _render_live_detail(update, context, match_id, page)
+            return
+        await _render_match_detail(
+            update,
+            context.application,
+            match_id,
+            event_date,
+            page,
+        )
+        return
+
+    if data.startswith("delmatch:confirm:"):
+        try:
+            _, _, match_id, event_token, page_text = data.split(":", maxsplit=4)
+            page = int(page_text)
+        except (ValueError, TypeError):
+            await _render_dates(update, 0)
+            return
+        event_date = None if event_token == "_" else event_token
+        await _replace_callback_message(
+            update,
+            text=(
+                f"Vas a borrar el match {match_id} de la base y sus dependencias.\n"
+                "Incluye: quarter_scores, play_by_play, graph_points, eval_match_results.\n"
+                "Esta accion no se puede deshacer."
+            ),
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "Confirmar borrado",
+                            callback_data=f"delmatch:run:{match_id}:{event_token}:{page}",
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "Cancelar",
+                            callback_data=f"match:{match_id}:{event_token}:{page}",
+                        )
+                    ],
+                ]
+            ),
+        )
+        return
+
+    if data.startswith("delmatch:run:"):
+        try:
+            _, _, match_id, event_token, page_text = data.split(":", maxsplit=4)
+            page = int(page_text)
+        except (ValueError, TypeError):
+            await _render_dates(update, 0)
+            return
+        chat_id = update.effective_chat.id if update.effective_chat else None
+        if not _is_train_allowed(chat_id):
+            await _replace_callback_message(
+                update,
+                text="No autorizado para borrar matches.",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
+                ),
+            )
+            return
+        counts = await asyncio.to_thread(_delete_match_cascade, match_id)
+        event_date = None if event_token == "_" else event_token
+        if event_date:
+            rows_after = _fetch_matches_for_date(event_date)
+            if rows_after:
+                await _render_matches_for_date(update, event_date, page)
+            else:
+                summary = (
+                    f"Match {match_id} borrado.\n"
+                    f"matches={counts['matches']} quarter_scores={counts['quarter_scores']}\n"
+                    f"play_by_play={counts['play_by_play']} graph_points={counts['graph_points']}\n"
+                    f"eval={counts['eval_match_results']} discovered={counts['discovered_ft_matches']}\n\n"
+                    f"Ya no quedan matches en {event_date}."
+                )
+                await _replace_callback_message(
+                    update,
+                    text=summary,
+                    reply_markup=InlineKeyboardMarkup(
+                        [
+                            [InlineKeyboardButton("Volver a fechas", callback_data="dates:0")],
+                            [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
+                        ]
+                    ),
+                )
+        else:
+            summary = (
+                f"Match {match_id} borrado.\n"
+                f"matches={counts['matches']} quarter_scores={counts['quarter_scores']}\n"
+                f"play_by_play={counts['play_by_play']} graph_points={counts['graph_points']}\n"
+                f"eval={counts['eval_match_results']} discovered={counts['discovered_ft_matches']}"
+            )
+            await _replace_callback_message(
+                update,
+                text=summary,
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
+                ),
+            )
+        return
+
     if data.startswith("calc:date:"):
         event_date = data[len("calc:date:"):]
-        await _set_waiting_state(update, text="Calculando apuestas... espere")
+        await _set_waiting_state(update, text="Recalculando apuestas... espere")
         try:
-            result = _calc_date_predictions(event_date)
+            result = await asyncio.to_thread(
+                _calc_date_predictions,
+                event_date,
+                force_recalc=True,
+            )
         except Exception as exc:
             await _replace_callback_message(
                 update,
@@ -3739,20 +4666,22 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             )
             return
         summary = (
-            f"Calculo completado para {event_date}:\n"
-            f"Total: {result['total']} | Nuevas: {result['ok']} | "
-            f"Ya calculadas: {result['skipped']} | Fallidas: {result['fail']}"
+            f"Recalculo completado para {event_date}:\n"
+            f"Total: {result['total']} | Recalculadas: {result['recalculated']} | "
+            f"OK: {result['ok']} | Fallidas: {result['fail']}"
         )
         rows = _fetch_matches_for_date(event_date)
         pred_map = _fetch_date_pred_outcomes(event_date)
         stats = _pred_stats_text(pred_map, len(rows))
-        header = f"{summary}\n\nMatches del {event_date}:"
+        title = _event_date_title_es(event_date, len(rows))
+        header = f"{summary}\n\n{title}"
         if stats:
-            header += f"\n{stats}"
+            header += f"\n<pre>{html.escape(stats)}</pre>"
         await _replace_callback_message(
             update,
             text=header,
             reply_markup=_matches_keyboard(rows, event_date, 0, pred_map),
+            parse_mode="HTML",
         )
         return
 
@@ -3764,6 +4693,55 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await _render_live(update, context, 0, refetch=False)
             return
         await _refresh_live_detail(update, context, mode, match_id, page)
+        return
+
+    if data.startswith("dellive:confirm:"):
+        try:
+            _, _, match_id, page_text = data.split(":", maxsplit=3)
+            page = int(page_text)
+        except (ValueError, TypeError):
+            await _render_live(update, context, 0, refetch=False)
+            return
+        await _replace_callback_message(
+            update,
+            text=(
+                f"Vas a borrar el match {match_id} de la base y sus dependencias.\n"
+                "Incluye: quarter_scores, play_by_play, graph_points, eval_match_results.\n"
+                "Esta accion no se puede deshacer."
+            ),
+            reply_markup=InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "Confirmar borrado",
+                            callback_data=f"dellive:run:{match_id}:{page}",
+                        )
+                    ],
+                    [InlineKeyboardButton("Cancelar", callback_data=f"livematch:{match_id}:{page}")],
+                ]
+            ),
+        )
+        return
+
+    if data.startswith("dellive:run:"):
+        try:
+            _, _, match_id, page_text = data.split(":", maxsplit=3)
+            page = int(page_text)
+        except (ValueError, TypeError):
+            await _render_live(update, context, 0, refetch=False)
+            return
+        chat_id = update.effective_chat.id if update.effective_chat else None
+        if not _is_train_allowed(chat_id):
+            await _replace_callback_message(
+                update,
+                text="No autorizado para borrar matches.",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
+                ),
+            )
+            return
+        await asyncio.to_thread(_delete_match_cascade, match_id)
+        await _render_live(update, context, page, refetch=True)
         return
 
     if data.startswith("livematch:"):
@@ -3783,6 +4761,7 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         except (ValueError, TypeError):
             await _render_dates(update, 0)
             return
+        event_date = None if event_date == "_" else event_date
         await _render_match_detail(
             update,
             context.application,

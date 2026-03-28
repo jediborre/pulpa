@@ -379,6 +379,22 @@ def _default_params_for_target(target: str) -> dict:
     }
 
 
+def _existing_params_for_target(target: str) -> dict | None:
+    if not OUT_CONFIG.exists():
+        return None
+    try:
+        with OUT_CONFIG.open("r", encoding="utf-8") as f:
+            blob = json.load(f)
+        thresholds = blob.get("thresholds", {})
+        if target == "q3":
+            value = (thresholds.get("q3") or {}).get("default")
+        else:
+            value = (thresholds.get("q4") or {}).get("36")
+        return value if isinstance(value, dict) else None
+    except Exception:
+        return None
+
+
 def calibrate(
     metric: str,
     limit: int | None,
@@ -403,12 +419,30 @@ def calibrate(
     for target in ("q3", "q4"):
         records = by_target[target]
         train_records, val_records = _split_temporal(records, train_ratio=0.8)
+        default_params = _default_params_for_target(target)
+        fallback_params = _existing_params_for_target(target) or default_params
+        key = "default" if target == "q3" else "36"
 
         if len(records) < 50 or not val_records:
-            raise RuntimeError(
-                "Insufficient samples for calibration "
-                f"target={target}: {len(records)}"
-            )
+            thresholds[target][key] = fallback_params
+            report["targets"][target] = {
+                "samples_total": len(records),
+                "samples_train": len(train_records),
+                "samples_val": len(val_records),
+                "default_params": default_params,
+                "best_params": fallback_params,
+                "train_best": None,
+                "val_default": None,
+                "val_best": None,
+                "full_default": None,
+                "full_best": None,
+                "status": "insufficient_samples",
+                "message": (
+                    "Insufficient samples for calibration "
+                    f"target={target}: {len(records)}; using fallback params"
+                ),
+            }
+            continue
 
         best_params, train_best = _find_best_params(
             target=target,
@@ -417,14 +451,11 @@ def calibrate(
             min_coverage=min_coverage,
         )
 
-        default_params = _default_params_for_target(target)
-
         val_best = _evaluate(val_records, best_params, odds)
         val_default = _evaluate(val_records, default_params, odds)
         full_best = _evaluate(records, best_params, odds)
         full_default = _evaluate(records, default_params, odds)
 
-        key = "default" if target == "q3" else "36"
         thresholds[target][key] = best_params
 
         report["targets"][target] = {
@@ -438,6 +469,7 @@ def calibrate(
             "val_best": val_best,
             "full_default": full_default,
             "full_best": full_best,
+            "status": "ok",
         }
 
     config = {
@@ -521,6 +553,13 @@ def main() -> None:
     print(f"report: {result['report_path']}")
     for target in ("q3", "q4"):
         t = result["report"]["targets"][target]
+        status = str(t.get("status") or "ok")
+        if status != "ok":
+            print(
+                f"- {target}: samples={t['samples_total']} status={status} "
+                f"best={t['best_params']}"
+            )
+            continue
         print(
             f"- {target}: samples={t['samples_total']} "
             f"val_default_roi={t['val_default']['roi_units_per_bet']} "
