@@ -649,11 +649,42 @@ def _is_ft_complete(data: dict | None) -> bool:
     if not data:
         return False
     status_type = str(data.get("match", {}).get("status_type", "") or "").lower()
-    if status_type and status_type != "finished":
+    if status_type != "finished":
         return False
+
     quarters = data.get("score", {}).get("quarters", {})
     required = ("Q1", "Q2", "Q3", "Q4")
-    return all(q in quarters for q in required)
+    for q in required:
+        q_score = quarters.get(q)
+        if not isinstance(q_score, dict):
+            return False
+        if q_score.get("home") is None or q_score.get("away") is None:
+            return False
+
+    pbp = data.get("play_by_play", {})
+    if not isinstance(pbp, dict):
+        return False
+    for q in required:
+        q_plays = pbp.get(q)
+        if not isinstance(q_plays, list) or len(q_plays) == 0:
+            return False
+
+    graph_points = data.get("graph_points", [])
+    if not isinstance(graph_points, list) or len(graph_points) == 0:
+        return False
+
+    max_minute = None
+    for point in graph_points:
+        try:
+            minute = int((point or {}).get("minute"))
+        except (TypeError, ValueError, AttributeError):
+            continue
+        max_minute = minute if max_minute is None else max(max_minute, minute)
+
+    if max_minute is None or max_minute < 48:
+        return False
+
+    return True
 
 
 def _refresh_incomplete_matches_for_date(
@@ -847,6 +878,10 @@ def _ingest_new_date(event_date: str, limit: int | None = None) -> dict:
 
         try:
             data = scraper_mod.fetch_match_by_id(match_id)
+            if not _is_ft_complete(data):
+                db_mod.mark_discovered_processed(conn, match_id)
+                skipped_ft += 1
+                continue
             db_mod.save_match(conn, match_id, data)
             db_mod.mark_discovered_processed(conn, match_id)
             ing_ok += 1
@@ -996,6 +1031,16 @@ def _ingest_new_date_with_progress(
 
         try:
             data = scraper_mod.fetch_match_by_id(match_id)
+            if not _is_ft_complete(data):
+                db_mod.mark_discovered_processed(conn, match_id)
+                skipped_ft += 1
+                progress_state["processed"] = int(progress_state.get("processed") or 0) + 1
+                progress_state["ingested_ok"] = ing_ok
+                progress_state["ingested_fail"] = ing_fail
+                progress_state["skipped_ft"] = skipped_ft
+                if index % DATE_INGEST_PROGRESS_EVERY == 0:
+                    progress_state["last_progress_at"] = index
+                continue
             db_mod.save_match(conn, match_id, data)
             db_mod.mark_discovered_processed(conn, match_id)
             ing_ok += 1
@@ -1221,6 +1266,99 @@ def _follow_status_keyboard(job: dict[str, object]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(rows)
 
 
+async def _publish_follow_status(
+    app: Application,
+    chat_id: int,
+    job: dict[str, object],
+    *,
+    force: bool = False,
+) -> None:
+    match_id = str(job.get("match_id") or "")
+    data = job.get("follow_data")
+    pred_row = job.get("follow_pred")
+    is_detail = bool(data is not None and isinstance(data, dict))
+    
+    if is_detail:
+        text = _detail_text(match_id, data, pred_row, following=True)
+    else:
+        text = _follow_status_text(job)
+
+    event_token = str(job.get("event_token") or "_")
+    event_date = None if event_token == "_" else event_token
+    keyboard = _detail_keyboard(
+        match_id,
+        event_date=event_date,
+        page=int(job.get("page") or 0),
+        match_data=data,
+        chat_id=chat_id,
+    ) if is_detail else _follow_status_keyboard(job)
+
+    last_published = str(job.get("status_last_text") or "")
+    if not force and text == last_published:
+        return
+
+    if is_detail:
+        image_path: Path | None = None
+        try:
+            image_path = _build_graph_image(match_id, data)
+        except Exception:
+            image_path = None
+
+        if image_path is not None and image_path.exists():
+            prev_message_id = job.get("status_message_id")
+            sent = None
+            try:
+                with image_path.open("rb") as f:
+                    sent = await app.bot.send_photo(
+                        chat_id=chat_id,
+                        photo=f,
+                        caption=text,
+                        reply_markup=keyboard,
+                    )
+            except Exception:
+                sent = None
+            finally:
+                try:
+                    image_path.unlink()
+                except OSError:
+                    pass
+
+            if sent is not None:
+                if isinstance(prev_message_id, int) and prev_message_id != sent.message_id:
+                    try:
+                        await app.bot.delete_message(chat_id=chat_id, message_id=prev_message_id)
+                    except Exception:
+                        pass
+                job["status_message_id"] = sent.message_id
+                job["status_last_text"] = text
+                return
+
+    message_id = job.get("status_message_id")
+    if isinstance(message_id, int):
+        edited = await _safe_edit_message(
+            app,
+            chat_id,
+            message_id,
+            text,
+            reply_markup=keyboard,
+        )
+        if edited:
+            job["status_last_text"] = text
+            return
+
+    try:
+        sent = await app.bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            reply_markup=keyboard,
+        )
+    except Exception:
+        return
+
+    job["status_message_id"] = sent.message_id
+    job["status_last_text"] = text
+
+
 async def _run_follow_match_job(app: Application, chat_id: int) -> None:
     job = FOLLOW_JOBS.get(chat_id)
     if not isinstance(job, dict):
@@ -1305,6 +1443,10 @@ async def _run_follow_match_job(app: Application, chat_id: int) -> None:
             job["last_status"] = status_type or status_desc or "live"
             job["last_score"] = score_txt
             job["minute_est"] = minute_est
+            job["follow_data"] = data
+            pred_row = _get_or_compute_predictions(match_id, data)
+            job["follow_pred"] = pred_row
+            await _publish_follow_status(app, chat_id, job)
 
             if status_type == "finished":
                 job["phase"] = "done"
@@ -1320,11 +1462,7 @@ async def _run_follow_match_job(app: Application, chat_id: int) -> None:
     finally:
         final_job = FOLLOW_JOBS.get(chat_id)
         if final_job is job:
-            summary = _follow_status_text(job)
-            try:
-                await app.bot.send_message(chat_id=chat_id, text=summary)
-            except Exception:
-                pass
+            await _publish_follow_status(app, chat_id, job, force=True)
             FOLLOW_JOBS.pop(chat_id, None)
 
 
@@ -1867,7 +2005,14 @@ def _follow_toggle_button(
     match_id: str,
     event_token: str,
     page: int,
-) -> InlineKeyboardButton:
+    match_data: dict | None = None,
+) -> InlineKeyboardButton | None:
+    status_type = str(
+        (match_data or {}).get("match", {}).get("status_type", "") or ""
+    ).lower()
+    if status_type == "finished":
+        return None
+
     if chat_id is not None:
         job = FOLLOW_JOBS.get(chat_id)
         if isinstance(job, dict):
@@ -1896,35 +2041,36 @@ def _live_detail_keyboard(
     match_data: dict | None = None,
     chat_id: int | None = None,
 ) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
+    rows: list[list[InlineKeyboardButton]] = []
+    rows.append(
+        [InlineKeyboardButton("Ver SofaScore", url=_sofascore_match_url(match_id, match_data))]
+    )
+    rows.append(
         [
-            [
-                InlineKeyboardButton(
-                    "Ver SofaScore",
-                    url=_sofascore_match_url(match_id, match_data),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "Refresh datos + pred",
-                    callback_data=f"refreshlive:all:{match_id}:{page}",
-                ),
-                InlineKeyboardButton(
-                    "Refresh pred",
-                    callback_data=f"refreshlive:pred:{match_id}:{page}",
-                ),
-            ],
-            [_follow_toggle_button(chat_id, match_id, "_", page)],
-            [
-                InlineKeyboardButton(
-                    "Borrar match de la base",
-                    callback_data=f"dellive:confirm:{match_id}:{page}",
-                )
-            ],
-            [InlineKeyboardButton("Volver a live", callback_data=f"livepage:{page}")],
-            [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
+            InlineKeyboardButton(
+                "Refresh datos + pred",
+                callback_data=f"refreshlive:all:{match_id}:{page}",
+            ),
+            InlineKeyboardButton(
+                "Refresh pred",
+                callback_data=f"refreshlive:pred:{match_id}:{page}",
+            ),
         ]
     )
+    _ftb = _follow_toggle_button(chat_id, match_id, "_", page, match_data)
+    if _ftb is not None:
+        rows.append([_ftb])
+    rows.append(
+        [
+            InlineKeyboardButton(
+                "Borrar match de la base",
+                callback_data=f"dellive:confirm:{match_id}:{page}",
+            )
+        ]
+    )
+    rows.append([InlineKeyboardButton("Volver a live", callback_data=f"livepage:{page}")])
+    rows.append([InlineKeyboardButton("Menu principal", callback_data="nav:main")])
+    return InlineKeyboardMarkup(rows)
 
 
 async def _send_live_detail_message(
@@ -3010,11 +3156,14 @@ async def _send_match_graph(
             pass
 
 
-def _detail_text(match_id: str, data: dict, pred_row: dict | None) -> str:
-    return _match_detail_text(match_id, data) + "\n\n" + _prediction_text(
+def _detail_text(match_id: str, data: dict, pred_row: dict | None, following: bool = False) -> str:
+    detail = _match_detail_text(match_id, data) + "\n\n" + _prediction_text(
         pred_row,
         data,
     )
+    if following:
+        detail = "🔴 LIVE SEGUIMIENTO\n\n" + detail
+    return detail
 
 
 def _refresh_waiting_text(match_id: str, data: dict | None) -> str:
@@ -3259,7 +3408,9 @@ def _detail_keyboard(
             ),
         ]
     )
-    rows.append([_follow_toggle_button(chat_id, match_id, token, page)])
+    _ftb = _follow_toggle_button(chat_id, match_id, token, page, match_data)
+    if _ftb is not None:
+        rows.append([_ftb])
     rows.append(
         [
             InlineKeyboardButton(
@@ -4084,6 +4235,9 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             text=_follow_status_text(job),
             reply_markup=_follow_status_keyboard(job),
         )
+        if query.message and isinstance(job, dict):
+            job["status_message_id"] = query.message.message_id
+            job["status_last_text"] = _follow_status_text(job)
         return
 
     if data == "menu:refresh7d":
@@ -4488,6 +4642,7 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             )
             return
 
+        event_date = None if event_token == "_" else event_token
         FOLLOW_JOBS[chat_id] = {
             "match_id": match_id,
             "event_token": event_token,
@@ -4497,6 +4652,22 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             "interval_seconds": FOLLOW_REFRESH_SECONDS,
             "stale_cycles_limit": FOLLOW_STALE_CYCLES_LIMIT,
         }
+        if query.message:
+            FOLLOW_JOBS[chat_id]["status_message_id"] = query.message.message_id
+        
+        try:
+            pred_row = _get_or_compute_predictions(match_id, data_row)
+            FOLLOW_JOBS[chat_id]["follow_data"] = data_row
+            FOLLOW_JOBS[chat_id]["follow_pred"] = pred_row
+        except Exception:
+            pred_row = None
+
+        await _publish_follow_status(
+            context.application,
+            chat_id,
+            FOLLOW_JOBS[chat_id],
+            force=True,
+        )
         context.application.create_task(_run_follow_match_job(context.application, chat_id))
 
         job = FOLLOW_JOBS.get(chat_id)
@@ -4504,14 +4675,6 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await _render_main_menu(update, context)
             return
 
-        await _replace_callback_message(
-            update,
-            text=(
-                f"Seguimiento iniciado para {match_id}.\n"
-                f"Refresco cada {FOLLOW_REFRESH_SECONDS}s."
-            ),
-            reply_markup=_follow_status_keyboard(job),
-        )
         return
 
     if data == "follow:stop":

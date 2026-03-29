@@ -5,3 +5,5 @@ seaborn
 scikit-learn
 python-telegram-bot>=21.0,<22.0
 python-dotenv>=1.0.0
+xgboost
+pandas
