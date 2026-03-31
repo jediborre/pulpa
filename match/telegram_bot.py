@@ -79,8 +79,14 @@ REFRESH_JOBS: dict[int, dict[str, object]] = {}
 FOLLOW_JOBS: dict[int, dict[str, object]] = {}
 MODEL_OUTPUTS_V4_DIR = BASE_DIR / "training" / "model_outputs_v4"
 MODEL_OUTPUTS_V2_DIR = BASE_DIR / "training" / "model_outputs_v2"
+MODEL_OUTPUTS_V6_DIR = BASE_DIR / "training" / "model_outputs_v6"
+MODEL_OUTPUTS_V9_DIR = BASE_DIR / "training" / "model_outputs_v9"
 FOLLOW_REFRESH_SECONDS = 45
 FOLLOW_STALE_CYCLES_LIMIT = 8
+
+# Active model per quarter — changeable at runtime via bot menu
+MODEL_CONFIG: dict[str, str] = {"q3": "v4", "q4": "v4"}
+AVAILABLE_MODELS: list[str] = ["v2", "v4", "v6", "v9"]
 
 
 def _log_raw_inference_result(match_id: str, source: str, infer_result: object) -> None:
@@ -356,7 +362,7 @@ def _pred_stats_text(pred_map: dict, total_matches: int) -> str:
 
     def _profit_text(hit: int, miss: int, push: int) -> str:
         stake = 20.0
-        odds = 1.91
+        odds = 1.42
         # 1X2 simulation: tie/push counts as lost ticket when betting side 1 or 2.
         net = hit * (stake * (odds - 1.0)) - (miss + push) * stake
         sign = "+" if net >= 0 else ""
@@ -639,9 +645,56 @@ def _pred_outcome_emoji_for_row(pred: dict, quarter: str) -> str:
 
 
 def _get_match_detail(match_id: str) -> dict | None:
+    """Sync version: fetch from DB only (used in backgrounds tasks)"""
     conn = _open_conn()
     data = db_mod.get_match(conn, match_id)
     conn.close()
+    return data
+
+
+async def _get_match_detail_async(match_id: str, update=None) -> dict | None:
+    """Async version: fetch from DB, then scrape if not found (for user-facing requests)"""
+    conn = _open_conn()
+    data = db_mod.get_match(conn, match_id)
+    conn.close()
+    
+    # If not found in DB, try to fetch from scraper in a thread
+    if not data:
+        download_msg = None
+        try:
+            logger.info(f"[GET_MATCH_DETAIL] Match {match_id} not in DB, attempting scrape...")
+            
+            # Send "Downloading..." message to user
+            if update:
+                download_msg = await update.message.reply_text("Descargando...")
+            
+            def _fetch_and_save():
+                # Create a new connection inside the thread (SQLite thread safety)
+                thread_conn = _open_conn()
+                fresh = scraper_mod.fetch_match_by_id(match_id)
+                if fresh:
+                    db_mod.save_match(thread_conn, match_id, fresh)
+                    logger.info(f"[GET_MATCH_DETAIL] Successfully scraped and saved match {match_id}")
+                thread_conn.close()
+                return fresh
+            
+            data = await asyncio.to_thread(_fetch_and_save)
+            
+            # Delete "Downloading..." message after scrape completes
+            if download_msg:
+                try:
+                    await download_msg.delete()
+                except Exception:
+                    pass
+                    
+        except Exception as exc:
+            logger.warning(f"[GET_MATCH_DETAIL] Scrape failed for {match_id}: {exc}")
+            if download_msg:
+                try:
+                    await download_msg.delete()
+                except Exception:
+                    pass
+    
     return data
 
 
@@ -882,6 +935,11 @@ def _ingest_new_date(event_date: str, limit: int | None = None) -> dict:
                 db_mod.mark_discovered_processed(conn, match_id)
                 skipped_ft += 1
                 continue
+            if _is_two_half_game(data):
+                db_mod.mark_discovered_processed(conn, match_id)
+                skipped_ft += 1
+                print(f"[date-ingest] skip 2-half match_id={match_id}", flush=True)
+                continue
             db_mod.save_match(conn, match_id, data)
             db_mod.mark_discovered_processed(conn, match_id)
             ing_ok += 1
@@ -1038,6 +1096,17 @@ def _ingest_new_date_with_progress(
                 progress_state["ingested_ok"] = ing_ok
                 progress_state["ingested_fail"] = ing_fail
                 progress_state["skipped_ft"] = skipped_ft
+                if index % DATE_INGEST_PROGRESS_EVERY == 0:
+                    progress_state["last_progress_at"] = index
+                continue
+            if _is_two_half_game(data):
+                db_mod.mark_discovered_processed(conn, match_id)
+                skipped_ft += 1
+                progress_state["processed"] = int(progress_state.get("processed") or 0) + 1
+                progress_state["ingested_ok"] = ing_ok
+                progress_state["ingested_fail"] = ing_fail
+                progress_state["skipped_ft"] = skipped_ft
+                print(f"[date-ingest] skip 2-half match_id={match_id}", flush=True)
                 if index % DATE_INGEST_PROGRESS_EVERY == 0:
                     progress_state["last_progress_at"] = index
                 continue
@@ -1749,6 +1818,12 @@ def _main_menu_keyboard(chat_id: int | None = None) -> InlineKeyboardMarkup:
                 callback_data="menu:refresh7d",
             )
         ],
+        [
+            InlineKeyboardButton(
+                f"7) Modelos (Q3={MODEL_CONFIG['q3']} Q4={MODEL_CONFIG['q4']})",
+                callback_data="menu:models",
+            )
+        ],
     ]
     if chat_id is not None and chat_id in DATE_INGEST_JOBS:
         rows.append(
@@ -1942,6 +2017,12 @@ def _ingest_live_matches() -> dict:
                 flush=True,
             )
             continue
+        if _is_two_half_game(data):
+            print(
+                f"[live] {index}/{total} skip 2-half match_id={match_id}",
+                flush=True,
+            )
+            continue
         try:
             db_mod.save_match(conn, match_id, data)
             ing_ok += 1
@@ -2068,6 +2149,10 @@ def _live_detail_keyboard(
             )
         ]
     )
+    rows.append([InlineKeyboardButton(
+        f"Modelos (Q3={MODEL_CONFIG['q3']} Q4={MODEL_CONFIG['q4']})",
+        callback_data=f"matchmodel:open:{match_id}:_:{page}",
+    )])
     rows.append([InlineKeyboardButton("Volver a live", callback_data=f"livepage:{page}")])
     rows.append([InlineKeyboardButton("Menu principal", callback_data="nav:main")])
     return InlineKeyboardMarkup(rows)
@@ -2246,6 +2331,66 @@ def _train_submenu_keyboard() -> InlineKeyboardMarkup:
             [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
         ]
     )
+
+
+def _model_submenu_keyboard() -> InlineKeyboardMarkup:
+    q3_v = MODEL_CONFIG["q3"]
+    q4_v = MODEL_CONFIG["q4"]
+    rows: list[list[InlineKeyboardButton]] = []
+
+    # Q3 selector row
+    q3_btns = [
+        InlineKeyboardButton(
+            f"{'✅' if q3_v == v else ''} Q3={v}",
+            callback_data=f"model:set:q3:{v}",
+        )
+        for v in AVAILABLE_MODELS
+    ]
+    rows.append(q3_btns)
+
+    # Q4 selector row
+    q4_btns = [
+        InlineKeyboardButton(
+            f"{'✅' if q4_v == v else ''} Q4={v}",
+            callback_data=f"model:set:q4:{v}",
+        )
+        for v in AVAILABLE_MODELS
+    ]
+    rows.append(q4_btns)
+
+    rows.append([InlineKeyboardButton("Menu principal", callback_data="nav:main")])
+    return InlineKeyboardMarkup(rows)
+
+
+def _match_model_submenu_keyboard(match_id: str, token: str, page: int) -> InlineKeyboardMarkup:
+    """Model selector anchored to a specific match detail (for back-navigation)."""
+    q3_v = MODEL_CONFIG["q3"]
+    q4_v = MODEL_CONFIG["q4"]
+    rows: list[list[InlineKeyboardButton]] = []
+
+    q3_btns = [
+        InlineKeyboardButton(
+            f"{'✅' if q3_v == v else ''} Q3={v}",
+            callback_data=f"matchmodel:set:q3:{v}:{match_id}:{token}:{page}",
+        )
+        for v in AVAILABLE_MODELS
+    ]
+    rows.append(q3_btns)
+
+    q4_btns = [
+        InlineKeyboardButton(
+            f"{'✅' if q4_v == v else ''} Q4={v}",
+            callback_data=f"matchmodel:set:q4:{v}:{match_id}:{token}:{page}",
+        )
+        for v in AVAILABLE_MODELS
+    ]
+    rows.append(q4_btns)
+
+    rows.append([InlineKeyboardButton(
+        "Regresar (recalcular)",
+        callback_data=f"matchmodel:back:{match_id}:{token}:{page}",
+    )])
+    return InlineKeyboardMarkup(rows)
 
 
 def _train_recalc_confirm_keyboard() -> InlineKeyboardMarkup:
@@ -2475,6 +2620,112 @@ def _calc_date_predictions(event_date: str, *, force_recalc: bool = True) -> dic
     }
 
 
+async def _run_calc_date_job(
+    app: Application,
+    chat_id: int,
+    message_id: int,
+    event_date: str,
+) -> None:
+    """Background task: recalculate predictions for all matches on a date,
+    editing the message every NOTIFY_EVERY matches to show progress."""
+    NOTIFY_EVERY = 10
+
+    rows = await asyncio.to_thread(_fetch_matches_for_date, event_date)
+    total = len(rows)
+    ok = fail = 0
+
+    async def _edit(text: str, reply_markup=None, parse_mode: str | None = None) -> None:
+        try:
+            kwargs: dict = {
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "text": text,
+            }
+            if reply_markup is not None:
+                kwargs["reply_markup"] = reply_markup
+            if parse_mode is not None:
+                kwargs["parse_mode"] = parse_mode
+            await app.bot.edit_message_text(**kwargs)
+        except Exception:
+            pass
+
+    for i, row in enumerate(rows, 1):
+        match_id = str(row.get("match_id", ""))
+        if not match_id:
+            continue
+        data = await asyncio.to_thread(_get_match_detail, match_id)
+        if not data:
+            fail += 1
+        else:
+            try:
+                result = await asyncio.to_thread(
+                    _compute_and_store_predictions, match_id, data
+                )
+                if result is not None:
+                    ok += 1
+                else:
+                    fail += 1
+            except Exception:
+                fail += 1
+
+        if i % NOTIFY_EVERY == 0 and i < total:
+            await _edit(
+                f"Recalculando {event_date}...\n"
+                f"{i}/{total} procesados | OK: {ok} | Fail: {fail}"
+            )
+
+    summary = (
+        f"Recalculo completado para {event_date}:\n"
+        f"Total: {total} | OK: {ok} | Fallidas: {fail}"
+    )
+    pred_map = await asyncio.to_thread(_fetch_date_pred_outcomes, event_date)
+    stats = _pred_stats_text(pred_map, total)
+    title = _event_date_title_es(event_date, total)
+    header = f"{summary}\n\n{title}"
+    parse_mode: str | None = None
+    if stats:
+        header += f"\n<pre>{html.escape(stats)}</pre>"
+        parse_mode = "HTML"
+    keyboard = _matches_keyboard(rows, event_date, 0, pred_map)
+    await _edit(header, reply_markup=keyboard, parse_mode=parse_mode)
+
+
+def _is_two_half_game(data: dict) -> bool:
+    """Returns True if match uses 2 halves instead of 4 quarters.
+
+    Detection rules:
+    - If Q3 or Q4 already have completed scores it's definitely a 4Q game.
+    - Finished game with ≤2 scored quarters → 2-half format.
+    - In-progress game at minute ≥36 with no Q3/Q4 data → 4Q game would
+      have Q3 data by then, so this must be a 2-half format.
+    """
+    s = data.get("score", {}) or {}
+    m = data.get("match", {}) or {}
+    quarters = s.get("quarters", {}) or {}
+
+    def _has_score(qk: str) -> bool:
+        q = quarters.get(qk)
+        return isinstance(q, dict) and q.get("home") is not None
+
+    if _has_score("Q3") or _has_score("Q4"):
+        return False
+
+    status_type = str(m.get("status_type", "") or "").strip().lower()
+    if status_type == "finished":
+        n_scored = sum(1 for k in ("Q1", "Q2", "Q3", "Q4") if _has_score(k))
+        return n_scored <= 2
+
+    # In-progress: at minute >=36 a 4Q game would already have Q3 data
+    graph_points = data.get("graph_points", [])
+    max_minute = 0
+    if graph_points:
+        try:
+            max_minute = int(graph_points[-1].get("minute", 0))
+        except (TypeError, ValueError):
+            max_minute = 0
+    return max_minute >= 36
+
+
 def _quarter_line(data: dict, quarter: str) -> str:
     q = data.get("score", {}).get("quarters", {}).get(quarter)
     if not q:
@@ -2602,6 +2853,7 @@ def _match_detail_text(match_id: str, data: dict) -> str:
             return "Q2: -"
         return _quarter_line(data, "Q2")
 
+    two_half = _is_two_half_game(data)
     lines = [
         f"Match ID: {match_id}{minute_suffix}",
         f"{m.get('home_team', '')} vs {m.get('away_team', '')}",
@@ -2609,9 +2861,10 @@ def _match_detail_text(match_id: str, data: dict) -> str:
         f"Liga: {m.get('league', '')}",
         _quarter_line(data, "Q1"),
         _quarter2_line(),
-        _quarter_line_with_winner("Q3", q3_home, q3_away),
-        _quarter_line_with_winner("Q4", q4_home, q4_away),
     ]
+    if not two_half:
+        lines.append(_quarter_line_with_winner("Q3", q3_home, q3_away))
+        lines.append(_quarter_line_with_winner("Q4", q4_home, q4_away))
     return "\n".join(lines)
 
 
@@ -2801,7 +3054,7 @@ def _compute_and_store_predictions(match_id: str, data: dict) -> dict | None:
         match_id=match_id,
         metric="f1",
         fetch_missing=False,
-        force_version="hybrid",
+        force_version=dict(MODEL_CONFIG),
     )
     _log_raw_inference_result(match_id, source="compute", infer_result=result)
     
@@ -2872,7 +3125,7 @@ def _get_or_compute_predictions(match_id: str, data: dict) -> dict | None:
                 match_id=match_id,
                 metric="f1",
                 fetch_missing=False,
-                force_version="hybrid",
+                force_version=dict(MODEL_CONFIG),
             )
             _log_raw_inference_result(match_id, source="enrich-from-db", infer_result=infer_result)
             return _enrich_prediction_row_from_infer(from_db, infer_result)
@@ -2993,8 +3246,12 @@ def _prediction_text(pred_row: dict | None, data: dict | None = None) -> str:
                     elif _q3_winner in ("home", "away") and _q3_pick in ("home", "away"):
                         q3_pred["outcome"] = "hit" if _q3_winner == _q3_pick else "miss"
 
-        # Resolve Q4 outcome from actual scores once game is finished
-        if isinstance(q4_pred, dict) and q4_pred.get("available") and status_type == "finished":
+        # Resolve Q4 outcome from actual scores once game is finished,
+        # or when the minute estimate shows the game clock has run out (API lag)
+        q4_game_done = status_type == "finished" or (
+            minute_est is not None and minute_est >= 48
+        )
+        if isinstance(q4_pred, dict) and q4_pred.get("available") and q4_game_done:
             _q4_sc = (data.get("score", {}).get("quarters", {}) or {}).get("Q4", {})
             _q4h = _safe_int((_q4_sc or {}).get("home"))
             _q4a = _safe_int((_q4_sc or {}).get("away"))
@@ -3040,13 +3297,13 @@ def _prediction_text(pred_row: dict | None, data: dict | None = None) -> str:
         return ", ".join(parts)
 
     def _line(label: str, pred: dict, waiting_preverdict: bool = False) -> str:
-        if label == "Q4" and waiting_preverdict:
+        if label.startswith("Q4") and waiting_preverdict:
             return "Q4: Esperando datos Q3"
         if not pred.get("available"):
             reason_code = str(pred.get("reason") or pred.get("gate_reason") or pred.get("outcome") or "unavailable")
             reason_code_norm = reason_code.strip().lower().replace(" ", "_")
             reason_code_simple = reason_code.strip().lower().replace(" ", "_").replace("/", "_")
-            if label == "Q4" and reason_code_norm == "missing_q3_score":
+            if label.startswith("Q4") and reason_code_norm == "missing_q3_score":
                 return "Q4: Esperando datos Q3"
             if reason_code_simple == "missing_q1_q2_scores":
                 return f"{label}: Esperando datos Q1|Q2"
@@ -3108,11 +3365,15 @@ def _prediction_text(pred_row: dict | None, data: dict | None = None) -> str:
             return f"{first_line}\n" + "\n".join(extra_lines)
         return first_line
 
+    q3_ver = MODEL_CONFIG["q3"].upper()
+    q4_ver = MODEL_CONFIG["q4"].upper()
+    if isinstance(data, dict) and _is_two_half_game(data):
+        return "Predicciones:\nFormato 2 mitades — sin Q3/Q4"
     return "\n".join(
         [
             "Predicciones:",
-            _line("Q3", rendered_row.get("q3", {})),
-            _line("Q4", rendered_row.get("q4", {}), waiting_preverdict=q4_waiting_preverdict),
+            _line(f"Q3 {q3_ver}", rendered_row.get("q3", {})),
+            _line(f"Q4 {q4_ver}", rendered_row.get("q4", {}), waiting_preverdict=q4_waiting_preverdict),
         ]
     )
 
@@ -3419,6 +3680,10 @@ def _detail_keyboard(
             )
         ]
     )
+    rows.append([InlineKeyboardButton(
+        f"Modelos (Q3={MODEL_CONFIG['q3']} Q4={MODEL_CONFIG['q4']})",
+        callback_data=f"matchmodel:open:{match_id}:{token}:{page}",
+    )])
     if event_date:
         rows.append(
             [
@@ -3829,16 +4094,33 @@ def _build_model_stats_text() -> str:
             out.append(" | ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)))
         return out
 
-    # Model metrics from CSVs (v2 and v4)
-    metrics_sections: list[str] = []
-    version_dirs = [
+    active_q3 = MODEL_CONFIG["q3"]
+    active_q4 = MODEL_CONFIG["q4"]
+
+    # All version dirs in order; only include those present on disk
+    all_version_dirs = [
         ("v2", MODEL_OUTPUTS_V2_DIR),
         ("v4", MODEL_OUTPUTS_V4_DIR),
+        ("v6", MODEL_OUTPUTS_V6_DIR),
+        ("v9", MODEL_OUTPUTS_V9_DIR),
     ]
+    version_dirs = [
+        (v, d) for v, d in all_version_dirs if d.exists()
+    ]
+
+    metrics_sections: list[str] = []
+    metrics_sections.append(
+        f"Activos: Q3={active_q3}  Q4={active_q4}"
+    )
+    metrics_sections.append("")
+
     headers = ["Filtro", "F1", "ACC", "ROC", "Ntrain", "Ntest", "Ntotal"]
     for version_name, version_dir in version_dirs:
+        q3_marker = " ✅" if version_name == active_q3 else ""
+        q4_marker = " ✅" if version_name == active_q4 else ""
         metrics_sections.append(f"Modelos {version_name}:")
         for target in ("q3", "q4"):
+            marker = q3_marker if target == "q3" else q4_marker
             csv_path = version_dir / f"{target}_metrics.csv"
             if not csv_path.exists():
                 metrics_sections.append(f"{target.upper()}: metrics no encontrado")
@@ -3866,7 +4148,7 @@ def _build_model_stats_text() -> str:
                     ]
                 )
 
-            metrics_sections.append(f"{target.upper()} (test):")
+            metrics_sections.append(f"{target.upper()}{marker} (test):")
             metrics_sections.extend(_table(headers, table_rows))
             metrics_sections.append("")
 
@@ -4376,6 +4658,124 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         return
 
+    if data == "menu:models":
+        q3_v = MODEL_CONFIG["q3"]
+        q4_v = MODEL_CONFIG["q4"]
+        await query.edit_message_text(
+            text=(
+                f"Selector de modelos\n"
+                f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
+                "Elige el modelo para cada cuarto:"
+            ),
+            reply_markup=_model_submenu_keyboard(),
+        )
+        return
+
+    if data.startswith("model:set:"):
+        # Format: model:set:q3:v4  or  model:set:q4:v9
+        parts = data.split(":")
+        if len(parts) == 4:
+            _, _, quarter, version = parts
+            if quarter in ("q3", "q4") and version in AVAILABLE_MODELS:
+                MODEL_CONFIG[quarter] = version
+        q3_v = MODEL_CONFIG["q3"]
+        q4_v = MODEL_CONFIG["q4"]
+        await query.edit_message_text(
+            text=(
+                f"Selector de modelos\n"
+                f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
+                "Elige el modelo para cada cuarto:"
+            ),
+            reply_markup=_model_submenu_keyboard(),
+        )
+        return
+
+    if data.startswith("matchmodel:open:"):
+        # Format: matchmodel:open:{match_id}:{token}:{page}
+        try:
+            _, _, match_id, token, page_text = data.split(":", maxsplit=4)
+            page = int(page_text)
+        except (ValueError, TypeError):
+            await _render_main_menu(update, context)
+            return
+        q3_v = MODEL_CONFIG["q3"]
+        q4_v = MODEL_CONFIG["q4"]
+        submenu_text = (
+            f"Selector de modelos (match {match_id})\n"
+            f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
+            "Elige el modelo para cada cuarto:\n"
+            "Al regresar se recalculara la prediccion."
+        )
+        submenu_kb = _match_model_submenu_keyboard(match_id, token, page)
+        msg = query.message
+        if msg and getattr(msg, "photo", None):
+            chat_id = update.effective_chat.id if update.effective_chat else None
+            if chat_id is not None:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=submenu_text,
+                    reply_markup=submenu_kb,
+                )
+                try:
+                    await msg.delete()
+                except Exception:
+                    pass
+        else:
+            try:
+                await query.edit_message_text(
+                    text=submenu_text,
+                    reply_markup=submenu_kb,
+                )
+            except Exception:
+                chat_id = update.effective_chat.id if update.effective_chat else None
+                if chat_id is not None:
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text=submenu_text,
+                        reply_markup=submenu_kb,
+                    )
+        return
+
+    if data.startswith("matchmodel:set:"):
+        # Format: matchmodel:set:{quarter}:{version}:{match_id}:{token}:{page}
+        try:
+            parts = data.split(":", maxsplit=6)
+            _, _, quarter, version, match_id, token, page_text = parts
+            page = int(page_text)
+        except (ValueError, TypeError):
+            await _render_main_menu(update, context)
+            return
+        if quarter in ("q3", "q4") and version in AVAILABLE_MODELS:
+            MODEL_CONFIG[quarter] = version
+        q3_v = MODEL_CONFIG["q3"]
+        q4_v = MODEL_CONFIG["q4"]
+        await query.edit_message_text(
+            text=(
+                f"Selector de modelos (match {match_id})\n"
+                f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
+                "Elige el modelo para cada cuarto:\n"
+                "Al regresar se recalculara la prediccion."
+            ),
+            reply_markup=_match_model_submenu_keyboard(match_id, token, page),
+        )
+        return
+
+    if data.startswith("matchmodel:back:"):
+        # Format: matchmodel:back:{match_id}:{token}:{page}
+        try:
+            _, _, match_id, token, page_text = data.split(":", maxsplit=4)
+            page = int(page_text)
+        except (ValueError, TypeError):
+            await _render_main_menu(update, context)
+            return
+        event_date = None if token == "_" else token
+        if event_date is None:
+            # Came from live detail (no event_date)
+            await _refresh_live_detail(update, context, "pred", match_id, page)
+        else:
+            await _refresh_detail(update, context, "pred", match_id, event_date, page)
+        return
+
     if data == "train:status":
         await query.edit_message_text(
             text=_train_status_text(),
@@ -4812,39 +5212,19 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     if data.startswith("calc:date:"):
         event_date = data[len("calc:date:"):]
-        await _set_waiting_state(update, text="Recalculando apuestas... espere")
-        try:
-            result = await asyncio.to_thread(
-                _calc_date_predictions,
-                event_date,
-                force_recalc=True,
-            )
-        except Exception as exc:
-            await _replace_callback_message(
-                update,
-                text=f"Error calculando apuestas: {exc}",
-                reply_markup=InlineKeyboardMarkup(
-                    [[InlineKeyboardButton("Volver", callback_data=f"date:{event_date}:0")]]
-                ),
-            )
+        chat_id = update.effective_chat.id if update.effective_chat else None
+        message = query.message if query else None
+        message_id = message.message_id if message else None
+        if chat_id is None or message_id is None:
             return
-        summary = (
-            f"Recalculo completado para {event_date}:\n"
-            f"Total: {result['total']} | Recalculadas: {result['recalculated']} | "
-            f"OK: {result['ok']} | Fallidas: {result['fail']}"
-        )
-        rows = _fetch_matches_for_date(event_date)
-        pred_map = _fetch_date_pred_outcomes(event_date)
-        stats = _pred_stats_text(pred_map, len(rows))
-        title = _event_date_title_es(event_date, len(rows))
-        header = f"{summary}\n\n{title}"
-        if stats:
-            header += f"\n<pre>{html.escape(stats)}</pre>"
-        await _replace_callback_message(
+        rows_preview = _fetch_matches_for_date(event_date)
+        total_preview = len(rows_preview)
+        await _set_waiting_state(
             update,
-            text=header,
-            reply_markup=_matches_keyboard(rows, event_date, 0, pred_map),
-            parse_mode="HTML",
+            text=f"Recalculando {event_date}...\n0/{total_preview} procesados",
+        )
+        context.application.create_task(
+            _run_calc_date_job(context.application, chat_id, message_id, event_date)
         )
         return
 
@@ -5020,7 +5400,7 @@ async def _handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     context.user_data[AWAITING_MATCH_ID_KEY] = False
 
-    data = _get_match_detail(match_id)
+    data = await _get_match_detail_async(match_id, update=update)
     if not data:
         await update.message.reply_text(
             text=f"No se encontro el match {match_id}.",

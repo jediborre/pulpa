@@ -16,8 +16,11 @@ import sqlite3
 
 
 def get_conn(db_path: str) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("PRAGMA busy_timeout=30000")
     return conn
 
 
@@ -109,6 +112,21 @@ def init_db(conn: sqlite3.Connection) -> None:
                 updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
                 PRIMARY KEY (event_date, match_id)
             );
+
+        CREATE INDEX IF NOT EXISTS idx_pbp_match_id
+            ON play_by_play (match_id);
+        CREATE INDEX IF NOT EXISTS idx_pbp_match_quarter
+            ON play_by_play (match_id, quarter, seq);
+        CREATE INDEX IF NOT EXISTS idx_graph_points_match_id
+            ON graph_points (match_id);
+        CREATE INDEX IF NOT EXISTS idx_quarter_scores_match_id
+            ON quarter_scores (match_id);
+        CREATE INDEX IF NOT EXISTS idx_discovered_event_date
+            ON discovered_ft_matches (event_date);
+        CREATE INDEX IF NOT EXISTS idx_discovered_event_date_processed
+            ON discovered_ft_matches (event_date, processed);
+        CREATE INDEX IF NOT EXISTS idx_matches_date
+            ON matches (date);
     """)
     _ensure_match_columns(conn)
     conn.commit()

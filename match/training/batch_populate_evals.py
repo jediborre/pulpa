@@ -31,7 +31,10 @@ def load_ensemble(version, target):
     elif version == "v7":
         names = ["catboost", "xgb_cat"]
     elif version == "v9":
-        names = ["logreg", "gb"]
+        # V9: load pre-built ensemble with models and weights
+        path = MODELS[version] / f"{target}_ensemble.joblib"
+        ensemble_data = joblib.load(path)
+        return None, {"ensemble": ensemble_data}
         
     vec = None
     for name in names:
@@ -42,7 +45,51 @@ def load_ensemble(version, target):
     
     return vec, models
 
-def predict_ensemble(vec, models, features):
+def predict_ensemble(vec, models, features, version=None):
+    # Handle V9 ensemble
+    if "ensemble" in models and version == "v9":
+        ensemble_data = models["ensemble"]
+        ensemble_models = ensemble_data.get("models", {})
+        weights = ensemble_data.get("weights", [1.0, 1.0])
+        
+        logreg_model = ensemble_models.get("logreg")
+        gb_model = ensemble_models.get("gb")
+        
+        if logreg_model is None or gb_model is None:
+            raise ValueError("V9 ensemble missing logreg or gb model")
+        
+        # Build feature array for sklearn models (features already as dict)
+        feature_names = ["away_prior_wr", "clutch_away_max_run_pts", "clutch_away_points",
+                        "clutch_home_event_share", "clutch_home_max_run_pts", "clutch_home_points",
+                        "clutch_last_scoring_away", "clutch_last_scoring_home", "clutch_points_diff",
+                        "clutch_run_diff", "clutch_scoring_events", "clutch_window_minutes",
+                        "global_abs_diff", "global_diff", "gp_area_away", "gp_area_diff",
+                        "gp_area_home", "gp_count", "gp_last", "gp_mean_abs", "gp_peak_away",
+                        "gp_peak_home", "gp_slope_3m", "gp_slope_5m", "gp_swings",
+                        "home_prior_wr", "ht_away", "ht_diff", "ht_home", "ht_total",
+                        "is_tied", "leading_points_per_min", "mc_home_win_prob", "pbp_3pt_diff",
+                        "pbp_away_3pt", "pbp_away_plays", "pbp_away_pts_per_play", "pbp_home_3pt",
+                        "pbp_home_3pt_share", "pbp_home_plays", "pbp_home_plays_share",
+                        "pbp_home_pts_per_play", "pbp_plays_diff", "pbp_pts_per_play_diff",
+                        "pressure_ratio_lead", "pressure_ratio_tie", "prior_wr_diff",
+                        "prior_wr_sum", "q1_diff", "q2_diff", "remaining_minutes_target",
+                        "req_pts_per_trailing_event", "required_ppm_lead", "required_ppm_tie",
+                        "scoring_gap_per_min", "trailing_3pt_rate", "trailing_is_away",
+                        "trailing_is_home", "trailing_play_share", "trailing_plays_per_min",
+                        "trailing_points_per_min", "trailing_points_per_play",
+                        "trailing_points_to_lead", "trailing_points_to_tie", "urgency_index"]
+        
+        x = [[features.get(name, 0.0) for name in feature_names]]
+        
+        probs = []
+        if logreg_model is not None:
+            probs.append(float(logreg_model.predict_proba(x)[0][1]) * weights[0])
+        if gb_model is not None:
+            probs.append(float(gb_model.predict_proba(x)[0][1]) * weights[1])
+        
+        return float(sum(probs) / sum(weights)) if probs else 0.5
+    
+    # Handle V4-V7 with vectorizer
     if vec is not None:
         x = vec.transform([features])
     else:
@@ -100,8 +147,8 @@ def main():
             if not m_data:
                 continue
             
-            p_q3 = predict_ensemble(vec_q3, models_q3, sample.features_q3)
-            p_q4 = predict_ensemble(vec_q4, models_q4, sample.features_q4)
+            p_q3 = predict_ensemble(vec_q3, models_q3, sample.features_q3, version=v_name)
+            p_q4 = predict_ensemble(vec_q4, models_q4, sample.features_q4, version=v_name)
             
             q3_pick = "home" if p_q3 >= 0.5 else "away"
             q4_pick = "home" if p_q4 >= 0.5 else "away"

@@ -14,6 +14,7 @@ import sys
 from pathlib import Path
 
 import joblib
+import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -29,6 +30,8 @@ MODEL_DIR_V1 = ROOT / "training" / "model_outputs"
 MODEL_DIR_V2 = ROOT / "training" / "model_outputs_v2"
 MODEL_DIR_V3 = ROOT / "training" / "model_outputs_v3"
 MODEL_DIR_V4 = ROOT / "training" / "model_outputs_v4"
+MODEL_DIR_V6 = ROOT / "training" / "model_outputs_v6"
+MODEL_DIR_V9 = ROOT / "training" / "model_outputs_v9"
 GATE_CONFIG = ROOT / "training" / "model_outputs_v2" / "gate_config.json"
 DB_PATH = ROOT / "matches.db"
 _GATE_CACHE: dict | None | bool = None
@@ -100,16 +103,20 @@ def _pbp_stats_upto(pbp: dict, quarters: list[str]) -> dict:
     away_plays = 0
     home_3pt = 0
     away_3pt = 0
+    home_pts = 0
+    away_pts = 0
     for quarter in quarters:
         for play in pbp.get(quarter, []):
             team = play.get("team")
             pts = int(play.get("points", 0))
             if team == "home":
                 home_plays += 1
+                home_pts += pts
                 if pts == 3:
                     home_3pt += 1
             elif team == "away":
                 away_plays += 1
+                away_pts += pts
                 if pts == 3:
                     away_3pt += 1
 
@@ -124,6 +131,13 @@ def _pbp_stats_upto(pbp: dict, quarters: list[str]) -> dict:
         "pbp_3pt_diff": home_3pt - away_3pt,
         "pbp_home_plays_share": _safe_rate(home_plays, total_plays),
         "pbp_home_3pt_share": _safe_rate(home_3pt, total_3pt),
+        "pbp_home_pts": home_pts,
+        "pbp_away_pts": away_pts,
+        "pbp_home_pts_per_play": _safe_rate(home_pts, home_plays),
+        "pbp_away_pts_per_play": _safe_rate(away_pts, away_plays),
+        "pbp_pts_per_play_diff": (
+            _safe_rate(home_pts, home_plays) - _safe_rate(away_pts, away_plays)
+        ),
     }
 
 
@@ -596,6 +610,29 @@ def _required_ok(data: dict, target: str) -> tuple[bool, str]:
     return True, "ok"
 
 
+def _monte_carlo_win_prob(score_home: int, score_away: int, pbp_home_plays: int,
+                          pbp_away_plays: int, pbp_home_pts: float,
+                          pbp_away_pts: float, elapsed_minutes: float,
+                          minutes_left: float, num_sims: int = 5000) -> dict:
+    home_ppm = _safe_rate(pbp_home_pts, elapsed_minutes)
+    away_ppm = _safe_rate(pbp_away_pts, elapsed_minutes)
+    if home_ppm <= 0 and away_ppm <= 0:
+        if score_home == score_away:
+            return {"mc_home_win_prob": 0.5}
+        return {"mc_home_win_prob": 1.0 if score_home > score_away else 0.0}
+    var_home = max(0.01, home_ppm * 1.3)
+    var_away = max(0.01, away_ppm * 1.3)
+    sim_home = np.random.normal(
+        score_home + home_ppm * minutes_left,
+        np.sqrt(var_home * minutes_left), num_sims)
+    sim_away = np.random.normal(
+        score_away + away_ppm * minutes_left,
+        np.sqrt(var_away * minutes_left), num_sims)
+    home_wins = np.sum(sim_home > sim_away)
+    ties = np.sum(np.abs(sim_home - sim_away) < 0.5)
+    return {"mc_home_win_prob": float(home_wins + 0.5 * ties) / float(num_sims)}
+
+
 def _build_features(
     conn,
     match_data: dict,
@@ -616,7 +653,7 @@ def _build_features(
     match_date = m.get("date", "")
     match_time = m.get("time", "")
 
-    window = 12 if version in ("v2", "v4") else 10
+    window = 12 if version in ("v2", "v4", "v6") else 10
     home_prior_wr = _team_prior_wr(
         conn,
         home_team,
@@ -642,7 +679,7 @@ def _build_features(
         "q2_diff": (q2h or 0) - (q2a or 0),
     }
 
-    if version in ("v2", "v4"):
+    if version in ("v2", "v4", "v6"):
         top_leagues, top_teams = _get_top_buckets(conn)
 
         def bucket(value: str, top_set: set[str], prefix: str) -> str:
@@ -665,12 +702,12 @@ def _build_features(
             "ht_away": ht_away,
             "ht_diff": ht_home - ht_away,
         })
-        if version in ("v2", "v4"):
+        if version in ("v2", "v4", "v6"):
             feat["ht_total"] = ht_home + ht_away
         feat.update(_graph_stats_upto(gp, 24))
         q3_pbp_stats = _pbp_stats_upto(pbp, ["Q1", "Q2"])
         feat.update(q3_pbp_stats)
-        if version == "v4":
+        if version in ("v4", "v6"):
             feat.update(
                 _score_pressure_features(
                     score_home=ht_home,
@@ -690,6 +727,19 @@ def _build_features(
                     window_minutes=6.0,
                 )
             )
+        if version == "v6":
+            feat.update(
+                _monte_carlo_win_prob(
+                    score_home=ht_home,
+                    score_away=ht_away,
+                    pbp_home_plays=q3_pbp_stats["pbp_home_plays"],
+                    pbp_away_plays=q3_pbp_stats["pbp_away_plays"],
+                    pbp_home_pts=q3_pbp_stats["pbp_home_pts"],
+                    pbp_away_pts=q3_pbp_stats["pbp_away_pts"],
+                    elapsed_minutes=24.0,
+                    minutes_left=12.0,
+                )
+            )
         return feat
 
     feat = dict(base)
@@ -699,12 +749,12 @@ def _build_features(
         "score_3q_away": ht_away + (q3a or 0),
         "score_3q_diff": (ht_home + (q3h or 0)) - (ht_away + (q3a or 0)),
     })
-    if version in ("v2", "v4"):
+    if version in ("v2", "v4", "v6"):
         feat["q3_total"] = (q3h or 0) + (q3a or 0)
     feat.update(_graph_stats_upto(gp, 36))
     q4_pbp_stats = _pbp_stats_upto(pbp, ["Q1", "Q2", "Q3"])
     feat.update(q4_pbp_stats)
-    if version == "v4":
+    if version in ("v4", "v6"):
         feat.update(
             _score_pressure_features(
                 score_home=ht_home + (q3h or 0),
@@ -724,6 +774,21 @@ def _build_features(
                 window_minutes=6.0,
             )
         )
+    if version == "v6":
+        score_3q_home = ht_home + (q3h or 0)
+        score_3q_away = ht_away + (q3a or 0)
+        feat.update(
+            _monte_carlo_win_prob(
+                score_home=score_3q_home,
+                score_away=score_3q_away,
+                pbp_home_plays=q4_pbp_stats["pbp_home_plays"],
+                pbp_away_plays=q4_pbp_stats["pbp_away_plays"],
+                pbp_home_pts=q4_pbp_stats["pbp_home_pts"],
+                pbp_away_pts=q4_pbp_stats["pbp_away_pts"],
+                elapsed_minutes=36.0,
+                minutes_left=12.0,
+            )
+        )
     return feat
 
 
@@ -735,8 +800,12 @@ def _predict_prob(
 ) -> float:
     if version == "v4":
         model_dir = MODEL_DIR_V4
+    elif version == "v6":
+        model_dir = MODEL_DIR_V6
     elif version == "v2":
         model_dir = MODEL_DIR_V2
+    elif version == "v9":
+        model_dir = MODEL_DIR_V9
     else:
         model_dir = MODEL_DIR_V1
 
@@ -751,8 +820,45 @@ def _predict_prob(
         return float(model.predict_proba(x)[0][1])
 
     if model_name == "ensemble_avg_prob":
-        probs = [single("logreg"), single("rf"), single("gb")]
-        return float(sum(probs) / len(probs))
+        if version == "v6":
+            probs = [single("xgb"), single("mlp"), single("hist_gb")]
+            return float(sum(probs) / len(probs))
+        if version == "v9":
+            # V9 uses pre-built ensemble with models and weights
+            path = model_dir / f"{target}_ensemble.joblib"
+            if not path.exists():
+                raise FileNotFoundError(f"V9 Ensemble model not found: {path}")
+            
+            ensemble_data = joblib.load(path)
+            models_dict = ensemble_data.get("models", {})
+            weights = ensemble_data.get("weights", [1.0, 1.0])
+            
+            # V9 ensemble has logreg and gb models (sklearn objects) already trained
+            logreg_model = models_dict.get("logreg")
+            gb_model = models_dict.get("gb")
+            
+            if logreg_model is None or gb_model is None:
+                raise ValueError("V9 ensemble missing logreg or gb model")
+            
+            # Load logreg to get vectorizer for feature transformation
+            logreg_path = model_dir / f"{target}_logreg.joblib"
+            logreg_artifact = joblib.load(logreg_path)
+            vec = logreg_artifact["vectorizer"]
+            
+            # Transform features using the vectorizer
+            x = vec.transform([features])
+            
+            probs = []
+            if logreg_model is not None:
+                probs.append(float(logreg_model.predict_proba(x)[0][1]) * weights[0])
+            if gb_model is not None:
+                probs.append(float(gb_model.predict_proba(x)[0][1]) * weights[1])
+            
+            return float(sum(probs) / sum(weights)) if probs else 0.5
+        else:
+            # V1-V4 use logreg, rf/ensemble, gb with vectorizer
+            probs = [single("logreg"), single("rf"), single("gb")]
+            return float(sum(probs) / len(probs))
 
     return single(model_name)
 
@@ -1187,7 +1293,9 @@ def run_inference(
     }
 
     def forced_version_for_target(target: str) -> str | None:
-        if force_version in ("v1", "v2", "v4"):
+        if isinstance(force_version, dict):
+            return force_version.get(target) or None
+        if force_version in ("v1", "v2", "v4", "v6", "v9"):
             return force_version
         if force_version == "hybrid":
             return "v2" if target == "q3" else "v4"
@@ -1340,7 +1448,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--force-version",
-        choices=["auto", "v1", "v2", "v4", "hybrid"],
+        choices=["auto", "v1", "v2", "v4", "v6", "v9", "hybrid"],
         default="auto",
         help="Override selected version (hybrid => q3=v2, q4=v4)",
     )

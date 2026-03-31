@@ -245,22 +245,45 @@ def plot_graph(match_data: dict, out_path: str) -> str:
 
     status_type = str(m.get("status_type", "") or "").strip().lower()
     quarters = s.get("quarters", {}) if isinstance(s, dict) else {}
-    q4 = quarters.get("Q4") if isinstance(quarters, dict) else None
-    q4_complete = (
-        isinstance(q4, dict)
-        and q4.get("home") is not None
-        and q4.get("away") is not None
+
+    # Count periods that have actual final scores.
+    n_played_quarters = sum(
+        1 for q in ("Q1", "Q2", "Q3", "Q4")
+        if isinstance(quarters.get(q), dict)
+        and quarters[q].get("home") is not None
+        and quarters[q].get("away") is not None
+    )
+    finished = status_type == "finished"
+    # A finished match with ≤2 scored periods is a 2-half game (e.g. NCAA).
+    if finished and 0 < n_played_quarters <= 2:
+        n_total_quarters = n_played_quarters
+        # Infer half duration from graph data (NCAA=20 min, etc.).
+        approx_qd = (max(minutes) if minutes else 40) / n_total_quarters
+        quarter_duration = min(
+            (10, 12, 15, 20, 25), key=lambda d: abs(approx_qd - d)
+        )
+    else:
+        n_total_quarters = 4
+        quarter_duration = 12
+    x_end = float(n_total_quarters * quarter_duration)
+
+    last_q = f"Q{n_total_quarters}"
+    last_q_data = quarters.get(last_q)
+    last_q_complete = (
+        isinstance(last_q_data, dict)
+        and last_q_data.get("home") is not None
+        and last_q_data.get("away") is not None
     )
     extended_to_ft = False
     extend_start_minute = 0
     extend_start_value = 0
-    # Some FT matches come with graph_points ending before 48 (e.g. minute 40).
-    # Extend the last value to FT so the chart does not look like an incomplete Q4.
-    if minutes and max(minutes) < 48 and (status_type == "finished" or q4_complete):
+    # Some FT matches have graph_points ending before x_end.
+    # Extend the last value to FT so the chart does not look truncated.
+    if minutes and max(minutes) < x_end and finished:
         extend_start_minute = int(minutes[-1])
         extend_start_value = int(values[-1])
         extended_to_ft = True
-        minutes = [*minutes, 48]
+        minutes = [*minutes, int(x_end)]
         values = [*values, values[-1]]
 
     figure_bg = "#0C141B"
@@ -290,10 +313,10 @@ def plot_graph(match_data: dict, out_path: str) -> str:
 
     max_minute = max(minutes)
     x_start = 0.0
-    x_end = 48.0
 
-    quarter_spans = [(0, 12), (12, 24), (24, 36), (36, 48)]
-    for i, (q_start, q_end) in enumerate(quarter_spans):
+    for i in range(n_total_quarters):
+        q_start = i * quarter_duration
+        q_end = (i + 1) * quarter_duration
         bg = quarter_bg_a if i % 2 == 0 else quarter_bg_b
         if q_start >= max_minute:
             bg = future_bg
@@ -303,15 +326,15 @@ def plot_graph(match_data: dict, out_path: str) -> str:
     ax.axhspan(0, peak_abs + y_pad, color=top_zone_bg, alpha=0.16, zorder=0.4)
     ax.axhspan(-peak_abs - y_pad, 0, color=bottom_zone_bg, alpha=0.20, zorder=0.4)
 
-    for x in (12, 24, 36):
-        ax.axvline(x=x, color="#2B3C4F", linewidth=1.0, zorder=1)
+    for i in range(1, n_total_quarters):
+        ax.axvline(x=i * quarter_duration, color="#2B3C4F", linewidth=1.0, zorder=1)
 
     if extended_to_ft and len(minutes) >= 2:
         # Real feed segment
         ax.plot(minutes[:-1], values[:-1], linewidth=2.2, color=line_color, zorder=4)
         # Extrapolated segment to FT
         ax.plot(
-            [extend_start_minute, 48],
+            [extend_start_minute, int(x_end)],
             [extend_start_value, extend_start_value],
             linewidth=2.2,
             color=line_color,
@@ -343,11 +366,12 @@ def plot_graph(match_data: dict, out_path: str) -> str:
     )
 
     y_text = ymax - (ymax - ymin) * 0.1
-    for label, x in (("Q1", 6), ("Q2", 18), ("Q3", 30), ("Q4", 42)):
+    for i in range(n_total_quarters):
+        mid_x = (i + 0.5) * quarter_duration
         ax.text(
-            x,
+            mid_x,
             y_text,
-            label,
+            f"Q{i + 1}",
             ha="center",
             va="center",
             fontsize=11,
@@ -360,7 +384,7 @@ def plot_graph(match_data: dict, out_path: str) -> str:
 
     ax.set_ylim(-peak_abs - y_pad, peak_abs + y_pad)
 
-    ax.set_xticks([0, 48])
+    ax.set_xticks([0, int(x_end)])
     ax.set_xticklabels(["0:00", "FT"], color=muted_text_color, fontsize=10)
     ax.yaxis.tick_right()
     ax.set_yticks([peak_abs, 0, -peak_abs])
@@ -373,7 +397,7 @@ def plot_graph(match_data: dict, out_path: str) -> str:
     ax.set_xlabel("")
     ax.set_ylabel("")
 
-    halftime_x = 24
+    halftime_x = x_end / 2
     ax.axvline(halftime_x, color=halftime_color, linewidth=1.4, zorder=6)
     ax.plot(
         halftime_x,
@@ -398,6 +422,38 @@ def plot_graph(match_data: dict, out_path: str) -> str:
         zorder=7,
         clip_on=False,
     )
+
+    # Live time marker: red dot + wall-clock label at the last data point
+    if not finished and minutes and values:
+        import datetime as _dt
+        live_x = minutes[-1]
+        live_y = values[-1]
+        live_time_str = _dt.datetime.now().strftime("%H:%M")
+        ax.axvline(live_x, color=halftime_color, linewidth=1.4, zorder=6)
+        ax.plot(
+            live_x,
+            peak_abs + y_pad * 0.05,
+            marker="o",
+            markersize=5,
+            markerfacecolor=axes_bg,
+            markeredgewidth=1.4,
+            markeredgecolor=halftime_color,
+            zorder=8,
+            clip_on=False,
+        )
+        ax.text(
+            live_x,
+            peak_abs + y_pad * 0.45,
+            live_time_str,
+            ha="center",
+            va="bottom",
+            color=halftime_color,
+            fontsize=11,
+            fontweight="bold",
+            zorder=8,
+            clip_on=False,
+        )
+
     quarters = s.get("quarters", {})
     q_order = ["Q1", "Q2", "Q3", "Q4"]
     q_parts = []

@@ -1,0 +1,4 @@
+OK: True
+Result keys: ['ok', 'match_id', 'fetched_now', 'metric_for_pick', 'force_version', 'match', 'predictions']
+q3: home (conf=0.6043, signal=BET)
+q4: home (conf=0.6608, signal=BET)
