@@ -1,13 +1,13 @@
 {
-  "generated_at_utc": "2026-03-26T18:14:19.073570+00:00",
+  "generated_at_utc": "2026-03-31T19:11:13.207606+00:00",
   "metric": "f1",
   "odds": 1.91,
   "min_coverage": 0.08,
   "targets": {
     "q3": {
-      "samples_total": 1799,
-      "samples_train": 1439,
-      "samples_val": 360,
+      "samples_total": 2009,
+      "samples_train": 1607,
+      "samples_val": 402,
       "default_params": {
         "min_graph_points": 18,
         "min_pbp_events": 20,
@@ -17,64 +17,65 @@
       "best_params": {
         "min_graph_points": 12,
         "min_pbp_events": 14,
-        "volatility_block_at": 0.62,
+        "volatility_block_at": 0.8,
         "min_edge": 0.05
       },
       "train_best": {
-        "samples": 1439,
-        "bets": 981,
-        "coverage": 0.681723,
-        "wins": 879,
-        "losses": 102,
-        "hit_rate": 0.896024,
-        "roi_units_per_bet": 0.711407,
-        "profit_units": 697.89
+        "samples": 1607,
+        "bets": 1206,
+        "coverage": 0.750467,
+        "wins": 986,
+        "losses": 220,
+        "hit_rate": 0.817579,
+        "roi_units_per_bet": 0.561575,
+        "profit_units": 677.26
       },
       "val_default": {
-        "samples": 360,
-        "bets": 260,
-        "coverage": 0.722222,
-        "wins": 195,
-        "losses": 65,
-        "hit_rate": 0.75,
-        "roi_units_per_bet": 0.4325,
-        "profit_units": 112.45
+        "samples": 402,
+        "bets": 276,
+        "coverage": 0.686567,
+        "wins": 209,
+        "losses": 67,
+        "hit_rate": 0.757246,
+        "roi_units_per_bet": 0.446341,
+        "profit_units": 123.19
       },
       "val_best": {
-        "samples": 360,
-        "bets": 245,
-        "coverage": 0.680556,
-        "wins": 186,
-        "losses": 59,
-        "hit_rate": 0.759184,
-        "roi_units_per_bet": 0.450041,
-        "profit_units": 110.26
+        "samples": 402,
+        "bets": 285,
+        "coverage": 0.708955,
+        "wins": 216,
+        "losses": 69,
+        "hit_rate": 0.757895,
+        "roi_units_per_bet": 0.447579,
+        "profit_units": 127.56
       },
       "full_default": {
-        "samples": 1799,
-        "bets": 1301,
-        "coverage": 0.72318,
-        "wins": 1126,
-        "losses": 175,
-        "hit_rate": 0.865488,
-        "roi_units_per_bet": 0.653082,
-        "profit_units": 849.66
+        "samples": 2009,
+        "bets": 1459,
+        "coverage": 0.726232,
+        "wins": 1176,
+        "losses": 283,
+        "hit_rate": 0.806032,
+        "roi_units_per_bet": 0.53952,
+        "profit_units": 787.16
       },
       "full_best": {
-        "samples": 1799,
-        "bets": 1226,
-        "coverage": 0.68149,
-        "wins": 1065,
-        "losses": 161,
-        "hit_rate": 0.868679,
-        "roi_units_per_bet": 0.659176,
-        "profit_units": 808.15
-      }
+        "samples": 2009,
+        "bets": 1491,
+        "coverage": 0.74216,
+        "wins": 1202,
+        "losses": 289,
+        "hit_rate": 0.80617,
+        "roi_units_per_bet": 0.539785,
+        "profit_units": 804.82
+      },
+      "status": "ok"
     },
     "q4": {
-      "samples_total": 1774,
-      "samples_train": 1419,
-      "samples_val": 355,
+      "samples_total": 0,
+      "samples_train": 0,
+      "samples_val": 0,
       "default_params": {
         "min_graph_points": 30,
         "min_pbp_events": 32,
@@ -87,56 +88,13 @@
         "volatility_block_at": 0.66,
         "min_edge": 0.05
       },
-      "train_best": {
-        "samples": 1419,
-        "bets": 1126,
-        "coverage": 0.793517,
-        "wins": 939,
-        "losses": 187,
-        "hit_rate": 0.833925,
-        "roi_units_per_bet": 0.592798,
-        "profit_units": 667.49
-      },
-      "val_default": {
-        "samples": 355,
-        "bets": 289,
-        "coverage": 0.814085,
-        "wins": 223,
-        "losses": 66,
-        "hit_rate": 0.771626,
-        "roi_units_per_bet": 0.473806,
-        "profit_units": 136.93
-      },
-      "val_best": {
-        "samples": 355,
-        "bets": 279,
-        "coverage": 0.785915,
-        "wins": 215,
-        "losses": 64,
-        "hit_rate": 0.770609,
-        "roi_units_per_bet": 0.471864,
-        "profit_units": 131.65
-      },
-      "full_default": {
-        "samples": 1774,
-        "bets": 1492,
-        "coverage": 0.841037,
-        "wins": 1222,
-        "losses": 270,
-        "hit_rate": 0.819035,
-        "roi_units_per_bet": 0.564357,
-        "profit_units": 842.02
-      },
-      "full_best": {
-        "samples": 1774,
-        "bets": 1405,
-        "coverage": 0.791995,
-        "wins": 1154,
-        "losses": 251,
-        "hit_rate": 0.821352,
-        "roi_units_per_bet": 0.568783,
-        "profit_units": 799.14
-      }
+      "train_best": null,
+      "val_default": null,
+      "val_best": null,
+      "full_default": null,
+      "full_best": null,
+      "status": "insufficient_samples",
+      "message": "Insufficient samples for calibration target=q4: 0; using fallback params"
     }
   }
 }

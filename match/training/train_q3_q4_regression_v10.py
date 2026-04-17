@@ -10,6 +10,13 @@ import csv
 import importlib
 import sys
 import time
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    message=r"`sklearn\.utils\.parallel\.delayed` should be used with",
+    category=UserWarning,
+)
 from collections import defaultdict
 from collections import Counter, defaultdict
 from dataclasses import dataclass

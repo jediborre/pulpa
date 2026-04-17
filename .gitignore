@@ -1,5 +1,89 @@
+# ============================================================
+# Entornos y editores
+# ============================================================
 /.vscode
 /.venv
-/match/__pycache__
+.venv311/
+.venv*/
+.env
+**/.env
 /match/.env
-/.env
+
+# ============================================================
+# Python caches / bytecode
+# ============================================================
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ============================================================
+# Bases de datos SQLite del match (locales, regenerables)
+# ============================================================
+/match/matches.db
+/match/matches.db-journal
+/match/matches.db-shm
+/match/matches.db-wal
+/match/matches.db.bak
+/match/matches.db.bak-journal
+/match/matches.db.bak-shm
+/match/matches.db.bak-wal
+/match/matches.db.bak2
+/match/matches.db.bak2-journal
+/match/matches.db.bak2-shm
+/match/matches.db.bak2-wal
+**/*.db
+**/*.db-journal
+**/*.db-shm
+**/*.db-wal
+
+# ============================================================
+# Artefactos de entrenamiento / modelos
+# ============================================================
+# Modelos entrenados (joblib, pickle, onnx, etc.)
+**/*.joblib
+**/*.pkl
+**/*.pickle
+**/*.onnx
+**/*.pt
+**/*.pth
+**/*.safetensors
+**/*.ckpt
+
+# Directorios de salida de modelos (todas las variantes)
+**/model_outputs/
+**/model_outputs_*/
+match/training/model_outputs_v*/
+match/training/v*/model_outputs/
+match/training/v*/model_outputs_*/
+
+# Caches de features / samples (grandes, regenerables)
+**/samples_cache*.json
+**/chronos_features_cache*.json
+**/timesfm_features_cache*.json
+**/dashboard_data.json
+**/*_cache.json
+**/*_cache_*.json
+
+# CatBoost info (se genera en cada run)
+catboost_info/
+**/catboost_info/
+
+# ============================================================
+# Logs / reportes generados
+# ============================================================
+*.log
+**/*.log
+/match/reports/
+/match/reports/*
+**/reports/
+match/training/v*/reports/
+
+# ============================================================
+# Otros temporales
+# ============================================================
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db

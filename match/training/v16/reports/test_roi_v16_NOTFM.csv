@@ -1,0 +1,134 @@
+league,target,n_predictions,n_bets,wins,hit_rate,roi,pnl,coverage,train_val_gap
+B1 League,q3,13,3,3,1.00000,0.40000,1.20000,0.23077,0.29298
+U21 Espoirs Elite,q4,1,1,1,1.00000,0.40000,0.40000,1.00000,0.03260
+Prva Liga,q4,1,1,1,1.00000,0.40000,0.40000,1.00000,0.18073
+"LF Challenge, Regular Season",q4,1,1,0,0.00000,-1.00000,-1.00000,1.00000,0.21984
+"CIBACOPA , Primera Vuelta",q3,2,0,0,,,0.00000,0.00000,0.23273
+"CIBACOPA , Primera Vuelta",q4,2,0,0,,,0.00000,0.00000,0.20988
+"CIBACOPA , Segunda Vuelta",q3,8,0,0,,,0.00000,0.00000,
+"CIBACOPA , Segunda Vuelta",q4,8,0,0,,,0.00000,0.00000,
+Colombia LPB,q3,4,0,0,,,0.00000,0.00000,
+Colombia LPB,q4,4,0,0,,,0.00000,0.00000,
+Argentina Liga Nacional,q3,8,0,0,,,0.00000,0.00000,0.47707
+Argentina Liga Nacional,q4,8,0,0,,,0.00000,0.00000,0.33915
+Puerto Rico BSN,q3,5,0,0,,,0.00000,0.00000,
+Puerto Rico BSN,q4,5,0,0,,,0.00000,0.00000,
+PBA Commissioner's Cup,q3,2,0,0,,,0.00000,0.00000,
+PBA Commissioner's Cup,q4,2,0,0,,,0.00000,0.00000,
+B1 League,q4,13,0,0,,,0.00000,0.00000,-0.05161
+Superleague,q3,5,0,0,,,0.00000,0.00000,
+Superleague,q4,5,0,0,,,0.00000,0.00000,
+"Korean Basketball League, Playoffs",q3,2,0,0,,,0.00000,0.00000,
+"Korean Basketball League, Playoffs",q4,2,0,0,,,0.00000,0.00000,
+"Super League, Playout",q3,4,0,0,,,0.00000,0.00000,
+"Super League, Playout",q4,3,0,0,,,0.00000,0.00000,
+"Rapid League, Regular Season",q3,2,0,0,,,0.00000,0.00000,
+"Rapid League, Regular Season",q4,2,0,0,,,0.00000,0.00000,
+"LMB, Apertura",q3,2,0,0,,,0.00000,0.00000,
+"LMB, Apertura",q4,2,0,0,,,0.00000,0.00000,
+"Liga Argentina, Playoffs",q3,7,0,0,,,0.00000,0.00000,
+"Liga Argentina, Playoffs",q4,7,0,0,,,0.00000,0.00000,
+Chile LNB,q3,1,0,0,,,0.00000,0.00000,
+Chile LNB,q4,1,0,0,,,0.00000,0.00000,
+Superliga,q3,3,0,0,,,0.00000,0.00000,0.53744
+Superliga,q4,3,0,0,,,0.00000,0.00000,0.47543
+Brazil NBB,q3,5,0,0,,,0.00000,0.00000,0.39846
+Brazil NBB,q4,4,0,0,,,0.00000,0.00000,0.45106
+"Serie B, Group B",q3,8,0,0,,,0.00000,0.00000,
+"Serie B, Group B",q4,8,0,0,,,0.00000,0.00000,
+"Serie B, Group A",q3,9,0,0,,,0.00000,0.00000,
+"Serie B, Group A",q4,9,0,0,,,0.00000,0.00000,
+"Rwanda Basketball League, Regular Season",q3,2,0,0,,,0.00000,0.00000,
+"Rwanda Basketball League, Regular Season",q4,2,0,0,,,0.00000,0.00000,
+"NLB, Playoffs",q3,3,0,0,,,0.00000,0.00000,
+"NLB, Playoffs",q4,3,0,0,,,0.00000,0.00000,
+"1st DBBL, Playoffs",q3,2,0,0,,,0.00000,0.00000,
+"1st DBBL, Playoffs",q4,2,0,0,,,0.00000,0.00000,
+"Enovos League, Play Offs",q3,3,0,0,,,0.00000,0.00000,
+"Enovos League, Play Offs",q4,3,0,0,,,0.00000,0.00000,
+France Pro A,q3,1,0,0,,,0.00000,0.00000,0.31995
+France Pro A,q4,1,0,0,,,0.00000,0.00000,0.28228
+Germany BBL,q3,1,0,0,,,0.00000,0.00000,0.51923
+Germany BBL,q4,1,0,0,,,0.00000,0.00000,0.41775
+BNXT League,q3,3,0,0,,,0.00000,0.00000,0.58602
+BNXT League,q4,3,0,0,,,0.00000,0.00000,0.40793
+"1. Liga, Playoffs",q3,1,0,0,,,0.00000,0.00000,
+"1. Liga, Playoffs",q4,1,0,0,,,0.00000,0.00000,
+"Tipos SBL, Playoffs",q3,2,0,0,,,0.00000,0.00000,
+"Tipos SBL, Playoffs",q4,2,0,0,,,0.00000,0.00000,
+"Slovenian Second Basketball League, Liga za obstanek",q3,1,0,0,,,0.00000,0.00000,
+"Slovenian Second Basketball League, Liga za obstanek",q4,1,0,0,,,0.00000,0.00000,
+SuperSport Premijer Liga,q3,4,0,0,,,0.00000,0.00000,
+SuperSport Premijer Liga,q4,4,0,0,,,0.00000,0.00000,
+"LF Challenge, Regular Season",q3,1,0,0,,,0.00000,0.00000,0.27434
+"RKL Division A, Playoff",q3,4,0,0,,,0.00000,0.00000,
+"RKL Division A, Playoff",q4,4,0,0,,,0.00000,0.00000,
+"FSHB Superliga, K.K.M 2025-26",q3,2,0,0,,,0.00000,0.00000,
+"FSHB Superliga, K.K.M 2025-26",q4,2,0,0,,,0.00000,0.00000,
+"KML, Playoffs",q3,2,0,0,,,0.00000,0.00000,
+"KML, Playoffs",q4,2,0,0,,,0.00000,0.00000,
+"Champions League, Playoffs",q3,1,0,0,,,0.00000,0.00000,
+"Champions League, Playoffs",q4,1,0,0,,,0.00000,0.00000,
+"NBL, Playoffs",q3,1,0,0,,,0.00000,0.00000,
+"NBL, Playoffs",q4,1,0,0,,,0.00000,0.00000,
+United League,q3,5,0,0,,,0.00000,0.00000,
+United League,q4,5,0,0,,,0.00000,0.00000,
+Betsafe-LKL,q3,2,0,0,,,0.00000,0.00000,
+Betsafe-LKL,q4,2,0,0,,,0.00000,0.00000,
+"Latvia LBL, Playoffs",q3,1,0,0,,,0.00000,0.00000,
+"Latvia LBL, Playoffs",q4,1,0,0,,,0.00000,0.00000,
+"ABA League 2, Playoffs",q3,1,0,0,,,0.00000,0.00000,
+"ABA League 2, Playoffs",q4,1,0,0,,,0.00000,0.00000,
+Poland 1st Division Basketball,q3,8,0,0,,,0.00000,0.00000,0.56288
+Poland 1st Division Basketball,q4,8,0,0,,,0.00000,0.00000,0.44546
+"1. Division A, Playoffs",q3,1,0,0,,,0.00000,0.00000,
+"1. Division A, Playoffs",q4,1,0,0,,,0.00000,0.00000,
+"Korisliiga, Playoffs",q3,2,0,0,,,0.00000,0.00000,
+"Korisliiga, Playoffs",q4,2,0,0,,,0.00000,0.00000,
+"Emir Cup, Knock-out",q3,1,0,0,,,0.00000,0.00000,
+"Emir Cup, Knock-out",q4,1,0,0,,,0.00000,0.00000,
+"NKL, Playoffs",q3,1,0,0,,,0.00000,0.00000,
+"NKL, Playoffs",q4,1,0,0,,,0.00000,0.00000,
+Stoiximan GBL,q3,1,0,0,,,0.00000,0.00000,
+Stoiximan GBL,q4,1,0,0,,,0.00000,0.00000,
+Bulgaria NBL,q3,5,0,0,,,0.00000,0.00000,
+Bulgaria NBL,q4,4,0,0,,,0.00000,0.00000,
+1. A SKL,q3,2,0,0,,,0.00000,0.00000,
+1. A SKL,q4,2,0,0,,,0.00000,0.00000,0.06934
+U21 Espoirs Elite,q3,1,0,0,,,0.00000,0.00000,0.65209
+"Champions League Asia-East, Group A",q3,2,0,0,,,0.00000,0.00000,
+"Champions League Asia-East, Group A",q4,2,0,0,,,0.00000,0.00000,
+China CBA,q3,8,0,0,,,0.00000,0.00000,0.60505
+China CBA,q4,6,0,0,,,0.00000,0.00000,0.30765
+Indonesian Basketball League,q3,1,0,0,,,0.00000,0.00000,
+Indonesian Basketball League,q4,1,0,0,,,0.00000,0.00000,
+"NBL1, South",q3,3,0,0,,,0.00000,0.00000,
+"NBL1, South",q4,3,0,0,,,0.00000,0.00000,
+MPBL,q3,1,0,0,,,0.00000,0.00000,
+MPBL,q4,1,0,0,,,0.00000,0.00000,
+"Champions League Asia-East, Group B",q3,1,0,0,,,0.00000,0.00000,
+"Azerbaijan Basketball League, Playoff",q3,2,0,0,,,0.00000,0.00000,
+"Azerbaijan Basketball League, Playoff",q4,1,0,0,,,0.00000,0.00000,
+"The League, Финал",q3,1,0,0,,,0.00000,0.00000,
+"Super League, Playoffs",q3,2,0,0,,,0.00000,0.00000,
+"Super League, Playoffs",q4,2,0,0,,,0.00000,0.00000,
+"Qatar Cup , Playoffs",q3,1,0,0,,,0.00000,0.00000,
+Liga Nationala,q3,1,0,0,,,0.00000,0.00000,0.27106
+Prva Liga,q3,1,0,0,,,0.00000,0.00000,0.09999
+Superliga e Femrave ,q3,1,0,0,,,0.00000,0.00000,
+Superliga e Femrave ,q4,1,0,0,,,0.00000,0.00000,
+"FBU Superleague, Playoffs",q3,1,0,0,,,0.00000,0.00000,
+"FBU Superleague, Playoffs",q4,1,0,0,,,0.00000,0.00000,
+"1st Division Men, Úrslitakeppni",q3,2,0,0,,,0.00000,0.00000,
+"1st Division Men, Úrslitakeppni",q4,2,0,0,,,0.00000,0.00000,
+Euroleague,q3,5,0,0,,,0.00000,0.00000,0.43183
+Euroleague,q4,5,0,0,,,0.00000,0.00000,0.36254
+"Princ Caffe Superliga, Playoff",q3,1,0,0,,,0.00000,0.00000,
+"Princ Caffe Superliga, Playoff",q4,1,0,0,,,0.00000,0.00000,
+"Poland 2nd Basketball League, II Runda",q3,1,0,0,,,0.00000,0.00000,
+"Poland 2nd Basketball League, II Runda",q4,1,0,0,,,0.00000,0.00000,
+"Basketligaen, Championship round",q3,1,0,0,,,0.00000,0.00000,
+"Basketligaen, Championship round",q4,1,0,0,,,0.00000,0.00000,
+"1. Division B, Playoffs",q3,1,0,0,,,0.00000,0.00000,
+"1. Division B, Playoffs",q4,1,0,0,,,0.00000,0.00000,
+"Liga Ouro, Quartas",q3,1,0,0,,,0.00000,0.00000,

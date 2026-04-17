@@ -52,6 +52,7 @@ import argparse
 import importlib
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -202,9 +203,13 @@ def _ingest_pending_matches(
 
         try:
             data = scraper_mod.fetch_match_by_id(match_id)
-            db_mod.save_match(conn, match_id, data)
-            db_mod.mark_discovered_processed(conn, match_id)
-            ing_ok += 1
+            if not _has_usable_data(data):
+                db_mod.mark_discovered_processed(conn, match_id)
+                skipped_ft += 1
+            else:
+                db_mod.save_match(conn, match_id, data)
+                db_mod.mark_discovered_processed(conn, match_id)
+                ing_ok += 1
         except KeyboardInterrupt:
             print()
             print("[ingest] interrupted by user")
@@ -563,6 +568,22 @@ def _is_ft_complete(data: dict | None) -> bool:
     return all(q in quarters for q in required)
 
 
+def _has_usable_data(data: dict | None) -> bool:
+    """Strict completeness check: 4 quarters + PBP with Q1/Q2 events + graph_points.
+
+    Used during backfill to skip matches that lack the data the models need.
+    """
+    if not _is_ft_complete(data):
+        return False
+    pbp = data.get("play_by_play") or {}
+    if not pbp.get("Q1") and not pbp.get("Q2"):
+        return False
+    gp = data.get("graph_points") or []
+    if not gp:
+        return False
+    return True
+
+
 def _print_progress(
     prefix: str,
     current: int,
@@ -607,18 +628,9 @@ def _print_dual_progress(
     started: bool,
 ) -> bool:
     done_line = _progress_line(prefix, current, total)
-    den = current if current > 0 else 1
-    err_ratio = min(max(errors / den, 0.0), 1.0)
-    err_filled = int(err_ratio * 28)
-    err_bar = ("#" * err_filled) + ("-" * (28 - err_filled))
-    err_pct = int(err_ratio * 100)
-    err_line = (
-        f"[{prefix}-errors] [{err_bar}] {errors}/{current} "
-        f"({err_pct}%)"
-    )
-
+    suffix = f" err={errors}" if errors else ""
     _ = started
-    print(f"\r{done_line}  {err_line}", end="", flush=True)
+    print(f"\r{done_line}{suffix}", end="", flush=True)
     return True
 
 
@@ -688,6 +700,27 @@ def _preview_target(pred: dict) -> tuple[str, str]:
         or "NO_BET"
     )
     return pick, signal
+
+
+def cmd_eval_report(args: argparse.Namespace) -> None:
+    import datetime
+    import sys
+    training_dir = Path(__file__).parent / "training"
+    script = training_dir / "eval_report_by_model.py"
+    
+    cmd = [sys.executable, str(script)]
+    if args.list:
+        cmd.extend(["--list"])
+    if args.date:
+        cmd.extend(["--date", args.date])
+    if args.month:
+        cmd.extend(["--month", args.month])
+    if args.model:
+        cmd.extend(["--model", args.model])
+    
+    result = subprocess.run(cmd, cwd=str(Path(__file__).parent), check=False)
+    if result.returncode != 0:
+        raise RuntimeError(f"Command failed: {' '.join(cmd)}")
 
 
 def cmd_eval_date(args: argparse.Namespace) -> None:
@@ -930,6 +963,226 @@ def cmd_run_bot(args: argparse.Namespace) -> None:
     bot_mod.main()
 
 
+def cmd_retrain(args: argparse.Namespace) -> None:
+    """Interactive sub-menu to retrain models and recalibrate the gate.
+
+    Steps (can be run individually or all at once):
+      1. train-v2   — V2 classifier (league/team buckets)
+      2. train-v4   — V4 classifier (pressure/comeback features)
+      3. train-v6   — V6 classifier (Monte-Carlo + momentum features)
+      4. train-v9   — V9 optimised classifier (LogReg + GB ensemble)
+      5. train-v10  — V10 O/U regression (Ridge + GB + XGB stacking)
+      6. compare    — Rebuild version_comparison.json (picks best live model)
+      7. calibrate  — Recalibrate decision-gate thresholds (gate_config.json)
+    """
+    import subprocess
+
+    training_dir = Path(__file__).parent / "training"
+
+    steps: list[tuple[str, str, list[str]]] = [
+        ("train-v2",   "Train V2 classifier",           [sys.executable, str(training_dir / "train_q3_q4_models_v2.py")]),
+        ("train-v4",   "Train V4 classifier",           [sys.executable, str(training_dir / "train_q3_q4_models_v4.py")]),
+        ("train-v6",   "Train V6 classifier",           [sys.executable, str(training_dir / "train_q3_q4_models_v6.py")]),
+        ("train-v9",   "Train V9 classifier",           [sys.executable, str(training_dir / "train_q3_q4_models_v9.py")]),
+        ("train-v10",  "Train V10 O/U regression",      [sys.executable, str(training_dir / "train_q3_q4_regression_v10.py")]),
+        ("compare",    "Rebuild version_comparison.json", [sys.executable, str(training_dir / "compare_model_versions.py")]),
+        ("calibrate",  "Calibrate gate (gate_config.json)", [sys.executable, str(training_dir / "calibrate_gate.py"), "--metric", "f1", "--limit", "3000"]),
+    ]
+
+    target = getattr(args, "step", None)
+
+    while True:
+        if not target:
+            print("\n=== Reentrenamiento de modelos ===")
+            for i, (key, label, _) in enumerate(steps, 1):
+                print(f"{i}) {label}  [{key}]")
+            print(f"{len(steps) + 1}) Ejecutar TODO en orden")
+            print("0) volver")
+            opt = input("Selecciona paso: ").strip()
+            if opt == "0":
+                return
+            if opt == str(len(steps) + 1):
+                target = "all"
+            else:
+                try:
+                    idx = int(opt) - 1
+                    if 0 <= idx < len(steps):
+                        target = steps[idx][0]
+                    else:
+                        print("[retrain] opcion invalida")
+                        continue
+                except ValueError:
+                    print("[retrain] opcion invalida")
+                    continue
+
+        to_run = steps if target == "all" else [s for s in steps if s[0] == target]
+        if not to_run:
+            print(f"[retrain] paso desconocido: {target}")
+            target = None
+            continue
+
+        for key, label, cmd in to_run:
+            print(f"\n[retrain] ▶ {label} ...")
+            result = subprocess.run(cmd, cwd=str(Path(__file__).parent))
+            if result.returncode != 0:
+                print(f"[retrain] ✗ {key} falló (exit {result.returncode})")
+                if target == "all":
+                    print("[retrain] Abortando secuencia.")
+                    target = None
+                    break
+            else:
+                print(f"[retrain] ✓ {key} completado")
+
+        target = None  # volver al submenú tras terminar
+
+
+def cmd_eval_v13(args: argparse.Namespace) -> None:
+    """Generate V13 (or multi-model) evaluation Excel report."""
+    from datetime import datetime as _dt
+    from pathlib import Path as _Path
+
+    # Resolve date range
+    date_from = getattr(args, "date_from", None)
+    date_to = getattr(args, "date_to", None)
+    month = getattr(args, "month", None)
+
+    if month:
+        try:
+            _dt.strptime(month, "%Y-%m")
+        except ValueError:
+            print(f"[eval-v13] Formato invalido: '{month}'. Usa YYYY-MM.")
+            return
+        year, mon = map(int, month.split("-"))
+        import calendar
+        date_from = f"{month}-01"
+        date_to = f"{month}-{calendar.monthrange(year, mon)[1]:02d}"
+    elif date_from and date_to:
+        pass
+    else:
+        # Default: current month up to today
+        today = _dt.now()
+        date_from = today.replace(day=1).strftime("%Y-%m-%d")
+        date_to = today.strftime("%Y-%m-%d")
+        print(f"[eval-v13] Sin rango especificado, usando {date_from} → {date_to}")
+
+    models_str = getattr(args, "models", "v13")
+    odds = getattr(args, "odds", 1.4)
+    bet_size = getattr(args, "bet_size", 100.0)
+    bank = getattr(args, "bank", 1000.0)
+    out = getattr(args, "out", None)
+
+    report_mod = importlib.import_module("training.report_v12_v13")
+
+    if out:
+        out_path = _Path(out)
+    else:
+        ts = _dt.now().strftime("%H%M%S")
+        models_tag = models_str.replace(",", "_")
+        date_tag = f"{date_from}_{date_to}".replace("-", "")
+        out_path = _Path(__file__).parent / "reports" / f"report_{models_tag}_{date_tag}_{ts}.xlsx"
+
+    models_list = [m.strip() for m in models_str.split(",")]
+
+    print(f"[eval-v13] {date_from} → {date_to} | modelos={models_str} | odds={odds} | apuesta=${bet_size:.0f} | banco=${bank:.0f}")
+    result = report_mod.generate_report(
+        date_from=date_from,
+        date_to=date_to,
+        odds=odds,
+        bet_size=bet_size,
+        starting_bank=bank,
+        out_path=out_path,
+        models=models_list,
+    )
+    print(f"[eval-v13] Reporte guardado en: {result}")
+
+
+def cmd_report(args: argparse.Namespace) -> None:
+    month = getattr(args, "month", None)
+    out = getattr(args, "out", None)
+
+    if not month:
+        month = input("Mes (YYYY-MM): ").strip()
+
+    try:
+        from datetime import datetime as _dt
+        _dt.strptime(month, "%Y-%m")
+    except ValueError:
+        print(f"[report] Formato invalido: '{month}'. Usa YYYY-MM.")
+        return
+
+    report_mod = importlib.import_module("training.report_model_comparison")
+
+    try:
+        from tqdm import tqdm as _tqdm  # type: ignore[import]
+        _use_tqdm = True
+    except ImportError:
+        _use_tqdm = False
+
+    print(f"[report] Generando reporte {month}...")
+
+    progress_state: dict = {
+        "total": 0, "processed": 0,
+        "phase": "starting", "current": "", "output_path": "",
+    }
+
+    if _use_tqdm:
+        import threading as _threading
+        import time as _time
+
+        done = _threading.Event()
+        error_holder: list = []
+        result_holder: list = []
+
+        def _run() -> None:
+            try:
+                p = report_mod.generate_report(
+                    month,
+                    progress_state=progress_state,
+                    out_path=Path(out) if out else None,
+                )
+                result_holder.append(p)
+            except Exception as exc:
+                error_holder.append(exc)
+            finally:
+                done.set()
+
+        _threading.Thread(target=_run, daemon=True).start()
+        bar = None
+        prev = -1
+        while not done.is_set():
+            total = progress_state.get("total", 0)
+            processed = progress_state.get("processed", 0)
+            phase = str(progress_state.get("phase", ""))
+            current = str(progress_state.get("current", ""))
+            if total > 0 and bar is None:
+                bar = _tqdm(total=total, desc=f"[report {month}]", unit="partido")
+            if bar and processed > prev:
+                bar.n = processed
+                bar.set_postfix_str(f"{phase} | {current}"[:60])
+                bar.refresh()
+                prev = processed
+            _time.sleep(0.5)
+        if bar:
+            bar.n = progress_state.get("total", 0)
+            bar.set_postfix_str("done")
+            bar.close()
+        if error_holder:
+            print(f"[report] Error: {error_holder[0]}")
+            return
+        out_path = result_holder[0]
+    else:
+        try:
+            out_path = report_mod.generate_report(
+                month,
+                out_path=Path(out) if out else None,
+            )
+        except Exception as exc:
+            print(f"[report] Error: {exc}")
+            return
+
+    print(f"[report] Guardado en: {out_path}")
+
+
 def _ask(prompt: str, default: str | None = None) -> str:
     hint = f" [{default}]" if default is not None else ""
     value = input(f"{prompt}{hint}: ").strip()
@@ -968,6 +1221,9 @@ def _interactive_menu(parser: argparse.ArgumentParser, db_path: str) -> None:
         print("10) plot-graph")
         print("11) run-bot")
         print("12) help")
+        print("13) retrain models / calibrate gate")
+        print("14) reporte comparacion modelos (Excel)")
+        print("15) traer fecha nueva (seleccionar dias faltantes)")
         print("0) salir")
 
         opt = input("Selecciona opcion: ").strip()
@@ -1101,6 +1357,21 @@ def _interactive_menu(parser: argparse.ArgumentParser, db_path: str) -> None:
             _run_tokens(parser, tokens)
             continue
 
+        if opt == "13":
+            cmd_retrain(argparse.Namespace(step=None))
+            continue
+
+        if opt == "14":
+            cmd_report(argparse.Namespace(month=None, out=None))
+            continue
+
+        if opt == "15":
+            result = _select_fetch_date_interactive(db_path)
+            if result is not None:
+                event_date, limit = result
+                _ingest_date_with_progress(db_path, event_date, limit)
+            continue
+
         print("[menu] opcion invalida")
 
 
@@ -1109,7 +1380,262 @@ def cmd_menu(args: argparse.Namespace) -> None:
     _interactive_menu(parser, args.db)
 
 
-# ── argument parser ───────────────────────────────────────────────────────────
+# ── fetch-date helpers ────────────────────────────────────────────────────────
+
+UTC_OFFSET_HOURS = -6
+
+
+def _get_missing_dates_cli(
+    db_path: str,
+    recent_days: int = 30,
+) -> dict:
+    """Return missing dates split into recent (last recent_days) and historical.
+
+    Returns a dict with keys:
+      - 'recent': list of dates (last recent_days, excl. today) with 0 matches
+      - 'historical': list of older dates with 0 matches (from min_date to recent cutoff)
+      - 'min_date': earliest date found in the DB (str or None)
+    """
+    today = datetime.now().date()
+    yesterday = today - timedelta(days=1)
+    recent_cutoff = today - timedelta(days=recent_days)
+
+    conn = _open_db(db_path)
+    bounds = conn.execute(
+        f"""
+        SELECT
+            MIN(date(datetime(date || ' ' || time,
+                '{UTC_OFFSET_HOURS} hours'))) AS min_date,
+            MAX(date(datetime(date || ' ' || time,
+                '{UTC_OFFSET_HOURS} hours'))) AS max_date
+        FROM matches
+        """
+    ).fetchone()
+    min_date_str = bounds["min_date"] if bounds else None
+
+    existing_rows = conn.execute(
+        f"""
+        SELECT DISTINCT
+            date(datetime(date || ' ' || time, '{UTC_OFFSET_HOURS} hours'))
+            AS event_date
+        FROM matches
+        """
+    ).fetchall()
+    conn.close()
+
+    existing = {row["event_date"] for row in existing_rows}
+
+    # Recent: last recent_days up to yesterday
+    recent_candidates = [
+        (today - timedelta(days=i)).isoformat()
+        for i in range(1, recent_days + 1)
+    ]
+    recent_missing = [d for d in recent_candidates if d not in existing]
+
+    # Historical: from min_date up to recent_cutoff - 1 day (older than recent window)
+    historical_missing: list[str] = []
+    if min_date_str:
+        try:
+            min_date = datetime.strptime(min_date_str, "%Y-%m-%d").date()
+            hist_end = recent_cutoff - timedelta(days=1)
+            cursor = hist_end
+            while cursor >= min_date:
+                d = cursor.isoformat()
+                if d not in existing:
+                    historical_missing.append(d)
+                cursor -= timedelta(days=1)
+        except ValueError:
+            pass
+
+    return {
+        "recent": recent_missing,
+        "historical": historical_missing,
+        "min_date": min_date_str,
+    }
+
+
+def _select_fetch_date_interactive(db_path: str) -> tuple[str, int | None] | None:
+    """Show missing-date selector.  Returns (date_str, limit|None) or None to abort."""
+    print("\n=== Traer fecha nueva ===")
+    data = _get_missing_dates_cli(db_path)
+    recent = data["recent"]
+    historical = data["historical"]
+    min_date = data["min_date"]
+
+    if min_date:
+        print(f"Fecha minima en la base: {min_date}")
+
+    options: list[str] = []
+
+    if recent:
+        print("\nFechas recientes sin datos (ultimos 30 dias):")
+        for d in recent[:10]:
+            options.append(d)
+            print(f"  {len(options)}) {d}")
+
+    if historical:
+        print(f"\nFechas historicas sin datos ({len(historical)} encontradas):")
+        for d in historical[:10]:
+            options.append(d)
+            print(f"  {len(options)}) {d}")
+        if len(historical) > 10:
+            print(f"  ... y {len(historical) - 10} mas")
+
+    if not recent and not historical:
+        print("No se detectaron fechas faltantes en la base.")
+
+    print("  m) Ingresar fecha manualmente")
+    print("  0) Cancelar")
+    choice = input("Selecciona: ").strip()
+    if choice == "0":
+        return None
+    if choice.lower() == "m":
+        event_date = _ask("Fecha (YYYY-MM-DD)")
+    else:
+        try:
+            idx = int(choice) - 1
+            if 0 <= idx < len(options):
+                event_date = options[idx]
+            else:
+                print("[fetch-date] opcion invalida")
+                return None
+        except ValueError:
+            print("[fetch-date] opcion invalida")
+            return None
+
+    # Validate
+    try:
+        datetime.strptime(event_date, "%Y-%m-%d")
+    except ValueError:
+        print(f"[fetch-date] Fecha invalida: {event_date}")
+        return None
+
+    limit_str = _ask("Limite de partidos (Enter para sin limite)", "")
+    limit: int | None = None
+    if limit_str.strip():
+        try:
+            limit = int(limit_str)
+            if limit <= 0:
+                raise ValueError
+        except ValueError:
+            print("[fetch-date] Limite invalido, continuando sin limite.")
+
+    return event_date, limit
+
+
+def _ingest_date_with_progress(
+    db_path: str,
+    event_date: str,
+    limit: int | None,
+) -> None:
+    """Discover FT match IDs for a date and ingest them with a progress bar."""
+    print(f"[fetch-date] Consultando SofaScore para {event_date}...")
+    rows_all = scraper_mod.fetch_finished_match_ids_for_date(event_date)
+    rows = rows_all[:limit] if limit is not None else rows_all
+    print(
+        f"[fetch-date] finished_found={len(rows_all)}"
+        f"  selected={len(rows)}"
+        + (f"  limite={limit}" if limit else "")
+    )
+
+    conn = _open_db(db_path)
+    discovered = db_mod.save_discovered_ft_matches(conn, rows)
+    print(f"[fetch-date] discovered_en_db={discovered}")
+
+    ing_ok = 0
+    ing_fail = 0
+    skipped = 0
+    skip_reasons: dict[str, int] = {}
+    total = len(rows)
+
+    dual_started = False
+    if total:
+        dual_started = _print_dual_progress(
+            "fetch-date", 0, total, 0, started=dual_started
+        )
+
+    for idx, row in enumerate(rows, start=1):
+        match_id = str(row.get("match_id", "") or "")
+        if not match_id:
+            continue
+
+        existing = db_mod.get_match(conn, match_id)
+        if _is_ft_complete(existing):
+            db_mod.mark_discovered_processed(conn, match_id)
+            reason = "ya_completo_en_db"
+            skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
+            skipped += 1
+            dual_started = _print_dual_progress(
+                "fetch-date", idx, total, ing_fail, started=dual_started
+            )
+            continue
+
+        try:
+            data = scraper_mod.fetch_match_by_id(match_id)
+            if not _has_usable_data(data):
+                db_mod.mark_discovered_processed(conn, match_id)
+                # Determine skip reason
+                status_type = str(
+                    (data or {}).get("match", {}).get("status_type", "") or ""
+                ).lower()
+                if status_type != "finished":
+                    reason = f"not_finished({status_type or 'unknown'})"
+                else:
+                    # check which part is missing
+                    quarters = (data or {}).get("score", {}).get("quarters", {})
+                    pbp = (data or {}).get("play_by_play", {})
+                    gp = (data or {}).get("graph_points", [])
+                    missing_q = next(
+                        (q for q in ("Q1", "Q2", "Q3", "Q4")
+                         if not isinstance(quarters.get(q), dict)),
+                        None,
+                    )
+                    if missing_q:
+                        reason = f"sin_cuartos(falta={missing_q})"
+                    elif not pbp.get("Q1") and not pbp.get("Q2"):
+                        reason = "sin_pbp"
+                    elif not gp:
+                        reason = "sin_graph"
+                    else:
+                        reason = "datos_incompletos"
+                skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
+                skipped += 1
+            else:
+                db_mod.save_match(conn, match_id, data)
+                db_mod.mark_discovered_processed(conn, match_id)
+                ing_ok += 1
+        except KeyboardInterrupt:
+            print()
+            print("[fetch-date] interrumpido por usuario")
+            conn.close()
+            return
+        except Exception as exc:
+            db_mod.mark_discovered_error(conn, match_id, str(exc))
+            ing_fail += 1
+
+        dual_started = _print_dual_progress(
+            "fetch-date", idx, total, ing_fail, started=dual_started
+        )
+
+    if total:
+        print()
+
+    conn.close()
+    print(
+        f"[fetch-date] ok={ing_ok}  skipped={skipped}  fail={ing_fail}"
+    )
+    if skip_reasons:
+        reasons_txt = "  ".join(
+            f"{k}={v}" for k, v in sorted(skip_reasons.items())
+        )
+        print(f"[fetch-date] skip_reasons: {reasons_txt}")
+
+
+def cmd_fetch_date(args: argparse.Namespace) -> None:
+    event_date = args.date
+    limit = args.limit
+    _ingest_date_with_progress(args.db, event_date, limit)
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -1312,6 +1838,36 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_eval.set_defaults(func=cmd_eval_date)
 
+    # eval-report
+    p_report = sub.add_parser(
+        "eval-report",
+        help="Daily/monthly evaluation report by model and quarter",
+    )
+    p_report.add_argument(
+        "--date",
+        type=str,
+        default=None,
+        help="Specific date (YYYY-MM-DD)",
+    )
+    p_report.add_argument(
+        "--month",
+        type=str,
+        default=None,
+        help="Month (YYYY-MM)",
+    )
+    p_report.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help="Filter by model name (e.g., v4, v6)",
+    )
+    p_report.add_argument(
+        "--list",
+        action="store_true",
+        help="List available dates",
+    )
+    p_report.set_defaults(func=cmd_eval_report)
+
     # plot-graph
     p_plot = sub.add_parser(
         "plot-graph",
@@ -1333,12 +1889,89 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_bot.set_defaults(func=cmd_run_bot)
 
+    # run-retrain
+    p_retrain = sub.add_parser(
+        "run-retrain",
+        help="Retrain models and/or recalibrate gate (interactive or via --step)",
+    )
+    p_retrain.add_argument(
+        "--step",
+        choices=["train-v2", "train-v4", "train-v6", "train-v9", "train-v10", "compare", "calibrate", "all"],
+        default=None,
+        help=(
+            "Step to run non-interactively. "
+            "Choices: train-v2, train-v4, train-v6, train-v9, train-v10, compare, calibrate, all"
+        ),
+    )
+    p_retrain.set_defaults(func=cmd_retrain)
+
+    # run-report
+    p_report = sub.add_parser(
+        "run-report",
+        help="Genera Excel comparativo de modelos para un mes dado",
+    )
+    p_report.add_argument(
+        "--month",
+        default=None,
+        help="Mes a reportar (YYYY-MM). Si no se indica, pregunta interactivo.",
+    )
+    p_report.add_argument(
+        "--out",
+        default=None,
+        help="Ruta de salida .xlsx. Por defecto: reports/model_comparison_<mes>.xlsx",
+    )
+    p_report.set_defaults(func=cmd_report)
+
+    # eval-v13
+    p_ev13 = sub.add_parser(
+        "eval-v13",
+        help="Genera reporte Excel de evaluacion V13 (out-of-sample)",
+    )
+    _grp = p_ev13.add_mutually_exclusive_group()
+    _grp.add_argument("--month", metavar="YYYY-MM", default=None,
+                      help="Mes completo a evaluar")
+    _grp.add_argument("--from", dest="date_from", metavar="YYYY-MM-DD",
+                      default=None, help="Fecha inicio")
+    p_ev13.add_argument("--to", dest="date_to", metavar="YYYY-MM-DD",
+                        default=None, help="Fecha fin (requiere --from)")
+    p_ev13.add_argument("--models", default="v13",
+                        help="Modelos separados por coma (default: v13)")
+    p_ev13.add_argument("--odds", type=float, default=1.4,
+                        help="Odds simuladas (default: 1.4)")
+    p_ev13.add_argument("--bet-size", dest="bet_size", type=float, default=100.0,
+                        help="Apuesta por bet (default: 100)")
+    p_ev13.add_argument("--bank", type=float, default=1000.0,
+                        help="Banco inicial (default: 1000)")
+    p_ev13.add_argument("--out", default=None,
+                        help="Ruta de salida .xlsx (default: auto con timestamp)")
+    p_ev13.set_defaults(func=cmd_eval_v13)
+
     # menu
     p_menu = sub.add_parser(
         "menu",
         help="Open interactive menu mode",
     )
     p_menu.set_defaults(func=cmd_menu)
+
+    # fetch-date
+    p_fetch = sub.add_parser(
+        "fetch-date",
+        help="Discover and ingest finished matches for a specific date",
+    )
+    p_fetch.add_argument(
+        "--date",
+        required=True,
+        metavar="YYYY-MM-DD",
+        help="Date to fetch from SofaScore",
+    )
+    p_fetch.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Max matches to ingest (default: no limit)",
+    )
+    p_fetch.set_defaults(func=cmd_fetch_date)
 
     return parser
 

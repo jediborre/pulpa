@@ -286,6 +286,192 @@ training/model_outputs_v10/
 
 ---
 
+## Recomendaciones Consolidadas - Roadmap to V11
+
+### 🔴 Prioridad Alta - Para V11
+
+| # | Recomendación | Razón | Impacto Esperado |
+|---|---------------|-------|------------------|
+| 1 | **Separar modelos por género** (men vs women) | Diferencias significativas en scoring | +5-10% accuracy |
+| 2 | **Agregar lógica de betting** (auto-calculate edge, recommend OVER only) | Eliminar bets perdedores | +20% ROI |
+| 3 | **Agregar margen de confianza** (solo bet si edge > 3 pts) | Reducir ruido en apuestas | Menos bets, mayor hit rate |
+| 4 | **Modelos por liga** (NBA, Euroleague, etc.) | Cada liga tiene scoring patterns diferentes | +3-5% accuracy |
+
+### 🟡 Prioridad Media - Optimización
+
+| # | Recomendación | Razón | Impacto |
+|---|---------------|-------|---------|
+| 5 | **Agregar pace features** (plays per minute) | Pace correlaciona con totals | +2-3% R² |
+| 6 | **Usar ensemble de mejor performance** (stacking ya implementado) | Stacking es mejor | ✓ Listo |
+| 7 | **Agregar momentum features** (scoring runs) | rachas afectan Q3/Q4 | Bajo impacto (~0.05 corr) |
+| 8 | **Considerar intervalos de confianza** | El modelo subestima ~5-18 pts | Mejor calibración |
+
+### 🟢 Prioridad Baja - Nice to Have
+
+| # | Recomendación | Notas |
+|---|---------------|-------|
+| 9 | **Backtest con datos reales** | Comparar con líneas reales de sportsbooks |
+| 10 | **Incluir juice/vig** en cálculo de ROI | Más realista |
+| 11 | **Alertar cuando línea = prediction** | Oportunidad de arbitraje |
+| 12 | **Historical validation** | Probar en más partidos |
+
+---
+
+### ✅ HACER - Estrategia de Apuesta
+
+1. **SOLO apostAR OVER** - nunca UNDER
+2. **Q4_total** es el target con mejor ROI (+91%)
+3. **Esperar edge > 3 puntos** antes de apostAR
+4. **Usar stacking models** para todas las predicciones
+5. **Filtrar por liga**: NBA y Euroleague tienen mejores datos
+
+### ❌ EVITAR
+
+1. **UNDER bets** - hit rate 38-45%, ROI negativo
+2. **Apuestas cuando predicción cerca del threshold** (dentro de ±3 pts)
+3. **Partidos con features faltantes** - mejor no bet
+4. **Todos los géneros juntos** - crear modelos separados
+
+---
+
+### Análisis por Género
+
+| Métrica | Hombres | Mujeres | Diferencia |
+|---------|---------|---------|------------|
+| Q3 Total medio | ~40 pts | ~32-35 pts | -8 pts |
+| Q4 Total medio | ~40 pts | ~32-35 pts | -8 pts |
+| Predicción MAE | ~5 pts | ~4 pts | -1 pts |
+
+**Conclusión**: Se necesitan **modelos separados** o al menos ajustar thresholds por género.
+
+---
+
+### Análisis por Liga
+
+| Liga | Q3/Q4 Total Media | Notas |
+|------|-------------------|-------|
+| NBA | ~42-45 pts | Alta puntuación |
+| EuroLeague | ~38-40 pts | Media-alta |
+| NCAA | ~35-38 pts | Media |
+| LatAm Leagues | ~36-40 pts | Variada |
+| Women leagues | ~32-35 pts | Baja puntuación |
+
+**Conclusión**: Usar **thresholds variables** por liga o crear modelos por liga.
+
+---
+
+## Cómo Usar V10 en Producción
+
+```python
+# 1. Cargar el modelo stacking
+model = joblib.load("training/model_outputs_v10/q4_total_stacking.joblib")
+
+# 2. Obtener features del partido al inicio del Q4
+features = {
+    'league_bucket': 'NBA',
+    'gender_bucket': 'men_or_open',
+    'home_team_bucket': 'LAL',
+    'away_team_bucket': 'GSW',
+    'ht_home': 58, 'ht_away': 55, 'ht_total': 113,
+    'q1_diff': 3, 'q2_diff': 0, 'q3_diff': -2,
+    'score_3q_home': 82, 'score_3q_away': 78, 'score_3q_total': 160,
+    'gp_count': 45, 'gp_last': 5,
+    'gp_peak_home': 12, 'gp_peak_away': 10,
+    'gp_area_home': 150, 'gp_area_away': 140,
+    'gp_mean_abs': 2.1, 'gp_swings': 8,
+    'gp_slope_3m': 0.8, 'gp_slope_5m': 0.5,
+    'pbp_home_pts_per_play': 1.2, 'pbp_away_pts_per_play': 1.1,
+    'pbp_home_plays': 65, 'pbp_away_plays': 60,
+    'pbp_plays_diff': 5,
+    'pbp_home_3pt': 8, 'pbp_away_3pt': 10
+}
+
+# 3. Predecir
+vectorizer = model["vectorizer"]
+scaler = model["scaler"]
+regressor = model["model"]
+
+X = vectorizer.transform([features])
+X_scaled = scaler.transform(X)
+prediction = regressor.predict(X_scaled)[0]
+
+# 4. Calcular edge y recomendar apuesta
+threshold = 39  # línea de la casa de apuestas
+edge = prediction - threshold
+
+print(f"Predicción: {prediction:.1f}")
+print(f"Línea: {threshold}")
+print(f"Edge: {edge:.1f}")
+
+if edge > 3:
+    print("→ RECOMENDACIÓN: APOSTAR OVER")
+elif edge < -3:
+    print("→ RECOMENDACIÓN: APOSTAR UNDER")
+else:
+    print("→ SIN CONFIANZA SUFICIENTE")
+```
+
+---
+
+## Uso en Vivo (Live Betting)
+
+V10 puede usarse durante partidos en vivo. timing óptimo:
+
+### Momentos de Uso
+
+| Momento | Quarter Predicho | Features Disponibles | Recomendación |
+|---------|-----------------|---------------------|---------------|
+| Inicio del partido | Q3, Q4 | Ninguno | ❌ No recomendado |
+| Después de Q1 | Q3, Q4 | Q1 scores | ⚠️ Poca info |
+| **Después de Q2 (Halftime)** | Q3, Q4 | 1H (Q1+Q2) | ✅ **ÓPTIMO** |
+| **Después de Q3** | Q4 | 3Q (Q1+Q2+Q3) | ✅ **ÓPTIMO** |
+
+### Timing de Apuestas
+
+```
+🕐 HALFTIME (después del Q2)
+   ├── Features: ht_home, ht_away, q1_diff, q2_diff
+   ├── Predecir: Q3_total y Q4_total
+   └── Apostar para Q3 y Q4
+
+🕐 DESPUÉS DEL Q3
+   ├── Features: score_3q_home, score_3q_away, q1_diff, q2_diff, q3_diff
+   ├── Predecir: Q4_total
+   └── Apostar para Q4
+```
+
+### Quarter vs Timing
+
+| Quarter | Cuándo Predecir | Cuándo Apostar | Ventaja |
+|---------|----------------|----------------|---------|
+| **Q3** | Halftime | Después de Q2 | Tiempo para analizar línea |
+| **Q4** | Halftime o después de Q3 | Después de Q3 | Más datos disponibles |
+
+### Ejemplo en Vivo
+
+```
+Partido: LAL vs GSW
+- Q1: 28-25 (LAL +3)
+- Q2: 30-30 (igual)
+- Halftime: LAL 58 - GSW 55 (1H total: 113)
+
+→ Predecir Q3_total con 1H features
+→ Línea sportsbook: 39
+→ Predicción modelo: 40.6
+→ Edge: +1.6 → Apostar OVER
+
+Resultado real Q3: 46 puntos ✓ (OVER ganada)
+```
+
+### Limitaciones en Vivo
+
+1. **Datos en tiempo real** - Actualizar features después de cada quarter
+2. **Líneas cambian** - Las líneas de apuestas cambian rápido (~5-10 min)
+3. **Velocidad** - Tenés ~5-10 minutos entre quarters para decidir
+4. **Juice** - En vivo el vig esusually más alto
+
+---
+
 ## Metadata
 
 - **Versión**: V10

@@ -32,7 +32,25 @@ MODEL_DIR_V3 = ROOT / "training" / "model_outputs_v3"
 MODEL_DIR_V4 = ROOT / "training" / "model_outputs_v4"
 MODEL_DIR_V6 = ROOT / "training" / "model_outputs_v6"
 MODEL_DIR_V9 = ROOT / "training" / "model_outputs_v9"
+MODEL_DIR_V10 = ROOT / "training" / "model_outputs_v10"
 GATE_CONFIG = ROOT / "training" / "model_outputs_v2" / "gate_config.json"
+
+# ---------------------------------------------------------------------------
+# Feature flag: clip match data to the prediction-window cutoff before
+# feature extraction and decision gating.
+#
+# Q3 → graph_points minute ≤ 24, play_by_play quarters {Q1, Q2} only.
+# Q4 → graph_points minute ≤ 36, play_by_play quarters {Q1, Q2, Q3} only.
+#
+# This guarantees the exact same data window is seen at inference time as
+# was seen during training, regardless of WHEN during the live match the
+# function is called (mid-Q3, forced-recalculate, empty-cache, etc.).
+# Applies to ALL model versions: V1/V2/V4/V6/V9/V3/V10.
+#
+# To revert to pre-clipping behavior (uses full live data):
+#   set _CLIP_DATA_TO_CUTOFF = False
+# ---------------------------------------------------------------------------
+_CLIP_DATA_TO_CUTOFF: bool = True
 DB_PATH = ROOT / "matches.db"
 _GATE_CACHE: dict | None | bool = None
 
@@ -591,6 +609,34 @@ def _infer_state(
         "home_score": home_score,
         "away_score": away_score,
     }
+
+
+def _clip_match_data_for_target(match_data: dict, target: str) -> dict:
+    """Return a shallow copy of match_data truncated to the prediction-window
+    cutoff for *target*.
+
+    Q3 cutoff → minute ≤ 24, PBP quarters {Q1, Q2}.
+    Q4 cutoff → minute ≤ 36, PBP quarters {Q1, Q2, Q3}.
+
+    Only ``graph_points`` and ``play_by_play`` are replaced; all other keys
+    (``score``, ``match``, ``quarters``, etc.) are shared from the original
+    dict so that actual scores and state remain accessible.
+
+    Reverting: set the module-level ``_CLIP_DATA_TO_CUTOFF = False``.
+    """
+    max_minute = 24 if target == "q3" else 36
+    pbp_quarters = {"Q1", "Q2"} if target == "q3" else {"Q1", "Q2", "Q3"}
+
+    clipped = dict(match_data)  # shallow — only overrides the two keys below
+    clipped["graph_points"] = [
+        p for p in match_data.get("graph_points", [])
+        if int(p.get("minute", 0)) <= max_minute
+    ]
+    orig_pbp = match_data.get("play_by_play", {}) or {}
+    clipped["play_by_play"] = {
+        q: plays for q, plays in orig_pbp.items() if q in pbp_quarters
+    }
+    return clipped
 
 
 def _required_ok(data: dict, target: str) -> tuple[bool, str]:
@@ -1310,6 +1356,14 @@ def run_inference(
             }
             continue
 
+        # Clip to the prediction-window cutoff so features and gate are
+        # identical whether inference runs at halftime or mid-Q3/mid-Q4.
+        _data = (
+            _clip_match_data_for_target(match_data, target)
+            if _CLIP_DATA_TO_CUTOFF
+            else match_data
+        )
+
         entry = _pick_entry(compare_blob, target, metric)
         if not entry:
             out["predictions"][target] = {
@@ -1350,7 +1404,7 @@ def run_inference(
 
             features = _build_features_v3(
                 conn,
-                match_data,
+                _data,
                 target=target,
                 snapshot_minute=snap,
             )
@@ -1360,7 +1414,7 @@ def run_inference(
             model_name = "ensemble_avg_prob"
             snapshot_used = snap
         else:
-            features = _build_features(conn, match_data, version, target)
+            features = _build_features(conn, _data, version, target)
             prob_home = _predict_prob(version, target, model_name, features)
             snapshot_used = None
 
@@ -1386,7 +1440,7 @@ def run_inference(
         out["predictions"][target]["threshold_bet"] = sig["threshold_bet"]
 
         gate = _decision_gate(
-            match_data=match_data,
+            match_data=_data,
             target=target,
             snapshot_minute=snapshot_used,
             confidence=float(out["predictions"][target]["confidence"]),
@@ -1554,6 +1608,211 @@ def main() -> None:
                 print("  note=would_skip_this_pick_by_risk_rules")
         else:
             print("  result=pending (match not FT)")
+
+
+
+# ---------------------------------------------------------------------------
+# V10 — Over/Under Regression
+# ---------------------------------------------------------------------------
+
+
+def _graph_stats_upto_v10(graph_points: list[dict], max_minute: int) -> dict:
+    """Graph stats extended with slope features (v10 specific)."""
+    base = _graph_stats_upto(graph_points, max_minute)
+    points = [p for p in graph_points if int(p.get("minute", 0)) <= max_minute]
+    values = [int(p.get("value", 0)) for p in points]
+    if values:
+        slope_3m = values[-1] - values[-4] if len(values) >= 4 else values[-1] - values[0]
+        slope_5m = values[-1] - values[-6] if len(values) >= 6 else values[-1] - values[0]
+    else:
+        slope_3m = slope_5m = 0
+    base["gp_slope_3m"] = slope_3m
+    base["gp_slope_5m"] = slope_5m
+    return base
+
+
+def _build_features_v10(conn, match_data: dict, target: str) -> dict:
+    """Build feature dict for a v10 regression model (q3 or q4 total)."""
+    m = match_data["match"]
+    pbp = match_data.get("play_by_play", {})
+    gp = match_data.get("graph_points", [])
+
+    q1h, q1a = _quarter_points(match_data, "Q1")
+    q2h, q2a = _quarter_points(match_data, "Q2")
+    q3h, q3a = _quarter_points(match_data, "Q3")
+
+    home_team = m.get("home_team", "")
+    away_team = m.get("away_team", "")
+    league = m.get("league", "")
+    match_date = m.get("date", "")
+    match_time = m.get("time", "")
+
+    top_leagues, top_teams = _get_top_buckets(conn)
+
+    def bucket(value: str, top_set: set[str], prefix: str) -> str:
+        return value if value in top_set else f"{prefix}_OTHER"
+
+    home_prior_wr = _team_prior_wr(conn, home_team, match_date, match_time, window=12)
+    away_prior_wr = _team_prior_wr(conn, away_team, match_date, match_time, window=12)
+
+    base: dict = {
+        "league_bucket": bucket(league, top_leagues, "LEAGUE"),
+        "gender_bucket": _infer_gender(league, home_team, away_team),
+        "home_team_bucket": bucket(home_team, top_teams, "TEAM"),
+        "away_team_bucket": bucket(away_team, top_teams, "TEAM"),
+        "home_prior_wr": home_prior_wr,
+        "away_prior_wr": away_prior_wr,
+        "prior_wr_diff": home_prior_wr - away_prior_wr,
+        "q1_diff": (q1h or 0) - (q1a or 0),
+        "q2_diff": (q2h or 0) - (q2a or 0),
+    }
+
+    if target == "q3":
+        ht_home = (q1h or 0) + (q2h or 0)
+        ht_away = (q1a or 0) + (q2a or 0)
+        base["ht_home"] = ht_home
+        base["ht_away"] = ht_away
+        base["ht_total"] = ht_home + ht_away
+        base.update(_graph_stats_upto_v10(gp, 24))
+        base.update(_pbp_stats_upto(pbp, ["Q1", "Q2"]))
+    else:  # q4
+        ht_home = (q1h or 0) + (q2h or 0)
+        ht_away = (q1a or 0) + (q2a or 0)
+        base["q3_diff"] = (q3h or 0) - (q3a or 0)
+        score_3q_home = ht_home + (q3h or 0)
+        score_3q_away = ht_away + (q3a or 0)
+        base["score_3q_home"] = score_3q_home
+        base["score_3q_away"] = score_3q_away
+        base["score_3q_total"] = score_3q_home + score_3q_away
+        base.update(_graph_stats_upto_v10(gp, 36))
+        base.update(_pbp_stats_upto(pbp, ["Q1", "Q2", "Q3"]))
+
+    return base
+
+
+def _predict_v10_stacking(target_prefix: str, features: dict) -> float | None:
+    """Load v10 stacking ensemble and return predicted points, or None if unavailable."""
+    ridge_path = MODEL_DIR_V10 / f"{target_prefix}_ridge.joblib"
+    gb_path = MODEL_DIR_V10 / f"{target_prefix}_gb.joblib"
+    xgb_path = MODEL_DIR_V10 / f"{target_prefix}_xgb.joblib"
+    stack_path = MODEL_DIR_V10 / f"{target_prefix}_stacking.joblib"
+
+    if not ridge_path.exists():
+        return None
+
+    ridge_art = joblib.load(ridge_path)
+    vec = ridge_art["vectorizer"]
+    scaler = ridge_art["scaler"]
+
+    X_raw = vec.transform([features])
+    X_scaled = scaler.transform(X_raw)
+
+    ridge_pred = float(ridge_art["model"].predict(X_scaled)[0])
+    preds = [ridge_pred]
+
+    if gb_path.exists():
+        preds.append(float(joblib.load(gb_path)["model"].predict(X_raw)[0]))
+
+    if xgb_path.exists():
+        preds.append(float(joblib.load(xgb_path)["model"].predict(X_raw)[0]))
+
+    if len(preds) >= 2 and stack_path.exists():
+        stack_model = joblib.load(stack_path)["model"]
+        # Determine expected inputs from coef_ shape
+        n_expected = (
+            len(stack_model.coef_)
+            if hasattr(stack_model, "coef_")
+            else len(preds)
+        )
+        stack_X = np.array([preds[:n_expected]])
+        try:
+            return float(stack_model.predict(stack_X)[0])
+        except Exception:
+            pass
+
+    return float(sum(preds) / len(preds))
+
+
+def run_inference_v10(match_id: str) -> dict:
+    """Run v10 Over/Under regression: predict Q3/Q4 total points.
+
+    Returns a dict with keys::
+
+        ok: bool
+        match_id: str
+        predictions:
+            q3:
+                available: bool
+                reason: str (if not available)
+                predicted_total: float
+                signal: "BET"
+                direction: "OVER"
+            q4: (same shape)
+    """
+    conn = db_mod.get_conn(str(DB_PATH))
+    db_mod.init_db(conn)
+    try:
+        match_data = db_mod.get_match(conn, match_id)
+        if not match_data:
+            return {"ok": False, "reason": "match_not_found", "predictions": {}}
+
+        result: dict = {"ok": True, "match_id": match_id, "predictions": {}}
+
+        for target in ("q3", "q4"):
+            ok_target, reason = _required_ok(match_data, target)
+            if not ok_target:
+                result["predictions"][target] = {
+                    "available": False,
+                    "reason": reason,
+                }
+                continue
+
+            # Clip to the prediction-window cutoff (same rule as run_inference).
+            _data = (
+                _clip_match_data_for_target(match_data, target)
+                if _CLIP_DATA_TO_CUTOFF
+                else match_data
+            )
+
+            try:
+                features = _build_features_v10(conn, _data, target)
+                pred = _predict_v10_stacking(f"{target}_total", features)
+            except Exception as exc:
+                result["predictions"][target] = {
+                    "available": False,
+                    "reason": str(exc),
+                }
+                continue
+
+            if pred is None:
+                result["predictions"][target] = {
+                    "available": False,
+                    "reason": "v10_model_not_found",
+                }
+                continue
+
+            pred_home = _predict_v10_stacking(f"{target}_home", features)
+            pred_away = _predict_v10_stacking(f"{target}_away", features)
+
+            # MAE from README training results (stacking models)
+            mae_total = 5.1 if target == "q3" else 5.2
+            mae_home = 3.65 if target == "q3" else 3.39
+            mae_away = 3.62 if target == "q3" else 3.35
+            result["predictions"][target] = {
+                "available": True,
+                "predicted_total": round(pred, 1),
+                "predicted_home": round(pred_home, 1) if pred_home is not None else None,
+                "predicted_away": round(pred_away, 1) if pred_away is not None else None,
+                "mae": mae_total,
+                "mae_home": mae_home,
+                "mae_away": mae_away,
+                "signal": "BET",
+                "direction": "OVER",
+            }
+
+        return result
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":

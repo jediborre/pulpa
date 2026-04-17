@@ -1,0 +1,123 @@
+{
+  "total_opportunities": 880,
+  "total_comeback_bets": 880,
+  "comeback_wins": 360,
+  "comeback_losses": 520,
+  "comeback_rate": 0.4091,
+  "avg_comeback_odds": 8.13,
+  "avg_profit_per_bet": 7.13,
+  "avg_trailing_by": 5.5,
+  "best_comebacks": [
+    {
+      "match": "15993382",
+      "quarter": "Q3",
+      "snapshot": 6,
+      "trailing_by": 12,
+      "minutes_left": 6.0,
+      "actual_comeback_prob": 0.03,
+      "fair_odds": 33.33,
+      "sb_odds": 21.0,
+      "profit": 20.0
+    },
+    {
+      "match": "15974918",
+      "quarter": "Q3",
+      "snapshot": 4,
+      "trailing_by": 9,
+      "minutes_left": 8.0,
+      "actual_comeback_prob": 0.03,
+      "fair_odds": 33.33,
+      "sb_odds": 21.0,
+      "profit": 20.0
+    },
+    {
+      "match": "15974918",
+      "quarter": "Q3",
+      "snapshot": 6,
+      "trailing_by": 11,
+      "minutes_left": 6.0,
+      "actual_comeback_prob": 0.03,
+      "fair_odds": 33.33,
+      "sb_odds": 21.0,
+      "profit": 20.0
+    },
+    {
+      "match": "15974918",
+      "quarter": "Q3",
+      "snapshot": 8,
+      "trailing_by": 12,
+      "minutes_left": 4.0,
+      "actual_comeback_prob": 0.03,
+      "fair_odds": 33.33,
+      "sb_odds": 21.0,
+      "profit": 20.0
+    },
+    {
+      "match": "14500908",
+      "quarter": "Q3",
+      "snapshot": 8,
+      "trailing_by": 11,
+      "minutes_left": 4.0,
+      "actual_comeback_prob": 0.03,
+      "fair_odds": 33.33,
+      "sb_odds": 21.0,
+      "profit": 20.0
+    },
+    {
+      "match": "15993402",
+      "quarter": "Q3",
+      "snapshot": 6,
+      "trailing_by": 10,
+      "minutes_left": 6.0,
+      "actual_comeback_prob": 0.03,
+      "fair_odds": 33.33,
+      "sb_odds": 21.0,
+      "profit": 20.0
+    },
+    {
+      "match": "15993384",
+      "quarter": "Q3",
+      "snapshot": 8,
+      "trailing_by": 9,
+      "minutes_left": 4.0,
+      "actual_comeback_prob": 0.03,
+      "fair_odds": 33.33,
+      "sb_odds": 21.0,
+      "profit": 20.0
+    },
+    {
+      "match": "15347660",
+      "quarter": "Q3",
+      "snapshot": 8,
+      "trailing_by": 18,
+      "minutes_left": 4.0,
+      "actual_comeback_prob": 0.01,
+      "fair_odds": 100.0,
+      "sb_odds": 21.0,
+      "profit": 20.0
+    },
+    {
+      "match": "15656861",
+      "quarter": "Q3",
+      "snapshot": 8,
+      "trailing_by": 9,
+      "minutes_left": 4.0,
+      "actual_comeback_prob": 0.03,
+      "fair_odds": 33.33,
+      "sb_odds": 21.0,
+      "profit": 20.0
+    },
+    {
+      "match": "15963603",
+      "quarter": "Q3",
+      "snapshot": 8,
+      "trailing_by": 12,
+      "minutes_left": 4.0,
+      "actual_comeback_prob": 0.03,
+      "fair_odds": 33.33,
+      "sb_odds": 21.0,
+      "profit": 20.0
+    }
+  ],
+  "sample_size": 500
+}

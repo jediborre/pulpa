@@ -30,6 +30,7 @@ from telegram.ext import (
 import db as db_mod
 import ml_tools as ml_mod
 import scraper as scraper_mod
+import bet_monitor as bet_monitor_mod
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -70,6 +71,7 @@ TRAIN_STATUS: dict[str, object] = {
     "progress_total": 0,
 }
 MENU_BUTTON_TEXT = "Menu"
+STATS_BUTTON_TEXT = "📊 Stats"
 UTC_OFFSET_HOURS = -6
 DATE_INGEST_PROGRESS_EVERY = 10
 DATE_INGEST_STATUS_INTERVAL_SECONDS = 4
@@ -77,26 +79,69 @@ REFRESH_DATE_STATUS_INTERVAL_SECONDS = 4
 DATE_INGEST_JOBS: dict[int, dict[str, object]] = {}
 REFRESH_JOBS: dict[int, dict[str, object]] = {}
 FOLLOW_JOBS: dict[int, dict[str, object]] = {}
+# Monitor runs in its own OS thread with a dedicated asyncio loop so it
+# never competes with the bot's event loop.
+_MONITOR_THREAD: threading.Thread | None = None
+_MONITOR_LOOP: asyncio.AbstractEventLoop | None = None
+_MONITOR_STOP_REF: list = [None]  # holds the asyncio.Event created inside the thread
+# chat_ids subscribed to monitor notifications.
+# Value: "all" (BET + NO_BET + result) or "bet_only" (BET + result only).
+_MONITOR_SUBSCRIBERS: dict[int, str] = {}
+_SUBSCRIBERS_SETTING_KEY = "monitor_subscribers"  # JSON stored in settings table
+
+
+def _persist_subscribers() -> None:
+    """Save current _MONITOR_SUBSCRIBERS to the settings table."""
+    import json as _json
+    conn = _open_conn()
+    db_mod.set_setting(conn, _SUBSCRIBERS_SETTING_KEY, _json.dumps(_MONITOR_SUBSCRIBERS))
+    conn.close()
+
+
+def _load_subscribers() -> None:
+    """Load _MONITOR_SUBSCRIBERS from the settings table (called on startup)."""
+    import json as _json
+    global _MONITOR_SUBSCRIBERS
+    conn = _open_conn()
+    raw = db_mod.get_setting(conn, _SUBSCRIBERS_SETTING_KEY)
+    conn.close()
+    if raw:
+        try:
+            data = _json.loads(raw)
+            if isinstance(data, dict):
+                _MONITOR_SUBSCRIBERS = {int(k): str(v) for k, v in data.items()}
+        except Exception:
+            pass
 MODEL_OUTPUTS_V4_DIR = BASE_DIR / "training" / "model_outputs_v4"
 MODEL_OUTPUTS_V2_DIR = BASE_DIR / "training" / "model_outputs_v2"
 MODEL_OUTPUTS_V6_DIR = BASE_DIR / "training" / "model_outputs_v6"
 MODEL_OUTPUTS_V9_DIR = BASE_DIR / "training" / "model_outputs_v9"
+MODEL_OUTPUTS_V12_DIR = BASE_DIR / "training" / "v12" / "model_outputs"
+V12_INFERENCE_SCRIPT = BASE_DIR / "training" / "v12" / "infer_match_v12.py"
+V12_LIVE_SCRIPT = BASE_DIR / "training" / "v12" / "live_engine" / "virtual_bookmaker.py"
+MODEL_OUTPUTS_V13_DIR = BASE_DIR / "training" / "v13" / "model_outputs"
+MODEL_OUTPUTS_V15_DIR = BASE_DIR / "training" / "v15" / "model_outputs"
+MODEL_OUTPUTS_V16_DIR = BASE_DIR / "training" / "v16" / "model_outputs"
+V13_INFERENCE_SCRIPT = BASE_DIR / "training" / "v13" / "infer_match_v13.py"
 FOLLOW_REFRESH_SECONDS = 45
 FOLLOW_STALE_CYCLES_LIMIT = 8
 
 # Active model per quarter — changeable at runtime via bot menu
+# MODEL_CONFIG  → used for predictions in the regular bot flow (match detail page)
+# MONITOR_MODEL_CONFIG → used by the bet_monitor daemon for automated bet evaluation
 MODEL_CONFIG: dict[str, str] = {"q3": "v4", "q4": "v4"}
-AVAILABLE_MODELS: list[str] = ["v2", "v4", "v6", "v9"]
+MONITOR_MODEL_CONFIG: dict[str, str] = {"q3": "v4", "q4": "v4"}
+AVAILABLE_MODELS: list[str] = ["v2", "v4", "v6", "v9", "v12", "v13"]
 
 
 def _log_raw_inference_result(match_id: str, source: str, infer_result: object) -> None:
     """Log raw inference payload to terminal for full model-output visibility."""
     try:
-        payload = json.dumps(infer_result, ensure_ascii=False, default=str)
+        payload = json.dumps(infer_result, ensure_ascii=False, default=str, indent=2)
     except Exception:
         payload = str(infer_result)
     logger.info("[MODEL_RAW] source=%s match_id=%s", source, match_id)
-    logger.info("[MODEL_RAW] payload=%s", payload)
+    logger.info("[MODEL_RAW] payload=\n%s", payload)
 
 
 def _parse_allowed_chat_ids(raw: str) -> set[int]:
@@ -117,6 +162,614 @@ def _parse_allowed_chat_ids(raw: str) -> set[int]:
 ALLOWED_CHAT_IDS = _parse_allowed_chat_ids(ALLOWED_CHAT_IDS_RAW)
 
 
+# Cache for V12 MAE metrics (loaded once at module startup)
+_V12_MAE_CACHE: dict[str, float] = {}
+_V12_MAE_CACHE_LOADED = False
+
+
+def _load_v12_mae_metrics() -> dict[str, float]:
+    """Load V12 MAE metrics from all_metrics.csv (cached after first load)."""
+    global _V12_MAE_CACHE, _V12_MAE_CACHE_LOADED
+    
+    if _V12_MAE_CACHE_LOADED:
+        return _V12_MAE_CACHE
+    
+    metrics: dict[str, float] = {}
+    csv_path = MODEL_OUTPUTS_V12_DIR / "all_metrics.csv"
+    
+    if csv_path.exists():
+        try:
+            with csv_path.open("r", encoding="utf-8", newline="") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    model_name = str(row.get("model", "") or "")
+                    mae = float(row.get("mae", 0))
+                    metrics[model_name] = mae
+            logger.info("[V12_MAE] Loaded %d metrics from all_metrics.csv", len(metrics))
+        except Exception as exc:
+            logger.warning("[V12_MAE] Failed to load metrics: %s", exc)
+    
+    _V12_MAE_CACHE = metrics
+    _V12_MAE_CACHE_LOADED = True
+    
+    return metrics
+
+
+# Preload V12 MAE metrics at module startup
+try:
+    _load_v12_mae_metrics()
+except Exception:
+    pass
+
+
+def _get_v12_mae_for_target(target: str, metric_type: str = "home") -> float:
+    """Get actual V12 MAE for a specific target and type."""
+    metrics = _load_v12_mae_metrics()
+    
+    # Map target and type to the model name in all_metrics.csv
+    # Format: q{3|4}_{home|away|total}_men_or_open
+    key = f"{target}_{metric_type}_men_or_open"
+    
+    if key in metrics:
+        return metrics[key]
+    
+    # Fallback to women's league if men_or_open not found
+    key_women = f"{target}_{metric_type}_women"
+    if key_women in metrics:
+        return metrics[key_women]
+    
+    # Fallback to default if not found
+    fallbacks = {
+        "q3_home": 3.63,
+        "q3_away": 3.60,
+        "q3_total": 5.33,
+        "q4_home": 3.63,
+        "q4_away": 3.60,
+        "q4_total": 5.33,
+    }
+    
+    return fallbacks.get(key, 5.0)
+
+
+def _run_v12_inference(match_id: str, target: str = "q4") -> dict:
+    """Run V12 inference for winner prediction."""
+    try:
+        import importlib
+        v12_infer_mod = importlib.import_module("training.v12.infer_match_v12")
+        v12_result = v12_infer_mod.run_inference(
+            match_id=match_id,
+            target=target,
+            fetch_missing=False,
+        )
+
+        if isinstance(v12_result, dict) and not v12_result.get("ok", True):
+            return {"ok": False, "reason": v12_result.get("reason", "Error")}
+        
+        pred = v12_result
+        
+        # Load actual V12 MAE from trained metrics
+        mae_total = _get_v12_mae_for_target(target, "total")
+        mae_home = _get_v12_mae_for_target(target, "home")
+        mae_away = _get_v12_mae_for_target(target, "away")
+        
+        return {
+            "ok": True,
+            "predictions": {
+                target: {
+                    "available": True,
+                    "predicted_winner": pred.winner_pick,
+                    "confidence": pred.winner_confidence,
+                    "bet_signal": pred.winner_signal,
+                    "final_recommendation": pred.final_signal,
+                    "predicted_total": pred.predicted_total,
+                    "predicted_home": pred.predicted_home,
+                    "predicted_away": pred.predicted_away,
+                    "over_under_signal": pred.over_under_signal,
+                    "league_quality": pred.league_quality,
+                    "league_bettable": pred.league_bettable,
+                    "volatility_index": pred.volatility_index,
+                    "data_quality": pred.data_quality,
+                    "risk_level": pred.risk_level,
+                    "reasoning": pred.reasoning,
+                    "mae": mae_total,
+                    "mae_home": mae_home,
+                    "mae_away": mae_away,
+                }
+            }
+        }
+    except Exception as exc:
+        return {"ok": False, "reason": f"V12 error: {exc}"}
+
+
+def _run_v12_live_analysis(
+    match_id: str,
+    quarter: str,
+    qtr_home_score: int,
+    qtr_away_score: int,
+    total_home_score: int,
+    total_away_score: int,
+    elapsed_minutes: float,
+    graph_points: list,
+    pbp_events: list,
+) -> dict:
+    """Run V12 LIVE virtual bookmaker analysis."""
+    try:
+        import importlib
+        v12_live_mod = importlib.import_module("training.v12.live_engine.virtual_bookmaker")
+        
+        analysis = v12_live_mod.analizar_quarter_en_vivo(
+            match_id=match_id,
+            quarter=quarter,
+            qtr_home_score=qtr_home_score,
+            qtr_away_score=qtr_away_score,
+            total_home_score=total_home_score,
+            total_away_score=total_away_score,
+            elapsed_minutes=elapsed_minutes,
+            graph_points=graph_points,
+            pbp_events=pbp_events,
+        )
+        
+        if analysis is None:
+            return {"ok": False, "reason": "No se pudo analizar"}
+        
+        markets_text = []
+        markets_raw = []
+        for m in analysis.markets:
+            markets_text.append(
+                f"{m.description}\n"
+                f"  Prob: {m.our_probability:.1%} | Fair: {m.fair_odds:.2f}\n"
+                f"  → Si tu casa ofrece > {m.fair_odds * 1.15:.2f} → VALUE"
+            )
+            markets_raw.append({
+                "description": m.description,
+                "prob": m.our_probability,
+                "fair": m.fair_odds,
+                "value_threshold": round(m.fair_odds * 1.15, 2),
+            })
+        
+        return {
+            "ok": True,
+            "score_diff": analysis.score_diff,
+            "elapsed": analysis.elapsed_minutes,
+            "remaining": analysis.minutes_remaining,
+            "momentum": analysis.graph_momentum,
+            "projections": {
+                "home": analysis.projected_home_pts,
+                "away": analysis.projected_away_pts,
+                "total": analysis.projected_total_pts,
+                "diff": analysis.projected_diff,
+            },
+            "markets_text": "\n\n".join(markets_text),
+            "markets": markets_raw,
+            "recommendation": analysis.overall_recommendation,
+            "best_market": analysis.best_market,
+            "reasoning": analysis.reasoning,
+        }
+    except Exception as exc:
+        return {"ok": False, "reason": f"V12 LIVE error: {exc}"}
+
+
+def _run_v13_inference(match_id: str, target: str = "q4") -> dict:
+    """Run V13 inference for winner prediction (pace-aware ensemble model)."""
+    try:
+        v13_infer_mod = importlib.import_module("training.v13.infer_match_v13")
+        v13_result = v13_infer_mod.run_inference(match_id=match_id, target=target)
+
+        if not v13_result.get("ok", False):
+            return {"ok": False, "reason": v13_result.get("reason", "V13 no disponible")}
+
+        pred = v13_result["prediction"]
+
+        return {
+            "ok": True,
+            "predictions": {
+                target: {
+                    "available": True,
+                    "predicted_winner": getattr(pred, "winner_pick", None),
+                    "confidence": getattr(pred, "winner_confidence", None),
+                    "bet_signal": getattr(pred, "winner_signal", None),
+                    "final_recommendation": getattr(pred, "final_signal", None),
+                    "predicted_total": getattr(pred, "predicted_total", None),
+                    "predicted_home": getattr(pred, "predicted_home", None),
+                    "predicted_away": getattr(pred, "predicted_away", None),
+                    "reasoning": getattr(pred, "reasoning", None),
+                    "mae": getattr(pred, "mae", None),
+                    "mae_home": getattr(pred, "mae_home", None),
+                    "mae_away": getattr(pred, "mae_away", None),
+                    "league_quality": getattr(pred, "league_quality", None),
+                    "league_bettable": getattr(pred, "league_bettable", None),
+                    "volatility_index": getattr(pred, "volatility_index", None),
+                    "data_quality": getattr(pred, "data_quality", None),
+                    # V13-specific quality metadata
+                    "model_quality": getattr(pred, "model_quality", None),
+                    "model_samples": getattr(pred, "model_samples", None),
+                    "model_gap": getattr(pred, "model_gap", None),
+                    "model_f1": getattr(pred, "model_f1", None),
+                    "fallback_used": getattr(pred, "fallback_used", False),
+                }
+            },
+        }
+    except Exception as exc:
+        return {"ok": False, "reason": f"V13: {exc}"}
+
+
+# V12 LIVE tracking state
+V12_LIVE_JOBS: dict[str, dict] = {}  # key: "{chat_id}:{msg_id}" -> job info
+V12_LIVE_POLL_SECONDS = 30
+
+
+def _build_v12_live_message(data: dict, result: dict, quarter_label: str) -> str:
+    """Build a Telegram-friendly V12 LIVE message."""
+    m = data.get("match", {})
+    s = data.get("score", {})
+    quarters = s.get("quarters", {})
+    gp = data.get("graph_points", [])
+    minute_est = None
+    if gp:
+        try:
+            minute_est = int(gp[-1].get("minute", 0))
+        except (TypeError, ValueError):
+            pass
+
+    home_team = str(m.get("home_team", "?"))
+    away_team = str(m.get("away_team", "?"))
+    total_home = s.get("home", "?")
+    total_away = s.get("away", "?")
+    status = str(m.get("status_type", "?"))
+
+    # Quarter scores
+    q_order = ["Q1", "Q2", "Q3", "Q4"]
+    q_lines = []
+    for q in q_order:
+        qd = quarters.get(q, {})
+        if qd:
+            qh = qd.get("home", "-")
+            qa = qd.get("away", "-")
+            emoji = "✅" if q == quarter_label else "·"
+            q_lines.append(f"  {emoji} {q}: {qh} - {qa}")
+
+    # Projections
+    proj = result.get("projections", {})
+    rec = result.get("recommendation", "?")
+    rec_emoji = {"WATCH": "✅", "SKIP": "🚫", "LEAN": "⚠️"}.get(rec, "❓")
+    best = result.get("best_market", "N/A")
+
+    # Momentum
+    mom = result.get("momentum", 0)
+    mom_arrow = "↑" if mom > 0.1 else "↓" if mom < -0.1 else "→"
+
+    lines = [
+        f"🏀 V12 LIVE — {quarter_label}",
+        f"{home_team} vs {away_team}",
+        f"⏱ Min: {minute_est if minute_est is not None else '?'} | Estado: {status}",
+        "",
+        f"📊 Marcador: {total_home} - {total_away}",
+    ]
+    lines.extend(q_lines)
+    lines += [
+        "",
+        f"📈 Proyeccion: {int(proj.get('home', 0))} - {int(proj.get('away', 0))}",
+        f"   Diff: {'+' if proj.get('diff', 0) >= 0 else ''}{int(proj.get('diff', 0))} pts",
+        f"   Total: {int(proj.get('total', 0))} pts",
+        f"   Momentum: {mom_arrow} {mom:+.1f}",
+        "",
+        f"{rec_emoji} Recomendacion: {rec}",
+        f"🎯 Mejor mercado: {best}",
+    ]
+
+    # Markets with clear formatting
+    _num_emojis = ["1️⃣", "2️⃣", "3️⃣"]
+    _markets_raw = result.get("markets", [])
+    if _markets_raw:
+        lines.append("")
+        lines.append("📋 Mercados:")
+        for _i, _mkt in enumerate(_markets_raw[:3]):
+            _prob_pct = f"{_mkt['prob']:.0%}"
+            _fair = _mkt['fair']
+            _val_thr = _mkt.get('value_threshold', round(_fair * 1.15, 2))
+            _num = _num_emojis[_i] if _i < len(_num_emojis) else f"{_i+1}."
+            lines += [
+                "",
+                f"  {_num} {_mkt['description']}",
+                f"     Prob: {_prob_pct}  |  Cuota justa: {_fair:.2f}",
+                f"     ✅ VALUE si ofrecen > {_val_thr:.2f}",
+            ]
+
+    return "\n".join(lines)
+
+
+async def _v12_live_poll(chat_id: int, msg_id: int, match_id: str, page: int, app: Application):
+    """Background polling for V12 LIVE tracking."""
+    job_key = f"{chat_id}:{msg_id}"
+    job = V12_LIVE_JOBS.get(job_key)
+    if not job:
+        return
+
+    poll_interval = V12_LIVE_POLL_SECONDS
+    consecutive_errors = 0
+
+    try:
+        while V12_LIVE_JOBS.get(job_key):
+            # Check if job was cancelled
+            if job.get("cancelled"):
+                break
+
+            try:
+                # Fetch fresh data
+                fresh_data = await asyncio.to_thread(_refresh_match_data, match_id)
+                if not fresh_data:
+                    fresh_data = _get_match_detail(match_id)
+                if not fresh_data:
+                    raise RuntimeError("match no encontrado")
+
+                # Get quarter info
+                quarters = fresh_data.get("score", {}).get("quarters", {})
+                pbp = fresh_data.get("play_by_play", {})
+                gp = fresh_data.get("graph_points", [])
+
+                q = quarters.get("Q4") or quarters.get("Q3")
+                if not q:
+                    raise RuntimeError("no hay datos de quarters")
+
+                quarter_label = "Q4" if "Q4" in quarters else "Q3"
+                q_home = int(q.get("home", 0))
+                q_away = int(q.get("away", 0))
+
+                q_order = ["Q1", "Q2", "Q3", "Q4"]
+                q_idx = q_order.index(quarter_label)
+                total_home = total_away = 0
+                for i in range(q_idx + 1):
+                    qd = quarters.get(q_order[i], {})
+                    total_home += int(qd.get("home", 0))
+                    total_away += int(qd.get("away", 0))
+
+                elapsed = 6.0
+                cutoff = (q_idx * 12) + elapsed
+                gp_filtered = [p for p in gp if int(p.get("minute", 0)) <= cutoff]
+
+                result = _run_v12_live_analysis(
+                    match_id=match_id,
+                    quarter=quarter_label,
+                    qtr_home_score=q_home // 2,
+                    qtr_away_score=q_away // 2,
+                    total_home_score=total_home,
+                    total_away_score=total_away,
+                    elapsed_minutes=elapsed,
+                    graph_points=gp_filtered,
+                    pbp_events=pbp.get(quarter_label, [])[:10],
+                )
+
+                if not result.get("ok"):
+                    raise RuntimeError(result.get("reason", "error"))
+
+                # Build message
+                message = _build_v12_live_message(fresh_data, result, quarter_label)
+
+                # Keyboard
+                keyboard = [
+                    [InlineKeyboardButton("🔄 Refresh", callback_data=f"v12live:refresh:{match_id}:_:{page}")],
+                    [InlineKeyboardButton("🔴 Seguir en vivo", callback_data=f"v12live:track:{match_id}:_:{page}")],
+                    [InlineKeyboardButton("⬅️ Volver", callback_data=f"match:{match_id}:_:{page}")],
+                ]
+
+                # Update message (caption for photo messages, text for text messages)
+                cap = message if len(message) <= 1024 else message[:1021] + "..."
+                try:
+                    if job.get("is_photo"):
+                        await app.bot.edit_message_caption(
+                            chat_id=chat_id,
+                            message_id=msg_id,
+                            caption=cap,
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                        )
+                    else:
+                        await app.bot.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=msg_id,
+                            text=message,
+                            reply_markup=InlineKeyboardMarkup(keyboard),
+                        )
+                except Exception as e:
+                    # Message might be too long or unchanged
+                    if "message is not modified" not in str(e).lower():
+                        logger.warning("[V12 LIVE] Edit failed: %s", e)
+
+                consecutive_errors = 0
+
+                # Stop if match finished
+                status = str(fresh_data.get("match", {}).get("status_type", "")).lower()
+                if status == "finished":
+                    job["stop_reason"] = "match_finished"
+                    break
+
+            except Exception as exc:
+                consecutive_errors += 1
+                if consecutive_errors >= 5:
+                    job["stop_reason"] = "errors"
+                    _err_msg = f"❌ Error V12 LIVE: {str(exc)[:100]}\nSeguimiento detenido."
+                    _err_kb = InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Volver", callback_data=f"match:{match_id}:_:{page}")]])
+                    try:
+                        if job.get("is_photo"):
+                            await app.bot.edit_message_caption(chat_id=chat_id, message_id=msg_id, caption=_err_msg, reply_markup=_err_kb)
+                        else:
+                            await app.bot.edit_message_text(chat_id=chat_id, message_id=msg_id, text=_err_msg, reply_markup=_err_kb)
+                    except Exception:
+                        pass
+                    break
+
+            await asyncio.sleep(poll_interval)
+
+    finally:
+        V12_LIVE_JOBS.pop(job_key, None)
+
+
+async def _handle_v12_live_analysis(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    query,
+    match_id: str,
+    page: int,
+    refresh: bool = False,
+):
+    """Handle V12 LIVE Bookmaker analysis."""
+    try:
+        await query.answer("Analizando V12 LIVE...")
+
+        data = await _get_match_detail_async(match_id, update)
+        if not data:
+            await query.edit_message_text(
+                text="Match no encontrado.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("Menu principal", callback_data="nav:main")]
+                ]),
+            )
+            return
+
+        status_type = str(data.get("match", {}).get("status_type", "") or "").lower()
+        if status_type not in ["inprogress", "finished"]:
+            await query.edit_message_text(
+                text="V12 LIVE solo funciona para partidos en vivo o terminados.\n"
+                     "Estado: " + status_type,
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("Volver", callback_data=f"match:{match_id}:_:{page}")]
+                ]),
+            )
+            return
+
+        quarters = data.get("score", {}).get("quarters", {})
+        pbp = data.get("play_by_play", {})
+        gp = data.get("graph_points", [])
+
+        q = quarters.get("Q4")
+        if not q:
+            q = quarters.get("Q3")
+
+        if not q:
+            await query.edit_message_text(
+                text="No hay datos de quarters.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("Volver", callback_data=f"match:{match_id}:_:{page}")]
+                ]),
+            )
+            return
+
+        quarter_label = "Q4" if "Q4" in quarters else "Q3"
+        q_home = int(q.get("home", 0))
+        q_away = int(q.get("away", 0))
+
+        q_order = ["Q1", "Q2", "Q3", "Q4"]
+        q_idx = q_order.index(quarter_label)
+        total_home = 0
+        total_away = 0
+        for i in range(q_idx + 1):
+            q_data = quarters.get(q_order[i], {})
+            total_home += int(q_data.get("home", 0))
+            total_away += int(q_data.get("away", 0))
+
+        elapsed = 6.0
+        cutoff = (q_idx * 12) + elapsed
+        gp_filtered = [p for p in gp if int(p.get("minute", 0)) <= cutoff]
+
+        result = _run_v12_live_analysis(
+            match_id=match_id,
+            quarter=quarter_label,
+            qtr_home_score=q_home // 2,
+            qtr_away_score=q_away // 2,
+            total_home_score=total_home,
+            total_away_score=total_away,
+            elapsed_minutes=elapsed,
+            graph_points=gp_filtered,
+            pbp_events=pbp.get(quarter_label, [])[:10],
+        )
+
+        if not result.get("ok"):
+            await query.edit_message_text(
+                text="Error V12 LIVE: " + str(result.get("reason", "Unknown")),
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("Volver", callback_data=f"match:{match_id}:_:{page}")]
+                ]),
+            )
+            return
+
+        message = _build_v12_live_message(data, result, quarter_label)
+
+        keyboard = [
+            [InlineKeyboardButton("🔄 Refresh", callback_data=f"v12live:refresh:{match_id}:_:{page}")],
+            [InlineKeyboardButton("🔴 Seguir en vivo", callback_data=f"v12live:track:{match_id}:_:{page}")],
+            [InlineKeyboardButton("⬅️ Volver", callback_data=f"match:{match_id}:_:{page}")],
+        ]
+
+        # Send as photo with analysis as caption
+        chat_id = query.message.chat_id
+        # Cancel any existing running V12 LIVE jobs for this chat (they reference the old message)
+        for _jk in list(V12_LIVE_JOBS.keys()):
+            if V12_LIVE_JOBS[_jk].get("chat_id") == chat_id:
+                V12_LIVE_JOBS[_jk]["cancelled"] = True
+        try:
+            await query.message.delete()
+        except Exception:
+            pass
+        caption = message if len(message) <= 1024 else message[:1021] + "..."
+        try:
+            image_path = _build_graph_image(match_id, data)
+            await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=open(image_path, "rb"),
+                caption=caption,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
+        except Exception:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=message,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
+
+    except Exception as exc:
+        logger.error("[V12 LIVE] Error: %s", exc, exc_info=True)
+        try:
+            chat_id = query.message.chat_id if hasattr(query.message, "chat_id") else None
+            if chat_id:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text="Error V12 LIVE: " + str(exc)[:200],
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("Volver", callback_data=f"match:{match_id}:_:{page}")]
+                    ]),
+                )
+        except Exception:
+            pass
+
+
+async def _handle_v12_live_graph(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    query,
+    match_id: str,
+    page: int,
+):
+    """Show graph for V12 LIVE match."""
+    await query.answer("Generando grafica...")
+    data = await _get_match_detail_async(match_id, update)
+    if not data:
+        await query.answer("Match no encontrado", show_alert=True)
+        return
+
+    try:
+        image_path = _build_graph_image(match_id, data)
+        keyboard = [
+            [InlineKeyboardButton("⬅️ Volver a V12 LIVE", callback_data=f"v12live:refresh:{match_id}:_:{page}")],
+        ]
+        await context.bot.send_photo(
+            chat_id=query.message.chat_id,
+            photo=open(image_path, "rb"),
+            caption=f"Grafica - {data.get('match', {}).get('home_team', '?')} vs {data.get('match', {}).get('away_team', '?')}",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
+    except Exception as exc:
+        await query.answer(f"Error generando grafica: {exc}", show_alert=True)
+
+
 def _open_conn() -> sqlite3.Connection:
     return db_mod.get_conn(DB_PATH)
 
@@ -132,9 +785,9 @@ def _winner_from_scores(home: int | None, away: int | None) -> str:
 def _winner_short(home: int | None, away: int | None) -> str:
     winner = _winner_from_scores(home, away)
     if winner == "home":
-        return "H"
+        return "🏠"
     if winner == "away":
-        return "A"
+        return "✈️"
     if winner == "push":
         return "P"
     return "-"
@@ -205,36 +858,72 @@ def _fetch_date_summaries() -> list[dict]:
 
 
 def _fetch_dates_pred_stats() -> dict[str, dict]:
+    """Returns per-date outcome stats in 2 DB queries instead of N+1."""
+    conn = _open_conn()
+    try:
+        match_rows = conn.execute(
+            f"""
+            SELECT match_id,
+                   date(datetime(date || ' ' || time, '{UTC_OFFSET_HOURS} hours')) AS event_date
+            FROM matches
+            """
+        ).fetchall()
+        if not match_rows:
+            return {}
+        mid_to_date: dict[str, str] = {
+            str(r["match_id"]): str(r["event_date"] or "")
+            for r in match_rows
+        }
+        tags = _all_result_tags(conn)
+        if not tags:
+            return {}
+        all_ids = list(mid_to_date.keys())
+        placeholders = ",".join("?" for _ in all_ids)
+        eval_rows = conn.execute(
+            f"""
+            SELECT * FROM eval_match_results
+            WHERE match_id IN ({placeholders})
+            ORDER BY match_id, updated_at DESC
+            """,
+            tuple(all_ids),
+        ).fetchall()
+    finally:
+        conn.close()
+
     stats: dict[str, dict] = {}
-    for row in _fetch_date_summaries():
-        event_date = str(row.get("event_date", "") or "")
+    seen: set[str] = set()
+    for row in eval_rows:
+        mid = str(row["match_id"])
+        if mid in seen:
+            continue
+        seen.add(mid)
+        event_date = mid_to_date.get(mid, "")
         if not event_date:
             continue
-        pred_map = _fetch_date_pred_outcomes(event_date)
-        counts = {
-            "q3_hit": 0,
-            "q3_miss": 0,
-            "q3_push": 0,
-            "q4_hit": 0,
-            "q4_miss": 0,
-            "q4_push": 0,
-        }
-        for pred in pred_map.values():
-            q3o = str(pred.get("q3_outcome") or "").lower()
-            q4o = str(pred.get("q4_outcome") or "").lower()
+        for tag in tags:
+            q3_av_key = f"q3_available__{tag}"
+            if q3_av_key not in row.keys():
+                continue
+            q3_av = int(row[q3_av_key] or 0)
+            q4_av = int(row[f"q4_available__{tag}"] or 0) if f"q4_available__{tag}" in row.keys() else 0
+            if not (q3_av or q4_av):
+                continue
+            q3o = str(_row_value(row, f"q3_outcome__{tag}") or "").lower() if q3_av else ""
+            q4o = str(_row_value(row, f"q4_outcome__{tag}") or "").lower() if q4_av else ""
+            c = stats.setdefault(event_date, {"q3_hit": 0, "q3_miss": 0, "q3_push": 0, "q4_hit": 0, "q4_miss": 0, "q4_push": 0})
             if q3o == "hit":
-                counts["q3_hit"] += 1
+                c["q3_hit"] += 1
             elif q3o == "miss":
-                counts["q3_miss"] += 1
+                c["q3_miss"] += 1
             elif q3o == "push":
-                counts["q3_push"] += 1
+                c["q3_push"] += 1
             if q4o == "hit":
-                counts["q4_hit"] += 1
+                c["q4_hit"] += 1
             elif q4o == "miss":
-                counts["q4_miss"] += 1
+                c["q4_miss"] += 1
             elif q4o == "push":
-                counts["q4_push"] += 1
-        stats[event_date] = counts
+                c["q4_push"] += 1
+            break  # first tag with availability wins
     return stats
 
 
@@ -276,6 +965,47 @@ def _fetch_matches_for_date(event_date: str) -> list[dict]:
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def _fetch_monitor_log_pred(event_date: str) -> dict[str, dict]:
+    """Build a pred_map from bet_monitor_log for a given date."""
+    conn = _open_conn()
+    try:
+        log_rows = conn.execute(
+            """
+            SELECT match_id, target, signal, pick, result
+            FROM bet_monitor_log
+            WHERE event_date = ?
+            ORDER BY match_id, id ASC
+            """,
+            (event_date,),
+        ).fetchall()
+    except Exception:
+        log_rows = []
+    conn.close()
+    result_map = {"win": "hit", "loss": "miss", "push": "push"}
+    out: dict[str, dict] = {}
+    for row in log_rows:
+        mid = str(row["match_id"])
+        target = str(row["target"] or "").lower()
+        if target not in ("q3", "q4"):
+            continue
+        signal = str(row["signal"] or "").strip().upper()
+        pick = str(row["pick"] or "").lower()
+        db_result = str(row["result"] or "pending").lower()
+        outcome = result_map.get(db_result)  # None = pending
+        if mid not in out:
+            out[mid] = {
+                "q3_available": False, "q4_available": False,
+                "q3_signal": None, "q4_signal": None,
+                "q3_outcome": None, "q4_outcome": None,
+                "q3_pick": None, "q4_pick": None,
+            }
+        out[mid][f"{target}_available"] = True
+        out[mid][f"{target}_signal"] = signal
+        out[mid][f"{target}_pick"] = pick
+        out[mid][f"{target}_outcome"] = outcome
+    return out
 
 
 def _fetch_date_pred_outcomes(event_date: str) -> dict[str, dict]:
@@ -339,10 +1069,32 @@ def _fetch_date_pred_outcomes(event_date: str) -> dict[str, dict]:
         if selected is not None:
             result[mid] = selected
             seen.add(mid)
+
+    # Merge live monitor signals:
+    # - Matches not in eval_match_results: add them directly from monitor log
+    # - Matches already in eval_match_results: only override quarters where the
+    #   monitor placed an ACTUAL bet (not NO BET / UNAVAILABLE).  This keeps
+    #   the recalculated (v13) signal for NO-BET quarters so the date list
+    #   stays consistent with the match detail view.
+    _NO_BET_SIGNALS = {"NO BET", "NO_BET", "UNAVAILABLE", "ERROR", "window_missed", "no_data", "no_graph"}
+    monitor_map = _fetch_monitor_log_pred(event_date)
+    for mid, pred in monitor_map.items():
+        if mid not in result:
+            result[mid] = pred
+        else:
+            for q in ("q3", "q4"):
+                sig = str(pred.get(f"{q}_signal") or "").upper().replace("_", " ")
+                if pred.get(f"{q}_available") and sig not in _NO_BET_SIGNALS:
+                    result[mid].update({
+                        f"{q}_available": True,
+                        f"{q}_signal": pred[f"{q}_signal"],
+                        f"{q}_pick": pred[f"{q}_pick"],
+                        f"{q}_outcome": pred[f"{q}_outcome"],
+                    })
     return result
 
 
-def _pred_stats_text(pred_map: dict, total_matches: int) -> str:
+def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] | None = None) -> str:
     def _pct(count: int, total: int) -> str:
         if total <= 0:
             return "0.0%"
@@ -360,34 +1112,112 @@ def _pred_stats_text(pred_map: dict, total_matches: int) -> str:
             out.append(" | ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)))
         return out
 
+    # Read configured odds/stake from DB settings
+    _conn = _open_conn()
+    _stake = float(db_mod.get_setting(_conn, "sig_bet_size", "100") or 100)
+    _odds  = float(db_mod.get_setting(_conn, "sig_odds",     "1.4")  or 1.4)
+    _conn.close()
+
     def _profit_text(hit: int, miss: int, push: int) -> str:
-        stake = 20.0
-        odds = 1.42
-        # 1X2 simulation: tie/push counts as lost ticket when betting side 1 or 2.
-        net = hit * (stake * (odds - 1.0)) - (miss + push) * stake
+        net = hit * (_stake * (_odds - 1.0)) - (miss + push) * _stake
         sign = "+" if net >= 0 else ""
         return f"{sign}${net:.1f}"
+
+    def _resolve_outcome(pred: dict, quarter: str, row: dict) -> str:
+        """Return 'hit'|'miss'|'push'|'pending'|'no_bet'."""
+        available = bool(pred.get(f"{quarter}_available"))
+        if not available:
+            return "no_bet"
+        signal = str(pred.get(f"{quarter}_signal") or "").strip().upper().replace("_", " ")
+        if signal in ("NO BET", "NO_BET"):
+            return "no_bet"
+        pick = str(pred.get(f"{quarter}_pick") or "").lower()
+        status_type = str(row.get("status_type", "") or "").strip().lower()
+        is_finished = status_type == "finished"
+        q_home = _safe_int(row.get("q3_home" if quarter == "q3" else "q4_home"))
+        q_away = _safe_int(row.get("q3_away" if quarter == "q3" else "q4_away"))
+        if is_finished and q_home is not None and q_away is not None and pick in ("home", "away"):
+            actual_winner = _winner_from_scores(q_home, q_away)
+            if actual_winner == "push":
+                return "push"
+            return "hit" if actual_winner == pick else "miss"
+        outcome = str(pred.get(f"{quarter}_outcome") or "pending").lower()
+        return outcome if outcome in ("hit", "miss", "push") else "pending"
+
+    def _nobet_would_win(pred: dict, quarter: str, row: dict) -> bool | None:
+        """For NO BET signals with a tendency, check if that tendency won.
+        Returns True/False/None (None = no tendency or match not finished)."""
+        available = bool(pred.get(f"{quarter}_available"))
+        signal = str(pred.get(f"{quarter}_signal") or "").strip().upper().replace("_", " ")
+        if available and signal not in ("NO BET", "NO_BET"):
+            return None  # was a real bet, not a no-bet
+        tendency = str(pred.get(f"{quarter}_pick") or "").lower()
+        if tendency not in ("home", "away"):
+            return None
+        status_type = str(row.get("status_type", "") or "").strip().lower()
+        if status_type != "finished":
+            return None
+        q_home = _safe_int(row.get("q3_home" if quarter == "q3" else "q4_home"))
+        q_away = _safe_int(row.get("q3_away" if quarter == "q3" else "q4_away"))
+        if q_home is None or q_away is None:
+            return None
+        actual_winner = _winner_from_scores(q_home, q_away)
+        if actual_winner == "push":
+            return None
+        return actual_winner == tendency
 
     stats = {
         "q3": {"hit": 0, "miss": 0, "push": 0, "pending": 0, "no_bet": 0},
         "q4": {"hit": 0, "miss": 0, "push": 0, "pending": 0, "no_bet": 0},
     }
+    # league_stats[league][quarter] = {"hit":0, "miss":0, "push":0}
+    league_stats: dict[str, dict[str, dict]] = {}
+    # nobet_stats: counts for NO BET tendency phantom breakdown
+    nobet_stats = {
+        "q3": {"hit": 0, "miss": 0},
+        "q4": {"hit": 0, "miss": 0},
+    }
+
+    # Build a lookup from match_rows for resolving outcomes dynamically
+    match_lookup = {}
+    if match_rows:
+        for row in match_rows:
+            mid = str(row.get("match_id", ""))
+            match_lookup[mid] = row
+
+    _NO_BET_SIGS = {"NO BET", "NO_BET"}
 
     for match_id, pred in pred_map.items():
-        _ = match_id
-        for quarter in ("q3", "q4"):
-            available = bool(pred.get(f"{quarter}_available"))
-            if not available:
-                stats[quarter]["no_bet"] += 1
-                continue
+        row = match_lookup.get(match_id, {})
+        league = str(row.get("league", "") or "").strip()
+        # Shorten to first segment before comma/dash for table readability
+        league_short = league.split(",")[0].split("-")[0].strip()[:18] or "?"
 
-            outcome = str(pred.get(f"{quarter}_outcome") or "pending").lower()
-            if outcome == "hit":
+        if league_short not in league_stats:
+            league_stats[league_short] = {
+                "q3": {"hit": 0, "miss": 0, "push": 0},
+                "q4": {"hit": 0, "miss": 0, "push": 0},
+            }
+
+        for quarter in ("q3", "q4"):
+            outcome = _resolve_outcome(pred, quarter, row)
+            if outcome == "no_bet":
+                stats[quarter]["no_bet"] += 1
+                # Phantom no-bet tendency check
+                won = _nobet_would_win(pred, quarter, row)
+                if won is True:
+                    nobet_stats[quarter]["hit"] += 1
+                elif won is False:
+                    nobet_stats[quarter]["miss"] += 1
+            elif outcome == "hit":
                 stats[quarter]["hit"] += 1
+                league_stats[league_short][quarter]["hit"] += 1
             elif outcome == "miss":
                 stats[quarter]["miss"] += 1
+                league_stats[league_short][quarter]["miss"] += 1
             elif outcome == "push":
                 stats[quarter]["push"] += 1
+                league_stats[league_short][quarter]["push"] += 1
             else:
                 stats[quarter]["pending"] += 1
 
@@ -399,39 +1229,100 @@ def _pred_stats_text(pred_map: dict, total_matches: int) -> str:
     total_miss = stats["q3"]["miss"] + stats["q4"]["miss"]
     total_push = stats["q3"]["push"] + stats["q4"]["push"]
     total_pending = stats["q3"]["pending"] + stats["q4"]["pending"]
+    total_no_bet = stats["q3"]["no_bet"] + stats["q4"]["no_bet"]
     resolved_total = total_hit + total_miss + total_push
 
+    # ── Main summary table ───────────────────────────────────────────
     headers = ["Filtro", "W", "L", "P", "NB", "%W", "Ganancia"]
-    rows: list[list[str]] = []
+    rows_main: list[list[str]] = []
     for quarter in ("q3", "q4"):
         s = stats[quarter]
         resolved = max(s["hit"] + s["miss"] + s["push"], 0)
         no_bet_total = s["no_bet"] + s["pending"]
-        rows.append(
-            [
-                quarter.upper(),
-                str(s["hit"]),
-                str(s["miss"]),
-                str(s["push"]),
-                str(no_bet_total),
-                _pct(s["hit"], resolved),
-                _profit_text(s["hit"], s["miss"], s["push"]),
-            ]
+        rows_main.append([
+            quarter.upper(),
+            str(s["hit"]),
+            str(s["miss"]),
+            str(s["push"]),
+            str(no_bet_total),
+            _pct(s["hit"], resolved),
+            _profit_text(s["hit"], s["miss"], s["push"]),
+        ])
+    rows_main.append([
+        "GLOBAL",
+        str(total_hit),
+        str(total_miss),
+        str(total_push),
+        str(total_no_bet + total_pending),
+        _pct(total_hit, resolved_total),
+        _profit_text(total_hit, total_miss, total_push),
+    ])
+    out_parts = ["\n".join(_table(headers, rows_main))]
+
+    # ── By-league table (only leagues with at least one bet) ─────────
+    active_leagues = [
+        lg for lg, qs in league_stats.items()
+        if any(qs[q]["hit"] + qs[q]["miss"] + qs[q]["push"] > 0 for q in ("q3", "q4"))
+    ]
+    if active_leagues:
+        # Determine dominant loss quarter globally (Q3 losses vs Q4 losses)
+        total_q3_losses = sum(league_stats[lg]["q3"]["miss"] for lg in active_leagues)
+        total_q4_losses = sum(league_stats[lg]["q4"]["miss"] for lg in active_leagues)
+        loss_quarter = "q3" if total_q3_losses >= total_q4_losses else "q4"
+        # Sort: primary = losses in dominant quarter (desc), secondary = total losses (desc)
+        active_leagues.sort(
+            key=lambda lg: (
+                league_stats[lg][loss_quarter]["miss"],
+                league_stats[lg]["q3"]["miss"] + league_stats[lg]["q4"]["miss"],
+            ),
+            reverse=True,
         )
+        lg_headers = ["Liga", "Q3W", "Q3L", "Q4W", "Q4L", "%W"]
+        lg_rows: list[list[str]] = []
+        for lg in active_leagues:
+            q3s = league_stats[lg]["q3"]
+            q4s = league_stats[lg]["q4"]
+            total_w = q3s["hit"] + q4s["hit"]
+            total_r = total_w + q3s["miss"] + q4s["miss"] + q3s["push"] + q4s["push"]
+            lg_rows.append([
+                lg,
+                str(q3s["hit"]),
+                str(q3s["miss"]),
+                str(q4s["hit"]),
+                str(q4s["miss"]),
+                _pct(total_w, total_r),
+            ])
+        out_parts.append("\n\nPor liga:\n" + "\n".join(_table(lg_headers, lg_rows)))
 
-    rows.append(
-        [
+    # ── No-bet phantom table ─────────────────────────────────────────
+    nb_q3_total = nobet_stats["q3"]["hit"] + nobet_stats["q3"]["miss"]
+    nb_q4_total = nobet_stats["q4"]["hit"] + nobet_stats["q4"]["miss"]
+    nb_total = nobet_stats["q3"]["hit"] + nobet_stats["q4"]["hit"] + nobet_stats["q3"]["miss"] + nobet_stats["q4"]["miss"]
+    if nb_total > 0:
+        nb_headers = ["Filtro", "W", "L", "%W", "Ganancia(sim)"]
+        nb_rows: list[list[str]] = []
+        for quarter in ("q3", "q4"):
+            hw = nobet_stats[quarter]["hit"]
+            hl = nobet_stats[quarter]["miss"]
+            nb_rows.append([
+                quarter.upper(),
+                str(hw),
+                str(hl),
+                _pct(hw, hw + hl),
+                _profit_text(hw, hl, 0),
+            ])
+        nb_w = nobet_stats["q3"]["hit"] + nobet_stats["q4"]["hit"]
+        nb_l = nobet_stats["q3"]["miss"] + nobet_stats["q4"]["miss"]
+        nb_rows.append([
             "GLOBAL",
-            str(total_hit),
-            str(total_miss),
-            str(total_push),
-            str(total_pending),
-            _pct(total_hit, resolved_total),
-            _profit_text(total_hit, total_miss, total_push),
-        ]
-    )
+            str(nb_w),
+            str(nb_l),
+            _pct(nb_w, nb_w + nb_l),
+            _profit_text(nb_w, nb_l, 0),
+        ])
+        out_parts.append("\n\nNo apostados (si hubiera apostado):\n" + "\n".join(_table(nb_headers, nb_rows)))
 
-    return "\n".join(_table(headers, rows))
+    return "".join(out_parts)
 
 
 def _event_date_title_es(event_date: str, total_matches: int) -> str:
@@ -908,6 +1799,106 @@ def _refresh_date_progress_text(event_date: str, progress_state: dict[str, objec
     return "\n".join(lines)
 
 
+def _get_missing_dates_suggestions(recent_days: int = 21) -> dict:
+    """Return missing dates split into recent and historical.
+
+    Returns a dict with:
+      - 'recent':     dates in the last recent_days with 0 matches
+      - 'historical': older dates (from min_date in DB to recent cutoff) with 0 matches
+      - 'min_date':   earliest event_date in the DB (str or None)
+    """
+    today = datetime.now().date()
+    recent_cutoff = today - timedelta(days=recent_days)
+
+    conn = _open_conn()
+    bounds = conn.execute(
+        f"""
+        SELECT
+            MIN(date(datetime(date || ' ' || time, '{UTC_OFFSET_HOURS} hours'))) AS min_date
+        FROM matches
+        """
+    ).fetchone()
+    min_date_str = bounds["min_date"] if bounds else None
+
+    existing_rows = conn.execute(
+        f"""
+        SELECT DISTINCT
+            date(datetime(date || ' ' || time, '{UTC_OFFSET_HOURS} hours'))
+            AS event_date
+        FROM matches
+        """
+    ).fetchall()
+    conn.close()
+
+    existing = {str(r["event_date"]) for r in existing_rows}
+
+    # Recent: last recent_days up to yesterday
+    recent_missing = [
+        (today - timedelta(days=i)).isoformat()
+        for i in range(1, recent_days + 1)
+        if (today - timedelta(days=i)).isoformat() not in existing
+    ]
+
+    # Historical: from min_date up to recent_cutoff - 1
+    historical_missing: list[str] = []
+    if min_date_str:
+        try:
+            min_date = datetime.strptime(min_date_str, "%Y-%m-%d").date()
+            cursor = recent_cutoff - timedelta(days=1)
+            while cursor >= min_date:
+                d = cursor.isoformat()
+                if d not in existing:
+                    historical_missing.append(d)
+                cursor -= timedelta(days=1)
+        except ValueError:
+            pass
+
+    return {
+        "recent": recent_missing,
+        "historical": historical_missing,
+        "min_date": min_date_str,
+    }
+
+
+def _skip_reason_detail(data: dict | None, *, already_complete: bool = False, two_half: bool = False) -> str:
+    """Return a human-readable skip reason for a match that was not ingested."""
+    if already_complete:
+        return "ya_completo_en_db"
+    if two_half:
+        return "dos_mitades"
+    if data is None:
+        return "sin_datos"
+    status_type = str(data.get("match", {}).get("status_type", "") or "").lower()
+    if status_type != "finished":
+        return f"not_finished(status={status_type or 'unknown'})"
+    quarters = data.get("score", {}).get("quarters", {})
+    required = ("Q1", "Q2", "Q3", "Q4")
+    for q in required:
+        q_score = quarters.get(q)
+        if not isinstance(q_score, dict) or q_score.get("home") is None or q_score.get("away") is None:
+            return f"sin_cuartos(falta={q})"
+    pbp = data.get("play_by_play", {})
+    if not isinstance(pbp, dict):
+        return "sin_pbp(no_dict)"
+    for q in required:
+        q_plays = pbp.get(q)
+        if not isinstance(q_plays, list) or len(q_plays) == 0:
+            return f"sin_pbp(falta={q})"
+    graph_points = data.get("graph_points", [])
+    if not isinstance(graph_points, list) or len(graph_points) == 0:
+        return "sin_graph(vacio)"
+    max_minute = None
+    for point in graph_points:
+        try:
+            minute = int((point or {}).get("minute"))
+        except (TypeError, ValueError, AttributeError):
+            continue
+        max_minute = minute if max_minute is None else max(max_minute, minute)
+    if max_minute is None or max_minute < 48:
+        return f"sin_graph(max_min={max_minute})"
+    return "desconocido"
+
+
 def _ingest_new_date(event_date: str, limit: int | None = None) -> dict:
     rows_all = scraper_mod.fetch_finished_match_ids_for_date(event_date)
     rows = rows_all[:limit] if limit is not None else rows_all
@@ -1067,6 +2058,12 @@ def _ingest_new_date_with_progress(
     ing_ok = 0
     ing_fail = 0
     skipped_ft = 0
+    skip_reasons: dict[str, int] = {}
+
+    def _record_skip(reason: str) -> None:
+        nonlocal skipped_ft
+        skipped_ft += 1
+        skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
 
     for index, row in enumerate(rows, start=1):
         if cancel_event.is_set():
@@ -1080,33 +2077,41 @@ def _ingest_new_date_with_progress(
         existing = db_mod.get_match(conn, match_id)
         if _is_ft_complete(existing):
             db_mod.mark_discovered_processed(conn, match_id)
-            skipped_ft += 1
+            reason = _skip_reason_detail(existing, already_complete=True)
+            _record_skip(reason)
+            print(f"[date-ingest] skip match_id={match_id} reason={reason}", flush=True)
             progress_state["processed"] = int(progress_state.get("processed") or 0) + 1
             progress_state["ingested_ok"] = ing_ok
             progress_state["ingested_fail"] = ing_fail
             progress_state["skipped_ft"] = skipped_ft
+            progress_state["skip_reasons"] = dict(skip_reasons)
             continue
 
         try:
             data = scraper_mod.fetch_match_by_id(match_id)
             if not _is_ft_complete(data):
                 db_mod.mark_discovered_processed(conn, match_id)
-                skipped_ft += 1
+                reason = _skip_reason_detail(data)
+                _record_skip(reason)
+                print(f"[date-ingest] skip match_id={match_id} reason={reason}", flush=True)
                 progress_state["processed"] = int(progress_state.get("processed") or 0) + 1
                 progress_state["ingested_ok"] = ing_ok
                 progress_state["ingested_fail"] = ing_fail
                 progress_state["skipped_ft"] = skipped_ft
+                progress_state["skip_reasons"] = dict(skip_reasons)
                 if index % DATE_INGEST_PROGRESS_EVERY == 0:
                     progress_state["last_progress_at"] = index
                 continue
             if _is_two_half_game(data):
                 db_mod.mark_discovered_processed(conn, match_id)
-                skipped_ft += 1
+                reason = _skip_reason_detail(data, two_half=True)
+                _record_skip(reason)
+                print(f"[date-ingest] skip match_id={match_id} reason={reason}", flush=True)
                 progress_state["processed"] = int(progress_state.get("processed") or 0) + 1
                 progress_state["ingested_ok"] = ing_ok
                 progress_state["ingested_fail"] = ing_fail
                 progress_state["skipped_ft"] = skipped_ft
-                print(f"[date-ingest] skip 2-half match_id={match_id}", flush=True)
+                progress_state["skip_reasons"] = dict(skip_reasons)
                 if index % DATE_INGEST_PROGRESS_EVERY == 0:
                     progress_state["last_progress_at"] = index
                 continue
@@ -1121,6 +2126,7 @@ def _ingest_new_date_with_progress(
         progress_state["ingested_ok"] = ing_ok
         progress_state["ingested_fail"] = ing_fail
         progress_state["skipped_ft"] = skipped_ft
+        progress_state["skip_reasons"] = dict(skip_reasons)
         if index % DATE_INGEST_PROGRESS_EVERY == 0:
             progress_state["last_progress_at"] = index
 
@@ -1140,6 +2146,10 @@ def _ingest_new_date_with_progress(
     else:
         progress_state["phase"] = "done"
     progress_state["pending_after"] = pending
+    progress_state["skip_reasons"] = dict(skip_reasons)
+    if skip_reasons:
+        reasons_txt = "  ".join(f"{k}={v}" for k, v in sorted(skip_reasons.items()))
+        print(f"[date-ingest] skip_reasons: {reasons_txt}", flush=True)
     return {
         "date": event_date,
         "finished_found_total": progress_state["finished_found_total"],
@@ -1149,6 +2159,7 @@ def _ingest_new_date_with_progress(
         "ingested_ok": ing_ok,
         "ingested_fail": ing_fail,
         "skipped_ft": skipped_ft,
+        "skip_reasons": dict(skip_reasons),
         "pending_after": pending,
         "cancelled": bool(cancel_event.is_set()),
         "resume_used": bool(progress_state.get("resume_used")),
@@ -1222,8 +2233,8 @@ def _date_ingest_progress_text(event_date: str, limit: int | None, progress_stat
     ing_ok = int(progress_state.get("ingested_ok") or 0)
     ing_fail = int(progress_state.get("ingested_fail") or 0)
     skipped_ft = int(progress_state.get("skipped_ft") or 0)
-    discovered = int(progress_state.get("discovered_rows") or 0)
     resume_used = bool(progress_state.get("resume_used"))
+    skip_reasons = progress_state.get("skip_reasons")
     started_monotonic = progress_state.get("started_monotonic")
 
     elapsed_txt = None
@@ -1236,34 +2247,44 @@ def _date_ingest_progress_text(event_date: str, limit: int | None, progress_stat
             eta = speed * float(total - processed)
             eta_txt = _fmt_duration(eta)
 
-    lines = [f"[date-ingest] date={event_date}"]
+    lines = [f"Traer fecha: {event_date}"]
     if phase == "starting":
-        lines.append("[date-ingest] estado=iniciando consulta a SofaScore")
+        lines.append("Estado: iniciando consulta a SofaScore...")
     else:
         if resume_used:
-            lines.append("[date-ingest] modo=reanudando desde descubiertos guardados")
-        lines.append(f"[date-ingest] finished_found_total={found_total}")
-        lines.append(f"[date-ingest] finished_selected={selected}")
-        lines.append(f"[date-ingest] limit_applied={limit}")
-        lines.append(f"[date-ingest] discovered_rows={discovered}")
+            lines.append("Modo: reanudando desde descubiertos guardados")
+        limit_txt = str(limit) if limit is not None else "sin limite"
         lines.append(
-            f"[date-ingest] progreso={processed}/{total} ok={ing_ok} fail={ing_fail} skipped_ft={skipped_ft}"
+            f"Encontrados: {found_total}  |  Procesando: {selected}  |  Limite: {limit_txt}"
         )
+        lines.append(
+            f"Progreso: {processed}/{total}  guardados={ing_ok}  errores={ing_fail}"
+        )
+        if skipped_ft:
+            if isinstance(skip_reasons, dict) and skip_reasons:
+                reasons_parts = "  ".join(
+                    f"{k}={v}" for k, v in sorted(skip_reasons.items())
+                )
+                lines.append(f"Saltados: {skipped_ft}  ({reasons_parts})")
+            else:
+                lines.append(f"Saltados: {skipped_ft}")
         if elapsed_txt is not None:
             if eta_txt is not None and phase not in ("done", "cancelled"):
-                lines.append(f"[date-ingest] tiempo elapsed={elapsed_txt} eta={eta_txt}")
+                lines.append(f"Tiempo: {elapsed_txt}  ETA: {eta_txt}")
             else:
-                lines.append(f"[date-ingest] tiempo elapsed={elapsed_txt}")
+                lines.append(f"Tiempo: {elapsed_txt}")
         if phase == "done":
             pending_after = int(progress_state.get("pending_after") or 0)
-            lines.append(f"[date-ingest] pending_after={pending_after}")
-            lines.append("[date-ingest] estado=finalizado")
+            if pending_after:
+                lines.append(f"Pendientes tras proceso: {pending_after}")
+            lines.append("Estado: finalizado ✓")
         elif phase == "cancelled":
             pending_after = int(progress_state.get("pending_after") or 0)
-            lines.append(f"[date-ingest] pending_after={pending_after}")
-            lines.append("[date-ingest] estado=cancelado")
+            if pending_after:
+                lines.append(f"Pendientes tras proceso: {pending_after}")
+            lines.append("Estado: cancelado")
         else:
-            lines.append("[date-ingest] estado=procesando")
+            lines.append("Estado: procesando...")
     return "\n".join(lines)
 
 
@@ -1606,7 +2627,7 @@ async def _run_refresh_date_job(
 
     rows = _fetch_matches_for_date(event_date)
     pred_map = _fetch_date_pred_outcomes(event_date)
-    stats = _pred_stats_text(pred_map, len(rows))
+    stats = _pred_stats_text(pred_map, len(rows), match_rows=rows)
     summary = (
         f"Descarga pendientes completada para {event_date}:\n"
         f"Total: {result['total']} | Actualizados: {result['updated_ok']} | "
@@ -1807,21 +2828,30 @@ async def _run_date_ingest_job(
 
 def _main_menu_keyboard(chat_id: int | None = None) -> InlineKeyboardMarkup:
     rows = [
-        [InlineKeyboardButton("1) Matches en vivo", callback_data="menu:live")],
-        [InlineKeyboardButton("2) Matches por fecha", callback_data="menu:dates")],
-        [InlineKeyboardButton("3) Match por ID", callback_data="menu:id")],
-        [InlineKeyboardButton("4) Re entrenar base", callback_data="menu:train")],
-        [InlineKeyboardButton("5) Traer fecha nueva", callback_data="menu:fetchdate")],
+        [InlineKeyboardButton("🏀 Matches en vivo", callback_data="menu:live")],
+        [InlineKeyboardButton("📅 Matches por fecha", callback_data="menu:dates")],
+        [InlineKeyboardButton("🔍 Match por ID", callback_data="menu:id")],
+        [InlineKeyboardButton("🧠 Re entrenar base", callback_data="menu:train")],
+        [InlineKeyboardButton("⬇️ Traer fecha nueva", callback_data="menu:fetchdate")],
         [
             InlineKeyboardButton(
-                "6) Descargar pendientes 7 dias",
+                "🔄 Descargar pendientes 7 dias",
                 callback_data="menu:refresh7d",
             )
         ],
         [
             InlineKeyboardButton(
-                f"7) Modelos (Q3={MODEL_CONFIG['q3']} Q4={MODEL_CONFIG['q4']})",
+                f"🤖 Modelos (Q3={MODEL_CONFIG['q3']} Q4={MODEL_CONFIG['q4']})",
                 callback_data="menu:models",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "👁 Monitor Apuestas" + (" 🟢" if (
+                    bet_monitor_mod.MONITOR_STATUS.get("running")
+                    or (_MONITOR_THREAD is not None and _MONITOR_THREAD.is_alive())
+                ) else ""),
+                callback_data="menu:monitor",
             )
         ],
     ]
@@ -1829,7 +2859,7 @@ def _main_menu_keyboard(chat_id: int | None = None) -> InlineKeyboardMarkup:
         rows.append(
             [
                 InlineKeyboardButton(
-                    "7) Status descarga",
+                    "⏳ Status descarga",
                     callback_data="menu:fetchdate:status",
                 )
             ]
@@ -1838,7 +2868,7 @@ def _main_menu_keyboard(chat_id: int | None = None) -> InlineKeyboardMarkup:
         rows.append(
             [
                 InlineKeyboardButton(
-                    "8) Status refresh pendientes",
+                    "⏳ Status refresh pendientes",
                     callback_data="menu:refresh:status",
                 )
             ]
@@ -1847,7 +2877,7 @@ def _main_menu_keyboard(chat_id: int | None = None) -> InlineKeyboardMarkup:
         rows.append(
             [
                 InlineKeyboardButton(
-                    "9) Status seguimiento",
+                    "⏳ Status seguimiento",
                     callback_data="menu:follow:status",
                 )
             ]
@@ -1856,25 +2886,43 @@ def _main_menu_keyboard(chat_id: int | None = None) -> InlineKeyboardMarkup:
 
 
 def _live_minute_text(row: dict) -> str:
+    """Show only the most relevant quarter with betting status."""
     def _fmt_mmss(total_seconds: int) -> str:
         minutes, seconds = divmod(max(total_seconds, 0), 60)
         return f"{minutes}:{seconds:02d}"
 
-    def _bet_badge(match_id: str, quarter: str) -> str:
+    def _bet_status(match_id: str, quarter: str) -> tuple[str, str]:
+        """Returns (emoji, text) for quarter betting status."""
         if not match_id:
-            return ""
+            return ("", "")
         try:
             pred_row = _read_prediction_row(match_id)
             pred = (pred_row or {}).get(quarter, {}) if isinstance(pred_row, dict) else {}
-            if not isinstance(pred, dict) or not pred.get("available"):
-                return ""
+            if not isinstance(pred, dict):
+                return ("⏳", "esperando")
+            if not pred.get("available"):
+                reason = str(pred.get("reason") or pred.get("reasoning") or "").lower()
+                if "missing" in reason or "esperando" in reason:
+                    return ("⏳", "esperando datos")
+                return ("⏸️", "no disponible")
             signal = str(pred.get("signal") or "").strip().upper().replace("_", " ")
             if signal in {"BET", "APUESTA"}:
-                return "🟢"
+                return ("🟢", "APOSTAR")
+            elif signal in {"LEAN", "NO BET", "NO_BET"}:
+                return ("🔴", "NO apostar")
+            return ("⏳", "analizando")
         except Exception:
-            return ""
-        return ""
+            return ("⏳", "?")
+        return ("⏳", "?")
 
+    played_seconds = _safe_int(row.get("played_seconds"))
+    status_desc = str(row.get("status_description", "") or "")
+    match_id = str(row.get("match_id", "") or "")
+
+    if played_seconds is None:
+        return f"⏳ {status_desc or 'live'}"
+
+    # Format current period
     def _period_short(status_desc: str) -> str:
         value = status_desc.strip().lower()
         mapping = {
@@ -1884,36 +2932,37 @@ def _live_minute_text(row: dict) -> str:
             "4th quarter": "Q4",
             "halftime": "HT",
         }
-        if value in mapping:
-            return mapping[value]
-        if value.startswith("pause"):
-            return "P"
-        return status_desc or "live"
+        return mapping.get(value, status_desc or "live")
 
-    played_seconds = _safe_int(row.get("played_seconds"))
-    status_desc = str(row.get("status_description", "") or "")
-    match_id = str(row.get("match_id", "") or "")
-    if played_seconds is None:
-        return _period_short(status_desc)
+    period = _period_short(status_desc)
+    minutes, seconds = divmod(played_seconds, 60)
+    time_display = f"{minutes}:{seconds:02d}"
 
-    now_txt = f"{_period_short(status_desc)} {_fmt_mmss(played_seconds)}"
+    # Determine which quarter to show
+    q3_diff = 24 * 60 - played_seconds  # seconds until Q3
+    q4_diff = 36 * 60 - played_seconds  # seconds until Q4
 
-    q3_diff = 24 * 60 - played_seconds
-    q4_diff = 36 * 60 - played_seconds
-    q3_badge = _bet_badge(match_id, "q3")
-    q4_badge = _bet_badge(match_id, "q4")
-    q3_txt = f"Q3{q3_badge} ok" if q3_diff <= 0 else f"aQ3{q3_badge} {_fmt_mmss(q3_diff)}"
-    q4_txt = f"Q4{q4_badge} ok" if q4_diff <= 0 else f"aQ4{q4_badge} {_fmt_mmss(q4_diff)}"
-
-    # First segment: nearest betting quarter ETA (Q3, then Q4)
-    if q3_diff > 0:
-        nearest_txt = f"aQ3{q3_badge} {_fmt_mmss(q3_diff)}"
-    elif q4_diff > 0:
-        nearest_txt = f"aQ4{q4_badge} {_fmt_mmss(q4_diff)}"
-    else:
-        nearest_txt = f"Q4{q4_badge} ok"
-
-    return f"{nearest_txt} | {now_txt} | {q3_txt} | {q4_txt}"
+    # Decide which quarter is most relevant
+    if played_seconds < 24 * 60:  # Before Q3
+        # Show time until Q3 with betting status
+        q3_emoji, q3_txt = _bet_status(match_id, "q3")
+        if q3_diff > 0:
+            q3_minutes = q3_diff // 60
+            return f"🕐 Q3 en {q3_minutes}min {q3_emoji} | {period} {time_display}"
+        else:
+            return f"✅ Q3 ahora {q3_emoji} | {period} {time_display}"
+    elif played_seconds < 36 * 60:  # Between Q3 and Q4
+        # Show time until Q4 with betting status
+        q4_emoji, q4_txt = _bet_status(match_id, "q4")
+        if q4_diff > 0:
+            q4_minutes = q4_diff // 60
+            return f"🕐 Q4 en {q4_minutes}min {q4_emoji} | {period} {time_display}"
+        else:
+            return f"✅ Q4 ahora {q4_emoji} | {period} {time_display}"
+    else:  # After Q4 started
+        q3_emoji, q3_txt = _bet_status(match_id, "q3")
+        q4_emoji, q4_txt = _bet_status(match_id, "q4")
+        return f"Q3 {q3_emoji} Q4 {q4_emoji} | {period} {time_display}"
 
 
 def _live_sort_key(row: dict) -> tuple[int, int, int]:
@@ -1932,11 +2981,42 @@ def _live_sort_key(row: dict) -> tuple[int, int, int]:
 
 
 def _live_summary_text(result: dict) -> str:
-    return (
-        f"Live ahora: {len(result.get('live_rows', []))} | "
-        f"guardados_ok={result.get('ingested_ok', 0)} "
-        f"fallidos={result.get('ingested_fail', 0)}"
-    )
+    live_count = len(result.get('live_rows', []))
+    if live_count == 0:
+        return "🏀 No hay partidos en vivo ahora"
+
+    # Count betting opportunities
+    bettable = 0
+    waiting = 0
+    for row in result.get('live_rows', []):
+        match_id = str(row.get("match_id", "") or "")
+        played_seconds = _safe_int(row.get("played_seconds"))
+        if played_seconds is None:
+            continue
+
+        if played_seconds < 24 * 60:
+            pred = (_read_prediction_row(match_id) or {}).get("q3", {})
+        elif played_seconds < 36 * 60:
+            pred = (_read_prediction_row(match_id) or {}).get("q4", {})
+        else:
+            pred = {}
+
+        if isinstance(pred, dict) and pred.get("available"):
+            signal = str(pred.get("signal") or "").upper()
+            if signal in {"BET", "APUESTA"}:
+                bettable += 1
+            else:
+                waiting += 1
+        else:
+            waiting += 1
+
+    parts = [f"🏀 Partidos en vivo: {live_count}"]
+    if bettable > 0:
+        parts.append(f"🟢 Apostables: {bettable}")
+    if waiting > 0:
+        parts.append(f"⏳ En espera: {waiting}")
+
+    return "\n".join(parts)
 
 
 def _live_keyboard(result: dict, page: int) -> InlineKeyboardMarkup:
@@ -1956,11 +3036,19 @@ def _live_keyboard(result: dict, page: int) -> InlineKeyboardMarkup:
         match_id = str(row.get("match_id", "") or "")
         if not match_id:
             continue
-        league = str(row.get("league", "") or "-")[:12]
-        home = _abbr_team(str(row.get("home_team", "")), max_len=14)
-        away = _abbr_team(str(row.get("away_team", "")), max_len=14)
+        league = str(row.get("league", "") or "-")[:15]
+        home = _abbr_team(str(row.get("home_team", "")), max_len=12)
+        away = _abbr_team(str(row.get("away_team", "")), max_len=12)
         minute = _live_minute_text(row)
-        label = f"{league} | {home} vs {away} | {minute}"
+
+        # Add score
+        home_score = row.get("home_score")
+        away_score = row.get("away_score")
+        score_txt = ""
+        if home_score is not None and away_score is not None:
+            score_txt = f" | {home_score}-{away_score}"
+
+        label = f"{home} vs {away}{score_txt}\n{league} | {minute}"
         keyboard.append(
             [
                 InlineKeyboardButton(
@@ -2299,7 +3387,7 @@ async def _refresh_live_detail(
 
 def _menu_reply_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
-        [[MENU_BUTTON_TEXT]],
+        [[MENU_BUTTON_TEXT, STATS_BUTTON_TEXT]],
         resize_keyboard=True,
         is_persistent=True,
     )
@@ -2331,6 +3419,93 @@ def _train_submenu_keyboard() -> InlineKeyboardMarkup:
             [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
         ]
     )
+
+
+def _monitor_keyboard(running: bool, chat_id: int | None = None) -> InlineKeyboardMarkup:
+    rows = []
+    if running:
+        rows.append([InlineKeyboardButton("⏹ Detener monitor", callback_data="monitor:stop")])
+    else:
+        rows.append([InlineKeyboardButton("▶️ Iniciar monitor", callback_data="monitor:start")])
+    rows.append([InlineKeyboardButton("📋 Itinerario de hoy", callback_data="monitor:schedule")])
+    rows.append([InlineKeyboardButton("📊 Señales de hoy", callback_data="monitor:signals_today")])
+    rows.append([InlineKeyboardButton("⚙️ Config simulación", callback_data="monitor:betcfg")])
+    rows.append([InlineKeyboardButton("📜 Bitácora reciente", callback_data="monitor:log")])
+    q3_v = MONITOR_MODEL_CONFIG["q3"]
+    q4_v = MONITOR_MODEL_CONFIG["q4"]
+    rows.append([InlineKeyboardButton(
+        f"🎯 Monitor modelos: Q3={q3_v}  Q4={q4_v}",
+        callback_data="monitor:models",
+    )])
+    if chat_id is not None:
+        pref = _MONITOR_SUBSCRIBERS.get(chat_id)
+        if pref is not None:
+            bet_mark = "✅" if pref == "bet_only" else "☑️"
+            all_mark = "✅" if pref == "all" else "☑️"
+            rows.append([
+                InlineKeyboardButton(f"{bet_mark} Solo apuestas", callback_data="monitor:sub_bet_only"),
+                InlineKeyboardButton(f"{all_mark} Todo", callback_data="monitor:sub_all"),
+            ])
+            rows.append([InlineKeyboardButton("🔕 Desuscribirme", callback_data="monitor:unsubscribe")])
+        else:
+            rows.append([InlineKeyboardButton("🔔 Suscribirme a alertas", callback_data="monitor:subscribe")])
+    rows.append([InlineKeyboardButton("Menu principal", callback_data="nav:main")])
+    return InlineKeyboardMarkup(rows)
+
+
+def _monitor_model_keyboard(chat_id: int | None = None) -> InlineKeyboardMarkup:
+    """Model selector that returns to the monitor menu."""
+    q3_v = MONITOR_MODEL_CONFIG["q3"]
+    q4_v = MONITOR_MODEL_CONFIG["q4"]
+    rows: list[list[InlineKeyboardButton]] = []
+    rows.append([
+        InlineKeyboardButton(
+            f"{'✅' if q3_v == v else ''} Q3={v}",
+            callback_data=f"monmodel:set:q3:{v}",
+        )
+        for v in AVAILABLE_MODELS
+    ])
+    rows.append([
+        InlineKeyboardButton(
+            f"{'✅' if q4_v == v else ''} Q4={v}",
+            callback_data=f"monmodel:set:q4:{v}",
+        )
+        for v in AVAILABLE_MODELS
+    ])
+    rows.append([InlineKeyboardButton("⬅️ Monitor", callback_data="menu:monitor")])
+    return InlineKeyboardMarkup(rows)
+
+
+async def _monitor_notify_cb(
+    msg: str,
+    reply_markup: dict | None = None,
+    notify_type: str = "bet",
+) -> None:
+    """Runs inside the monitor thread's own event loop.
+
+    Sends directly to the Telegram HTTP API via httpx so it never touches
+    the bot's asyncio connection and cannot block it.
+    """
+    import httpx
+    if not BOT_TOKEN:
+        return
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    if _MONITOR_SUBSCRIBERS:
+        targets = list(_MONITOR_SUBSCRIBERS.items())
+    else:
+        targets = [(cid, "all") for cid in ALLOWED_CHAT_IDS]
+    async with httpx.AsyncClient() as client:
+        for cid, pref in targets:
+            # Filter: "bet_only" subscribers skip pure NO_BET messages
+            if pref == "bet_only" and notify_type == "no_bet":
+                continue
+            try:
+                payload: dict = {"chat_id": cid, "text": msg}
+                if reply_markup:
+                    payload["reply_markup"] = reply_markup
+                await client.post(url, json=payload, timeout=10.0)
+            except Exception as exc:
+                logger.warning("[MONITOR_NOTIFY] %s: %s", cid, exc)
 
 
 def _model_submenu_keyboard() -> InlineKeyboardMarkup:
@@ -2389,6 +3564,37 @@ def _match_model_submenu_keyboard(match_id: str, token: str, page: int) -> Inlin
     rows.append([InlineKeyboardButton(
         "Regresar (recalcular)",
         callback_data=f"matchmodel:back:{match_id}:{token}:{page}",
+    )])
+    return InlineKeyboardMarkup(rows)
+
+
+def _date_model_submenu_keyboard(event_date: str) -> InlineKeyboardMarkup:
+    """Model selector anchored to the date view."""
+    q3_v = MODEL_CONFIG["q3"]
+    q4_v = MODEL_CONFIG["q4"]
+    rows: list[list[InlineKeyboardButton]] = []
+
+    q3_btns = [
+        InlineKeyboardButton(
+            f"{'\u2705' if q3_v == v else ''} Q3={v}",
+            callback_data=f"datemodel:set:q3:{v}:{event_date}",
+        )
+        for v in AVAILABLE_MODELS
+    ]
+    rows.append(q3_btns)
+
+    q4_btns = [
+        InlineKeyboardButton(
+            f"{'\u2705' if q4_v == v else ''} Q4={v}",
+            callback_data=f"datemodel:set:q4:{v}:{event_date}",
+        )
+        for v in AVAILABLE_MODELS
+    ]
+    rows.append(q4_btns)
+
+    rows.append([InlineKeyboardButton(
+        "Regresar",
+        callback_data=f"datemodel:back:{event_date}",
     )])
     return InlineKeyboardMarkup(rows)
 
@@ -2548,7 +3754,19 @@ def _matches_keyboard(
                     q4e = "➖"
                 elif _q4w_r in ("home", "away"):
                     q4e = "✅" if _q4w_r == _q4p_r else "❌"
-        label = f"{tipoff} {league_short} | {home} vs {away} | Q3:{q3}{q3e} Q4:{q4}{q4e}"
+        
+        # Get model prediction emojis
+        q3_pred_emoji = ""
+        q4_pred_emoji = ""
+        q3_pick = str(pred.get("q3_pick") or "").lower()
+        q4_pick = str(pred.get("q4_pick") or "").lower()
+        
+        if pred.get("q3_available") and q3_pick in ("home", "away"):
+            q3_pred_emoji = "🏠" if q3_pick == "home" else "✈️"
+        if pred.get("q4_available") and q4_pick in ("home", "away"):
+            q4_pred_emoji = "🏠" if q4_pick == "home" else "✈️"
+        
+        label = f"{tipoff} {league_short} | {home} vs {away} | Q3:{q3}{q3e}{q3_pred_emoji} Q4:{q4}{q4e}{q4_pred_emoji}"
         callback = f"match:{match_id}:{event_date}:{page}"
         keyboard.append([InlineKeyboardButton(label, callback_data=callback)])
 
@@ -2583,6 +3801,12 @@ def _matches_keyboard(
     )
     keyboard.append(
         [InlineKeyboardButton("⬇️ Descargar pendientes del dia", callback_data=f"refresh:date:{event_date}")]
+    )
+    keyboard.append(
+        [InlineKeyboardButton(
+            f"🤖 Cambiar modelo (Q3={MODEL_CONFIG['q3']} Q4={MODEL_CONFIG['q4']})",
+            callback_data=f"datemodel:open:{event_date}",
+        )]
     )
     keyboard.append([InlineKeyboardButton("Menu principal", callback_data="nav:main")])
     return InlineKeyboardMarkup(keyboard)
@@ -2659,7 +3883,7 @@ async def _run_calc_date_job(
         else:
             try:
                 result = await asyncio.to_thread(
-                    _compute_and_store_predictions, match_id, data
+                    _compute_and_store_predictions, match_id, data, dict(MODEL_CONFIG)
                 )
                 if result is not None:
                     ok += 1
@@ -2679,9 +3903,10 @@ async def _run_calc_date_job(
         f"Total: {total} | OK: {ok} | Fallidas: {fail}"
     )
     pred_map = await asyncio.to_thread(_fetch_date_pred_outcomes, event_date)
-    stats = _pred_stats_text(pred_map, total)
+    stats = _pred_stats_text(pred_map, total, match_rows=rows)
+    model_line = f"Modelo: Q3={MODEL_CONFIG['q3']} Q4={MODEL_CONFIG['q4']}"
     title = _event_date_title_es(event_date, total)
-    header = f"{summary}\n\n{title}"
+    header = f"{summary}\n\n{model_line}\n{title}"
     parse_mode: str | None = None
     if stats:
         header += f"\n<pre>{html.escape(stats)}</pre>"
@@ -2790,10 +4015,7 @@ def _match_detail_text(match_id: str, data: dict) -> str:
     utc_time = str(m.get("time", "") or "")
     local_dt = _to_local_datetime(utc_date, utc_time)
     if local_dt is not None:
-        fecha_line = (
-            f"Fecha: {local_dt.strftime('%Y-%m-%d %H:%M')} UTC{UTC_OFFSET_HOURS:+d} "
-            f"(UTC: {utc_date} {utc_time})"
-        )
+        fecha_line = f"Fecha: {local_dt.strftime('%Y-%m-%d %H:%M')} UTC{UTC_OFFSET_HOURS:+d}"
     else:
         fecha_line = f"Fecha: {utc_date} {utc_time} UTC"
 
@@ -2806,7 +4028,28 @@ def _match_detail_text(match_id: str, data: dict) -> str:
             minute_est = int(graph_points[-1].get("minute", 0))
         except (TypeError, ValueError):
             minute_est = None
-    minute_suffix = f" | Min: {minute_est}" if minute_est is not None else ""
+    # Show how stale the cached data is for live matches
+    _stale_txt = ""
+    if status_type not in ("finished", "notstarted"):
+        _scraped_at = m.get("scraped_at")
+        if _scraped_at:
+            try:
+                from datetime import timezone as _tz
+                _dt_scraped = datetime.fromisoformat(str(_scraped_at).replace("Z", "+00:00"))
+                if _dt_scraped.tzinfo is None:
+                    _dt_scraped = _dt_scraped.replace(tzinfo=_tz.utc)
+                _age_secs = (datetime.now(_tz.utc) - _dt_scraped).total_seconds()
+                _age_min = int(_age_secs // 60)
+                if _age_min >= 2:
+                    _stale_txt = f" (hace {_age_min}min)"
+            except Exception:
+                pass
+    if minute_est is not None:
+        minute_suffix = f" | Min: {minute_est}{_stale_txt}"
+    elif _stale_txt:
+        minute_suffix = f" |{_stale_txt}"
+    else:
+        minute_suffix = ""
 
     def _quarter_winner_text(quarter: str, home: int | None, away: int | None) -> str:
         if home is None or away is None:
@@ -2936,6 +4179,13 @@ def _read_prediction_row(match_id: str) -> dict | None:
                     "confidence": _row_value(row, f"q3_confidence__{tag}"),
                     "threshold_lean": _row_value(row, f"q3_threshold_lean__{tag}"),
                     "threshold_bet": _row_value(row, f"q3_threshold_bet__{tag}"),
+                    "reasoning": _row_value(row, f"q3_reasoning__{tag}"),
+                    "predicted_home": _row_value(row, f"q3_predicted_home__{tag}"),
+                    "predicted_away": _row_value(row, f"q3_predicted_away__{tag}"),
+                    "predicted_total": _row_value(row, f"q3_predicted_total__{tag}"),
+                    "mae": _row_value(row, f"q3_mae__{tag}"),
+                    "mae_home": _row_value(row, f"q3_mae_home__{tag}"),
+                    "mae_away": _row_value(row, f"q3_mae_away__{tag}"),
                 },
                 "q4": {
                     "available": bool(q4_av),
@@ -2945,6 +4195,13 @@ def _read_prediction_row(match_id: str) -> dict | None:
                     "confidence": _row_value(row, f"q4_confidence__{tag}"),
                     "threshold_lean": _row_value(row, f"q4_threshold_lean__{tag}"),
                     "threshold_bet": _row_value(row, f"q4_threshold_bet__{tag}"),
+                    "reasoning": _row_value(row, f"q4_reasoning__{tag}"),
+                    "predicted_home": _row_value(row, f"q4_predicted_home__{tag}"),
+                    "predicted_away": _row_value(row, f"q4_predicted_away__{tag}"),
+                    "predicted_total": _row_value(row, f"q4_predicted_total__{tag}"),
+                    "mae": _row_value(row, f"q4_mae__{tag}"),
+                    "mae_home": _row_value(row, f"q4_mae_home__{tag}"),
+                    "mae_away": _row_value(row, f"q4_mae_away__{tag}"),
                 },
             }
 
@@ -2970,8 +4227,79 @@ def _friendly_reason(reason: str) -> str:
         "match_too_volatile_for_current_signal": "bloqueado por alta volatilidad",
         "confidence_below_minimum_edge": "confianza por debajo del minimo",
         "passed_all_gates": "paso todos los filtros",
+        # V12 specific reasons
+        "league not bettable": "liga no apostable",
+        "LEAGUE NOT BETTABLE": "liga no apostable",
+        "Insufficient graph points": "puntos de grafico insuficientes",
+        "V12 error": "error en modelo V12",
+        "V12 failed": "modelo V12 fallo",
+        "No se pudo analizar": "no se pudo analizar",
+        "V12 LIVE error": "error en V12 LIVE",
+        # V13 specific reasons
+        "V13: ": "error en modelo V13",
+        "V13 no disponible": "modelo V13 no disponible",
+        "Match data not found": "no se encontraron datos del partido",
+        "No models found for": "no hay modelo entrenado para este tipo de partido",
+        "Low training samples": "modelo con pocos datos de entrenamiento",
+        "Volatility too high": "volatilidad del partido demasiado alta",
     }
-    return mapping.get(reason, reason or "unavailable")
+    # Check for substring matches (for longer English reasons)
+    reason_lower = reason.lower()
+    if "league not bettable" in reason_lower:
+        return "liga no apostable"
+    if "insufficient graph points" in reason_lower:
+        return "puntos de grafico insuficientes"
+    if "insufficient confidence" in reason_lower:
+        return "confianza insuficiente para apostar"
+    if "too volatile" in reason_lower or "volatility too high" in reason_lower:
+        return "partido muy volatil para apostar"
+    if "confidence below" in reason_lower:
+        return "confianza por debajo del minimo"
+    # V13: "Confidence 0.540 < 0.62" pattern
+    if "confidence" in reason_lower and "<" in reason_lower:
+        return "confianza insuficiente para apostar"
+    if "no models found" in reason_lower:
+        return "no hay modelo entrenado para este tipo de partido"
+    if "match data not found" in reason_lower:
+        return "no se encontraron datos del partido"
+    if "low training samples" in reason_lower:
+        return "modelo con pocos datos de entrenamiento"
+    if "missing" in reason_lower and "graph" in reason_lower:
+        return "faltan puntos de grafico"
+    if "missing" in reason_lower and "play" in reason_lower:
+        return "faltan datos de jugadas"
+    if "match too early" in reason_lower:
+        return "partido muy temprano"
+    return mapping.get(reason, reason or "no disponible")
+
+
+def _league_stats_detail(league: str) -> str | None:
+    """Return a one-line stats summary explaining why the league is not bettable."""
+    try:
+        stats_file = BASE_DIR / "training" / "v12" / "model_outputs" / "league_stats.json"
+        if not stats_file.exists():
+            return None
+        with open(stats_file, "r", encoding="utf-8") as _f:
+            _stats = json.load(_f)
+        # Exact match first, then base name before comma, then prefix
+        s = _stats.get(league, {})
+        if not s and "," in league:
+            s = _stats.get(league.split(",")[0].strip(), {})
+        if not s:
+            for key in sorted(_stats.keys(), key=len, reverse=True):
+                if league.startswith(key):
+                    s = _stats[key]
+                    break
+        if not s:
+            return "📊 Liga sin datos históricos"
+        samples = int(s.get("samples", 0))
+        home_wr = float(s.get("home_win_rate", 0.5))
+        if samples < 30:
+            return f"📊 Solo {samples} partidos en histórico (mínimo 30)"
+        home_pct = round(home_wr * 100)
+        return f"📊 N={samples} partidos | Local gana {home_pct}% — sin ventaja clara"
+    except Exception:
+        return None
 
 
 def _enrich_prediction_row_from_infer(
@@ -3003,6 +4331,7 @@ def _enrich_prediction_row_from_infer(
         pred["threshold_lean"] = src.get("threshold_lean", pred.get("threshold_lean"))
         pred["threshold_bet"] = src.get("threshold_bet", pred.get("threshold_bet"))
         pred["reason"] = src.get("reason") or src.get("gate_reason")
+        pred["reasoning"] = src.get("reasoning") or pred.get("reason")
         pred["decision_gate"] = src.get("decision_gate")
         pred["gate_reason"] = src.get("gate_reason")
         pred["volatility_index"] = src.get("volatility_index")
@@ -3011,6 +4340,18 @@ def _enrich_prediction_row_from_infer(
         pred["gp_count"] = src.get("gate_gp_count")
         pred["pbp_count"] = src.get("gate_pbp_count")
         pred["minute_estimate"] = minute_estimate
+        # V12-specific fields
+        pred["predicted_home"] = src.get("predicted_home")
+        pred["predicted_away"] = src.get("predicted_away")
+        pred["predicted_total"] = src.get("predicted_total")
+        pred["mae"] = src.get("mae")
+        pred["mae_home"] = src.get("mae_home")
+        pred["mae_away"] = src.get("mae_away")
+        # V13-specific quality metadata
+        pred["model_quality"] = src.get("model_quality")
+        pred["model_samples"] = src.get("model_samples")
+        pred["model_gap"] = src.get("model_gap")
+        pred["fallback_used"] = src.get("fallback_used")
 
     return pred_row
 
@@ -3037,25 +4378,127 @@ def _missing_prediction_confidence(pred_row: dict | None) -> bool:
     return False
 
 
-def _compute_and_store_predictions(match_id: str, data: dict) -> dict | None:
+def _q3_is_locked(data: dict) -> bool:
+    """True when Q3 is actively being played — Q2 is done, Q3 not yet done.
+    At this point the Q3 prediction window has closed and should be frozen."""
+    quarters = (data.get("score", {}) or {}).get("quarters", {}) or {}
+    # Q4 started → Q3 is already done, no need to freeze Q3 (it will resolve naturally)
+    if "Q4" in quarters:
+        return False
+    # Q3 score exists (Q3 is in progress or just ended) → freeze
+    if "Q3" in quarters:
+        return True
+    # Use graph point minutes as proxy: past halftime → Q3 in progress
+    gp = data.get("graph_points", [])
+    if gp:
+        try:
+            last_min = int(gp[-1].get("minute", 0))
+            if last_min >= 24:
+                return True
+        except (TypeError, ValueError):
+            pass
+    return False
+
+
+def _frozen_q3_to_infer_pred(cached_q3: dict) -> dict:
+    """Repackage a DB Q3 row back to the inference predictions format so it
+    can be passed to save_eval_match_result without change."""
+    pick = str(cached_q3.get("pick") or "")
+    signal = str(cached_q3.get("signal") or cached_q3.get("final_recommendation") or "NO BET")
+    return {
+        "available": bool(cached_q3.get("available")),
+        "predicted_winner": pick if pick in ("home", "away") else None,
+        "p_home_win": cached_q3.get("p_home_win"),
+        "p_away_win": cached_q3.get("p_away_win"),
+        "confidence": cached_q3.get("confidence"),
+        "bet_signal": signal,
+        "final_recommendation": signal,
+        "suggested_units": 1.0 if signal == "BET" else 0.0,
+        "threshold_lean": cached_q3.get("threshold_lean"),
+        "threshold_bet": cached_q3.get("threshold_bet"),
+        "gate_reason": cached_q3.get("gate_reason") or cached_q3.get("reason"),
+        "reasoning": cached_q3.get("reasoning") or cached_q3.get("reason"),
+        "decision_gate": cached_q3.get("decision_gate"),
+        "gate_gp_count": cached_q3.get("gp_count"),
+        "gate_pbp_count": cached_q3.get("pbp_count"),
+        "volatility_index": cached_q3.get("volatility_index"),
+        "volatility_swings": cached_q3.get("volatility_swings"),
+        "volatility_lead_changes": cached_q3.get("volatility_lead_changes"),
+        "predicted_home": cached_q3.get("predicted_home"),
+        "predicted_away": cached_q3.get("predicted_away"),
+        "predicted_total": cached_q3.get("predicted_total"),
+        "mae": cached_q3.get("mae"),
+        "mae_home": cached_q3.get("mae_home"),
+        "mae_away": cached_q3.get("mae_away"),
+        "_frozen_q3": True,
+    }
+
+
+def _compute_and_store_predictions(match_id: str, data: dict, config_override: dict | None = None) -> dict | None:
     infer_mod = importlib.import_module("training.infer_match")
     infer_mod.scraper_mod.fetch_event_snapshot = lambda _mid: None
-    
+
     logger.info(f"[COMPUTE_PRED] Starting predictions for {match_id}")
-    gp_count = len(data.get("graph_points", []))
-    pbp_count = sum(len(q) for q in data.get("play_by_play", {}).values())
-    quarters = data.get("score", {}).get("quarters", {})
-    logger.info(
-        f"[COMPUTE_PRED] Data: score={data.get('score', {}).get('home')}-{data.get('score', {}).get('away')} "
-        f"gp={gp_count} pbp={pbp_count} quarters={list(quarters.keys())}"
-    )
-    
-    result = infer_mod.run_inference(
-        match_id=match_id,
-        metric="f1",
-        fetch_missing=False,
-        force_version=dict(MODEL_CONFIG),
-    )
+
+    # Use override config (match-detail model selector) or fall back to MONITOR config
+    _active_config = dict(config_override) if config_override is not None else dict(MONITOR_MODEL_CONFIG)
+    logger.info(f"[COMPUTE_PRED] Using config: Q3={_active_config.get('q3')} Q4={_active_config.get('q4')}")
+
+    # Check if any advanced model (v12, v13) is selected for either quarter
+    _ADVANCED_MODELS = {"v12", "v13"}
+    using_advanced = any(v in _ADVANCED_MODELS for v in _active_config.values())
+
+    if using_advanced:
+        # Run advanced-model inference per quarter
+        logger.info(f"[COMPUTE_PRED] Using advanced model(s) for {match_id}")
+        result = {"ok": True, "predictions": {}}
+
+        for quarter in ["q3", "q4"]:
+            qv = _active_config[quarter]
+            if qv == "v12":
+                qr = _run_v12_inference(match_id, quarter)
+            elif qv == "v13":
+                qr = _run_v13_inference(match_id, quarter)
+            else:
+                qr = None  # handled below by regular inference
+
+            if qr is not None:
+                if qr.get("ok"):
+                    result["predictions"][quarter] = qr["predictions"][quarter]
+                else:
+                    result["predictions"][quarter] = {
+                        "available": False,
+                        "reason": qr.get("reason", f"{qv.upper()} falló"),
+                    }
+
+        # Run regular inference for any non-advanced quarters
+        non_advanced_quarters = [q for q in ("q3", "q4") if _active_config.get(q) not in _ADVANCED_MODELS]
+        if non_advanced_quarters:
+            logger.info(f"[COMPUTE_PRED] Running regular inference for quarters: {non_advanced_quarters}")
+            # Sub in v4 for advanced-model slots so regular inference doesn't break
+            reg_config = {q: (v if v not in _ADVANCED_MODELS else "v4") for q, v in _active_config.items()}
+            reg_result = infer_mod.run_inference(
+                match_id=match_id,
+                metric="f1",
+                fetch_missing=False,
+                force_version=reg_config,
+            )
+            if reg_result.get("ok"):
+                for q in non_advanced_quarters:
+                    result["predictions"][q] = reg_result["predictions"].get(
+                        q, {"available": False, "reason": "inference_failed"}
+                    )
+            else:
+                for q in non_advanced_quarters:
+                    result["predictions"][q] = {"available": False, "reason": "inference_failed"}
+    else:
+        # Use regular inference
+        result = infer_mod.run_inference(
+            match_id=match_id,
+            metric="f1",
+            fetch_missing=False,
+            force_version=_active_config,
+        )
     _log_raw_inference_result(match_id, source="compute", infer_result=result)
     
     logger.info(f"[COMPUTE_PRED] Inference result ok={result.get('ok')}")
@@ -3069,6 +4512,12 @@ def _compute_and_store_predictions(match_id: str, data: dict) -> dict | None:
     if not result.get("ok"):
         logger.warning(f"[COMPUTE_PRED] Inference failed for {match_id}")
         return None
+
+    # NOTE: Q3 freeze logic was removed here.
+    # infer_match._clip_match_data_for_target now truncates graph_points and
+    # play_by_play to minute ≤ 24 (Q3) / ≤ 36 (Q4) before any feature or gate
+    # computation, so predictions are stable regardless of when inference runs.
+    # To revert the clipping: set infer_match._CLIP_DATA_TO_CUTOFF = False.
 
     q3h, q3a = _quarter_score(data, "Q3")
     q4h, q4a = _quarter_score(data, "Q4")
@@ -3093,7 +4542,10 @@ def _compute_and_store_predictions(match_id: str, data: dict) -> dict | None:
     conn.close()
     logger.info(f"[COMPUTE_PRED] Saved to database for {match_id}")
     base_row = _read_prediction_row(match_id)
-    return _enrich_prediction_row_from_infer(base_row, result)
+    result_row = _enrich_prediction_row_from_infer(base_row, result)
+    if result_row is not None:
+        result_row["_used_config"] = dict(_active_config)
+    return result_row
 
 
 def _get_or_compute_predictions(match_id: str, data: dict) -> dict | None:
@@ -3118,6 +4570,16 @@ def _get_or_compute_predictions(match_id: str, data: dict) -> dict | None:
                     pass
         return from_db
     if from_db is not None:
+        # When an advanced model (v13, v12) is active, always recompute via
+        # _compute_and_store_predictions so the correct engine is called and
+        # the raw JSON is logged to console.
+        _ADVANCED = {"v12", "v13"}
+        _using_advanced = any(v in _ADVANCED for v in MONITOR_MODEL_CONFIG.values())
+        if _using_advanced:
+            try:
+                return _compute_and_store_predictions(match_id, data)
+            except Exception:
+                return from_db
         try:
             infer_mod = importlib.import_module("training.infer_match")
             infer_mod.scraper_mod.fetch_event_snapshot = lambda _mid: None
@@ -3125,7 +4587,7 @@ def _get_or_compute_predictions(match_id: str, data: dict) -> dict | None:
                 match_id=match_id,
                 metric="f1",
                 fetch_missing=False,
-                force_version=dict(MODEL_CONFIG),
+                force_version=dict(MONITOR_MODEL_CONFIG),
             )
             _log_raw_inference_result(match_id, source="enrich-from-db", infer_result=infer_result)
             return _enrich_prediction_row_from_infer(from_db, infer_result)
@@ -3137,10 +4599,10 @@ def _get_or_compute_predictions(match_id: str, data: dict) -> dict | None:
         return None
 
 
-def _refresh_predictions(match_id: str, data: dict) -> dict | None:
+def _refresh_predictions(match_id: str, data: dict, config_override: dict | None = None) -> dict | None:
     logger.info(f"[REFRESH_PRED] Starting for match {match_id}")
     try:
-        result = _compute_and_store_predictions(match_id, data)
+        result = _compute_and_store_predictions(match_id, data, config_override=config_override)
         logger.info(f"[REFRESH_PRED] Success: computed predictions for {match_id}")
         return result
     except Exception as exc:
@@ -3182,7 +4644,7 @@ def _refresh_match_data(match_id: str) -> dict | None:
         return None
 
 
-def _prediction_text(pred_row: dict | None, data: dict | None = None) -> str:
+def _prediction_text(pred_row: dict | None, data: dict | None = None, v10_preds: dict | None = None) -> str:
     if pred_row is None:
         return (
             "Predicciones:\n"
@@ -3226,7 +4688,12 @@ def _prediction_text(pred_row: dict | None, data: dict | None = None) -> str:
         q4_started = bool(q4_score) or ("Q4" in status_description)
         if minute_est is not None and minute_est >= 36:
             q4_started = True
-        if status_type != "finished" and not q4_started:
+        # v13 fires Q4 at graph-minute 31 (mid-Q3) — if model already produced a
+        # Q4 signal, don't suppress the display with "waiting for Q3"
+        q4_has_signal = isinstance(rendered_row.get("q4"), dict) and bool(
+            rendered_row["q4"].get("bet_signal") or rendered_row["q4"].get("available")
+        )
+        if status_type != "finished" and not q4_started and not q4_has_signal:
             q4_waiting_preverdict = True
         if isinstance(q3_pred, dict) and q3_pred.get("available") and status_type != "finished" and not q4_started:
             q3_pred["outcome"] = "pending"
@@ -3265,7 +4732,7 @@ def _prediction_text(pred_row: dict | None, data: dict | None = None) -> str:
 
     def _emoji(outcome: str) -> str:
         e = _outcome_emoji(outcome)
-        return e if e else "⏳"
+        return e if e else "🟢"
 
     def _confidence_pct(pred: dict, pick_norm: str = "") -> str:
         value = pred.get("confidence")
@@ -3321,7 +4788,41 @@ def _prediction_text(pred_row: dict | None, data: dict | None = None) -> str:
                     f"play-by-play={pbp_count} eventos"
                 )
             extra_txt = f" | {' '.join(extra)}" if extra else ""
-            return f"{label}: no disponible ({reason_txt}){extra_txt}"
+
+            # Show projection and MAE even when not available (if data exists)
+            def _sf(v):
+                if v is None:
+                    return None
+                try:
+                    return float(v)
+                except (TypeError, ValueError):
+                    return None
+
+            pts_home = _sf(pred.get("predicted_home"))
+            pts_away = _sf(pred.get("predicted_away"))
+            pts_total = _sf(pred.get("predicted_total"))
+            mae = _sf(pred.get("mae"))
+            mae_home = _sf(pred.get("mae_home"))
+            mae_away = _sf(pred.get("mae_away"))
+            
+            proj_lines = []
+            if pts_home is not None and pts_away is not None:
+                mae_h_txt = f" (±{mae_home:.1f})" if mae_home is not None else ""
+                mae_a_txt = f" (±{mae_away:.1f})" if mae_away is not None else ""
+                mae_total_txt = f" (±{mae:.0f})" if mae is not None else ""
+                
+                overlap_warning = ""
+                if mae_home is not None and mae_away is not None:
+                    diff = abs(pts_home - pts_away)
+                    overlap_threshold = mae_home + mae_away
+                    if diff < overlap_threshold:
+                        overlap_warning = f" ⚠️ MAE se superpone (dif={diff:.1f} < {overlap_threshold:.1f})"
+                
+                proj_lines.append(f"Proyeccion: 🏠~{pts_home:.1f}{mae_h_txt} | ✈️~{pts_away:.1f}{mae_a_txt} | Total~{pts_total:.1f}{mae_total_txt}{overlap_warning}")
+            
+            result_lines = [f"{label}: no disponible ({reason_txt}){extra_txt}"]
+            result_lines.extend(proj_lines)
+            return "\n".join(result_lines)
         pick = str(pred.get("pick") or "-")
         pick_side_emoji = ""
         pick_norm = pick.strip().lower()
@@ -3331,6 +4832,8 @@ def _prediction_text(pred_row: dict | None, data: dict | None = None) -> str:
         elif pick_norm == "away":
             pick = away_team_name
             pick_side_emoji = "🛫"
+        elif pick_norm == "uncertain":
+            pick = "incierta"
         signal = pred.get("signal") or "-"
         signal_up = str(signal).upper()
         signal_map = {
@@ -3352,6 +4855,69 @@ def _prediction_text(pred_row: dict | None, data: dict | None = None) -> str:
         if signal_up in {"LEAN", "NO BET", "NO_BET"}:
             if pick_txt != "-":
                 trend_txt = f"Tendencia {pick_txt}"
+        
+        # Show reasoning for NO_BET (translated to Spanish)
+        reasoning_txt = ""
+        league_detail_txt = ""
+        if signal_up in {"LEAN", "NO BET", "NO_BET"}:
+            reason = str(pred.get("reasoning") or pred.get("reason") or "")
+            if reason:
+                reason_translated = _friendly_reason(reason)
+                # For V13 confidence reasons, show actual numbers: (35% obtenido < 62% requerido)
+                _conf_suffix = ""
+                _raw_conf = pred.get("confidence")
+                import re as _re
+                _conf_match = _re.search(r'[Cc]onfidence\s+([0-9.]+)\s*<\s*([0-9.]+)', reason)
+                if _conf_match:
+                    _got = float(_conf_match.group(1))
+                    _req = float(_conf_match.group(2))
+                    _conf_suffix = f" ({_got*100:.0f}% < {_req*100:.0f}%)"
+                elif _raw_conf is not None and "confianza" in reason_translated.lower():
+                    try:
+                        _conf_suffix = f" ({float(_raw_conf)*100:.0f}%)"
+                    except (TypeError, ValueError):
+                        pass
+                reasoning_txt = f"Motivo: {reason_translated.capitalize()}{_conf_suffix}"
+                if "league not bettable" in reason.lower():
+                    _league = str((data or {}).get("match", {}).get("league") or "")
+                    _ld = _league_stats_detail(_league)
+                    if _ld:
+                        league_detail_txt = _ld
+        
+        # Show predicted scores and MAE (with safe type conversion from DB)
+        def _safe_float(v):
+            if v is None:
+                return None
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return None
+
+        pts_home = _safe_float(pred.get("predicted_home"))
+        pts_away = _safe_float(pred.get("predicted_away"))
+        pts_total = _safe_float(pred.get("predicted_total"))
+        mae = _safe_float(pred.get("mae"))
+        mae_home = _safe_float(pred.get("mae_home"))
+        mae_away = _safe_float(pred.get("mae_away"))
+        
+        scores_txt = ""
+        if pts_home is not None and pts_away is not None:
+            mae_h_txt = f" (±{mae_home:.1f})" if mae_home is not None else ""
+            mae_a_txt = f" (±{mae_away:.1f})" if mae_away is not None else ""
+            mae_total_txt = f" (±{mae:.0f})" if mae is not None else ""
+
+            # Check if prediction intervals overlap (high uncertainty)
+            overlap_warning = ""
+            if mae_home is not None and mae_away is not None:
+                diff = abs(pts_home - pts_away)
+                overlap_threshold = mae_home + mae_away
+                if diff < overlap_threshold:
+                    overlap_warning = f"⚠️ MAE se superpone (dif={diff:.1f} < {overlap_threshold:.1f})"
+
+            scores_txt = f"Proyeccion: 🏠~{pts_home:.1f}{mae_h_txt} | ✈️~{pts_away:.1f}{mae_a_txt} | Total~{pts_total:.1f}{mae_total_txt}"
+            if overlap_warning:
+                scores_txt = scores_txt + "\n" + overlap_warning
+        
         gate_reason_norm = str(pred.get("gate_reason") or pred.get("reason") or "").strip().lower()
         decision_gate_norm = str(pred.get("decision_gate") or "").strip().upper()
         volatility_txt = ""
@@ -3360,22 +4926,108 @@ def _prediction_text(pred_row: dict | None, data: dict | None = None) -> str:
             or decision_gate_norm == "BLOCK_HIGH_VOLATILITY"
         ):
             volatility_txt = "⚠️ Alta volatilidad"
-        extra_lines = [line for line in [trend_txt, volatility_txt, confidence_txt] if line]
+
+        # V13-specific model quality warnings + quality labels in Spanish
+        v13_warning_txt = ""
+        _pred_disp_cfg = (rendered_row.get("_used_config") if isinstance(rendered_row, dict) else None) or MODEL_CONFIG
+        is_v13 = _pred_disp_cfg.get("q3") == "v13" or _pred_disp_cfg.get("q4") == "v13"
+        if is_v13:
+            mq = pred.get("model_quality")
+            ms = pred.get("model_samples")
+            mg = pred.get("model_gap")
+            fb = pred.get("fallback_used")
+            dq = pred.get("data_quality")
+            _mq_labels = {"good": "buena", "moderate": "moderada", "low": "baja", "unknown": "desconocida"}
+            _dq_labels = {"good": "buena", "moderate": "moderada", "low": "baja", "unknown": "desconocida"}
+            _warn_parts = []
+            if mq == "low":
+                n = ms or 0
+                _warn_parts.append(f"🚨 Datos de entrenamiento insuficientes ({n} partidos) — señal no confiable")
+            elif mq == "moderate":
+                n = ms or 0
+                _warn_parts.append(f"⚠️ Modelo con datos reducidos ({n} partidos)")
+            if fb:
+                _warn_parts.append("ℹ️ Ritmo no clasificado — usando modelo alternativo")
+            if mg is not None and float(mg) > 0.20:
+                _warn_parts.append(f"⚠️ Sobreajuste detectado (gap={float(mg):.2f})")
+            if mq and mq in _mq_labels:
+                _warn_parts.append(f"Calidad modelo: {_mq_labels[mq]}")
+            if dq and dq in _dq_labels:
+                _warn_parts.append(f"Calidad datos: {_dq_labels[dq]}")
+            if _warn_parts:
+                v13_warning_txt = "\n".join(_warn_parts)
+
+        extra_lines = [line for line in [trend_txt, reasoning_txt, league_detail_txt, scores_txt, volatility_txt, v13_warning_txt, confidence_txt] if line]
         if extra_lines:
             return f"{first_line}\n" + "\n".join(extra_lines)
         return first_line
 
-    q3_ver = MODEL_CONFIG["q3"].upper()
-    q4_ver = MODEL_CONFIG["q4"].upper()
+    _disp_cfg = (rendered_row.get("_used_config") if isinstance(rendered_row, dict) else None) or MODEL_CONFIG
+    q3_ver = _disp_cfg["q3"].upper()
+    q4_ver = _disp_cfg["q4"].upper()
     if isinstance(data, dict) and _is_two_half_game(data):
         return "Predicciones:\nFormato 2 mitades — sin Q3/Q4"
-    return "\n".join(
-        [
-            "Predicciones:",
-            _line(f"Q3 {q3_ver}", rendered_row.get("q3", {})),
-            _line(f"Q4 {q4_ver}", rendered_row.get("q4", {}), waiting_preverdict=q4_waiting_preverdict),
-        ]
-    )
+
+    def _v10_line(label: str, v10_target_pred: dict, quarter: str) -> str:
+        if not v10_target_pred.get("available"):
+            reason = str(v10_target_pred.get("reason") or "unavailable")
+            if "Missing Q3" in reason or "missing_q3" in reason.lower():
+                return f"{label}: Esperando datos Q3"
+            if "Missing Q1/Q2" in reason or "missing_q1" in reason.lower():
+                return f"{label}: Esperando datos Q1|Q2"
+            return f"{label}: sin datos"
+        def _sv(v):
+            if v is None:
+                return None
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return None
+        pts = _sv(v10_target_pred.get("predicted_total")) or 0
+        pts_home = _sv(v10_target_pred.get("predicted_home"))
+        pts_away = _sv(v10_target_pred.get("predicted_away"))
+        mae = _sv(v10_target_pred.get("mae"))
+        mae_home = _sv(v10_target_pred.get("mae_home"))
+        mae_away = _sv(v10_target_pred.get("mae_away"))
+        mae_txt = f" (±{mae:.0f})" if mae is not None else ""
+        outcome_suffix = ""
+        if isinstance(data, dict):
+            q_sc = ((data.get("score", {}).get("quarters", {}) or {}).get(quarter) or {})
+            q_home = _safe_int(q_sc.get("home"))
+            q_away = _safe_int(q_sc.get("away"))
+            if q_home is not None and q_away is not None:
+                is_done = (
+                    (quarter == "Q3" and (q4_started or status_type == "finished"))
+                    or (quarter == "Q4" and (status_type == "finished" or (minute_est is not None and minute_est >= 48)))
+                )
+                if is_done:
+                    actual = q_home + q_away
+                    if actual > pts:
+                        outcome_suffix = f" ✅ ({actual} pts)"
+                    elif actual == pts:
+                        outcome_suffix = f" 🔁 Push ({actual} pts)"
+                    else:
+                        outcome_suffix = f" ❌ ({actual} pts)"
+        total_line = f"📈{label}: O ~{pts:.1f}{mae_txt} | APOSTAR{outcome_suffix}"
+        # Home / away reference lines
+        ref_parts = []
+        if pts_home is not None:
+            mae_h_txt = f" (±{mae_home:.1f})" if mae_home is not None else ""
+            ref_parts.append(f"🏠 ~{pts_home:.1f}{mae_h_txt}")
+        if pts_away is not None:
+            mae_a_txt = f" (±{mae_away:.1f})" if mae_away is not None else ""
+            ref_parts.append(f"🛫 ~{pts_away:.1f}{mae_a_txt}")
+        if ref_parts:
+            return total_line + "\n" + " | ".join(ref_parts)
+        return total_line
+
+    lines = [
+        "Predicciones:",
+        _line(f"Q3 {q3_ver}", rendered_row.get("q3", {})),
+        "",
+        _line(f"Q4 {q4_ver}", rendered_row.get("q4", {}), waiting_preverdict=q4_waiting_preverdict),
+    ]
+    return "\n".join(lines)
 
 
 def _build_graph_image(match_id: str, data: dict) -> Path:
@@ -3417,11 +5069,265 @@ async def _send_match_graph(
             pass
 
 
+def _get_v10_predictions(match_id: str) -> dict | None:
+    """Run v10 Over/Under regression inference synchronously. Returns None on error."""
+    try:
+        infer_mod = importlib.import_module("training.infer_match")
+        result = infer_mod.run_inference_v10(match_id)
+        if result.get("ok"):
+            return result.get("predictions", {})
+        return None
+    except Exception:
+        return None
+
+
+_BET_SIGNALS_SET = {"BET"}
+_NOBET_SIGNALS_SET = {"NO_BET", "NO BET", "LEAN", "UNAVAILABLE", "ERROR", "window_missed"}
+
+
+def _monitor_full_section(
+    match_id: str,
+    home_team: str,
+    away_team: str,
+    current_pred_row: dict | None,
+) -> str:
+    """Full-detail monitor snapshot block built from inference_debug_log.
+
+    Shows the most-recent monitor evaluation per quarter (BET or NO_BET).
+    For NO_BET entries the gate reason (effective threshold) is displayed so
+    a raw confidence like 65% with a raised threshold of 70% is clearly
+    explained instead of looking inconsistent.
+    """
+    conn = _open_conn()
+    try:
+        # Latest entry PER TARGET regardless of signal — we want the last
+        # thing the monitor decided for each quarter, BET or NO_BET.
+        debug_rows = conn.execute(
+            """
+            SELECT target, model, scraped_minute, signal, confidence, inference_json
+            FROM inference_debug_log
+            WHERE match_id = ?
+            ORDER BY id DESC
+            """,
+            (str(match_id),),
+        ).fetchall()
+        # Fallback: bet_monitor_log for matches where inference_debug_log is empty
+        all_rows = conn.execute(
+            """
+            SELECT target, signal, pick, confidence, scraped_minute, recommendation
+            FROM bet_monitor_log
+            WHERE match_id = ?
+            ORDER BY id DESC
+            """,
+            (str(match_id),),
+        ).fetchall()
+    except Exception:
+        debug_rows = []
+        all_rows = []
+    conn.close()
+
+    def _sf(v):
+        if v is None:
+            return None
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    # Build latest-per-target from inference_debug_log
+    debug_quarters: dict[str, dict] = {}
+    seen: set[str] = set()
+    for r in debug_rows:
+        t = str(r["target"] or "").lower()
+        if t not in ("q3", "q4") or t in seen:
+            continue
+        seen.add(t)
+        try:
+            infer = json.loads(r["inference_json"])
+            src = (infer.get("predictions") or {}).get(t) or {}
+        except Exception:
+            src = {}
+        sig = str(r["signal"] or src.get("final_recommendation") or "NO_BET").upper().strip()
+        debug_quarters[t] = {
+            "model": str(r["model"] or "v13").upper(),
+            "minute": r["scraped_minute"],
+            "signal": sig,
+            "confidence": _sf(src.get("confidence")) or _sf(r["confidence"]),
+            "pick": str(src.get("predicted_winner") or src.get("winner_pick") or "").lower(),
+            # gate reason — explains why NO_BET even when raw conf looks high
+            "reasoning": str(src.get("reasoning") or src.get("reason") or "").strip(),
+            "pts_home": src.get("predicted_home"),
+            "pts_away": src.get("predicted_away"),
+            "pts_total": src.get("predicted_total"),
+            "mae_home": src.get("mae_home"),
+            "mae_away": src.get("mae_away"),
+            "mae": src.get("mae"),
+            "model_quality": src.get("model_quality"),
+            "model_samples": src.get("model_samples"),
+            "model_gap": src.get("model_gap"),
+            "fallback_used": src.get("fallback_used"),
+        }
+
+    # Fallback latest-per-target from bet_monitor_log
+    latest_log: dict[str, dict] = {}
+    for r in all_rows:
+        t = str(r["target"] or "").lower()
+        if t in ("q3", "q4") and t not in latest_log:
+            latest_log[t] = {
+                "signal": str(r["signal"] or "").strip().upper(),
+                "pick": str(r["pick"] or "").strip().lower(),
+                "confidence": _sf(r["confidence"]),
+                "scraped_minute": r["scraped_minute"],
+                "recommendation": str(r["recommendation"] or "").strip(),
+            }
+
+    if not debug_quarters and not latest_log:
+        return ""
+
+    # Prefer debug_quarters; fall back to latest_log when debug_quarters is empty
+    if not debug_quarters:
+        lines: list[str] = ["📡 Señal monitor (última):"]
+        for t in ("q3", "q4"):
+            entry = latest_log.get(t)
+            if not entry:
+                continue
+            sig = entry["signal"]
+            pick_raw = entry["pick"]
+            conf = entry["confidence"]
+            minute = entry["scraped_minute"]
+            reason = entry.get("recommendation", "")
+            pick_name = (
+                f"🏠 {home_team}" if pick_raw == "home"
+                else f"🛫 {away_team}" if pick_raw == "away"
+                else (pick_raw or "-")
+            )
+            sig_emoji = "🟢" if sig in _BET_SIGNALS_SET else "🔴"
+            sig_txt = "APUESTA" if sig in _BET_SIGNALS_SET else "NO APOSTAR"
+            conf_txt = f" · Score bruto {round((conf or 0) * 100):.0f}%" if conf is not None else ""
+            min_txt = f" · min {minute}" if minute is not None else ""
+            lines.append(f"{sig_emoji} {t.upper()}: {sig_txt} {pick_name}{conf_txt}{min_txt}")
+            if reason and sig not in _BET_SIGNALS_SET:
+                lines.append(f"  ↳ {reason}")
+        return "\n".join(lines) if len(lines) > 1 else ""
+
+    # --- Full rendering using inference_debug_log data ---
+    minutes_set = {v["minute"] for v in debug_quarters.values() if v.get("minute")}
+    min_str = f" (min {', '.join(str(m) for m in sorted(minutes_set))})" if minutes_set else ""
+    lines = [f"📡 Señal monitor{min_str}:"]
+
+    for t in ("q3", "q4"):
+        q = debug_quarters.get(t)
+        if q is None:
+            # Quarter not in debug_quarters — try latest_log one-liner
+            entry = latest_log.get(t)
+            if entry:
+                sig = entry["signal"]
+                pick_raw = entry["pick"]
+                conf = entry["confidence"]
+                minute = entry["scraped_minute"]
+                reason = entry.get("recommendation", "")
+                pick_name = (
+                    f"🏠 {home_team}" if pick_raw == "home"
+                    else f"🛫 {away_team}" if pick_raw == "away"
+                    else (pick_raw or "-")
+                )
+                sig_emoji = "🟢" if sig in _BET_SIGNALS_SET else "🔴"
+                sig_txt = "APUESTA" if sig in _BET_SIGNALS_SET else "NO APOSTAR"
+                conf_fmt = f" · Score bruto {round((conf or 0) * 100):.0f}%" if conf is not None else ""
+                min_fmt = f" · min {minute}" if minute is not None else ""
+                lines.append(f"{sig_emoji} {t.upper()}: {sig_txt} {pick_name}{conf_fmt}{min_fmt}")
+                if reason and sig not in _BET_SIGNALS_SET:
+                    lines.append(f"  ↳ {reason}")
+            continue
+
+        sig = q["signal"]
+        is_bet = sig in _BET_SIGNALS_SET
+        pick_raw = str(q.get("pick") or "").lower()
+        pick_side = "🏠" if pick_raw == "home" else ("🛫" if pick_raw == "away" else "")
+        pick_name = (
+            home_team if pick_raw == "home"
+            else away_team if pick_raw == "away"
+            else pick_raw or "-"
+        )
+        pick_txt = f"{pick_side} {pick_name}".strip() if pick_side else pick_name
+        conf = _sf(q.get("confidence"))
+        conf_txt = f"Score bruto {round(conf * 100):.0f}%" if conf is not None else ""
+        sig_emoji = "🟢" if is_bet else "🔴"
+        sig_txt = "APUESTA" if is_bet else "NO APOSTAR"
+
+        lines.append(f"{sig_emoji} {t.upper()} {q['model']}: {sig_txt} {pick_txt}")
+
+        # Gate reason for NO_BET — critical for understanding why conf 65% ≠ BET
+        reasoning = str(q.get("reasoning") or "").strip()
+        if not is_bet and reasoning:
+            lines.append(f"  ↳ {reasoning}")
+
+        # Model quality warnings (relevant for BET and informative for NO_BET)
+        mq = q.get("model_quality")
+        ms = q.get("model_samples")
+        mg = _sf(q.get("model_gap"))
+        fb = q.get("fallback_used")
+        if mq == "low":
+            lines.append(f"🚨 Datos insuficientes ({ms or 0} partidos)")
+        elif mq == "moderate":
+            lines.append(f"⚠️ Datos reducidos ({ms or 0} partidos)")
+        if fb:
+            lines.append("ℹ️ Ritmo no clasificado — modelo alternativo")
+        if mg is not None and mg > 0.20:
+            lines.append(f"⚠️ Sobreajuste (gap={mg:.2f})")
+
+        if is_bet:
+            # Score projections (only shown for BET entries)
+            ph = _sf(q.get("pts_home"))
+            pa = _sf(q.get("pts_away"))
+            pt = _sf(q.get("pts_total"))
+            mah = _sf(q.get("mae_home"))
+            maa = _sf(q.get("mae_away"))
+            mae = _sf(q.get("mae"))
+            if ph is not None and pa is not None:
+                mah_txt = f" (±{mah:.1f})" if mah is not None else ""
+                maa_txt = f" (±{maa:.1f})" if maa is not None else ""
+                mae_txt = f" (±{mae:.0f})" if mae is not None else ""
+                proj = f"Proyeccion: 🏠~{ph:.1f}{mah_txt} | ✈️~{pa:.1f}{maa_txt} | Total~{pt:.1f}{mae_txt}"
+                if mah is not None and maa is not None and abs(ph - pa) < (mah + maa):
+                    proj += f"\n⚠️ MAE se superpone (dif={abs(ph - pa):.1f} < {mah + maa:.1f})"
+                lines.append(proj)
+
+            if conf_txt:
+                lines.append(conf_txt)
+
+            # Mismatch warning vs current calculation
+            if current_pred_row is not None:
+                cur = current_pred_row.get(t)
+                if isinstance(cur, dict) and cur.get("available"):
+                    cur_sig = str(cur.get("signal") or cur.get("bet_signal") or "").upper()
+                    if cur_sig not in _BET_SIGNALS_SET:
+                        cur_conf = _sf(cur.get("confidence"))
+                        cur_conf_txt = f"{round(cur_conf * 100):.0f}%" if cur_conf is not None else "?"
+                        lines.append(f"⚠️ Cálculo actual: NO APOSTAR {cur_conf_txt} — datos del scraper cambiaron desde la alerta")
+
+        lines.append("")  # blank separator between quarters
+
+    # Remove trailing blanks
+    while lines and lines[-1] == "":
+        lines.pop()
+
+    return "\n".join(lines) if len(lines) > 1 else ""
+
+
 def _detail_text(match_id: str, data: dict, pred_row: dict | None, following: bool = False) -> str:
+    v10_preds = _get_v10_predictions(match_id)
     detail = _match_detail_text(match_id, data) + "\n\n" + _prediction_text(
         pred_row,
         data,
+        v10_preds=v10_preds,
     )
+    m_info = (data or {}).get("match", {}) if data else {}
+    home = str(m_info.get("home_team") or "home")
+    away = str(m_info.get("away_team") or "away")
+    mon_section = _monitor_full_section(match_id, home, away, pred_row)
+    if mon_section:
+        detail += "\n\n" + mon_section
     if following:
         detail = "🔴 LIVE SEGUIMIENTO\n\n" + detail
     return detail
@@ -3436,10 +5342,7 @@ def _refresh_waiting_text(match_id: str, data: dict | None) -> str:
     utc_time = str(m.get("time", "") or "")
     local_dt = _to_local_datetime(utc_date, utc_time)
     if local_dt is not None:
-        fecha_line = (
-            f"Fecha: {local_dt.strftime('%Y-%m-%d %H:%M')} UTC{UTC_OFFSET_HOURS:+d} "
-            f"(UTC: {utc_date} {utc_time})"
-        )
+        fecha_line = f"Fecha: {local_dt.strftime('%Y-%m-%d %H:%M')} UTC{UTC_OFFSET_HOURS:+d}"
     else:
         fecha_line = f"Fecha: {utc_date} {utc_time} UTC"
 
@@ -3660,11 +5563,11 @@ def _detail_keyboard(
     rows.append(
         [
             InlineKeyboardButton(
-                "Refresh datos + pred",
+                "🔄 Refresh datos + pred",
                 callback_data=f"refresh:all:{match_id}:{token}:{page}",
             ),
             InlineKeyboardButton(
-                "Refresh pred",
+                "🔮 Refresh pred",
                 callback_data=f"refresh:pred:{match_id}:{token}:{page}",
             ),
         ]
@@ -3675,25 +5578,33 @@ def _detail_keyboard(
     rows.append(
         [
             InlineKeyboardButton(
-                "Borrar match de la base",
+                "🗑 Borrar match de la base",
                 callback_data=f"delmatch:confirm:{match_id}:{token}:{page}",
             )
         ]
     )
     rows.append([InlineKeyboardButton(
-        f"Modelos (Q3={MODEL_CONFIG['q3']} Q4={MODEL_CONFIG['q4']})",
+        f"🤖 Modelos (Q3={MODEL_CONFIG['q3']} Q4={MODEL_CONFIG['q4']})",
         callback_data=f"matchmodel:open:{match_id}:{token}:{page}",
+    )])
+    rows.append([InlineKeyboardButton(
+        "📈 V12 LIVE Bookmaker",
+        callback_data=f"v12live:open:{match_id}:{token}:{page}",
+    )])
+    rows.append([InlineKeyboardButton(
+        "📊 Historial inferencias monitor",
+        callback_data=f"debuginf:{match_id}:{token}:{page}",
     )])
     if event_date:
         rows.append(
             [
                 InlineKeyboardButton(
-                    "Volver al dia",
+                    "⬅️ Volver al dia",
                     callback_data=f"date:{event_date}:{page}",
                 )
             ]
         )
-    rows.append([InlineKeyboardButton("Menu principal", callback_data="nav:main")])
+    rows.append([InlineKeyboardButton("🏠 Menu principal", callback_data="nav:main")])
     return InlineKeyboardMarkup(rows)
 
 
@@ -3727,7 +5638,7 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def _render_dates(update: Update, page: int) -> None:
-    rows = _fetch_date_summaries()
+    rows = await asyncio.to_thread(_fetch_date_summaries)
     if not rows:
         await _replace_callback_message(
             update,
@@ -3738,7 +5649,7 @@ async def _render_dates(update: Update, page: int) -> None:
         )
         return
 
-    pred_stats = _fetch_dates_pred_stats()
+    pred_stats = await asyncio.to_thread(_fetch_dates_pred_stats)
     await _replace_callback_message(
         update,
         text="Fechas disponibles:",
@@ -3762,8 +5673,9 @@ async def _render_matches_for_date(update: Update, event_date: str, page: int) -
         return
 
     pred_map = _fetch_date_pred_outcomes(event_date)
-    stats = _pred_stats_text(pred_map, len(rows))
-    header = _event_date_title_es(event_date, len(rows))
+    stats = _pred_stats_text(pred_map, len(rows), match_rows=rows)
+    model_line = f"Modelo: Q3={MODEL_CONFIG['q3']} Q4={MODEL_CONFIG['q4']}"
+    header = f"{model_line}\n{_event_date_title_es(event_date, len(rows))}"
     if stats:
         header += f"\n<pre>{html.escape(stats)}</pre>"
     await _replace_callback_message(
@@ -3771,6 +5683,178 @@ async def _render_matches_for_date(update: Update, event_date: str, page: int) -
         text=header,
         reply_markup=_matches_keyboard(rows, event_date, page, pred_map),
         parse_mode="HTML",
+    )
+
+
+async def _render_inference_debug(
+    update: Update,
+    match_id: str,
+    event_date: str | None,
+    page: int,
+) -> None:
+    """Show inference_debug_log entries for a specific match."""
+    import json as _json
+
+    conn = _open_conn()
+    try:
+        debug_rows = conn.execute(
+            "SELECT * FROM inference_debug_log WHERE match_id=? ORDER BY created_at ASC",
+            (match_id,),
+        ).fetchall()
+        # Get team names from bet_monitor_log or matches table
+        match_meta = conn.execute(
+            "SELECT home_team, away_team, league FROM bet_monitor_log WHERE match_id=? LIMIT 1",
+            (match_id,),
+        ).fetchone()
+        if not match_meta:
+            mm = conn.execute(
+                "SELECT home_team, away_team FROM matches WHERE match_id=? LIMIT 1",
+                (match_id,),
+            ).fetchone()
+            match_meta = mm
+    except Exception:
+        debug_rows = []
+        match_meta = None
+    conn.close()
+
+    token = event_date if event_date else "_"
+    back_kb = InlineKeyboardMarkup([[
+        InlineKeyboardButton("⬅️ Volver al match", callback_data=f"match:{match_id}:{token}:{page}"),
+    ]])
+
+    if not debug_rows:
+        await _replace_callback_message(
+            update,
+            text=(
+                f"📊 Historial de inferencias del monitor\n"
+                f"Match: {match_id}\n\n"
+                "Sin registros en inference_debug_log.\n"
+                "El monitor debe haber procesado este partido para generar datos."
+            ),
+            reply_markup=back_kb,
+        )
+        return
+
+    home = away = "?"
+    league_name = "?"
+    if match_meta:
+        home = match_meta["home_team"] or "?"
+        away = match_meta["away_team"] or "?"
+        league_name = (match_meta["league"] if "league" in match_meta.keys() else None) or "?"
+
+    # Find league quality from the most recent inference_json
+    _q_icons = {"strong": "✅", "moderate": "🟡", "weak": "❌", "unknown": "⚪"}
+    match_lq: str | None = None
+    match_lb: bool | None = None
+    for _r in reversed(debug_rows):
+        try:
+            _j = _json.loads(_r["inference_json"] or "{}")
+            _tgt_j = ((_j.get("predictions") or {}).get(_r["target"] or "q3") or {})
+            if "league_quality" in _tgt_j:
+                match_lq = _tgt_j["league_quality"]
+                match_lb = bool(_tgt_j.get("league_bettable", False))
+                break
+        except Exception:
+            pass
+
+    # Group by target
+    by_target: dict[str, list] = {}
+    for r in debug_rows:
+        by_target.setdefault(r["target"] or "?", []).append(r)
+
+    lines: list[str] = [
+        f"📊 Historial inferencias monitor",
+        f"Match: {match_id}",
+        f"{home} vs {away}",
+        f"Liga: {league_name}",
+    ]
+    if match_lq:
+        _q_icon = _q_icons.get(match_lq, "⚪")
+        _bet_note = "  ⚠️ no en entrenamiento" if not match_lb else ""
+        lines.append(f"Calidad liga: {match_lq} {_q_icon}{_bet_note}")
+    lines.append("")
+
+    def _sig_icon(sig: str) -> str:
+        s = (sig or "").upper()
+        if s == "BET":
+            return "🟢"
+        if s == "UNAVAILABLE":
+            return "⚪"
+        return "🔴"
+
+    for target in ["q3", "q4"]:
+        rows_t = by_target.get(target, [])
+        if not rows_t:
+            continue
+        signals = [r["signal"] or "?" for r in rows_t]
+        unique_sigs = list(dict.fromkeys(signals))
+        flip_tag = "  ⚠️ FLIP" if len(unique_sigs) > 1 else ""
+        lines.append(f"── {target.upper()} ({len(rows_t)} checks){flip_tag}")
+
+        for r in rows_t:
+            sig = r["signal"] or "?"
+            icon = _sig_icon(sig)
+            conf = r["confidence"]
+            conf_txt = f" {float(conf) * 100:.0f}%" if conf else ""
+            gp = r["gp_count"]
+            gp_txt = f" gp={gp}" if gp is not None else ""
+            mn = r["scraped_minute"]
+            mn_txt = f" min={mn}" if mn is not None else ""
+            ts = (r["created_at"] or "?")[11:19]
+
+            # Parse debug fields from inference JSON
+            reason = ""
+            extra_tag = ""
+            pred_line = ""
+            try:
+                pred_json = _json.loads(r["inference_json"] or "{}")
+                pred_t = (pred_json.get("predictions") or {}).get(target, {}) or {}
+                reason = str(pred_t.get("reasoning") or pred_t.get("reason") or "")[:90]
+                dq = str(pred_t.get("data_quality") or "")[:4]
+                vx = pred_t.get("volatility_index")
+                lq = pred_t.get("league_quality")
+                lb = pred_t.get("league_bettable")
+                extra_parts = []
+                if dq:
+                    extra_parts.append(f"cal:{dq}")
+                if vx is not None:
+                    extra_parts.append(f"vol:{float(vx):.2f}")
+                if lq and lb is not None:
+                    lq_icon = _q_icons.get(lq, "⚪")
+                    extra_parts.append(f"liga:{lq}{lq_icon}" + ("❌" if not lb else ""))
+                if extra_parts:
+                    extra_tag = "\n    " + " | ".join(extra_parts)
+                pt = pred_t.get("predicted_total")
+                ph = pred_t.get("predicted_home")
+                pa = pred_t.get("predicted_away")
+                mae = pred_t.get("mae")
+                if pt is not None:
+                    pred_line = f"    pred: {float(pt):.1f}"
+                    if ph is not None and pa is not None:
+                        pred_line += f" ({float(ph):.1f}/{float(pa):.1f})"
+                    if mae is not None:
+                        pred_line += f"  ±{float(mae):.1f}MAE"
+            except Exception:
+                pass
+
+            line = f"  [{ts}]{mn_txt}{gp_txt}  {icon} {sig}{conf_txt}"
+            if extra_tag:
+                line += extra_tag
+            lines.append(line)
+            if pred_line:
+                lines.append(pred_line)
+            if reason:
+                lines.append(f"    {reason}")
+
+    text = "\n".join(lines)
+    # Telegram message limit
+    if len(text) > 4000:
+        text = text[:3960] + "\n…(truncado)"
+
+    await _replace_callback_message(
+        update,
+        text=text,
+        reply_markup=back_kb,
     )
 
 
@@ -4183,6 +6267,146 @@ def _build_model_stats_text() -> str:
     else:
         gate_lines.append("Gate config: no encontrado")
 
+    # ── v12 classification stats (from training_summary.json) ──────────────
+    v12_summary = MODEL_OUTPUTS_V12_DIR / "training_summary.json"
+    if v12_summary.exists():
+        try:
+            with v12_summary.open("r", encoding="utf-8") as f:
+                s12 = json.load(f)
+            q12m = " ✅" if active_q3 == "v12" or active_q4 == "v12" else ""
+            metrics_sections.append(f"Modelos v12 (clasificacion){q12m}:")
+            clf12 = s12.get("classification", {})
+            hdrs12 = ["Modelo", "F1", "ACC", "ROC", "Ntest"]
+            for tgt in ("q3", "q4"):
+                mk = " ✅" if (tgt == "q3" and active_q3 == "v12") or (tgt == "q4" and active_q4 == "v12") else ""
+                entries = clf12.get(tgt, [])
+                if not entries:
+                    continue
+                rows12 = []
+                for e in entries:
+                    rows12.append([
+                        str(e.get("model", "?")),
+                        f"{float(e['f1'])*100:.1f}%" if e.get("f1") is not None else "?",
+                        f"{float(e['accuracy'])*100:.1f}%" if e.get("accuracy") is not None else "?",
+                        f"{float(e['roc_auc'])*100:.1f}%" if e.get("roc_auc") is not None else "?",
+                        str(e.get("n_test", "?")),
+                    ])
+                metrics_sections.append(f"{tgt.upper()}{mk} (val):")
+                metrics_sections.extend(_table(hdrs12, rows12))
+                metrics_sections.append("")
+        except Exception:
+            metrics_sections.append("v12: error leyendo training_summary.json")
+            metrics_sections.append("")
+
+    # ── v13 stats (from training_summary.json, models_trained) ────────────
+    v13_summary = MODEL_OUTPUTS_V13_DIR / "training_summary.json"
+    if v13_summary.exists():
+        try:
+            with v13_summary.open("r", encoding="utf-8") as f:
+                s13 = json.load(f)
+            q13m = " ✅" if active_q3 == "v13" or active_q4 == "v13" else ""
+            trained_at = str(s13.get("trained_at", "?"))[:19]
+            metrics_sections.append(f"Modelos v13{q13m} ({trained_at}):")
+            hdrs13 = ["Clave", "F1val", "ACCval", "Gap", "Nval"]
+            rows13 = []
+            for m in s13.get("models_trained", []):
+                key = str(m.get("key", "?"))
+                tgt = key.split("_")[0] if "_" in key else "?"
+                tgt_mk = ""
+                if tgt == "q3" and active_q3 == "v13":
+                    tgt_mk = "✅"
+                elif tgt == "q4" and active_q4 == "v13":
+                    tgt_mk = "✅"
+                f1v = m.get("val_f1")
+                accv = m.get("val_accuracy")
+                gap = m.get("train_val_gap")
+                rows13.append([
+                    f"{tgt_mk}{key}",
+                    f"{float(f1v)*100:.1f}%" if f1v is not None else "?",
+                    f"{float(accv)*100:.1f}%" if accv is not None else "?",
+                    f"{float(gap)*100:.1f}%" if gap is not None else "?",
+                    str(m.get("samples_val", "?")),
+                ])
+            metrics_sections.extend(_table(hdrs13, rows13))
+            metrics_sections.append("")
+        except Exception:
+            metrics_sections.append("v13: error leyendo training_summary.json")
+            metrics_sections.append("")
+
+    # ── v15 stats (from training_summary_v15.json, per-league) ────────────
+    v15_summary = MODEL_OUTPUTS_V15_DIR / "training_summary_v15.json"
+    if v15_summary.exists():
+        try:
+            with v15_summary.open("r", encoding="utf-8") as f:
+                s15 = json.load(f)
+            q15m = " ✅" if active_q3 == "v15" or active_q4 == "v15" else ""
+            n_trained = s15.get("n_leagues_trained", "?")
+            n_skip = s15.get("n_leagues_skipped", "?")
+            metrics_sections.append(f"Modelos v15{q15m} ({n_trained} ligas, {n_skip} omitidas):")
+            hdrs15 = ["Liga", "Tgt", "F1val", "ACCval", "Ntrain", "Nval"]
+            rows15 = []
+            for m in s15.get("models", []):
+                league = str(m.get("league", "?"))[:20]
+                tgt = str(m.get("target", "?"))
+                vm = m.get("val_metrics") or {}
+                f1v = vm.get("f1")
+                accv = vm.get("accuracy")
+                tgt_mk = ""
+                if tgt == "q3" and active_q3 == "v15":
+                    tgt_mk = "✅"
+                elif tgt == "q4" and active_q4 == "v15":
+                    tgt_mk = "✅"
+                rows15.append([
+                    league,
+                    f"{tgt_mk}{tgt}",
+                    f"{float(f1v)*100:.1f}%" if f1v is not None else "?",
+                    f"{float(accv)*100:.1f}%" if accv is not None else "?",
+                    str(m.get("n_train", "?")),
+                    str(m.get("n_val", "?")),
+                ])
+            metrics_sections.extend(_table(hdrs15, rows15))
+            metrics_sections.append("")
+        except Exception:
+            metrics_sections.append("v15: error leyendo training_summary_v15.json")
+            metrics_sections.append("")
+
+    # ── v16 stats (from training_summary_v16.json, per-league) ────────────
+    v16_summary = MODEL_OUTPUTS_V16_DIR / "training_summary_v16.json"
+    if v16_summary.exists():
+        try:
+            with v16_summary.open("r", encoding="utf-8") as f:
+                s16 = json.load(f)
+            q16m = " ✅" if active_q3 == "v16" or active_q4 == "v16" else ""
+            n_trained = s16.get("n_leagues_trained", "?")
+            n_skip = s16.get("n_leagues_skipped", "?")
+            metrics_sections.append(f"Modelos v16{q16m} ({n_trained} ligas, {n_skip} omitidas):")
+            hdrs16 = ["Liga", "Tgt", "F1val", "ACCval", "Ntrain", "Nval"]
+            rows16 = []
+            for m in s16.get("models", []):
+                league = str(m.get("league", "?"))[:20]
+                tgt = str(m.get("target", "?"))
+                vm = m.get("val_metrics") or {}
+                f1v = vm.get("f1")
+                accv = vm.get("accuracy")
+                tgt_mk = ""
+                if tgt == "q3" and active_q3 == "v16":
+                    tgt_mk = "✅"
+                elif tgt == "q4" and active_q4 == "v16":
+                    tgt_mk = "✅"
+                rows16.append([
+                    league,
+                    f"{tgt_mk}{tgt}",
+                    f"{float(f1v)*100:.1f}%" if f1v is not None else "?",
+                    f"{float(accv)*100:.1f}%" if accv is not None else "?",
+                    str(m.get("n_train", "?")),
+                    str(m.get("n_val", "?")),
+                ])
+            metrics_sections.extend(_table(hdrs16, rows16))
+            metrics_sections.append("")
+        except Exception:
+            metrics_sections.append("v16: error leyendo training_summary_v16.json")
+            metrics_sections.append("")
+
     sections = metrics_sections + gate_lines
     return "\n".join(sections)
 
@@ -4253,10 +6477,11 @@ async def _stream_process_output(
 async def _run_train_pipeline(chat_id: int, app: Application) -> None:
     """Run full training pipeline: train-v2 → train-v4 → compare → calibrate."""
     pipeline_steps = [
-        ("1/4 train-v2", ["training/model_cli.py", "train-v2"]),
-        ("2/4 train-v4", ["training/model_cli.py", "train-v4"]),
-        ("3/4 compare",  ["training/model_cli.py", "compare"]),
-        ("4/4 calibrate", ["training/calibrate_gate.py"]),
+        ("1/5 train-v2", ["training/model_cli.py", "train-v2"]),
+        ("2/5 train-v4", ["training/model_cli.py", "train-v4"]),
+        ("3/5 train-v12", ["training/v12/train_v12.py"]),
+        ("4/5 compare",  ["training/model_cli.py", "compare"]),
+        ("5/5 calibrate", ["training/calibrate_gate.py"]),
     ]
     async with RETRAIN_LOCK:
         TRAIN_STATUS["running"] = True
@@ -4420,18 +6645,96 @@ async def train_status_cmd(
     await update.effective_message.reply_text(_train_status_text())
 
 
+async def dates_cmd(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    chat_id = update.effective_chat.id if update.effective_chat else None
+    rows = await asyncio.to_thread(_fetch_date_summaries)
+    if not rows:
+        await update.effective_message.reply_text("No hay fechas disponibles.")
+        return
+    pred_stats = await asyncio.to_thread(_fetch_dates_pred_stats)
+    await update.effective_message.reply_text(
+        text="Fechas disponibles:",
+        reply_markup=_dates_keyboard(rows, 0, pred_stats),
+    )
+
+
+async def monitor_cmd(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    chat_id = update.effective_chat.id if update.effective_chat else None
+    running = bool(
+        bet_monitor_mod.MONITOR_STATUS.get("running")
+        or (_MONITOR_THREAD is not None and _MONITOR_THREAD.is_alive())
+    )
+    await update.effective_message.reply_text(
+        text="Monitor Apuestas",
+        reply_markup=_monitor_keyboard(running, chat_id),
+    )
+
+
+def _start_monitor_thread() -> None:
+    """Spawn the monitor background thread (mirrors monitor:start handler)."""
+    global _MONITOR_THREAD, _MONITOR_LOOP
+    bet_monitor_mod.set_model_config(dict(MONITOR_MODEL_CONFIG))
+
+    def _run() -> None:
+        global _MONITOR_LOOP
+        import asyncio as _aio
+        loop = _aio.new_event_loop()
+        _aio.set_event_loop(loop)
+        _MONITOR_LOOP = loop
+        stop_ev = _aio.Event()
+        _MONITOR_STOP_REF[0] = stop_ev
+        bet_monitor_mod.set_notify_callback(_monitor_notify_cb)
+        try:
+            loop.run_until_complete(bet_monitor_mod.run_monitor(DB_PATH, stop_ev))
+        finally:
+            loop.close()
+            _MONITOR_LOOP = None
+
+    t = threading.Thread(target=_run, daemon=True, name="bet_monitor")
+    _MONITOR_THREAD = t
+    t.start()
+
+
 async def _post_init(app: Application) -> None:
+    # Ensure DB schema (including settings table) exists
+    conn = _open_conn()
+    db_mod.init_db(conn)
+    # Load persisted model configs from DB
+    for quarter in ("q3", "q4"):
+        v = db_mod.get_setting(conn, f"bot_model_{quarter}")
+        if v and v in AVAILABLE_MODELS:
+            MODEL_CONFIG[quarter] = v
+        mv = db_mod.get_setting(conn, f"monitor_model_{quarter}")
+        if mv and mv in AVAILABLE_MODELS:
+            MONITOR_MODEL_CONFIG[quarter] = mv
+    conn.close()
+
+    # Restore persisted subscribers
+    _load_subscribers()
+
+    # Auto-start the monitor daemon
+    _start_monitor_thread()
+
     await app.bot.set_my_commands(
         [
             BotCommand("start", "Abrir menu principal"),
             BotCommand("myid", "Ver chat_id y user_id"),
             BotCommand("trainstatus", "Estado del ultimo reentreno"),
+            BotCommand("dates", "Matches por fecha"),
+            BotCommand("monitor", "Menu monitor apuestas"),
         ]
     )
     await app.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
 
 
 async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    global _MONITOR_THREAD, _MONITOR_LOOP, _MONITOR_STOP_REF
     query = update.callback_query
     if not query:
         return
@@ -4577,7 +6880,58 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         return
 
-    if data == "menu:dates":
+    if data == "fetchdate:manual":
+        context.user_data[AWAITING_FETCH_DATE_KEY] = True
+        context.user_data[AWAITING_MATCH_ID_KEY] = False
+        await query.edit_message_text(
+            text=(
+                "Enviar fecha en formato YYYY-MM-DD.\n"
+                "Opcional limite: YYYY-MM-DD 100\n"
+                "Ejemplo: 2026-03-26 200"
+            ),
+            reply_markup=InlineKeyboardMarkup(
+                [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
+            ),
+        )
+        return
+
+    if data.startswith("fetchdate:pick:"):
+        chat_id = update.effective_chat.id if update.effective_chat else None
+        try:
+            event_date = data.split(":", maxsplit=2)[2]
+            datetime.strptime(event_date, "%Y-%m-%d")
+        except (IndexError, ValueError):
+            await query.edit_message_text(
+                text="Fecha invalida en el boton.",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
+                ),
+            )
+            return
+        if chat_id is not None and chat_id in DATE_INGEST_JOBS:
+            await query.edit_message_text(
+                text="Ya hay una ingesta de fecha en curso. Puedes cancelarla desde su mensaje de progreso.",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
+                ),
+            )
+            return
+        await query.edit_message_text(
+            text=_date_ingest_progress_text(event_date, None, {"phase": "starting"}),
+            reply_markup=_date_ingest_progress_keyboard(True),
+        )
+        if chat_id is not None and query.message is not None:
+            context.application.create_task(
+                _run_date_ingest_job(
+                    context.application,
+                    chat_id,
+                    query.message.message_id,
+                    event_date,
+                    None,
+                )
+            )
+        return
+
         await _render_dates(update, 0)
         return
 
@@ -4585,6 +6939,13 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         context.user_data[AWAITING_FETCH_DATE_KEY] = False
         context.user_data[AWAITING_MATCH_ID_KEY] = False
         await _render_live(update, context, 0, refetch=True)
+        return
+
+    if data == "menu:dates":
+        context.user_data[AWAITING_FETCH_DATE_KEY] = False
+        context.user_data[AWAITING_MATCH_ID_KEY] = False
+        await query.answer("⏳ Cargando fechas...")
+        await _render_dates(update, 0)
         return
 
     if data.startswith("dates:"):
@@ -4621,19 +6982,50 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     if data == "menu:fetchdate":
-        context.user_data[AWAITING_FETCH_DATE_KEY] = True
+        context.user_data[AWAITING_FETCH_DATE_KEY] = False
         context.user_data[AWAITING_MATCH_ID_KEY] = False
+        missing_data = await asyncio.to_thread(_get_missing_dates_suggestions)
+        recent = missing_data["recent"]
+        historical = missing_data["historical"]
+        min_date = missing_data["min_date"]
+
+        kbd_rows: list[list[InlineKeyboardButton]] = []
+        lines: list[str] = []
+
+        # Recent section — up to 5 buttons
+        if recent:
+            lines.append("Fechas recientes sin datos (ultimos 21 dias):")
+            for d in recent[:5]:
+                kbd_rows.append(
+                    [InlineKeyboardButton(f"📅 {d}", callback_data=f"fetchdate:pick:{d}")]
+                )
+        else:
+            lines.append("Sin fechas faltantes en los ultimos 21 dias.")
+
+        # Historical section — up to 3 buttons (total max 8)
+        remaining_slots = 8 - len(kbd_rows)
+        if historical and remaining_slots > 0:
+            lines.append(f"\nFechas historicas sin datos (desde {min_date}):")
+            for d in historical[:remaining_slots]:
+                kbd_rows.append(
+                    [InlineKeyboardButton(f"🗓 {d}", callback_data=f"fetchdate:pick:{d}")]
+                )
+            if len(historical) > remaining_slots:
+                lines.append(f"(+{len(historical) - remaining_slots} fechas historicas mas — usa ingresar fecha manualmente)")
+
+        hint = "\n".join(lines)
+        kbd_rows.append(
+            [InlineKeyboardButton("✏️ Ingresar fecha manualmente", callback_data="fetchdate:manual")]
+        )
+        kbd_rows.append(
+            [InlineKeyboardButton("Menu principal", callback_data="nav:main")]
+        )
         await query.edit_message_text(
-            text=(
-                "Enviar fecha en formato YYYY-MM-DD.\n"
-                "Opcional limite: YYYY-MM-DD 100\n"
-                "Ejemplo: 2026-03-26 200"
-            ),
-            reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
-            ),
+            text=hint,
+            reply_markup=InlineKeyboardMarkup(kbd_rows),
         )
         return
+
 
     if data == "menu:train":
         chat_id = update.effective_chat.id if update.effective_chat else None
@@ -4658,6 +7050,243 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         return
 
+    if data == "menu:monitor":
+        running = bool(
+            bet_monitor_mod.MONITOR_STATUS.get("running", False)
+            or (_MONITOR_THREAD is not None and _MONITOR_THREAD.is_alive())
+        )
+        await query.edit_message_text(
+            text=bet_monitor_mod.status_text(),
+            reply_markup=_monitor_keyboard(running, chat_id=query.from_user.id if query.from_user else None),
+        )
+        return
+
+    if data == "monitor:start":
+        _mon_thread = _MONITOR_THREAD
+        running = bool(
+            bet_monitor_mod.MONITOR_STATUS.get("running", False)
+            or (_mon_thread is not None and _mon_thread.is_alive())
+        )
+        if running:
+            await query.edit_message_text(
+                text="El monitor ya está activo.\n\n" + bet_monitor_mod.status_text(),
+                reply_markup=_monitor_keyboard(True, chat_id=query.from_user.id if query.from_user else None),
+            )
+            return
+        bet_monitor_mod.set_model_config(dict(MONITOR_MODEL_CONFIG))
+
+        _start_monitor_thread()
+        await query.edit_message_text(
+            text="Monitor iniciado en hilo separado.\n\n" + bet_monitor_mod.status_text(),
+            reply_markup=_monitor_keyboard(True, chat_id=query.from_user.id if query.from_user else None),
+        )
+        return
+
+    if data == "monitor:stop":
+        loop = _MONITOR_LOOP
+        stop_ev = _MONITOR_STOP_REF[0]
+        if loop is not None and stop_ev is not None and not loop.is_closed():
+            loop.call_soon_threadsafe(stop_ev.set)
+            bet_monitor_mod.MONITOR_STATUS["stop_requested"] = True
+        await query.edit_message_text(
+            text="Deteniendo monitor...\n\n" + bet_monitor_mod.status_text(),
+            reply_markup=_monitor_keyboard(False, chat_id=query.from_user.id if query.from_user else None),
+        )
+        return
+
+    if data == "monitor:subscribe":
+        cid = query.from_user.id if query.from_user else None
+        if cid:
+            _MONITOR_SUBSCRIBERS.setdefault(cid, "bet_only")
+            _persist_subscribers()
+        running = bool(
+            bet_monitor_mod.MONITOR_STATUS.get("running", False)
+            or (_MONITOR_THREAD is not None and _MONITOR_THREAD.is_alive())
+        )
+        await query.edit_message_text(
+            text="🔔 Suscrito (solo apuestas). Cambia el filtro abajo.\n\n" + bet_monitor_mod.status_text(),
+            reply_markup=_monitor_keyboard(running, chat_id=cid),
+        )
+        return
+
+    if data == "monitor:unsubscribe":
+        cid = query.from_user.id if query.from_user else None
+        if cid:
+            _MONITOR_SUBSCRIBERS.pop(cid, None)
+            _persist_subscribers()
+        running = bool(
+            bet_monitor_mod.MONITOR_STATUS.get("running", False)
+            or (_MONITOR_THREAD is not None and _MONITOR_THREAD.is_alive())
+        )
+        await query.edit_message_text(
+            text="🔕 Desuscrito de alertas del monitor.\n\n" + bet_monitor_mod.status_text(),
+            reply_markup=_monitor_keyboard(running, chat_id=cid),
+        )
+        return
+
+    if data in ("monitor:sub_bet_only", "monitor:sub_all"):
+        cid = query.from_user.id if query.from_user else None
+        pref = "bet_only" if data == "monitor:sub_bet_only" else "all"
+        if cid:
+            _MONITOR_SUBSCRIBERS[cid] = pref
+            _persist_subscribers()
+        running = bool(
+            bet_monitor_mod.MONITOR_STATUS.get("running", False)
+            or (_MONITOR_THREAD is not None and _MONITOR_THREAD.is_alive())
+        )
+        label = "solo apuestas" if pref == "bet_only" else "apuestas + no-apuesta"
+        await query.edit_message_text(
+            text=f"🔔 Recibirás alertas de {label}.\n\n" + bet_monitor_mod.status_text(),
+            reply_markup=_monitor_keyboard(running, chat_id=cid),
+        )
+        return
+
+    if data == "monitor:models":
+        q3_v = MODEL_CONFIG["q3"]
+        q4_v = MODEL_CONFIG["q4"]
+        await query.edit_message_text(
+            text=(
+                f"Modelos del monitor\n"
+                f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
+                "Elige el modelo para cada cuarto:"
+            ),
+            reply_markup=_monitor_model_keyboard(chat_id=query.from_user.id if query.from_user else None),
+        )
+        return
+
+    if data.startswith("monmodel:set:"):
+        # Format: monmodel:set:q3:v4  or  monmodel:set:q4:v9
+        parts = data.split(":")
+        if len(parts) == 4:
+            _, _, quarter, version = parts
+            if quarter in ("q3", "q4") and version in AVAILABLE_MODELS:
+                MONITOR_MODEL_CONFIG[quarter] = version
+                conn = _open_conn()
+                db_mod.set_setting(conn, f"monitor_model_{quarter}", version)
+                conn.close()
+                if bet_monitor_mod:
+                    bet_monitor_mod.set_model_config({quarter: version})
+        q3_v = MONITOR_MODEL_CONFIG["q3"]
+        q4_v = MONITOR_MODEL_CONFIG["q4"]
+        await query.edit_message_text(
+            text=(
+                f"Modelos del monitor\n"
+                f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
+                "Elige el modelo para cada cuarto:"
+            ),
+            reply_markup=_monitor_model_keyboard(chat_id=query.from_user.id if query.from_user else None),
+        )
+        return
+
+    if data == "monitor:schedule":
+        today_str = datetime.now().date().isoformat()
+        text, markup = bet_monitor_mod.schedule_keyboard(DB_PATH, today_str)
+        await query.edit_message_text(text=text, reply_markup=markup)
+        return
+
+    if data == "monitor:betcfg":
+        conn = _open_conn()
+        bank  = db_mod.get_setting(conn, "sig_bank",    "1000")
+        bet   = db_mod.get_setting(conn, "sig_bet_size", "100")
+        odds  = db_mod.get_setting(conn, "sig_odds",     "1.4")
+        conn.close()
+        text = (
+            f"⚙️ Config simulación de banco\n\n"
+            f"🏦 Bank inicial: {bank}\n"
+            f"💵 Apuesta: {bet}\n"
+            f"📈 Momio (odds): {odds}\n\n"
+            "Ajusta con los botones:"
+        )
+        kb = InlineKeyboardMarkup([
+            [   InlineKeyboardButton("Bank −500", callback_data="betcfg:bank:-500"),
+                InlineKeyboardButton("Bank +500", callback_data="betcfg:bank:+500"),
+                InlineKeyboardButton("Bank +1000", callback_data="betcfg:bank:+1000"),
+            ],
+            [   InlineKeyboardButton("Apuesta −10", callback_data="betcfg:bet:-10"),
+                InlineKeyboardButton("Apuesta −50", callback_data="betcfg:bet:-50"),
+                InlineKeyboardButton("Apuesta +50", callback_data="betcfg:bet:+50"),
+                InlineKeyboardButton("Apuesta +100", callback_data="betcfg:bet:+100"),
+            ],
+            [   InlineKeyboardButton("Odds −0.1", callback_data="betcfg:odds:-0.1"),
+                InlineKeyboardButton("Odds +0.1", callback_data="betcfg:odds:+0.1"),
+                InlineKeyboardButton("Odds +0.5", callback_data="betcfg:odds:+0.5"),
+            ],
+            [InlineKeyboardButton("⬅️ Monitor", callback_data="menu:monitor")],
+        ])
+        await query.edit_message_text(text=text, reply_markup=kb)
+        return
+
+    if data.startswith("betcfg:"):
+        # betcfg:bank:+500  /  betcfg:bet:-10  /  betcfg:odds:+0.1
+        parts = data.split(":")
+        if len(parts) == 3:
+            _, field, delta_s = parts
+            conn = _open_conn()
+            key_map = {"bank": "sig_bank", "bet": "sig_bet_size", "odds": "sig_odds"}
+            defaults = {"bank": 1000.0, "bet": 100.0, "odds": 1.4}
+            if field in key_map:
+                db_key = key_map[field]
+                cur = float(db_mod.get_setting(conn, db_key) or str(defaults[field]))
+                try:
+                    cur = round(cur + float(delta_s), 4)
+                    if field == "bank":
+                        cur = max(0.0, cur)
+                    elif field == "bet":
+                        cur = max(1.0, cur)
+                    elif field == "odds":
+                        cur = max(1.01, round(cur, 2))
+                except ValueError:
+                    pass
+                db_mod.set_setting(conn, db_key, str(cur))
+            bank = db_mod.get_setting(conn, "sig_bank",     "1000")
+            bet  = db_mod.get_setting(conn, "sig_bet_size",  "100")
+            odds = db_mod.get_setting(conn, "sig_odds",       "1.4")
+            conn.close()
+        text = (
+            f"⚙️ Config simulación de banco\n\n"
+            f"🏦 Bank inicial: {bank}\n"
+            f"💵 Apuesta: {bet}\n"
+            f"📈 Momio (odds): {odds}\n\n"
+            "Ajusta con los botones:"
+        )
+        kb = InlineKeyboardMarkup([
+            [   InlineKeyboardButton("Bank −500", callback_data="betcfg:bank:-500"),
+                InlineKeyboardButton("Bank +500", callback_data="betcfg:bank:+500"),
+                InlineKeyboardButton("Bank +1000", callback_data="betcfg:bank:+1000"),
+            ],
+            [   InlineKeyboardButton("Apuesta −10", callback_data="betcfg:bet:-10"),
+                InlineKeyboardButton("Apuesta −50", callback_data="betcfg:bet:-50"),
+                InlineKeyboardButton("Apuesta +50", callback_data="betcfg:bet:+50"),
+                InlineKeyboardButton("Apuesta +100", callback_data="betcfg:bet:+100"),
+            ],
+            [   InlineKeyboardButton("Odds −0.1", callback_data="betcfg:odds:-0.1"),
+                InlineKeyboardButton("Odds +0.1", callback_data="betcfg:odds:+0.1"),
+                InlineKeyboardButton("Odds +0.5", callback_data="betcfg:odds:+0.5"),
+            ],
+            [InlineKeyboardButton("⬅️ Monitor", callback_data="menu:monitor")],
+        ])
+        await query.edit_message_text(text=text, reply_markup=kb)
+        return
+
+    if data == "monitor:signals_today":
+        today_str = datetime.now().date().isoformat()
+        cid = query.from_user.id if query.from_user else None
+        # Reconcile any ⏳ pending bets from quarter_scores already in DB
+        await asyncio.to_thread(bet_monitor_mod.reconcile_pending_results, DB_PATH)
+        user_pref = _MONITOR_SUBSCRIBERS.get(cid, "all") if cid else "all"
+        text = bet_monitor_mod.signals_text_today(DB_PATH, today_str, pref=user_pref)
+        nav_markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("⬅️ Monitor", callback_data="menu:monitor")],
+            [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
+        ])
+        await query.edit_message_text(text=text, reply_markup=nav_markup)
+        return
+
+    if data == "monitor:log":
+        text, markup = bet_monitor_mod.log_keyboard(DB_PATH)
+        await query.edit_message_text(text=text, reply_markup=markup)
+        return
+
     if data == "menu:models":
         q3_v = MODEL_CONFIG["q3"]
         q4_v = MODEL_CONFIG["q4"]
@@ -4678,6 +7307,9 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             _, _, quarter, version = parts
             if quarter in ("q3", "q4") and version in AVAILABLE_MODELS:
                 MODEL_CONFIG[quarter] = version
+                conn = _open_conn()
+                db_mod.set_setting(conn, f"bot_model_{quarter}", version)
+                conn.close()
         q3_v = MODEL_CONFIG["q3"]
         q4_v = MODEL_CONFIG["q4"]
         await query.edit_message_text(
@@ -4688,6 +7320,78 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             ),
             reply_markup=_model_submenu_keyboard(),
         )
+        return
+
+    # V12 LIVE Bookmaker handler
+    if data.startswith("v12live:open:"):
+        try:
+            _, _, match_id, token, page_text = data.split(":", maxsplit=4)
+            page = int(page_text)
+        except (ValueError, TypeError):
+            await _render_main_menu(update, context)
+            return
+        
+        await _handle_v12_live_analysis(update, context, query, match_id, page)
+        return
+
+    if data.startswith("v12live:refresh:"):
+        try:
+            parts = data.split(":", maxsplit=4)
+            match_id = parts[2]
+            token = parts[3]
+            page = int(parts[4])
+        except (ValueError, TypeError, IndexError):
+            await _render_main_menu(update, context)
+            return
+
+        await _handle_v12_live_analysis(update, context, query, match_id, page, refresh=True)
+        return
+
+    if data.startswith("v12live:track:"):
+        try:
+            parts = data.split(":", maxsplit=4)
+            match_id = parts[2]
+            token = parts[3]
+            page = int(parts[4])
+        except (ValueError, TypeError, IndexError):
+            await _render_main_menu(update, context)
+            return
+
+        await query.answer("Iniciando seguimiento en vivo...")
+        chat_id = query.message.chat_id
+        msg_id = query.message.message_id
+        job_key = f"{chat_id}:{msg_id}"
+
+        # Cancel existing tracking for this message
+        existing_job = V12_LIVE_JOBS.get(job_key)
+        if existing_job:
+            existing_job["cancelled"] = True
+
+        V12_LIVE_JOBS[job_key] = {
+            "chat_id": chat_id,
+            "msg_id": msg_id,
+            "match_id": match_id,
+            "page": page,
+            "is_photo": bool(query.message.photo),
+            "started_utc": datetime.utcnow().isoformat(),
+        }
+
+        context.application.create_task(
+            _v12_live_poll(chat_id, msg_id, match_id, page, context.application)
+        )
+        return
+
+    if data.startswith("v12live:graph:"):
+        try:
+            parts = data.split(":", maxsplit=4)
+            match_id = parts[2]
+            token = parts[3]
+            page = int(parts[4])
+        except (ValueError, TypeError, IndexError):
+            await _render_main_menu(update, context)
+            return
+
+        await _handle_v12_live_graph(update, context, query, match_id, page)
         return
 
     if data.startswith("matchmodel:open:"):
@@ -4769,11 +7473,65 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await _render_main_menu(update, context)
             return
         event_date = None if token == "_" else token
+        # Compute with the model the user just selected (MODEL_CONFIG), not MONITOR_MODEL_CONFIG
+        _mback_data = _get_match_detail(match_id)
+        if _mback_data is None:
+            _mback_data = await asyncio.to_thread(_refresh_match_data, match_id)
+        await _set_waiting_state(update, text=_refresh_waiting_text(match_id, _mback_data))
+        _mback_pred = await asyncio.to_thread(
+            _refresh_predictions, match_id, _mback_data, dict(MODEL_CONFIG)
+        )
         if event_date is None:
-            # Came from live detail (no event_date)
-            await _refresh_live_detail(update, context, "pred", match_id, page)
+            # Came from live detail
+            await _render_live_detail(update, context, match_id, page, pred_row=_mback_pred)
         else:
-            await _refresh_detail(update, context, "pred", match_id, event_date, page)
+            await _render_match_detail(
+                update, context.application, match_id, event_date, page,
+                pred_row=_mback_pred, send_graph=False,
+            )
+        return
+
+    if data.startswith("datemodel:open:"):
+        # Format: datemodel:open:{event_date}
+        event_date = data[len("datemodel:open:"):]
+        q3_v = MODEL_CONFIG["q3"]
+        q4_v = MODEL_CONFIG["q4"]
+        await query.edit_message_text(
+            text=(
+                f"Selector de modelos (fecha {event_date})\n"
+                f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
+                "Elige el modelo para cada cuarto:"
+            ),
+            reply_markup=_date_model_submenu_keyboard(event_date),
+        )
+        return
+
+    if data.startswith("datemodel:set:"):
+        # Format: datemodel:set:{quarter}:{version}:{event_date}
+        try:
+            parts = data.split(":", maxsplit=4)
+            _, _, quarter, version, event_date = parts
+        except (ValueError, TypeError):
+            await _render_main_menu(update, context)
+            return
+        if quarter in ("q3", "q4") and version in AVAILABLE_MODELS:
+            MODEL_CONFIG[quarter] = version
+        q3_v = MODEL_CONFIG["q3"]
+        q4_v = MODEL_CONFIG["q4"]
+        await query.edit_message_text(
+            text=(
+                f"Selector de modelos (fecha {event_date})\n"
+                f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
+                "Elige el modelo para cada cuarto:"
+            ),
+            reply_markup=_date_model_submenu_keyboard(event_date),
+        )
+        return
+
+    if data.startswith("datemodel:back:"):
+        # Format: datemodel:back:{event_date}
+        event_date = data[len("datemodel:back:"):]
+        await _render_matches_for_date(update, event_date, 0)
         return
 
     if data == "train:status":
@@ -4825,7 +7583,7 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await query.edit_message_text(
             text=(
                 "Pipeline entrenamiento iniciado en background.\n"
-                "Pasos: train-v2 → train-v4 → compare → calibrate.\n"
+                "Pasos: train-v2 → train-v4 → train-v12 → compare → calibrate.\n"
                 "Te aviso al terminar."
             ),
             reply_markup=InlineKeyboardMarkup(
@@ -5297,6 +8055,68 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await _render_live_detail(update, context, match_id, page)
         return
 
+    if data.startswith("notifmatch:"):
+        # "Ver match" from a BET/NO_BET notification — open detail as a NEW
+        # message so the original notification stays visible for reference.
+        try:
+            _, match_id, event_date, page_text = data.split(":", maxsplit=3)
+            page = int(page_text)
+        except (ValueError, TypeError):
+            await query.answer()
+            return
+        event_date_val = None if event_date == "_" else event_date
+        chat_id = update.effective_chat.id if update.effective_chat else None
+        if chat_id is None:
+            await query.answer()
+            return
+        # Dismiss the spinner on the notification without touching the message
+        await query.answer()
+        # Fetch data + predictions then send as a fresh message
+        data_row = _get_match_detail(match_id)
+        if not data_row:
+            data_row = await asyncio.to_thread(_refresh_match_data, match_id)
+        if data_row is None:
+            await context.application.bot.send_message(
+                chat_id=chat_id,
+                text=f"No se pudo obtener datos del match {match_id}.",
+            )
+            return
+        pred_row = await asyncio.to_thread(_get_or_compute_predictions, match_id, data_row)
+        detail_text = _detail_text(match_id, data_row, pred_row)
+        keyboard = _detail_keyboard(
+            match_id,
+            event_date=event_date_val,
+            page=page,
+            match_data=data_row,
+            chat_id=chat_id,
+        )
+        image_path: Path | None = None
+        try:
+            image_path = _build_graph_image(match_id, data_row)
+        except Exception:
+            image_path = None
+        if image_path is not None and image_path.exists():
+            try:
+                with image_path.open("rb") as _f:
+                    await context.application.bot.send_photo(
+                        chat_id=chat_id,
+                        photo=_f,
+                        caption=detail_text,
+                        reply_markup=keyboard,
+                    )
+            finally:
+                try:
+                    image_path.unlink()
+                except OSError:
+                    pass
+        else:
+            await context.application.bot.send_message(
+                chat_id=chat_id,
+                text=detail_text,
+                reply_markup=keyboard,
+            )
+        return
+
     if data.startswith("match:"):
         try:
             _, match_id, event_date, page_text = data.split(":", maxsplit=3)
@@ -5305,6 +8125,17 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             await _render_dates(update, 0)
             return
         event_date = None if event_date == "_" else event_date
+
+        # Cancel any V12 LIVE tracking for this match
+        if update.callback_query and update.callback_query.message:
+            chat_id = update.callback_query.message.chat_id
+            msg_id = update.callback_query.message.message_id
+            # Cancel all V12 live jobs for this chat/message
+            for job_key in list(V12_LIVE_JOBS.keys()):
+                job = V12_LIVE_JOBS[job_key]
+                if job.get("chat_id") == chat_id:
+                    job["cancelled"] = True
+
         await _render_match_detail(
             update,
             context.application,
@@ -5312,6 +8143,17 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             event_date,
             page,
         )
+        return
+
+    if data.startswith("debuginf:"):
+        try:
+            _, match_id, event_date_tok, page_text = data.split(":", maxsplit=3)
+            page = int(page_text)
+        except (ValueError, TypeError):
+            await _render_dates(update, 0)
+            return
+        event_date_val = None if event_date_tok == "_" else event_date_tok
+        await _render_inference_debug(update, match_id, event_date_val, page)
         return
 
 
@@ -5322,6 +8164,35 @@ async def _handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     raw = (update.message.text or "").strip()
     if raw.lower() == MENU_BUTTON_TEXT.lower():
         await _render_main_menu(update, context)
+        return
+
+    if raw.lower() == STATS_BUTTON_TEXT.lower():
+        try:
+            model_txt = await asyncio.to_thread(_build_model_stats_text)
+            universe_txt = await asyncio.to_thread(_build_universe_stats_text)
+            stats_txt = model_txt + "\n\n" + universe_txt
+        except Exception as exc:
+            stats_txt = f"Error al leer stats: {exc}"
+        # Split into chunks of ≤4000 chars to stay within Telegram's limit
+        MAX_CHUNK = 4000
+        escaped = html.escape(stats_txt)
+        chunks: list[str] = []
+        while escaped:
+            chunk = escaped[:MAX_CHUNK]
+            # Try to break at a newline so we don't cut mid-line
+            if len(escaped) > MAX_CHUNK:
+                nl = chunk.rfind("\n")
+                if nl > 0:
+                    chunk = escaped[:nl]
+            chunks.append(f"<pre>{chunk}</pre>")
+            escaped = escaped[len(chunk):].lstrip("\n")
+        for idx, chunk_text in enumerate(chunks):
+            kb = _menu_reply_keyboard() if idx == len(chunks) - 1 else None
+            await update.message.reply_text(
+                text=chunk_text,
+                parse_mode="HTML",
+                reply_markup=kb,
+            )
         return
 
     if context.user_data.get(AWAITING_FETCH_DATE_KEY):
@@ -5432,6 +8303,169 @@ async def _handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         pass
 
 
+# ── /reporte command ──────────────────────────────────────────────────────────
+
+REPORT_JOBS: dict[int, dict] = {}
+
+
+def _report_progress_text(ps: dict) -> str:
+    total = int(ps.get("total") or 0)
+    processed = int(ps.get("processed") or 0)
+    phase = str(ps.get("phase") or "...")
+    current = str(ps.get("current") or "")
+    pct = round(100 * processed / total) if total else 0
+    bar_full = 10
+    bar_done = int(bar_full * pct / 100)
+    bar = "█" * bar_done + "░" * (bar_full - bar_done)
+    phase_map = {
+        "loading": "Cargando datos...",
+        "processing": "Procesando partidos...",
+        "writing": "Escribiendo Excel...",
+        "done": "Listo ✓",
+        "starting": "Iniciando...",
+    }
+    phase_text = phase_map.get(phase, phase)
+    lines = [
+        f"📊 Generando reporte de modelos",
+        f"[{bar}] {pct}% ({processed}/{total})",
+        f"Estado: {phase_text}",
+    ]
+    if current and phase == "processing":
+        lines.append(f"📌 {current[:60]}")
+    return "\n".join(lines)
+
+
+async def _run_report_job(
+    app: Application,
+    chat_id: int,
+    message_id: int,
+    month: str,
+) -> None:
+    """Non-blocking report generation task. Polls progress and sends xlsx when done."""
+    progress_state: dict = {
+        "total": 0, "processed": 0,
+        "phase": "starting", "current": "", "output_path": "",
+    }
+    REPORT_JOBS[chat_id] = {"message_id": message_id, "progress_state": progress_state}
+
+    task = asyncio.create_task(
+        asyncio.to_thread(
+            _generate_report_sync,
+            month,
+            progress_state,
+        )
+    )
+
+    last_text = ""
+    try:
+        while not task.done():
+            text = _report_progress_text(progress_state)
+            if text != last_text:
+                await _safe_edit_message(
+                    app,
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    text=text,
+                )
+                last_text = text
+            await asyncio.sleep(3)
+
+        result = await task
+    except Exception as exc:
+        await _safe_edit_message(
+            app,
+            chat_id=chat_id,
+            message_id=message_id,
+            text=f"❌ Error generando reporte: {exc}",
+        )
+        REPORT_JOBS.pop(chat_id, None)
+        return
+
+    if result.get("error"):
+        await _safe_edit_message(
+            app,
+            chat_id=chat_id,
+            message_id=message_id,
+            text=f"❌ Error: {result['error']}",
+        )
+        REPORT_JOBS.pop(chat_id, None)
+        return
+
+    out_path = result.get("output_path")
+    total = int(progress_state.get("total") or 0)
+    await _safe_edit_message(
+        app,
+        chat_id=chat_id,
+        message_id=message_id,
+        text=f"📊 Reporte {month} listo — {total} partidos analizados.\nEnviando archivo...",
+    )
+
+    try:
+        with open(out_path, "rb") as f:
+            await app.bot.send_document(
+                chat_id=chat_id,
+                document=f,
+                filename=Path(out_path).name,
+                caption=f"📊 Comparación de modelos — {month}",
+            )
+    except Exception as exc:
+        await app.bot.send_message(
+            chat_id=chat_id,
+            text=f"⚠️ No se pudo enviar el archivo: {exc}\nGuardado en: {out_path}",
+        )
+
+    REPORT_JOBS.pop(chat_id, None)
+
+
+def _generate_report_sync(month: str, progress_state: dict) -> dict:
+    """Blocking wrapper for generate_report, safe to run in a thread."""
+    try:
+        report_mod = importlib.import_module("training.report_model_comparison")
+        out = report_mod.generate_report(month, progress_state=progress_state)
+        return {"output_path": str(out)}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+async def reporte_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /reporte [YYYY-MM] command."""
+    if not _is_allowed(update):
+        return
+
+    chat_id = update.effective_chat.id if update.effective_chat else None
+    if chat_id is None:
+        return
+
+    if chat_id in REPORT_JOBS:
+        await update.message.reply_text("Ya hay un reporte en curso para este chat. Espera que termine.")
+        return
+
+    args = context.args or []
+    month = args[0].strip() if args else ""
+
+    if not month:
+        from datetime import datetime as _dt
+        month = _dt.utcnow().strftime("%Y-%m")
+        await update.message.reply_text(
+            f"No se especificó mes. Generando reporte de {month}.\n"
+            f"Uso: /reporte YYYY-MM"
+        )
+
+    try:
+        from datetime import datetime as _dt
+        _dt.strptime(month, "%Y-%m")
+    except ValueError:
+        await update.message.reply_text(
+            f"Formato de mes inválido: '{month}'. Usa YYYY-MM (ej: 2026-03)."
+        )
+        return
+
+    msg = await update.message.reply_text(_report_progress_text({"total": 0, "processed": 0, "phase": "starting", "current": ""}))
+    context.application.create_task(
+        _run_report_job(context.application, chat_id, msg.message_id, month)
+    )
+
+
 def main() -> None:
     if not BOT_TOKEN:
         raise SystemExit(
@@ -5443,6 +8477,9 @@ def main() -> None:
     app.add_handler(CommandHandler("start", start_cmd))
     app.add_handler(CommandHandler("myid", myid_cmd))
     app.add_handler(CommandHandler("trainstatus", train_status_cmd))
+    app.add_handler(CommandHandler("dates", dates_cmd))
+    app.add_handler(CommandHandler("monitor", monitor_cmd))
+    app.add_handler(CommandHandler("reporte", reporte_cmd))
     app.add_handler(CallbackQueryHandler(_handle_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _handle_text))
     app.add_error_handler(_on_error)

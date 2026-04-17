@@ -1,0 +1,2039 @@
+{
+  "odds": 1.4,
+  "n_predictions": 375,
+  "global": {
+    "n_bets": 7,
+    "wins": 5,
+    "hit_rate": 0.7142857142857143,
+    "roi": -6.344131569286608e-17,
+    "pnl": -4.440892098500626e-16
+  },
+  "portfolio": {
+    "top_n": 20,
+    "min_bets": 3,
+    "n_bets": 5,
+    "wins": 4,
+    "hit_rate": 0.8,
+    "roi": 0.11999999999999993,
+    "pnl": 0.5999999999999996,
+    "leagues": [
+      {
+        "league": "B1 League",
+        "target": "q3",
+        "n_predictions": 13,
+        "n_bets": 5,
+        "wins": 4,
+        "roi": 0.11999999999999993,
+        "hit_rate": 0.8,
+        "pnl": 0.5999999999999996,
+        "coverage": 0.38461538461538464,
+        "train_val_gap": 0.2962405863385229,
+        "reasons": {
+          "Partido demasiado volatil (swings=13 > 8).": 1,
+          "Confianza 0.737 < threshold 0.880.": 4,
+          "Partido demasiado volatil (swings=10 > 8).": 1,
+          "Partido demasiado volatil (swings=12 > 8).": 1,
+          "Datos insuficientes (gp=0/min12, pbp=59/min10).": 1
+        }
+      }
+    ]
+  },
+  "per_group": [
+    {
+      "league": "U21 Espoirs Elite",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 1,
+      "wins": 1,
+      "roi": 0.3999999999999999,
+      "hit_rate": 1.0,
+      "pnl": 0.3999999999999999,
+      "coverage": 1.0,
+      "train_val_gap": 0.11896016848994895,
+      "reasons": {}
+    },
+    {
+      "league": "B1 League",
+      "target": "q3",
+      "n_predictions": 13,
+      "n_bets": 5,
+      "wins": 4,
+      "roi": 0.11999999999999993,
+      "hit_rate": 0.8,
+      "pnl": 0.5999999999999996,
+      "coverage": 0.38461538461538464,
+      "train_val_gap": 0.2962405863385229,
+      "reasons": {
+        "Partido demasiado volatil (swings=13 > 8).": 1,
+        "Confianza 0.737 < threshold 0.880.": 4,
+        "Partido demasiado volatil (swings=10 > 8).": 1,
+        "Partido demasiado volatil (swings=12 > 8).": 1,
+        "Datos insuficientes (gp=0/min12, pbp=59/min10).": 1
+      }
+    },
+    {
+      "league": "LF Challenge, Regular Season",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 1,
+      "wins": 0,
+      "roi": -1.0,
+      "hit_rate": 0.0,
+      "pnl": -1.0,
+      "coverage": 1.0,
+      "train_val_gap": 0.2270535741212515,
+      "reasons": {}
+    },
+    {
+      "league": "CIBACOPA , Primera Vuelta",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "CIBACOPA , Primera Vuelta",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.20313165653345377,
+      "reasons": {
+        "Confianza 0.585 < threshold 0.750.": 1,
+        "Partido demasiado volatil (swings=11 > 8).": 1
+      }
+    },
+    {
+      "league": "CIBACOPA , Segunda Vuelta",
+      "target": "q3",
+      "n_predictions": 8,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 8
+      }
+    },
+    {
+      "league": "CIBACOPA , Segunda Vuelta",
+      "target": "q4",
+      "n_predictions": 8,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 8
+      }
+    },
+    {
+      "league": "Colombia LPB",
+      "target": "q3",
+      "n_predictions": 4,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 4
+      }
+    },
+    {
+      "league": "Colombia LPB",
+      "target": "q4",
+      "n_predictions": 4,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 4
+      }
+    },
+    {
+      "league": "Argentina Liga Nacional",
+      "target": "q3",
+      "n_predictions": 8,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.3714572964918095,
+      "reasons": {
+        "Kill-switch manual activo para liga Argentina Liga Nacional / q3": 8
+      }
+    },
+    {
+      "league": "Argentina Liga Nacional",
+      "target": "q4",
+      "n_predictions": 8,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.35954280668285055,
+      "reasons": {
+        "Kill-switch manual activo para liga Argentina Liga Nacional / q4": 8
+      }
+    },
+    {
+      "league": "Puerto Rico BSN",
+      "target": "q3",
+      "n_predictions": 5,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 5
+      }
+    },
+    {
+      "league": "Puerto Rico BSN",
+      "target": "q4",
+      "n_predictions": 5,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 5
+      }
+    },
+    {
+      "league": "PBA Commissioner's Cup",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "PBA Commissioner's Cup",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "B1 League",
+      "target": "q4",
+      "n_predictions": 13,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": -0.05160617641357246,
+      "reasons": {
+        "Kill-switch manual activo para liga B1 League / q4": 13
+      }
+    },
+    {
+      "league": "Superleague",
+      "target": "q3",
+      "n_predictions": 5,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 5
+      }
+    },
+    {
+      "league": "Superleague",
+      "target": "q4",
+      "n_predictions": 5,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 5
+      }
+    },
+    {
+      "league": "Korean Basketball League, Playoffs",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Korean Basketball League, Playoffs",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Super League, Playout",
+      "target": "q3",
+      "n_predictions": 4,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 4
+      }
+    },
+    {
+      "league": "Super League, Playout",
+      "target": "q4",
+      "n_predictions": 3,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 3
+      }
+    },
+    {
+      "league": "Rapid League, Regular Season",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Rapid League, Regular Season",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "LMB, Apertura",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "LMB, Apertura",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Liga Argentina, Playoffs",
+      "target": "q3",
+      "n_predictions": 7,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 7
+      }
+    },
+    {
+      "league": "Liga Argentina, Playoffs",
+      "target": "q4",
+      "n_predictions": 7,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 7
+      }
+    },
+    {
+      "league": "Chile LNB",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Chile LNB",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Superliga",
+      "target": "q3",
+      "n_predictions": 3,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.638069731417783,
+      "reasons": {
+        "Kill-switch manual activo para liga Superliga / q3": 3
+      }
+    },
+    {
+      "league": "Superliga",
+      "target": "q4",
+      "n_predictions": 3,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.49407911312673214,
+      "reasons": {
+        "Kill-switch manual activo para liga Superliga / q4": 3
+      }
+    },
+    {
+      "league": "Brazil NBB",
+      "target": "q3",
+      "n_predictions": 5,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.48246359163068986,
+      "reasons": {
+        "Kill-switch manual activo para liga Brazil NBB / q3": 5
+      }
+    },
+    {
+      "league": "Brazil NBB",
+      "target": "q4",
+      "n_predictions": 4,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.4392393876803121,
+      "reasons": {
+        "Kill-switch manual activo para liga Brazil NBB / q4": 4
+      }
+    },
+    {
+      "league": "Serie B, Group B",
+      "target": "q3",
+      "n_predictions": 8,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 8
+      }
+    },
+    {
+      "league": "Serie B, Group B",
+      "target": "q4",
+      "n_predictions": 8,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 8
+      }
+    },
+    {
+      "league": "Serie B, Group A",
+      "target": "q3",
+      "n_predictions": 9,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 9
+      }
+    },
+    {
+      "league": "Serie B, Group A",
+      "target": "q4",
+      "n_predictions": 9,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 9
+      }
+    },
+    {
+      "league": "Rwanda Basketball League, Regular Season",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Rwanda Basketball League, Regular Season",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "NLB, Playoffs",
+      "target": "q3",
+      "n_predictions": 3,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 3
+      }
+    },
+    {
+      "league": "NLB, Playoffs",
+      "target": "q4",
+      "n_predictions": 3,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 3
+      }
+    },
+    {
+      "league": "1st DBBL, Playoffs",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "1st DBBL, Playoffs",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Enovos League, Play Offs",
+      "target": "q3",
+      "n_predictions": 3,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 3
+      }
+    },
+    {
+      "league": "Enovos League, Play Offs",
+      "target": "q4",
+      "n_predictions": 3,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 3
+      }
+    },
+    {
+      "league": "France Pro A",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "France Pro A",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.28546453602937827,
+      "reasons": {
+        "Kill-switch manual activo para liga France Pro A / q4": 1
+      }
+    },
+    {
+      "league": "Germany BBL",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Germany BBL",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "BNXT League",
+      "target": "q3",
+      "n_predictions": 3,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.43229166666666663,
+      "reasons": {
+        "Kill-switch manual activo para liga BNXT League / q3": 3
+      }
+    },
+    {
+      "league": "BNXT League",
+      "target": "q4",
+      "n_predictions": 3,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.4453881098163144,
+      "reasons": {
+        "Kill-switch manual activo para liga BNXT League / q4": 3
+      }
+    },
+    {
+      "league": "1. Liga, Playoffs",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "1. Liga, Playoffs",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Tipos SBL, Playoffs",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Tipos SBL, Playoffs",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Slovenian Second Basketball League, Liga za obstanek",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Slovenian Second Basketball League, Liga za obstanek",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "SuperSport Premijer Liga",
+      "target": "q3",
+      "n_predictions": 4,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 4
+      }
+    },
+    {
+      "league": "SuperSport Premijer Liga",
+      "target": "q4",
+      "n_predictions": 4,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 4
+      }
+    },
+    {
+      "league": "LF Challenge, Regular Season",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.3411836059149379,
+      "reasons": {
+        "Kill-switch manual activo para liga LF Challenge, Regular Season / q3": 1
+      }
+    },
+    {
+      "league": "RKL Division A, Playoff",
+      "target": "q3",
+      "n_predictions": 4,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 4
+      }
+    },
+    {
+      "league": "RKL Division A, Playoff",
+      "target": "q4",
+      "n_predictions": 4,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 4
+      }
+    },
+    {
+      "league": "FSHB Superliga, K.K.M 2025-26",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "FSHB Superliga, K.K.M 2025-26",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "KML, Playoffs",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "KML, Playoffs",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Champions League, Playoffs",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Champions League, Playoffs",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "NBL, Playoffs",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "NBL, Playoffs",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "United League",
+      "target": "q3",
+      "n_predictions": 5,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 5
+      }
+    },
+    {
+      "league": "United League",
+      "target": "q4",
+      "n_predictions": 5,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 5
+      }
+    },
+    {
+      "league": "Betsafe-LKL",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Betsafe-LKL",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Latvia LBL, Playoffs",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Latvia LBL, Playoffs",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "ABA League 2, Playoffs",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "ABA League 2, Playoffs",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Poland 1st Division Basketball",
+      "target": "q3",
+      "n_predictions": 8,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 8
+      }
+    },
+    {
+      "league": "Poland 1st Division Basketball",
+      "target": "q4",
+      "n_predictions": 8,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.3842777777777777,
+      "reasons": {
+        "Kill-switch manual activo para liga Poland 1st Division Basketball / q4": 8
+      }
+    },
+    {
+      "league": "1. Division A, Playoffs",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "1. Division A, Playoffs",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Korisliiga, Playoffs",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Korisliiga, Playoffs",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Emir Cup, Knock-out",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Emir Cup, Knock-out",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "NKL, Playoffs",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "NKL, Playoffs",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Stoiximan GBL",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Stoiximan GBL",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Bulgaria NBL",
+      "target": "q3",
+      "n_predictions": 5,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 5
+      }
+    },
+    {
+      "league": "Bulgaria NBL",
+      "target": "q4",
+      "n_predictions": 4,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 4
+      }
+    },
+    {
+      "league": "1. A SKL",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "1. A SKL",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "U21 Espoirs Elite",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.687122294410893,
+      "reasons": {
+        "Kill-switch manual activo para liga U21 Espoirs Elite / q3": 1
+      }
+    },
+    {
+      "league": "Champions League Asia-East, Group A",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Champions League Asia-East, Group A",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "China CBA",
+      "target": "q3",
+      "n_predictions": 8,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.6227566652723869,
+      "reasons": {
+        "Kill-switch manual activo para liga China CBA / q3": 8
+      }
+    },
+    {
+      "league": "China CBA",
+      "target": "q4",
+      "n_predictions": 6,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.305459318155221,
+      "reasons": {
+        "Kill-switch manual activo para liga China CBA / q4": 6
+      }
+    },
+    {
+      "league": "Indonesian Basketball League",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Indonesian Basketball League",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "NBL1, South",
+      "target": "q3",
+      "n_predictions": 3,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 3
+      }
+    },
+    {
+      "league": "NBL1, South",
+      "target": "q4",
+      "n_predictions": 3,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 3
+      }
+    },
+    {
+      "league": "MPBL",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "MPBL",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Champions League Asia-East, Group B",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Azerbaijan Basketball League, Playoff",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Azerbaijan Basketball League, Playoff",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "The League, \u0424\u0438\u043d\u0430\u043b",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Super League, Playoffs",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Super League, Playoffs",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Qatar Cup , Playoffs",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Liga Nationala",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Prva Liga",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Prva Liga",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Superliga e Femrave ",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Superliga e Femrave ",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "FBU Superleague, Playoffs",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "FBU Superleague, Playoffs",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "1st Division Men, \u00darslitakeppni",
+      "target": "q3",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "1st Division Men, \u00darslitakeppni",
+      "target": "q4",
+      "n_predictions": 2,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 2
+      }
+    },
+    {
+      "league": "Euroleague",
+      "target": "q3",
+      "n_predictions": 5,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.2731072298059055,
+      "reasons": {
+        "Kill-switch manual activo para liga Euroleague / q3": 5
+      }
+    },
+    {
+      "league": "Euroleague",
+      "target": "q4",
+      "n_predictions": 5,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": 0.33785398942199907,
+      "reasons": {
+        "Kill-switch manual activo para liga Euroleague / q4": 5
+      }
+    },
+    {
+      "league": "Princ Caffe Superliga, Playoff",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Princ Caffe Superliga, Playoff",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Poland 2nd Basketball League, II Runda",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Poland 2nd Basketball League, II Runda",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Basketligaen, Championship round",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Basketligaen, Championship round",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "1. Division B, Playoffs",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "1. Division B, Playoffs",
+      "target": "q4",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    },
+    {
+      "league": "Liga Ouro, Quartas",
+      "target": "q3",
+      "n_predictions": 1,
+      "n_bets": 0,
+      "wins": 0,
+      "roi": null,
+      "hit_rate": null,
+      "pnl": 0.0,
+      "coverage": 0.0,
+      "train_val_gap": null,
+      "reasons": {
+        "No hay modelo entrenado para esta liga. Sin fallback global.": 1
+      }
+    }
+  ]
+}

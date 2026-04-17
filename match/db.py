@@ -127,8 +127,31 @@ def init_db(conn: sqlite3.Connection) -> None:
             ON discovered_ft_matches (event_date, processed);
         CREATE INDEX IF NOT EXISTS idx_matches_date
             ON matches (date);
+
+        CREATE TABLE IF NOT EXISTS settings (
+            key        TEXT PRIMARY KEY,
+            value      TEXT NOT NULL,
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
     """)
     _ensure_match_columns(conn)
+    conn.commit()
+
+
+def get_setting(conn: sqlite3.Connection, key: str, default: str | None = None) -> str | None:
+    row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else default
+
+
+def set_setting(conn: sqlite3.Connection, key: str, value: str) -> None:
+    conn.execute(
+        """
+        INSERT INTO settings (key, value, updated_at)
+        VALUES (?, ?, datetime('now'))
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+        """,
+        (key, value),
+    )
     conn.commit()
 
 
@@ -186,6 +209,13 @@ def _ensure_eval_result_columns(
         "q3_confidence": f"q3_confidence__{safe_tag}",
         "q3_threshold_lean": f"q3_threshold_lean__{safe_tag}",
         "q3_threshold_bet": f"q3_threshold_bet__{safe_tag}",
+        "q3_reasoning": f"q3_reasoning__{safe_tag}",
+        "q3_predicted_home": f"q3_predicted_home__{safe_tag}",
+        "q3_predicted_away": f"q3_predicted_away__{safe_tag}",
+        "q3_predicted_total": f"q3_predicted_total__{safe_tag}",
+        "q3_mae": f"q3_mae__{safe_tag}",
+        "q3_mae_home": f"q3_mae_home__{safe_tag}",
+        "q3_mae_away": f"q3_mae_away__{safe_tag}",
         "q4_pick": f"q4_pick__{safe_tag}",
         "q4_signal": f"q4_signal__{safe_tag}",
         "q4_outcome": f"q4_outcome__{safe_tag}",
@@ -193,6 +223,13 @@ def _ensure_eval_result_columns(
         "q4_confidence": f"q4_confidence__{safe_tag}",
         "q4_threshold_lean": f"q4_threshold_lean__{safe_tag}",
         "q4_threshold_bet": f"q4_threshold_bet__{safe_tag}",
+        "q4_reasoning": f"q4_reasoning__{safe_tag}",
+        "q4_predicted_home": f"q4_predicted_home__{safe_tag}",
+        "q4_predicted_away": f"q4_predicted_away__{safe_tag}",
+        "q4_predicted_total": f"q4_predicted_total__{safe_tag}",
+        "q4_mae": f"q4_mae__{safe_tag}",
+        "q4_mae_home": f"q4_mae_home__{safe_tag}",
+        "q4_mae_away": f"q4_mae_away__{safe_tag}",
     }
     column_types = {
         col_map["q3_pick"]: "TEXT",
@@ -202,6 +239,13 @@ def _ensure_eval_result_columns(
         col_map["q3_confidence"]: "REAL",
         col_map["q3_threshold_lean"]: "REAL",
         col_map["q3_threshold_bet"]: "REAL",
+        col_map["q3_reasoning"]: "TEXT",
+        col_map["q3_predicted_home"]: "REAL",
+        col_map["q3_predicted_away"]: "REAL",
+        col_map["q3_predicted_total"]: "REAL",
+        col_map["q3_mae"]: "REAL",
+        col_map["q3_mae_home"]: "REAL",
+        col_map["q3_mae_away"]: "REAL",
         col_map["q4_pick"]: "TEXT",
         col_map["q4_signal"]: "TEXT",
         col_map["q4_outcome"]: "TEXT",
@@ -209,6 +253,13 @@ def _ensure_eval_result_columns(
         col_map["q4_confidence"]: "REAL",
         col_map["q4_threshold_lean"]: "REAL",
         col_map["q4_threshold_bet"]: "REAL",
+        col_map["q4_reasoning"]: "TEXT",
+        col_map["q4_predicted_home"]: "REAL",
+        col_map["q4_predicted_away"]: "REAL",
+        col_map["q4_predicted_total"]: "REAL",
+        col_map["q4_mae"]: "REAL",
+        col_map["q4_mae_home"]: "REAL",
+        col_map["q4_mae_away"]: "REAL",
     }
 
     existing = {
@@ -245,7 +296,7 @@ def save_eval_match_result(
     pred_q3 = (predictions or {}).get("q3", {})
     pred_q4 = (predictions or {}).get("q4", {})
 
-    def pred_fields(pred: dict) -> tuple[str | None, str, str, int, float | None, float | None, float | None]:
+    def pred_fields(pred: dict) -> dict:
         available = 1 if pred.get("available") else 0
         if available:
             pick = pred.get("predicted_winner")
@@ -265,10 +316,26 @@ def save_eval_match_result(
             confidence = None
             threshold_lean = None
             threshold_bet = None
-        return pick, signal, outcome, available, confidence, threshold_lean, threshold_bet
+        return {
+            "pick": pick,
+            "signal": signal,
+            "outcome": outcome,
+            "available": available,
+            "confidence": confidence,
+            "threshold_lean": threshold_lean,
+            "threshold_bet": threshold_bet,
+            # V12-specific fields
+            "reasoning": pred.get("reasoning"),
+            "predicted_home": pred.get("predicted_home"),
+            "predicted_away": pred.get("predicted_away"),
+            "predicted_total": pred.get("predicted_total"),
+            "mae": pred.get("mae"),
+            "mae_home": pred.get("mae_home"),
+            "mae_away": pred.get("mae_away"),
+        }
 
-    q3_pick, q3_signal, q3_outcome, q3_available, q3_confidence, q3_threshold_lean, q3_threshold_bet = pred_fields(pred_q3)
-    q4_pick, q4_signal, q4_outcome, q4_available, q4_confidence, q4_threshold_lean, q4_threshold_bet = pred_fields(pred_q4)
+    q3_f = pred_fields(pred_q3)
+    q4_f = pred_fields(pred_q4)
 
     q3_winner = _winner_from_scores(q3_home_score, q3_away_score)
     q4_winner = _winner_from_scores(q4_home_score, q4_away_score)
@@ -284,20 +351,35 @@ def save_eval_match_result(
         "q4_home_score": q4_home_score,
         "q4_away_score": q4_away_score,
         "q4_winner": q4_winner,
-        col_map["q3_pick"]: q3_pick,
-        col_map["q3_signal"]: q3_signal,
-        col_map["q3_outcome"]: q3_outcome,
-        col_map["q3_available"]: q3_available,
-        col_map["q3_confidence"]: q3_confidence,
-        col_map["q3_threshold_lean"]: q3_threshold_lean,
-        col_map["q3_threshold_bet"]: q3_threshold_bet,
-        col_map["q4_pick"]: q4_pick,
-        col_map["q4_signal"]: q4_signal,
-        col_map["q4_outcome"]: q4_outcome,
-        col_map["q4_available"]: q4_available,
-        col_map["q4_confidence"]: q4_confidence,
-        col_map["q4_threshold_lean"]: q4_threshold_lean,
-        col_map["q4_threshold_bet"]: q4_threshold_bet,
+        col_map["q3_pick"]: q3_f["pick"],
+        col_map["q3_signal"]: q3_f["signal"],
+        col_map["q3_outcome"]: q3_f["outcome"],
+        col_map["q3_available"]: q3_f["available"],
+        col_map["q3_confidence"]: q3_f["confidence"],
+        col_map["q3_threshold_lean"]: q3_f["threshold_lean"],
+        col_map["q3_threshold_bet"]: q3_f["threshold_bet"],
+        col_map["q4_pick"]: q4_f["pick"],
+        col_map["q4_signal"]: q4_f["signal"],
+        col_map["q4_outcome"]: q4_f["outcome"],
+        col_map["q4_available"]: q4_f["available"],
+        col_map["q4_confidence"]: q4_f["confidence"],
+        col_map["q4_threshold_lean"]: q4_f["threshold_lean"],
+        col_map["q4_threshold_bet"]: q4_f["threshold_bet"],
+        # V12-specific fields
+        col_map["q3_reasoning"]: q3_f["reasoning"],
+        col_map["q3_predicted_home"]: q3_f["predicted_home"],
+        col_map["q3_predicted_away"]: q3_f["predicted_away"],
+        col_map["q3_predicted_total"]: q3_f["predicted_total"],
+        col_map["q3_mae"]: q3_f["mae"],
+        col_map["q3_mae_home"]: q3_f["mae_home"],
+        col_map["q3_mae_away"]: q3_f["mae_away"],
+        col_map["q4_reasoning"]: q4_f["reasoning"],
+        col_map["q4_predicted_home"]: q4_f["predicted_home"],
+        col_map["q4_predicted_away"]: q4_f["predicted_away"],
+        col_map["q4_predicted_total"]: q4_f["predicted_total"],
+        col_map["q4_mae"]: q4_f["mae"],
+        col_map["q4_mae_home"]: q4_f["mae_home"],
+        col_map["q4_mae_away"]: q4_f["mae_away"],
     }
 
     all_cols = list(row_values.keys())
@@ -447,6 +529,7 @@ def get_match(conn: sqlite3.Connection, match_id: str) -> dict | None:
             "league": row["league"],
             "home_record": row["home_record"],
             "away_record": row["away_record"],
+            "scraped_at": row["updated_at"] if "updated_at" in row.keys() else None,
         },
         "score": {
             "home": row["home_score"],

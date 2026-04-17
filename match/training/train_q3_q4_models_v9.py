@@ -12,6 +12,13 @@ import csv
 import importlib
 import sys
 import time
+import warnings
+
+warnings.filterwarnings(
+    "ignore",
+    message=r"`sklearn\.utils\.parallel\.delayed` should be used with",
+    category=UserWarning,
+)
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime
@@ -533,7 +540,7 @@ def _train_target(samples: list[MatchSample], target_name: str) -> dict:
         artifact = {"version": "v9", "target": target_name, "model_name": name, "vectorizer": vec, "scaler": scaler, "model": model}
         joblib.dump(artifact, OUT_DIR / f"{target_name}_{name}.joblib")
 
-    joblib.dump({"version": "v9", "target": target_name, "models": models_trained, "weights": weights}, OUT_DIR / f"{target_name}_ensemble.joblib")
+    joblib.dump({"version": "v9", "target": target_name, "models": models_trained, "weights": [1.0, 1.0]}, OUT_DIR / f"{target_name}_ensemble.joblib")
 
     return {"metrics": metrics_rows, "n_rows": n_total}
 

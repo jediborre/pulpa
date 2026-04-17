@@ -1,0 +1,100 @@
+====================================================================================================
+V11 - BETTING EVALUATION REPORT (Match-by-Match)
+====================================================================================================
+Total matches evaluated: 3150
+Sportsbook line: 39.0
+
+----------------------------------------------------------------------------------------------------
+SUMMARY BY TARGET + GENDER
+----------------------------------------------------------------------------------------------------
+Target          Gender          Bet       Count   Hits    Rate   Profit
+----------------------------------------------------------------------------------------------------
+q3_total        men_or_open     OVER        113    107   94.7%    91.37
+q3_total        men_or_open     UNDER      1153    537   46.6%  -127.33
+q3_total        women           UNDER       309    227   73.5%   124.57
+q4_total        men_or_open     OVER         31     30   96.8%    26.30
+q4_total        men_or_open     UNDER      1235    512   41.5%  -257.08
+q4_total        women           UNDER       309    219   70.9%   109.29
+
+----------------------------------------------------------------------------------------------------
+OVERALL TOTALS
+----------------------------------------------------------------------------------------------------
+OVER: 144 bets, Profit: 117.67
+UNDER: 3006 bets, Profit: -150.55
+TOTAL: -32.88
+
+----------------------------------------------------------------------------------------------------
+TOP 30 MATCHES BY HIGHEST PROFIT
+----------------------------------------------------------------------------------------------------
+ 1. Academy Istanbul U13      vs Zalgiris U13              | UNDER | Pred:  24.5 | Actual:    33 | Edge:  -14.5 | Profit:   0.91
+ 2. Tartu Ulikool U13         vs Akademia Mlodych Dzikow U | UNDER | Pred:  26.5 | Actual:    35 | Edge:  -12.5 | Profit:   0.91
+ 3. SKM-Mustangs U13          vs RBS Centrs U13            | UNDER | Pred:  22.5 | Actual:    31 | Edge:  -16.5 | Profit:   0.91
+ 4. Muks Basket Warszawa U13  vs Vienna United U13         | UNDER | Pred:  23.7 | Actual:    34 | Edge:  -15.3 | Profit:   0.91
+ 5. RBS Centrs U13            vs Muks Basket Warszawa U13  | UNDER | Pred:  27.7 | Actual:    28 | Edge:  -11.3 | Profit:   0.91
+ 6. Zalgiris U13              vs Unibasket Lanciano U13    | UNDER | Pred:  28.7 | Actual:    31 | Edge:  -10.3 | Profit:   0.91
+ 7. Akademia Mlodych Dzikow U vs Zalgiris U13              | UNDER | Pred:  25.1 | Actual:    30 | Edge:  -13.9 | Profit:   0.91
+ 8. Club Inmaa el Damour      vs Homenetmen Antelias       | UNDER | Pred:  17.7 | Actual:    32 | Edge:  -21.3 | Profit:   0.91
+ 9. NSA                       vs Sporting Club Beirut      | UNDER | Pred:  20.4 | Actual:    20 | Edge:  -18.6 | Profit:   0.91
+10. Azour                     vs AL Mtayleb                | UNDER | Pred:  16.4 | Actual:    32 | Edge:  -22.6 | Profit:   0.91
+11. BK Brno                   vs KP Brno                   | UNDER | Pred:  24.1 | Actual:    30 | Edge:  -14.9 | Profit:   0.91
+12. USK Praha                 vs SB? Ostrava               | UNDER | Pred:  29.0 | Actual:    34 | Edge:  -10.0 | Profit:   0.91
+13. P?rnu Spordikool          vs TSA/Cityteed              | UNDER | Pred:  19.6 | Actual:    35 | Edge:  -19.4 | Profit:   0.91
+14. Groups Scolaire Marie Rei vs APR BBC                   | UNDER | Pred:  20.0 | Actual:    29 | Edge:  -19.0 | Profit:   0.91
+15. GS Gahini                 vs THE Hoops Bbc             | UNDER | Pred:  21.2 | Actual:    26 | Edge:  -17.8 | Profit:   0.91
+16. Groups Scolaire Marie Rei vs RP-IPRC Huye              | UNDER | Pred:  20.2 | Actual:    20 | Edge:  -18.8 | Profit:   0.91
+17. Enisey Krasnoyarsk        vs BC Samara                 | UNDER | Pred:  16.5 | Actual:    37 | Edge:  -22.5 | Profit:   0.91
+18. Inspired Generation       vs Tigers BBC                | UNDER | Pred:  31.6 | Actual:    36 | Edge:   -7.4 | Profit:   0.91
+19. Las Baster                vs Sporting Curasan          |  OVER | Pred:  42.1 | Actual:    51 | Edge:    3.1 | Profit:   0.91
+20. Owoghy United             vs CB Pi?eiros               | UNDER | Pred:  28.9 | Actual:    38 | Edge:  -10.1 | Profit:   0.91
+21. Fundacion Navarra Balonce vs Fustecma NBF Castell?     | UNDER | Pred:  24.1 | Actual:    29 | Edge:  -14.9 | Profit:   0.91
+22. Club Baloncesto Adareva T vs Melilla Ciudad del Deport | UNDER | Pred:  25.9 | Actual:    35 | Edge:  -13.1 | Profit:   0.91
+23. Bosonit Unibasket Logro?o vs Cajasol Baloncesto Sevill | UNDER | Pred:  25.0 | Actual:    31 | Edge:  -14.0 | Profit:   0.91
+24. Club B?squet Santfeliuenc vs Azulmarino Mallorca Palma |  OVER | Pred:  41.4 | Actual:    49 | Edge:    2.4 | Profit:   0.91
+25. Iraurgi Saski Baloia      vs CD Zamarat                | UNDER | Pred:  25.1 | Actual:    26 | Edge:  -13.9 | Profit:   0.91
+26. Celta Femxa Zorka         vs Sernova Renovables Real C | UNDER | Pred:  26.5 | Actual:    30 | Edge:  -12.5 | Profit:   0.91
+27. Lan?s BC                  vs Club Atl?tico Provincial  | UNDER | Pred:  29.5 | Actual:    36 | Edge:   -9.5 | Profit:   0.91
+28. Bishrelt Metal            vs Khovd Falcons             | UNDER | Pred:  24.3 | Actual:    30 | Edge:  -14.7 | Profit:   0.91
+29. UCU Canons                vs Updf Tomahawks            | UNDER | Pred:  26.0 | Actual:    24 | Edge:  -13.0 | Profit:   0.91
+30. Kampala Rockets           vs JT Jaguars BC             | UNDER | Pred:  25.4 | Actual:    31 | Edge:  -13.6 | Profit:   0.91
+
+----------------------------------------------------------------------------------------------------
+BOTTOM 30 MATCHES (LOWEST PROFIT)
+----------------------------------------------------------------------------------------------------
+ 1. Umana Reyer Venezia       vs UNAhotels Reggio Emilia   | UNDER | Pred:  17.2 | Actual:    39 | Edge:  -21.8 | Profit:     -1
+ 2. Pallacanestro Cant?       vs Dolomiti Energia Trento   | UNDER | Pred:  31.0 | Actual:    45 | Edge:   -8.0 | Profit:     -1
+ 3. Virtus Bologna            vs APU Udine                 | UNDER | Pred:  18.0 | Actual:    40 | Edge:  -21.0 | Profit:     -1
+ 4. Banco di Sardegna Sassari vs Bertram Derthona Tortona  | UNDER | Pred:  17.0 | Actual:    47 | Edge:  -22.0 | Profit:     -1
+ 5. Real Sebastiani Rieti     vs Tezenis Verona            | UNDER | Pred:  16.9 | Actual:    39 | Edge:  -22.1 | Profit:     -1
+ 6. Givova Scafati            vs Victoria Libertas Pesaro  | UNDER | Pred:  18.5 | Actual:    45 | Edge:  -20.5 | Profit:     -1
+ 7. New Basket Brindisi       vs Pallacanestro Roseto      | UNDER | Pred:  17.8 | Actual:    40 | Edge:  -21.2 | Profit:     -1
+ 8. Pielle Livorno            vs Virtus GVM Roma 1960      | UNDER | Pred:  19.8 | Actual:    46 | Edge:  -19.2 | Profit:     -1
+ 9. Raggisolaris Faenza       vs Psa Basket Casoria        | UNDER | Pred:  23.3 | Actual:    40 | Edge:  -15.7 | Profit:     -1
+10. Novipi? Monferrato Basket vs Knights Legnano           | UNDER | Pred:  18.6 | Actual:    39 | Edge:  -20.4 | Profit:     -1
+11. AZS UMCS Lublin           vs AZS AJP Gorz?w Wielkopols | UNDER | Pred:  20.0 | Actual:    40 | Edge:  -19.0 | Profit:     -1
+12. ?l?za Wroc?aw             vs SKK Polonia Warszawa      | UNDER | Pred:  17.7 | Actual:    39 | Edge:  -21.3 | Profit:     -1
+13. Fila San Martino Di Lupar vs Sesto San Giovanni        | UNDER | Pred:  21.2 | Actual:    44 | Edge:  -17.8 | Profit:     -1
+14. GiroLive Panthers Osnabr? vs Alba Berlin               | UNDER | Pred:  20.7 | Actual:    42 | Edge:  -18.3 | Profit:     -1
+15. Saint-Quentin             vs Paris Basketball          | UNDER | Pred:  22.7 | Actual:    44 | Edge:  -16.3 | Profit:     -1
+16. RPK Araski                vs IDK Gipuzkoa              | UNDER | Pred:  20.2 | Actual:    39 | Edge:  -18.8 | Profit:     -1
+17. TBV Start Lublin          vs STK Czarni S?upsk         | UNDER | Pred:  17.9 | Actual:    51 | Edge:  -21.1 | Profit:     -1
+18. Dziki Warszawa            vs GTK Gliwice               | UNDER | Pred:  18.5 | Actual:    55 | Edge:  -20.5 | Profit:     -1
+19. G?rnik Wa?brzych          vs Energa Trefl Sopot        | UNDER | Pred:  17.2 | Actual:    50 | Edge:  -21.8 | Profit:     -1
+20. Aros                      vs Trelleborg Basket         | UNDER | Pred:  19.5 | Actual:    43 | Edge:  -19.5 | Profit:     -1
+21. Miami Heat                vs Philadelphia 76ers        | UNDER | Pred:  36.9 | Actual:    50 | Edge:   -2.1 | Profit:     -1
+22. Atlanta Hawks             vs Boston Celtics            | UNDER | Pred:  35.9 | Actual:    48 | Edge:   -3.1 | Profit:     -1
+23. Memphis Grizzlies         vs Phoenix Suns              | UNDER | Pred:  37.5 | Actual:    56 | Edge:   -1.5 | Profit:     -1
+24. San Antonio Spurs         vs Chicago Bulls             | UNDER | Pred:  37.5 | Actual:    59 | Edge:   -1.5 | Profit:     -1
+25. Brooklyn Nets             vs Charlotte Hornets         | UNDER | Pred:  30.1 | Actual:    51 | Edge:   -8.9 | Profit:     -1
+26. Detroit Pistons           vs Toronto Raptors           | UNDER | Pred:  37.4 | Actual:    62 | Edge:   -1.6 | Profit:     -1
+27. Houston Rockets           vs New York Knicks           | UNDER | Pred:  35.9 | Actual:    41 | Edge:   -3.1 | Profit:     -1
+28. Milwaukee Bucks           vs Dallas Mavericks          | UNDER | Pred:  37.1 | Actual:    62 | Edge:   -1.9 | Profit:     -1
+29. Llaneros de Toa Baja      vs Criollos de Caguas        | UNDER | Pred:  17.9 | Actual:    45 | Edge:  -21.1 | Profit:     -1
+30. NTD Baku                  vs BC Sabah                  | UNDER | Pred:  23.5 | Actual:    41 | Edge:  -15.5 | Profit:     -1
+
+----------------------------------------------------------------------------------------------------
+PREDICTION ANALYSIS
+----------------------------------------------------------------------------------------------------
+Mean Prediction: 23.8
+Mean Actual: 39.7
+Mean Error: -15.9
+MAE: 16.1

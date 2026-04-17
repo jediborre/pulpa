@@ -298,6 +298,174 @@ Salida V3:
 - `training/model_outputs_v3/v3_summary.json`
 - modelos `.joblib` por target/snapshot/modelo
 
+## V11 (Over/Under - Total Points Regression)
+
+Script:
+
+```bash
+python training/train_q3_q4_regression_v11.py
+```
+
+O desde CLI unificado (si está configurado):
+
+```bash
+python training/model_cli.py train-v11
+```
+
+### Que hace V11
+
+- **Predice el total de puntos** del Q3 o Q4 (ej: 45 pts) - no threshold fijo
+- **Modelos separados por género**: `men_or_open` vs `women`
+- **12 modelos totales**: 2 géneros × 3 targets (home/away/total) × 2 cuartos (Q3/Q4)
+- **Sin umbrales hardcodeados**: la línea de la casa se pasa como parámetro en predicción
+
+### Features utilizados
+
+- `league_bucket`, `home_team_bucket`, `away_team_bucket`: equipos/ligas en buckets
+- `gender_bucket`: inferido del nombre de la liga/equipo
+- Score previo (Q1+Q2 para Q3, Q1+Q2+Q3 para Q4)
+- Diferencias de score por cuarto (`q1_diff`, `q2_diff`, `q3_diff`)
+- **Graph stats**: `gp_count`, `gp_last`, `gp_peak_home`, `gp_peak_away`, `gp_area_home`, `gp_area_away`, `gp_area_diff`, `gp_mean_abs`, `gp_swings`, `gp_slope_3m`, `gp_slope_5m`
+- **PBP stats**: `pbp_home_pts_per_play`, `pbp_away_pts_per_play`, `pbp_pts_per_play_diff`, `pbp_home_plays`, `pbp_away_plays`, `pbp_plays_diff`, `pbp_home_3pt`, `pbp_away_3pt`, `pbp_3pt_diff`, `pbp_home_plays_share`, `pbp_home_3pt_share`
+- Win rate histórico del equipo (ventana de 12 partidos)
+
+### Algoritmo
+
+1. **Entrenamiento**: 80/20 split temporal
+2. **Modelos base**: Ridge + GradientBoosting + XGBoost
+3. **Ensemble**: promedio ponderado (Ridge 0.20, GB 0.35, XGB 0.45)
+4. **Predicción**: promedio del ensemble
+
+### Evaluación (betting simulation)
+
+Script:
+
+```bash
+python training/evaluate_v11_betting.py --line 45
+python training/evaluate_v11_betting.py --line 55 --margin 5 --min-edge 3
+```
+
+Parámetros:
+- `--line`: línea de la sportsbook (default: 45)
+- `--margin`: margen que agrega la sportsbook (default: 5)
+- `--min-edge`: mínimo edge para apostar (default: 3)
+
+Lógica de apuesta (V2):
+
+```
+prediction = modelo predice (ej: 24 pts)
+suggested_line = prediction + MARGIN (ej: 29 pts)
+edge = suggested_line - sportsbook_line (ej: 29 - 55 = -26)
+
+if edge > MIN_EDGE: bet OVER (valor subestimado)
+elif edge < -MIN_EDGE: bet UNDER (valor sobreestimado)
+else: NO_BET (edge insuficiente)
+```
+
+Hit: `actual > line` (OVER gana) o `actual < line` (UNDER gana)
+
+### Resultados (línea 55, margin 5, min-edge 3)
+
+| Target | Bet | Count | Hits | Rate | Profit |
+|--------|-----|-------|------|------|--------|
+| q3_total | UNDER | 1590 | 1492 | 93.8% | $1,260 |
+| q4_total | UNDER | 1590 | 1486 | 93.5% | $1,248 |
+
+**OVER only**: 0 bets (modelo siempre subestima)
+**UNDER: 3180 bets, 2978 hits (93.6%), ROI: 78.9%, Profit: $2,508**
+
+### Análisis de error
+
+- Predicción media: 23.8 pts
+- Actual media: 39.7 pts
+- Error sistemático: **-15.9 pts** (modelo subestima ~16 puntos)
+
+Esto es porque el modelo está entrenado con features de ritmo de Q1+Q2 y no captura bien el ritmo de Q3/Q4 que puede variar.
+
+**Nota importante**: El alto % de acierto de UNDER es engañoso. El modelo subestima sistemáticamente, y con líneas reales de 45-65 pts, siempre apostamos UNDER y ganamos. En la práctica, las sportsbooks ajustan la línea durante el partido, por lo que este backtest no refleja la realidad.
+
+### Archivos de salida
+
+- `training/model_outputs_v11/`
+  - `q3_total_men_or_open_gb.joblib` - modelo Q3 total hombres
+  - `q3_total_women_gb.joblib` - modelo Q3 total mujeres
+  - `q4_total_men_or_open_gb.joblib` - modelo Q4 total hombres
+  - `q4_total_women_gb.joblib` - modelo Q4 total mujeres
+  - `q3_total_*_ridge.joblib`, `q3_total_*_xgb.joblib` - otros modelos
+  - `metrics.csv` - métricas de entrenamiento (MAE, RMSE, R2)
+  - `betting_results_*.csv` - resultados de betting simulation
+  - `betting_report_v11.txt` - reporte completo
+  - `betting_report_v11_over_only.txt` - reporte solo OVER
+
+### Posibles mejoras
+
+1. **Calibrar predicción**: el modelo subestima ~16 pts, agregar corrección (+16) a la predicción
+2. **Usar features de ritmo en tiempo real**: usar graph_points para calcular ritmo actual del partido
+3. **Entrenar por separado por género y league**: aumentar granularidad del modelo
+4. **Feature engineering avanzado**: distancia de viajes, fatigue, B2B games
+5. **Incorporar odds del mercado**: como feature o para calibrar líneas
+6. **Live betting**: ajustar línea durante el partido based en ritmo actual (Q3/Q4)
+
+### Uso en producción
+
+**Opción 1: Desde match en DB**
+
+```bash
+python training/predict_v11.py --match-id 15556170 --line 55.5
+```
+
+Salida:
+```
+============================================================
+MATCH: BMS Herlev U13 vs SKM-Mustangs U13
+Target: Q3_TOTAL | Gender: men_or_open
+============================================================
+Q1+Q2 Score: 27-28 (total: 55)
+Model Prediction: 25.4 pts
+Suggested Line: 30.4 pts (prediction + 5.0)
+Sportsbook Line: 55.5
+Edge: -25.1
+Bet: UNDER
+Recommendation: APOSTAR UNDER
+Odds: 1.91
+If bet $100: Win $91 if hit, Lose $100 if miss
+```
+
+**Opción 2: Live betting (manual params)**
+
+```bash
+python training/predict_v11.py --league "NBA" --home "Lakers" --away "Celtics" --q1h 28 --q2h 27 --q1a 25 --q2a 20 --line 55.5
+```
+
+Salida:
+```
+============================================================
+LIVE PREDICTION
+============================================================
+League: NBA
+Match: Lakers vs Celtics
+Q1+Q2: 28-25 + 27-20 = 55-45 (total: 100)
+Gender: men_or_open
+Sportsbook Line: 55.5
+Margin: 5.0, Min Edge: 3.0
+
+Q3_TOTAL:
+  Prediction: 37.5 | Suggested: 42.5 | Edge: -13.0
+  -> UNDER
+
+Q4_TOTAL:
+  Prediction: 27.6 | Suggested: 32.6 | Edge: -22.9
+  -> UNDER
+```
+
+**Parámetros:**
+- `--line`: línea de la sportsbook (obligatorio)
+- `--margin`: margen (default: 5)
+- `--min-edge`: edge mínimo para apostar (default: 3)
+- Para live: `--league`, `--home`, `--away`, `--q1h`, `--q2h`, `--q1a`, `--q2a`
+
+---
+
 ## Comparacion entre versiones
 
 ```bash

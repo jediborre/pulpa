@@ -1,0 +1,5810 @@
+{
+  "Mexico LNBP Women": {
+    "samples": 21,
+    "home_win_rate": 0.2857142857142857,
+    "away_win_rate": 0.7142857142857143,
+    "avg_total_points": 157.9047619047619,
+    "std_total_points": 16.899999329120195,
+    "is_favorite_home": false
+  },
+  "NBA G League": {
+    "samples": 226,
+    "home_win_rate": 0.5752212389380531,
+    "away_win_rate": 0.4247787610619469,
+    "avg_total_points": 235.79646017699116,
+    "std_total_points": 18.874133299932883,
+    "is_favorite_home": true
+  },
+  "Argentina Liga Nacional": {
+    "samples": 65,
+    "home_win_rate": 0.5538461538461539,
+    "away_win_rate": 0.4461538461538462,
+    "avg_total_points": 167.12307692307692,
+    "std_total_points": 19.113835256819915,
+    "is_favorite_home": true
+  },
+  "Liga Unike - Playoff": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 147.33333333333334,
+    "std_total_points": 6.236095644623235,
+    "is_favorite_home": true
+  },
+  "EYBL U16, CHALLENGE CUP": {
+    "samples": 34,
+    "home_win_rate": 0.47058823529411764,
+    "away_win_rate": 0.5294117647058824,
+    "avg_total_points": 148.52941176470588,
+    "std_total_points": 15.431509579081153,
+    "is_favorite_home": false
+  },
+  "Womens National Invitation Tournament": {
+    "samples": 10,
+    "home_win_rate": 0.7,
+    "away_win_rate": 0.3,
+    "avg_total_points": 130.5,
+    "std_total_points": 13.55912976558599,
+    "is_favorite_home": true
+  },
+  "National League 2 - Playout Group 5": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 135.0,
+    "std_total_points": 16.0,
+    "is_favorite_home": true
+  },
+  "National League 2 - Playout Group 4": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 114.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "NKL, Playoffs": {
+    "samples": 12,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 179.0,
+    "std_total_points": 16.32482771731451,
+    "is_favorite_home": false
+  },
+  "Eurocup Playoffs ": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 192.0,
+    "std_total_points": 32.52076259868455,
+    "is_favorite_home": true
+  },
+  "National League 2 - Playoff Group 2": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 174.5,
+    "std_total_points": 7.5,
+    "is_favorite_home": false
+  },
+  "National League 2 - Playoff Group 4": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 130.0,
+    "std_total_points": 13.0,
+    "is_favorite_home": true
+  },
+  "Estonian-Latvian Basketball League, Playoffs": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 173.5,
+    "std_total_points": 19.91858428704209,
+    "is_favorite_home": true
+  },
+  "Nostra.lt-RKL Division B, Ketvirtfinalia": {
+    "samples": 6,
+    "home_win_rate": 0.8333333333333334,
+    "away_win_rate": 0.16666666666666666,
+    "avg_total_points": 157.33333333333334,
+    "std_total_points": 10.208928554075703,
+    "is_favorite_home": true
+  },
+  "CIBACOPA , Primera Vuelta": {
+    "samples": 68,
+    "home_win_rate": 0.5441176470588235,
+    "away_win_rate": 0.45588235294117646,
+    "avg_total_points": 180.41176470588235,
+    "std_total_points": 18.964545321171144,
+    "is_favorite_home": true
+  },
+  "Serie B, Group B": {
+    "samples": 60,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 153.4,
+    "std_total_points": 16.01998751560063,
+    "is_favorite_home": true
+  },
+  "Switzerland LNA": {
+    "samples": 22,
+    "home_win_rate": 0.7272727272727273,
+    "away_win_rate": 0.2727272727272727,
+    "avg_total_points": 170.4090909090909,
+    "std_total_points": 13.600331182161073,
+    "is_favorite_home": true
+  },
+  "1 Liga Kobiet, Runda Zasadnicza": {
+    "samples": 66,
+    "home_win_rate": 0.5454545454545454,
+    "away_win_rate": 0.45454545454545453,
+    "avg_total_points": 139.54545454545453,
+    "std_total_points": 19.32668262162508,
+    "is_favorite_home": true
+  },
+  "Poland 2nd Basketball League, Runda Zasadnicza": {
+    "samples": 223,
+    "home_win_rate": 0.5964125560538116,
+    "away_win_rate": 0.40358744394618834,
+    "avg_total_points": 165.15695067264573,
+    "std_total_points": 18.314333959217958,
+    "is_favorite_home": true
+  },
+  "Turkey KBSL, Women, Playoffs": {
+    "samples": 12,
+    "home_win_rate": 0.4166666666666667,
+    "away_win_rate": 0.5833333333333334,
+    "avg_total_points": 164.58333333333334,
+    "std_total_points": 16.95807739364604,
+    "is_favorite_home": false
+  },
+  "Puerto Rico BSN": {
+    "samples": 20,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 180.15,
+    "std_total_points": 26.197852965462648,
+    "is_favorite_home": false
+  },
+  "NBL, Playoffs": {
+    "samples": 11,
+    "home_win_rate": 0.7272727272727273,
+    "away_win_rate": 0.2727272727272727,
+    "avg_total_points": 183.63636363636363,
+    "std_total_points": 21.12849315830393,
+    "is_favorite_home": true
+  },
+  "BLNO, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 192.0,
+    "std_total_points": 13.0,
+    "is_favorite_home": true
+  },
+  "Swedish Basketball League, Playoffs": {
+    "samples": 10,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 181.2,
+    "std_total_points": 18.15929514050587,
+    "is_favorite_home": false
+  },
+  "Superliga": {
+    "samples": 31,
+    "home_win_rate": 0.5483870967741935,
+    "away_win_rate": 0.45161290322580644,
+    "avg_total_points": 169.09677419354838,
+    "std_total_points": 22.290392605277244,
+    "is_favorite_home": true
+  },
+  "Euroleague": {
+    "samples": 82,
+    "home_win_rate": 0.6585365853658537,
+    "away_win_rate": 0.34146341463414637,
+    "avg_total_points": 175.59756097560975,
+    "std_total_points": 18.22880309685315,
+    "is_favorite_home": true
+  },
+  "1. Division A, Playoffs": {
+    "samples": 15,
+    "home_win_rate": 0.7333333333333333,
+    "away_win_rate": 0.26666666666666666,
+    "avg_total_points": 163.33333333333334,
+    "std_total_points": 20.51557673790549,
+    "is_favorite_home": true
+  },
+  "I A MCKL": {
+    "samples": 38,
+    "home_win_rate": 0.6578947368421053,
+    "away_win_rate": 0.34210526315789475,
+    "avg_total_points": 167.02631578947367,
+    "std_total_points": 17.472515021124888,
+    "is_favorite_home": true
+  },
+  "BNXT League": {
+    "samples": 51,
+    "home_win_rate": 0.6274509803921569,
+    "away_win_rate": 0.37254901960784315,
+    "avg_total_points": 169.0,
+    "std_total_points": 20.38934746861896,
+    "is_favorite_home": true
+  },
+  "Germany BBL": {
+    "samples": 47,
+    "home_win_rate": 0.5957446808510638,
+    "away_win_rate": 0.40425531914893614,
+    "avg_total_points": 175.31914893617022,
+    "std_total_points": 19.685945286647573,
+    "is_favorite_home": true
+  },
+  "TB2L, Playoffs": {
+    "samples": 7,
+    "home_win_rate": 0.42857142857142855,
+    "away_win_rate": 0.2857142857142857,
+    "avg_total_points": 151.0,
+    "std_total_points": 17.443787268988185,
+    "is_favorite_home": true
+  },
+  "United League": {
+    "samples": 35,
+    "home_win_rate": 0.37142857142857144,
+    "away_win_rate": 0.6285714285714286,
+    "avg_total_points": 161.22857142857143,
+    "std_total_points": 17.15656594724133,
+    "is_favorite_home": false
+  },
+  "Liga Argentina, Group Stage": {
+    "samples": 167,
+    "home_win_rate": 0.6347305389221557,
+    "away_win_rate": 0.3652694610778443,
+    "avg_total_points": 161.17964071856287,
+    "std_total_points": 16.725435250003347,
+    "is_favorite_home": true
+  },
+  "Austrian Women's Basketball Bundesliga": {
+    "samples": 15,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 133.0,
+    "std_total_points": 11.616080807799735,
+    "is_favorite_home": false
+  },
+  "Serie A2, Women, Group B": {
+    "samples": 45,
+    "home_win_rate": 0.5777777777777777,
+    "away_win_rate": 0.4222222222222222,
+    "avg_total_points": 128.3111111111111,
+    "std_total_points": 18.459351405750628,
+    "is_favorite_home": true
+  },
+  "CN1 Basquetebol, 2\u00aa Fase - Grupo Manuten\u00e7\u00e3o Sul": {
+    "samples": 17,
+    "home_win_rate": 0.47058823529411764,
+    "away_win_rate": 0.5294117647058824,
+    "avg_total_points": 143.2941176470588,
+    "std_total_points": 12.578060758986156,
+    "is_favorite_home": false
+  },
+  "Serie A2, Women, Group A": {
+    "samples": 45,
+    "home_win_rate": 0.5555555555555556,
+    "away_win_rate": 0.4444444444444444,
+    "avg_total_points": 132.9111111111111,
+    "std_total_points": 19.283639838788183,
+    "is_favorite_home": true
+  },
+  "NBL1, West": {
+    "samples": 14,
+    "home_win_rate": 0.42857142857142855,
+    "away_win_rate": 0.5714285714285714,
+    "avg_total_points": 182.5,
+    "std_total_points": 19.474342094150447,
+    "is_favorite_home": false
+  },
+  "European North Basketball League, Playoffs": {
+    "samples": 7,
+    "home_win_rate": 0.8571428571428571,
+    "away_win_rate": 0.14285714285714285,
+    "avg_total_points": 172.28571428571428,
+    "std_total_points": 18.398092181483584,
+    "is_favorite_home": true
+  },
+  "WBBL, Women, Playoffs": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 127.33333333333333,
+    "std_total_points": 14.383632673594278,
+    "is_favorite_home": false
+  },
+  "NBL1 West, Women": {
+    "samples": 9,
+    "home_win_rate": 0.4444444444444444,
+    "away_win_rate": 0.5555555555555556,
+    "avg_total_points": 165.33333333333334,
+    "std_total_points": 19.849433241279208,
+    "is_favorite_home": false
+  },
+  "ABA League 2, Playoffs": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 156.66666666666666,
+    "std_total_points": 9.463379711052259,
+    "is_favorite_home": false
+  },
+  "Zain Basketball League, Playoffs": {
+    "samples": 5,
+    "home_win_rate": 0.2,
+    "away_win_rate": 0.8,
+    "avg_total_points": 161.2,
+    "std_total_points": 5.344155686354955,
+    "is_favorite_home": false
+  },
+  "Championship, Group A": {
+    "samples": 15,
+    "home_win_rate": 0.5333333333333333,
+    "away_win_rate": 0.4666666666666667,
+    "avg_total_points": 159.13333333333333,
+    "std_total_points": 15.734745699318506,
+    "is_favorite_home": true
+  },
+  "Championship, Group B": {
+    "samples": 8,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 166.875,
+    "std_total_points": 16.684105459987958,
+    "is_favorite_home": false
+  },
+  "Premier League, Women, Playoffs": {
+    "samples": 10,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 144.6,
+    "std_total_points": 11.672189169131897,
+    "is_favorite_home": true
+  },
+  "1 Division, Women": {
+    "samples": 35,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 139.94285714285715,
+    "std_total_points": 19.338995183149446,
+    "is_favorite_home": true
+  },
+  "Hungary Divison A Women, Playoffs": {
+    "samples": 9,
+    "home_win_rate": 0.5555555555555556,
+    "away_win_rate": 0.4444444444444444,
+    "avg_total_points": 137.88888888888889,
+    "std_total_points": 13.18622551035271,
+    "is_favorite_home": true
+  },
+  "A1 Women, Playoffs": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 134.8,
+    "std_total_points": 13.789851340750559,
+    "is_favorite_home": true
+  },
+  "A1 Women, Relegation Playoffs": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 138.66666666666666,
+    "std_total_points": 26.512051766864232,
+    "is_favorite_home": false
+  },
+  "Brazil NBB": {
+    "samples": 72,
+    "home_win_rate": 0.625,
+    "away_win_rate": 0.375,
+    "avg_total_points": 161.02777777777777,
+    "std_total_points": 17.382120621027536,
+    "is_favorite_home": true
+  },
+  "LBF, Women": {
+    "samples": 9,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 133.88888888888889,
+    "std_total_points": 14.563611002498616,
+    "is_favorite_home": true
+  },
+  "CBI U19, Sede Curitiba": {
+    "samples": 21,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 134.0,
+    "std_total_points": 20.53568322979018,
+    "is_favorite_home": true
+  },
+  "LF Challenge, Regular Season": {
+    "samples": 51,
+    "home_win_rate": 0.5098039215686274,
+    "away_win_rate": 0.49019607843137253,
+    "avg_total_points": 135.15686274509804,
+    "std_total_points": 18.635168679844547,
+    "is_favorite_home": true
+  },
+  "Bulgaria NBL": {
+    "samples": 26,
+    "home_win_rate": 0.6538461538461539,
+    "away_win_rate": 0.34615384615384615,
+    "avg_total_points": 171.26923076923077,
+    "std_total_points": 16.6052764837142,
+    "is_favorite_home": true
+  },
+  "LNB, Women, Playoffs": {
+    "samples": 10,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 143.3,
+    "std_total_points": 13.236691429507601,
+    "is_favorite_home": false
+  },
+  "The Basketball League, Regular Season": {
+    "samples": 58,
+    "home_win_rate": 0.7068965517241379,
+    "away_win_rate": 0.29310344827586204,
+    "avg_total_points": 218.72413793103448,
+    "std_total_points": 25.465861599707512,
+    "is_favorite_home": true
+  },
+  "Basket Liga, Women, Playoffs": {
+    "samples": 12,
+    "home_win_rate": 0.4166666666666667,
+    "away_win_rate": 0.5833333333333334,
+    "avg_total_points": 146.66666666666666,
+    "std_total_points": 14.624940645653536,
+    "is_favorite_home": false
+  },
+  "Jedinstvena kadetska liga": {
+    "samples": 35,
+    "home_win_rate": 0.5428571428571428,
+    "away_win_rate": 0.45714285714285713,
+    "avg_total_points": 164.2,
+    "std_total_points": 18.236227680087786,
+    "is_favorite_home": true
+  },
+  "Campeonato Nacional da 1\u00aa Divisao Feminina, 2\u00aa Fase - Grupo Manuten\u00e7\u00e3o Sul": {
+    "samples": 12,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 140.5,
+    "std_total_points": 14.6087873099264,
+    "is_favorite_home": true
+  },
+  "NBL Women , Regular Season": {
+    "samples": 47,
+    "home_win_rate": 0.6170212765957447,
+    "away_win_rate": 0.3829787234042553,
+    "avg_total_points": 113.61702127659575,
+    "std_total_points": 20.549424790302847,
+    "is_favorite_home": true
+  },
+  "NBL Men , Regular Season": {
+    "samples": 46,
+    "home_win_rate": 0.5217391304347826,
+    "away_win_rate": 0.4782608695652174,
+    "avg_total_points": 130.2608695652174,
+    "std_total_points": 15.89152738795479,
+    "is_favorite_home": true
+  },
+  "Georgian cup , Playoff": {
+    "samples": 6,
+    "home_win_rate": 0.16666666666666666,
+    "away_win_rate": 0.5,
+    "avg_total_points": 168.16666666666666,
+    "std_total_points": 25.016105923095935,
+    "is_favorite_home": false
+  },
+  "Iceland Women's Basketball Premier League, Relegation Round": {
+    "samples": 10,
+    "home_win_rate": 0.8,
+    "away_win_rate": 0.2,
+    "avg_total_points": 164.6,
+    "std_total_points": 17.749366185867032,
+    "is_favorite_home": true
+  },
+  "Iceland Women's Basketball Premier League, Championship Round": {
+    "samples": 8,
+    "home_win_rate": 0.25,
+    "away_win_rate": 0.75,
+    "avg_total_points": 159.875,
+    "std_total_points": 24.20969588821801,
+    "is_favorite_home": false
+  },
+  "NexLvl Cyber Euroleague": {
+    "samples": 50,
+    "home_win_rate": 0.44,
+    "away_win_rate": 0.56,
+    "avg_total_points": 150.22,
+    "std_total_points": 21.088660460067157,
+    "is_favorite_home": false
+  },
+  "1. A SKL": {
+    "samples": 23,
+    "home_win_rate": 0.5652173913043478,
+    "away_win_rate": 0.43478260869565216,
+    "avg_total_points": 164.6086956521739,
+    "std_total_points": 15.415235632419783,
+    "is_favorite_home": true
+  },
+  "Liga Nacional N1": {
+    "samples": 9,
+    "home_win_rate": 0.2222222222222222,
+    "away_win_rate": 0.7777777777777778,
+    "avg_total_points": 144.88888888888889,
+    "std_total_points": 13.05070832002313,
+    "is_favorite_home": false
+  },
+  "ZBL, Relegation Round": {
+    "samples": 8,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 154.25,
+    "std_total_points": 17.383541066192468,
+    "is_favorite_home": true
+  },
+  "NBA": {
+    "samples": 404,
+    "home_win_rate": 0.5321782178217822,
+    "away_win_rate": 0.46782178217821785,
+    "avg_total_points": 229.5990099009901,
+    "std_total_points": 19.964761010040185,
+    "is_favorite_home": true
+  },
+  "ZBL, Championship Round": {
+    "samples": 8,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 153.75,
+    "std_total_points": 21.562409420099602,
+    "is_favorite_home": true
+  },
+  "1. ZLS, Women": {
+    "samples": 32,
+    "home_win_rate": 0.59375,
+    "away_win_rate": 0.40625,
+    "avg_total_points": 153.0625,
+    "std_total_points": 24.042849118812853,
+    "is_favorite_home": true
+  },
+  "A2 ESKAH": {
+    "samples": 26,
+    "home_win_rate": 0.6153846153846154,
+    "away_win_rate": 0.38461538461538464,
+    "avg_total_points": 126.42307692307692,
+    "std_total_points": 17.01622094202849,
+    "is_favorite_home": true
+  },
+  "ABA Liga, Championship Round": {
+    "samples": 10,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 172.6,
+    "std_total_points": 12.34665946724052,
+    "is_favorite_home": true
+  },
+  "WCBA, Playoffs": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 167.75,
+    "std_total_points": 10.520812706250407,
+    "is_favorite_home": true
+  },
+  "Serie B, Group A": {
+    "samples": 59,
+    "home_win_rate": 0.6101694915254238,
+    "away_win_rate": 0.3898305084745763,
+    "avg_total_points": 159.0677966101695,
+    "std_total_points": 14.387923852043139,
+    "is_favorite_home": true
+  },
+  "NCAA Men's March Madness": {
+    "samples": 38,
+    "home_win_rate": 0.7368421052631579,
+    "away_win_rate": 0.2631578947368421,
+    "avg_total_points": 149.26315789473685,
+    "std_total_points": 16.459974116700113,
+    "is_favorite_home": true
+  },
+  "NBL, Qualifying Round": {
+    "samples": 13,
+    "home_win_rate": 0.6923076923076923,
+    "away_win_rate": 0.3076923076923077,
+    "avg_total_points": 163.30769230769232,
+    "std_total_points": 13.081899505597658,
+    "is_favorite_home": true
+  },
+  "NBL, Championship Round": {
+    "samples": 30,
+    "home_win_rate": 0.6333333333333333,
+    "away_win_rate": 0.36666666666666664,
+    "avg_total_points": 171.56666666666666,
+    "std_total_points": 19.897543120250354,
+    "is_favorite_home": true
+  },
+  "Chinese Taipei WSBL": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 139.0,
+    "std_total_points": 7.788880963698615,
+    "is_favorite_home": false
+  },
+  "Chinese Taipei SBL": {
+    "samples": 6,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 149.33333333333334,
+    "std_total_points": 10.143416036468626,
+    "is_favorite_home": false
+  },
+  "B Ethniki - Group 2": {
+    "samples": 20,
+    "home_win_rate": 0.9,
+    "away_win_rate": 0.1,
+    "avg_total_points": 159.4,
+    "std_total_points": 15.749285698088025,
+    "is_favorite_home": true
+  },
+  "China CBA": {
+    "samples": 67,
+    "home_win_rate": 0.5373134328358209,
+    "away_win_rate": 0.4626865671641791,
+    "avg_total_points": 177.6865671641791,
+    "std_total_points": 21.751108364433062,
+    "is_favorite_home": true
+  },
+  "Divisione Regionale 2 - Lazio, Girone C": {
+    "samples": 19,
+    "home_win_rate": 0.631578947368421,
+    "away_win_rate": 0.3684210526315789,
+    "avg_total_points": 136.8421052631579,
+    "std_total_points": 16.89678623412012,
+    "is_favorite_home": true
+  },
+  "Chinese Taipei P League": {
+    "samples": 3,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 210.0,
+    "std_total_points": 10.801234497346433,
+    "is_favorite_home": false
+  },
+  "Liga Nationala": {
+    "samples": 39,
+    "home_win_rate": 0.5641025641025641,
+    "away_win_rate": 0.4358974358974359,
+    "avg_total_points": 173.05128205128204,
+    "std_total_points": 14.988797043721787,
+    "is_favorite_home": true
+  },
+  "Druga mu\u0161ka liga - Centar": {
+    "samples": 23,
+    "home_win_rate": 0.4782608695652174,
+    "away_win_rate": 0.5217391304347826,
+    "avg_total_points": 164.34782608695653,
+    "std_total_points": 21.047789712837808,
+    "is_favorite_home": false
+  },
+  "Super League": {
+    "samples": 79,
+    "home_win_rate": 0.6329113924050633,
+    "away_win_rate": 0.3670886075949367,
+    "avg_total_points": 174.36708860759492,
+    "std_total_points": 27.314009580651017,
+    "is_favorite_home": true
+  },
+  "U21 Espoirs Elite": {
+    "samples": 44,
+    "home_win_rate": 0.5454545454545454,
+    "away_win_rate": 0.45454545454545453,
+    "avg_total_points": 164.9090909090909,
+    "std_total_points": 16.040882686291674,
+    "is_favorite_home": true
+  },
+  "SLB": {
+    "samples": 29,
+    "home_win_rate": 0.6206896551724138,
+    "away_win_rate": 0.3793103448275862,
+    "avg_total_points": 173.6206896551724,
+    "std_total_points": 20.276389859422025,
+    "is_favorite_home": true
+  },
+  "Poland 1st Division Basketball": {
+    "samples": 55,
+    "home_win_rate": 0.5818181818181818,
+    "away_win_rate": 0.41818181818181815,
+    "avg_total_points": 164.47272727272727,
+    "std_total_points": 16.29819236541787,
+    "is_favorite_home": true
+  },
+  "Serie A2": {
+    "samples": 58,
+    "home_win_rate": 0.5862068965517241,
+    "away_win_rate": 0.41379310344827586,
+    "avg_total_points": 158.32758620689654,
+    "std_total_points": 16.17297440392937,
+    "is_favorite_home": true
+  },
+  "Ta\u00e7a Hugo dos Santos, Group B": {
+    "samples": 8,
+    "home_win_rate": 0.375,
+    "away_win_rate": 0.625,
+    "avg_total_points": 186.375,
+    "std_total_points": 17.74075463445679,
+    "is_favorite_home": false
+  },
+  "Ta\u00e7a Hugo dos Santos, Group A": {
+    "samples": 7,
+    "home_win_rate": 0.5714285714285714,
+    "away_win_rate": 0.42857142857142855,
+    "avg_total_points": 163.57142857142858,
+    "std_total_points": 10.111621925249365,
+    "is_favorite_home": true
+  },
+  "Korean Basketball League": {
+    "samples": 58,
+    "home_win_rate": 0.6206896551724138,
+    "away_win_rate": 0.3793103448275862,
+    "avg_total_points": 162.29310344827587,
+    "std_total_points": 18.86248659942364,
+    "is_favorite_home": true
+  },
+  "Swedish Basketball Superettan": {
+    "samples": 44,
+    "home_win_rate": 0.5681818181818182,
+    "away_win_rate": 0.4318181818181818,
+    "avg_total_points": 169.88636363636363,
+    "std_total_points": 20.49414096881318,
+    "is_favorite_home": true
+  },
+  "Tipos SBL": {
+    "samples": 40,
+    "home_win_rate": 0.7,
+    "away_win_rate": 0.3,
+    "avg_total_points": 165.9,
+    "std_total_points": 16.35665002376709,
+    "is_favorite_home": true
+  },
+  "ABA Liga, Relegation Round": {
+    "samples": 17,
+    "home_win_rate": 0.5882352941176471,
+    "away_win_rate": 0.4117647058823529,
+    "avg_total_points": 165.47058823529412,
+    "std_total_points": 24.355498586945107,
+    "is_favorite_home": true
+  },
+  "Copa de la Reina, Women": {
+    "samples": 5,
+    "home_win_rate": 0.8,
+    "away_win_rate": 0.2,
+    "avg_total_points": 135.8,
+    "std_total_points": 9.907572861200668,
+    "is_favorite_home": true
+  },
+  "Iceland Basketball Premier League": {
+    "samples": 29,
+    "home_win_rate": 0.5172413793103449,
+    "away_win_rate": 0.4827586206896552,
+    "avg_total_points": 190.79310344827587,
+    "std_total_points": 18.877790837922028,
+    "is_favorite_home": true
+  },
+  "EYBL U15, SUPERFINAL - 12./15.03.2026 - Riga, Latvia": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 152.0,
+    "std_total_points": 11.357816691600547,
+    "is_favorite_home": true
+  },
+  "NCAA Men's Division I, Regular season": {
+    "samples": 1064,
+    "home_win_rate": 0.5949248120300752,
+    "away_win_rate": 0.4050751879699248,
+    "avg_total_points": 148.50845864661653,
+    "std_total_points": 18.770725985299748,
+    "is_favorite_home": true
+  },
+  "NCAA Women's Division I, Regular season": {
+    "samples": 1106,
+    "home_win_rate": 0.5741410488245932,
+    "away_win_rate": 0.4258589511754069,
+    "avg_total_points": 130.64828209764917,
+    "std_total_points": 18.937657828488717,
+    "is_favorite_home": true
+  },
+  "CBI U19, Sede Rio": {
+    "samples": 15,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 127.0,
+    "std_total_points": 19.856149341366937,
+    "is_favorite_home": true
+  },
+  "Nationale 1, Relegation Round": {
+    "samples": 32,
+    "home_win_rate": 0.59375,
+    "away_win_rate": 0.40625,
+    "avg_total_points": 166.0625,
+    "std_total_points": 20.01708254841349,
+    "is_favorite_home": true
+  },
+  "Polish Basketball League": {
+    "samples": 39,
+    "home_win_rate": 0.48717948717948717,
+    "away_win_rate": 0.5128205128205128,
+    "avg_total_points": 172.3846153846154,
+    "std_total_points": 15.959267679065698,
+    "is_favorite_home": false
+  },
+  "1st Division": {
+    "samples": 29,
+    "home_win_rate": 0.6896551724137931,
+    "away_win_rate": 0.3103448275862069,
+    "avg_total_points": 162.44827586206895,
+    "std_total_points": 19.436166442816486,
+    "is_favorite_home": true
+  },
+  "Superliga e Femrave ": {
+    "samples": 14,
+    "home_win_rate": 0.7142857142857143,
+    "away_win_rate": 0.2857142857142857,
+    "avg_total_points": 136.14285714285714,
+    "std_total_points": 22.806193215431456,
+    "is_favorite_home": true
+  },
+  "Pro B, North": {
+    "samples": 26,
+    "home_win_rate": 0.5769230769230769,
+    "away_win_rate": 0.4230769230769231,
+    "avg_total_points": 158.6153846153846,
+    "std_total_points": 20.25619928484748,
+    "is_favorite_home": true
+  },
+  "The League, \u041f\u043b\u044d\u0439\u043e\u0444\u0444 1-\u0440 \u0448\u0430\u0442": {
+    "samples": 14,
+    "home_win_rate": 0.42857142857142855,
+    "away_win_rate": 0.5714285714285714,
+    "avg_total_points": 164.85714285714286,
+    "std_total_points": 13.65313748796613,
+    "is_favorite_home": false
+  },
+  "Druga mu\u0161ka liga - Istok": {
+    "samples": 8,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 147.5,
+    "std_total_points": 23.30772404161333,
+    "is_favorite_home": true
+  },
+  "W League Premier, Rel./Prom. Playoffs": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 129.0,
+    "std_total_points": 9.0,
+    "is_favorite_home": true
+  },
+  "Belgrade - 5th Place PlayOff": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 134.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "U18 NextGen Euroleague, Qualifiers - Belgrade Qualifying Group B": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 169.33333333333334,
+    "std_total_points": 16.05891929392787,
+    "is_favorite_home": false
+  },
+  "U18 NextGen Euroleague, Qualifiers - Belgrade Qualifying Group A": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 144.6,
+    "std_total_points": 9.850888284819803,
+    "is_favorite_home": true
+  },
+  "EGBL U17, Superfinal": {
+    "samples": 10,
+    "home_win_rate": 0.7,
+    "away_win_rate": 0.3,
+    "avg_total_points": 99.0,
+    "std_total_points": 11.974973903938164,
+    "is_favorite_home": true
+  },
+  "EYBL U13, SUPERFINAL - 12./15.03.2026 - Riga, Latvia": {
+    "samples": 3,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 139.33333333333334,
+    "std_total_points": 27.010286106510527,
+    "is_favorite_home": true
+  },
+  "Nostra.lt-RKL Division B, \u012ekrintamosios 2 etapas": {
+    "samples": 5,
+    "home_win_rate": 0.8,
+    "away_win_rate": 0.2,
+    "avg_total_points": 156.4,
+    "std_total_points": 14.430523206037957,
+    "is_favorite_home": true
+  },
+  "Egyptian Women's Basketball Super League, Regular Season": {
+    "samples": 36,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 126.61111111111111,
+    "std_total_points": 18.425944537492928,
+    "is_favorite_home": false
+  },
+  "Germany Pro A": {
+    "samples": 37,
+    "home_win_rate": 0.5135135135135135,
+    "away_win_rate": 0.4864864864864865,
+    "avg_total_points": 169.54054054054055,
+    "std_total_points": 15.688857458606236,
+    "is_favorite_home": true
+  },
+  "BLNO, Women, Playoffs": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 136.66666666666666,
+    "std_total_points": 8.806563209081938,
+    "is_favorite_home": false
+  },
+  "LNB Supercopa , Supercopa": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 171.0,
+    "std_total_points": 5.0,
+    "is_favorite_home": true
+  },
+  "East Asia Super League, Playoffs": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 153.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Zimsko Ko\u0161arka\u0161ko Prvenstvo \u010cakovec, Placement Playoff": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 99.0,
+    "std_total_points": 11.0,
+    "is_favorite_home": true
+  },
+  "Zimsko Ko\u0161arka\u0161ko Prvenstvo \u010cakovec, All-Star Game": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 150.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Zimsko Ko\u0161arka\u0161ko Prvenstvo \u010cakovec, Playoff": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 101.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "NCAA Women's March Madness": {
+    "samples": 28,
+    "home_win_rate": 0.7857142857142857,
+    "away_win_rate": 0.21428571428571427,
+    "avg_total_points": 134.39285714285714,
+    "std_total_points": 15.8842673416054,
+    "is_favorite_home": true
+  },
+  "NCAA Men's Division III, Championship": {
+    "samples": 34,
+    "home_win_rate": 0.7352941176470589,
+    "away_win_rate": 0.2647058823529412,
+    "avg_total_points": 143.14705882352942,
+    "std_total_points": 21.14255863104388,
+    "is_favorite_home": true
+  },
+  "S.Dariaus ir S.Gireno taure, S.Dariaus ir S.Gireno taure": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 163.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "A1 Liga": {
+    "samples": 31,
+    "home_win_rate": 0.7096774193548387,
+    "away_win_rate": 0.2903225806451613,
+    "avg_total_points": 153.74193548387098,
+    "std_total_points": 16.176382110638528,
+    "is_favorite_home": true
+  },
+  "Bahrain Cup , Khalifa Bin Salman Cup": {
+    "samples": 4,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 184.5,
+    "std_total_points": 38.31775045589185,
+    "is_favorite_home": true
+  },
+  "National Invitation Tournament": {
+    "samples": 12,
+    "home_win_rate": 0.5833333333333334,
+    "away_win_rate": 0.4166666666666667,
+    "avg_total_points": 149.0,
+    "std_total_points": 14.747881203752625,
+    "is_favorite_home": true
+  },
+  "EYBL U16, SUPERFINAL - 12./15.03.2026 - Riga, Latvia": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 153.0,
+    "std_total_points": 12.0,
+    "is_favorite_home": false
+  },
+  "EYBL U17, CHALLENGE CUP": {
+    "samples": 15,
+    "home_win_rate": 0.5333333333333333,
+    "away_win_rate": 0.4666666666666667,
+    "avg_total_points": 145.2,
+    "std_total_points": 23.315802938493597,
+    "is_favorite_home": true
+  },
+  "Serie B Interregionale, Division E": {
+    "samples": 20,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 149.6,
+    "std_total_points": 18.084247288731707,
+    "is_favorite_home": true
+  },
+  "Nostra.lt-RKL Division B, Atkrintamosios 3 etapas": {
+    "samples": 10,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 161.7,
+    "std_total_points": 15.633617623570048,
+    "is_favorite_home": false
+  },
+  "RKL Division A": {
+    "samples": 65,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 175.09230769230768,
+    "std_total_points": 16.35352051199052,
+    "is_favorite_home": true
+  },
+  "ARDU Juniorska Liga U19": {
+    "samples": 12,
+    "home_win_rate": 0.4166666666666667,
+    "away_win_rate": 0.5833333333333334,
+    "avg_total_points": 163.41666666666666,
+    "std_total_points": 21.94864587065807,
+    "is_favorite_home": false
+  },
+  "FIBA Americup Pre-Qualifiers": {
+    "samples": 2,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 136.5,
+    "std_total_points": 11.5,
+    "is_favorite_home": false
+  },
+  "I B MCKL": {
+    "samples": 15,
+    "home_win_rate": 0.4666666666666667,
+    "away_win_rate": 0.5333333333333333,
+    "avg_total_points": 150.8,
+    "std_total_points": 15.84592481786195,
+    "is_favorite_home": false
+  },
+  "Cyprus Basketball Division A, Championship Round": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 167.0,
+    "std_total_points": 12.701705922171767,
+    "is_favorite_home": false
+  },
+  "CEL ESB Cup (Cyber), Playoff": {
+    "samples": 15,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 118.46666666666667,
+    "std_total_points": 24.262087480035365,
+    "is_favorite_home": true
+  },
+  "Liga Ouro, Classifica\u00e7\u00e3o": {
+    "samples": 15,
+    "home_win_rate": 0.5333333333333333,
+    "away_win_rate": 0.4666666666666667,
+    "avg_total_points": 151.06666666666666,
+    "std_total_points": 20.230230404575778,
+    "is_favorite_home": true
+  },
+  "Rwanda Basketball League, Regular Season": {
+    "samples": 28,
+    "home_win_rate": 0.42857142857142855,
+    "away_win_rate": 0.5714285714285714,
+    "avg_total_points": 156.85714285714286,
+    "std_total_points": 20.813310105579564,
+    "is_favorite_home": false
+  },
+  "LMBPF Temporada, Regular": {
+    "samples": 14,
+    "home_win_rate": 0.42857142857142855,
+    "away_win_rate": 0.5714285714285714,
+    "avg_total_points": 137.71428571428572,
+    "std_total_points": 17.30577348512245,
+    "is_favorite_home": false
+  },
+  "Basketligaen, Placement round": {
+    "samples": 10,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 168.2,
+    "std_total_points": 19.23954261410598,
+    "is_favorite_home": false
+  },
+  "FIBA Europe Cup, Playoffs": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 160.0,
+    "std_total_points": 13.874436925511608,
+    "is_favorite_home": false
+  },
+  "Eurocup, Playoffs": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 169.33333333333334,
+    "std_total_points": 15.765644787180623,
+    "is_favorite_home": false
+  },
+  "Prvenstvo RH za kadetkinje , Poluzavr\u0161ni turnir skupina B": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 105.0,
+    "std_total_points": 12.083045973594572,
+    "is_favorite_home": false
+  },
+  "Prvenstvo RH za kadetkinje , Poluzavr\u0161ni turnir skupina A": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 111.33333333333333,
+    "std_total_points": 15.965240019770729,
+    "is_favorite_home": false
+  },
+  "Austrian Basketball Superliga, Championship Round": {
+    "samples": 16,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 166.0625,
+    "std_total_points": 10.034121473751451,
+    "is_favorite_home": false
+  },
+  "Liga Unike - Group B": {
+    "samples": 7,
+    "home_win_rate": 0.5714285714285714,
+    "away_win_rate": 0.42857142857142855,
+    "avg_total_points": 149.0,
+    "std_total_points": 9.365590516047865,
+    "is_favorite_home": true
+  },
+  "Korisliiga, Championship round": {
+    "samples": 14,
+    "home_win_rate": 0.5714285714285714,
+    "away_win_rate": 0.42857142857142855,
+    "avg_total_points": 176.92857142857142,
+    "std_total_points": 19.48796070000394,
+    "is_favorite_home": true
+  },
+  " Liga 1 Masculin, Faza II": {
+    "samples": 42,
+    "home_win_rate": 0.5714285714285714,
+    "away_win_rate": 0.42857142857142855,
+    "avg_total_points": 163.4047619047619,
+    "std_total_points": 18.322584975417794,
+    "is_favorite_home": true
+  },
+  "Champions League, Group J": {
+    "samples": 8,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 162.375,
+    "std_total_points": 17.599272001989174,
+    "is_favorite_home": false
+  },
+  "Champions League, Group L": {
+    "samples": 8,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 152.0,
+    "std_total_points": 16.904141504376966,
+    "is_favorite_home": false
+  },
+  "Champions League, Group I": {
+    "samples": 7,
+    "home_win_rate": 0.42857142857142855,
+    "away_win_rate": 0.5714285714285714,
+    "avg_total_points": 177.57142857142858,
+    "std_total_points": 15.989792662437969,
+    "is_favorite_home": false
+  },
+  "Superleague": {
+    "samples": 19,
+    "home_win_rate": 0.42105263157894735,
+    "away_win_rate": 0.5789473684210527,
+    "avg_total_points": 169.78947368421052,
+    "std_total_points": 17.721764636408384,
+    "is_favorite_home": false
+  },
+  "A Dodekanisou U18, Rhodes Group": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 143.8,
+    "std_total_points": 15.992498241363041,
+    "is_favorite_home": true
+  },
+  "B2 League": {
+    "samples": 104,
+    "home_win_rate": 0.4807692307692308,
+    "away_win_rate": 0.5192307692307693,
+    "avg_total_points": 162.04807692307693,
+    "std_total_points": 20.818990871729582,
+    "is_favorite_home": false
+  },
+  "Indonesian Basketball League": {
+    "samples": 31,
+    "home_win_rate": 0.5483870967741935,
+    "away_win_rate": 0.45161290322580644,
+    "avg_total_points": 166.25806451612902,
+    "std_total_points": 16.713849273707858,
+    "is_favorite_home": true
+  },
+  "FIBA World Cup Qualification, Women, Group D": {
+    "samples": 3,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 137.66666666666666,
+    "std_total_points": 31.510139461590594,
+    "is_favorite_home": true
+  },
+  "FIBA World Cup Qualification, Women, Group C": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 144.66666666666666,
+    "std_total_points": 5.2493385826745405,
+    "is_favorite_home": false
+  },
+  "FIBA World Cup Qualification, Women, Group B": {
+    "samples": 3,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 141.33333333333334,
+    "std_total_points": 16.048537489614297,
+    "is_favorite_home": true
+  },
+  "FIBA World Cup Qualification, Women, Group A": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 153.0,
+    "std_total_points": 14.236104336041748,
+    "is_favorite_home": true
+  },
+  "A1 ESKAK": {
+    "samples": 5,
+    "home_win_rate": 0.8,
+    "away_win_rate": 0.2,
+    "avg_total_points": 139.4,
+    "std_total_points": 9.871170143402454,
+    "is_favorite_home": true
+  },
+  "Cup, Women": {
+    "samples": 7,
+    "home_win_rate": 0.8571428571428571,
+    "away_win_rate": 0.14285714285714285,
+    "avg_total_points": 160.0,
+    "std_total_points": 12.467099559583673,
+    "is_favorite_home": true
+  },
+  "Druga RL Istok": {
+    "samples": 16,
+    "home_win_rate": 0.6875,
+    "away_win_rate": 0.3125,
+    "avg_total_points": 147.6875,
+    "std_total_points": 12.931157865790674,
+    "is_favorite_home": true
+  },
+  "Winline Basket Cup, Group A": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 181.5,
+    "std_total_points": 18.445866745696716,
+    "is_favorite_home": true
+  },
+  "EuroBasket, Women, Qualification, Gr. G": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 158.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "EuroBasket, Women, Qualification, Gr. F": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 176.5,
+    "std_total_points": 5.5,
+    "is_favorite_home": true
+  },
+  "EuroBasket, Women, Qualification, Gr. E": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 150.0,
+    "std_total_points": 10.0,
+    "is_favorite_home": false
+  },
+  "EuroBasket, Women, Qualification, Gr. D": {
+    "samples": 2,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 135.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "EuroBasket, Women, Qualification, Gr. C": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 126.5,
+    "std_total_points": 8.5,
+    "is_favorite_home": true
+  },
+  "EuroBasket, Women, Qualification, Gr. B": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 148.0,
+    "std_total_points": 16.0,
+    "is_favorite_home": true
+  },
+  "EuroBasket, Women, Qualification, Gr. A": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 161.5,
+    "std_total_points": 3.5,
+    "is_favorite_home": true
+  },
+  "The League, \u0425\u0430\u0433\u0430\u0441 \u0428\u0438\u0433\u0448\u044d\u044d": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 165.0,
+    "std_total_points": 9.565563234854496,
+    "is_favorite_home": false
+  },
+  "Estonian-Latvian Basketball League": {
+    "samples": 36,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 169.88888888888889,
+    "std_total_points": 16.43975158263547,
+    "is_favorite_home": false
+  },
+  "Korisliiga, Women, Playoffs": {
+    "samples": 8,
+    "home_win_rate": 0.625,
+    "away_win_rate": 0.375,
+    "avg_total_points": 151.875,
+    "std_total_points": 13.513303630126869,
+    "is_favorite_home": true
+  },
+  "Liga ACB": {
+    "samples": 35,
+    "home_win_rate": 0.45714285714285713,
+    "away_win_rate": 0.5428571428571428,
+    "avg_total_points": 178.9142857142857,
+    "std_total_points": 14.809980087902943,
+    "is_favorite_home": false
+  },
+  "FSHB Superliga, K.K.M 2025-26": {
+    "samples": 20,
+    "home_win_rate": 0.55,
+    "away_win_rate": 0.45,
+    "avg_total_points": 169.3,
+    "std_total_points": 24.201446237776782,
+    "is_favorite_home": true
+  },
+  "Zweite Liga, Playoffs": {
+    "samples": 10,
+    "home_win_rate": 0.3,
+    "away_win_rate": 0.7,
+    "avg_total_points": 164.2,
+    "std_total_points": 9.558242516278815,
+    "is_favorite_home": false
+  },
+  "A1 Liga, Women": {
+    "samples": 17,
+    "home_win_rate": 0.47058823529411764,
+    "away_win_rate": 0.5294117647058824,
+    "avg_total_points": 140.11764705882354,
+    "std_total_points": 17.98326788643912,
+    "is_favorite_home": false
+  },
+  "Croatian Premier League": {
+    "samples": 30,
+    "home_win_rate": 0.7333333333333333,
+    "away_win_rate": 0.26666666666666666,
+    "avg_total_points": 164.43333333333334,
+    "std_total_points": 18.974866417330993,
+    "is_favorite_home": true
+  },
+  "N\u0151i Amat\u0151r NB 1 - R\u00e1j\u00e1tsz\u00e1s az 1-16": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 121.0,
+    "std_total_points": 14.719601443879744,
+    "is_favorite_home": false
+  },
+  "Betsafe-LKL": {
+    "samples": 20,
+    "home_win_rate": 0.55,
+    "away_win_rate": 0.45,
+    "avg_total_points": 168.8,
+    "std_total_points": 14.884891669071697,
+    "is_favorite_home": true
+  },
+  "Korisliiga, Women": {
+    "samples": 24,
+    "home_win_rate": 0.4583333333333333,
+    "away_win_rate": 0.5416666666666666,
+    "avg_total_points": 152.04166666666666,
+    "std_total_points": 19.85043905195942,
+    "is_favorite_home": false
+  },
+  "Superliga, Women": {
+    "samples": 9,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 133.11111111111111,
+    "std_total_points": 13.362006207023823,
+    "is_favorite_home": false
+  },
+  "Segunda FEB, Group East": {
+    "samples": 43,
+    "home_win_rate": 0.6511627906976745,
+    "away_win_rate": 0.3488372093023256,
+    "avg_total_points": 156.93023255813952,
+    "std_total_points": 15.911668014877765,
+    "is_favorite_home": true
+  },
+  "Segunda FEB, Group West": {
+    "samples": 40,
+    "home_win_rate": 0.675,
+    "away_win_rate": 0.325,
+    "avg_total_points": 155.975,
+    "std_total_points": 16.088019610878153,
+    "is_favorite_home": true
+  },
+  "Liga Femenina, Women, Clausura": {
+    "samples": 75,
+    "home_win_rate": 0.5333333333333333,
+    "away_win_rate": 0.4666666666666667,
+    "avg_total_points": 131.97333333333333,
+    "std_total_points": 18.552249339515562,
+    "is_favorite_home": true
+  },
+  "1. Division, Women, Relegation Playoffs": {
+    "samples": 6,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 134.16666666666666,
+    "std_total_points": 5.7566386797235145,
+    "is_favorite_home": false
+  },
+  "PBA Commissioner's Cup": {
+    "samples": 21,
+    "home_win_rate": 0.42857142857142855,
+    "away_win_rate": 0.5714285714285714,
+    "avg_total_points": 206.28571428571428,
+    "std_total_points": 23.180745000441856,
+    "is_favorite_home": false
+  },
+  "Hungary NB 1.A": {
+    "samples": 42,
+    "home_win_rate": 0.5714285714285714,
+    "away_win_rate": 0.42857142857142855,
+    "avg_total_points": 170.61904761904762,
+    "std_total_points": 19.077476598824195,
+    "is_favorite_home": true
+  },
+  "France LFB Women": {
+    "samples": 30,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 141.0,
+    "std_total_points": 16.639310883166605,
+    "is_favorite_home": false
+  },
+  "Primera FEB": {
+    "samples": 60,
+    "home_win_rate": 0.55,
+    "away_win_rate": 0.45,
+    "avg_total_points": 160.38333333333333,
+    "std_total_points": 15.08541422110186,
+    "is_favorite_home": true
+  },
+  "Lega A Basket": {
+    "samples": 23,
+    "home_win_rate": 0.5217391304347826,
+    "away_win_rate": 0.4782608695652174,
+    "avg_total_points": 174.91304347826087,
+    "std_total_points": 18.23735546112706,
+    "is_favorite_home": true
+  },
+  "Greek Women's Basketball League, Playouts": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 188.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Greek Women's Basketball League, Placement Matches 5-8": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 168.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Greek Women's Basketball League, Playoffs": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 168.33333333333334,
+    "std_total_points": 19.669491322575904,
+    "is_favorite_home": false
+  },
+  "Sparkasse Prva Liga Zeni": {
+    "samples": 33,
+    "home_win_rate": 0.5757575757575758,
+    "away_win_rate": 0.42424242424242425,
+    "avg_total_points": 135.54545454545453,
+    "std_total_points": 20.90250225573398,
+    "is_favorite_home": true
+  },
+  "WABA 2 League, 2026 WABA 2 Final-Four": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 124.0,
+    "std_total_points": 5.0,
+    "is_favorite_home": true
+  },
+  "Pro B, South": {
+    "samples": 23,
+    "home_win_rate": 0.4782608695652174,
+    "away_win_rate": 0.5217391304347826,
+    "avg_total_points": 166.6086956521739,
+    "std_total_points": 16.763674834321105,
+    "is_favorite_home": false
+  },
+  "Campeonato Nacional da 1\u00aa Divisao Feminina, 2\u00aa Fase - Grupo Manuten\u00e7\u00e3o Norte": {
+    "samples": 6,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 119.66666666666667,
+    "std_total_points": 14.624940645653536,
+    "is_favorite_home": true
+  },
+  "Campeonato Nacional da 1\u00aa Divisao Feminina, 2\u00aa Fase - Grupo Promo\u00e7\u00e3o": {
+    "samples": 8,
+    "home_win_rate": 0.375,
+    "away_win_rate": 0.625,
+    "avg_total_points": 123.125,
+    "std_total_points": 12.221267323808934,
+    "is_favorite_home": false
+  },
+  "Kvindebasketligaen , Kvartfinaler": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 133.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "\u00c9lite 2": {
+    "samples": 61,
+    "home_win_rate": 0.5737704918032787,
+    "away_win_rate": 0.4262295081967213,
+    "avg_total_points": 163.85245901639345,
+    "std_total_points": 16.917190854638214,
+    "is_favorite_home": true
+  },
+  "Rwanda Basketball League Women, Regular Season": {
+    "samples": 23,
+    "home_win_rate": 0.5217391304347826,
+    "away_win_rate": 0.4782608695652174,
+    "avg_total_points": 130.65217391304347,
+    "std_total_points": 23.041755472925715,
+    "is_favorite_home": true
+  },
+  "France Pro A": {
+    "samples": 38,
+    "home_win_rate": 0.5526315789473685,
+    "away_win_rate": 0.4473684210526316,
+    "avg_total_points": 169.78947368421052,
+    "std_total_points": 14.661366875921226,
+    "is_favorite_home": true
+  },
+  "Belize Elite Basketball League, Regular Season": {
+    "samples": 13,
+    "home_win_rate": 0.7692307692307693,
+    "away_win_rate": 0.23076923076923078,
+    "avg_total_points": 165.6153846153846,
+    "std_total_points": 17.817616440514758,
+    "is_favorite_home": true
+  },
+  "Eurocup 2K/Virtual EuroCup - Group B": {
+    "samples": 18,
+    "home_win_rate": 0.4444444444444444,
+    "away_win_rate": 0.5555555555555556,
+    "avg_total_points": 130.61111111111111,
+    "std_total_points": 16.72369871665452,
+    "is_favorite_home": false
+  },
+  "1. Division, Women, Championship Round": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 134.16666666666666,
+    "std_total_points": 16.47641411904369,
+    "is_favorite_home": false
+  },
+  "Espoirs Pro B - 2e phase - Poule B": {
+    "samples": 15,
+    "home_win_rate": 0.4666666666666667,
+    "away_win_rate": 0.5333333333333333,
+    "avg_total_points": 158.93333333333334,
+    "std_total_points": 10.623663314611502,
+    "is_favorite_home": false
+  },
+  "Espoirs Pro B - 2e phase - Poule A": {
+    "samples": 18,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 162.16666666666666,
+    "std_total_points": 20.747824517819264,
+    "is_favorite_home": true
+  },
+  "SLB, Women": {
+    "samples": 29,
+    "home_win_rate": 0.4482758620689655,
+    "away_win_rate": 0.5517241379310345,
+    "avg_total_points": 152.48275862068965,
+    "std_total_points": 17.30182507745069,
+    "is_favorite_home": false
+  },
+  "CN1 Basquetebol, 2\u00aa Fase - Grupo Promo\u00e7\u00e3o Norte": {
+    "samples": 20,
+    "home_win_rate": 0.55,
+    "away_win_rate": 0.45,
+    "avg_total_points": 144.95,
+    "std_total_points": 20.033659176495938,
+    "is_favorite_home": true
+  },
+  "CN1 Basquetebol, 2\u00aa Fase - Grupo Promo\u00e7\u00e3o Sul": {
+    "samples": 20,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 142.35,
+    "std_total_points": 17.272159679669475,
+    "is_favorite_home": true
+  },
+  "CN1 Basquetebol, 2\u00aa Fase - Grupo Manuten\u00e7\u00e3o Norte": {
+    "samples": 21,
+    "home_win_rate": 0.47619047619047616,
+    "away_win_rate": 0.5238095238095238,
+    "avg_total_points": 153.04761904761904,
+    "std_total_points": 23.550303183724655,
+    "is_favorite_home": false
+  },
+  "Elite League": {
+    "samples": 39,
+    "home_win_rate": 0.48717948717948717,
+    "away_win_rate": 0.5128205128205128,
+    "avg_total_points": 158.56410256410257,
+    "std_total_points": 18.29080597373904,
+    "is_favorite_home": false
+  },
+  "France LF2, Women, Phase 1": {
+    "samples": 41,
+    "home_win_rate": 0.6097560975609756,
+    "away_win_rate": 0.3902439024390244,
+    "avg_total_points": 139.78048780487805,
+    "std_total_points": 18.05616197113606,
+    "is_favorite_home": true
+  },
+  "Belgian Basketball 2nd Division": {
+    "samples": 46,
+    "home_win_rate": 0.6521739130434783,
+    "away_win_rate": 0.34782608695652173,
+    "avg_total_points": 166.06521739130434,
+    "std_total_points": 20.153111933518232,
+    "is_favorite_home": true
+  },
+  "BLNO": {
+    "samples": 21,
+    "home_win_rate": 0.6190476190476191,
+    "away_win_rate": 0.38095238095238093,
+    "avg_total_points": 174.52380952380952,
+    "std_total_points": 18.128165530122686,
+    "is_favorite_home": true
+  },
+  "Swedish Basketball League": {
+    "samples": 27,
+    "home_win_rate": 0.6296296296296297,
+    "away_win_rate": 0.37037037037037035,
+    "avg_total_points": 177.03703703703704,
+    "std_total_points": 19.00191312294532,
+    "is_favorite_home": true
+  },
+  "Prva RL Zapad, Group A": {
+    "samples": 17,
+    "home_win_rate": 0.6470588235294118,
+    "away_win_rate": 0.35294117647058826,
+    "avg_total_points": 155.64705882352942,
+    "std_total_points": 14.348359924602935,
+    "is_favorite_home": true
+  },
+  "A ASETH, Phase B Relegation Group": {
+    "samples": 6,
+    "home_win_rate": 0.8333333333333334,
+    "away_win_rate": 0.16666666666666666,
+    "avg_total_points": 121.0,
+    "std_total_points": 11.445523142259598,
+    "is_favorite_home": true
+  },
+  "A ESKAVDE ": {
+    "samples": 15,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 134.66666666666666,
+    "std_total_points": 15.64040351852286,
+    "is_favorite_home": true
+  },
+  "Austrian Basketball Superliga, Qualifying Round": {
+    "samples": 10,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 176.9,
+    "std_total_points": 17.896647730790257,
+    "is_favorite_home": true
+  },
+  "N\u0151i Amat\u0151r NB 1 - Feh\u00e9r csoport": {
+    "samples": 13,
+    "home_win_rate": 0.46153846153846156,
+    "away_win_rate": 0.5384615384615384,
+    "avg_total_points": 133.69230769230768,
+    "std_total_points": 17.428467496883968,
+    "is_favorite_home": false
+  },
+  "NLB, Qualifying round": {
+    "samples": 17,
+    "home_win_rate": 0.7058823529411765,
+    "away_win_rate": 0.29411764705882354,
+    "avg_total_points": 150.64705882352942,
+    "std_total_points": 13.024597437475927,
+    "is_favorite_home": true
+  },
+  "NLB, Promotion round": {
+    "samples": 21,
+    "home_win_rate": 0.5238095238095238,
+    "away_win_rate": 0.47619047619047616,
+    "avg_total_points": 149.33333333333334,
+    "std_total_points": 15.16993685309811,
+    "is_favorite_home": true
+  },
+  "Basket Liga, Women, Playout": {
+    "samples": 3,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 188.0,
+    "std_total_points": 9.626352718795768,
+    "is_favorite_home": true
+  },
+  "BBL Playoffs": {
+    "samples": 6,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 88.33333333333333,
+    "std_total_points": 10.718623460542352,
+    "is_favorite_home": true
+  },
+  "Extraliga, Women, Placement 1-4": {
+    "samples": 24,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 132.41666666666666,
+    "std_total_points": 16.522501492073033,
+    "is_favorite_home": false
+  },
+  "Extraliga, Women, Relegation Round": {
+    "samples": 8,
+    "home_win_rate": 0.625,
+    "away_win_rate": 0.375,
+    "avg_total_points": 130.125,
+    "std_total_points": 12.149459864537189,
+    "is_favorite_home": true
+  },
+  "Divisione Regionale 1 Toscana, Girone B": {
+    "samples": 35,
+    "home_win_rate": 0.6285714285714286,
+    "away_win_rate": 0.37142857142857144,
+    "avg_total_points": 145.34285714285716,
+    "std_total_points": 13.913904365557412,
+    "is_favorite_home": true
+  },
+  "Divisione Regionale 1 Toscana, Girone A": {
+    "samples": 41,
+    "home_win_rate": 0.6341463414634146,
+    "away_win_rate": 0.36585365853658536,
+    "avg_total_points": 138.390243902439,
+    "std_total_points": 19.207313201703055,
+    "is_favorite_home": true
+  },
+  "Portugal Proliga, Relegation Round": {
+    "samples": 23,
+    "home_win_rate": 0.5217391304347826,
+    "away_win_rate": 0.4782608695652174,
+    "avg_total_points": 145.56521739130434,
+    "std_total_points": 14.631193855881795,
+    "is_favorite_home": true
+  },
+  "Portugal Proliga, Championship Round": {
+    "samples": 20,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 153.45,
+    "std_total_points": 15.187083327617586,
+    "is_favorite_home": true
+  },
+  "CCAA, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 127.5,
+    "std_total_points": 13.5,
+    "is_favorite_home": false
+  },
+  "NCAA Men's Division II, Regular season": {
+    "samples": 529,
+    "home_win_rate": 0.5897920604914934,
+    "away_win_rate": 0.4102079395085066,
+    "avg_total_points": 151.09829867674858,
+    "std_total_points": 20.295123520033105,
+    "is_favorite_home": true
+  },
+  "NBL1 Central, Women": {
+    "samples": 15,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 149.0,
+    "std_total_points": 16.982343772283023,
+    "is_favorite_home": false
+  },
+  "NBL1, Central": {
+    "samples": 10,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 184.7,
+    "std_total_points": 18.47187050625897,
+    "is_favorite_home": false
+  },
+  "Great Northwest Athletic Conference, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 167.5,
+    "std_total_points": 5.5,
+    "is_favorite_home": false
+  },
+  "TBL": {
+    "samples": 38,
+    "home_win_rate": 0.5789473684210527,
+    "away_win_rate": 0.42105263157894735,
+    "avg_total_points": 163.05263157894737,
+    "std_total_points": 17.881109362177746,
+    "is_favorite_home": true
+  },
+  "Top Division Women, Regular Season": {
+    "samples": 29,
+    "home_win_rate": 0.4482758620689655,
+    "away_win_rate": 0.5517241379310345,
+    "avg_total_points": 139.3448275862069,
+    "std_total_points": 14.728054070189021,
+    "is_favorite_home": false
+  },
+  "National League 2 - Group 1": {
+    "samples": 7,
+    "home_win_rate": 0.42857142857142855,
+    "away_win_rate": 0.5714285714285714,
+    "avg_total_points": 144.42857142857142,
+    "std_total_points": 21.888399686051205,
+    "is_favorite_home": false
+  },
+  "B Ethniki - Group 3": {
+    "samples": 21,
+    "home_win_rate": 0.7619047619047619,
+    "away_win_rate": 0.23809523809523808,
+    "avg_total_points": 141.23809523809524,
+    "std_total_points": 17.52251548017106,
+    "is_favorite_home": true
+  },
+  "B Ethniki - Group 1": {
+    "samples": 18,
+    "home_win_rate": 0.5555555555555556,
+    "away_win_rate": 0.4444444444444444,
+    "avg_total_points": 153.33333333333334,
+    "std_total_points": 16.519348924485158,
+    "is_favorite_home": true
+  },
+  "Pacific West Conference, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 139.0,
+    "std_total_points": 16.0,
+    "is_favorite_home": true
+  },
+  "Serie C Unica Lazio, Girone I": {
+    "samples": 20,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 152.0,
+    "std_total_points": 18.063775906493085,
+    "is_favorite_home": true
+  },
+  "Serie C Unica Lazio, Girone H": {
+    "samples": 17,
+    "home_win_rate": 0.5294117647058824,
+    "away_win_rate": 0.47058823529411764,
+    "avg_total_points": 141.0,
+    "std_total_points": 11.109084782549926,
+    "is_favorite_home": true
+  },
+  "Serie B Interregionale, Division B": {
+    "samples": 26,
+    "home_win_rate": 0.5384615384615384,
+    "away_win_rate": 0.46153846153846156,
+    "avg_total_points": 155.53846153846155,
+    "std_total_points": 20.99309551189623,
+    "is_favorite_home": true
+  },
+  "Serie B Interregionale, Division A": {
+    "samples": 21,
+    "home_win_rate": 0.7619047619047619,
+    "away_win_rate": 0.23809523809523808,
+    "avg_total_points": 156.52380952380952,
+    "std_total_points": 18.73275472997078,
+    "is_favorite_home": true
+  },
+  "C ESKANA - Group 2": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 144.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Serie C Unica Toscana, Conference Nord - Ovest Girone C": {
+    "samples": 25,
+    "home_win_rate": 0.52,
+    "away_win_rate": 0.48,
+    "avg_total_points": 148.0,
+    "std_total_points": 14.108153670838718,
+    "is_favorite_home": true
+  },
+  "CEWL - women, Final 4": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 156.5,
+    "std_total_points": 5.123475382979799,
+    "is_favorite_home": true
+  },
+  "Liga e Par\u00eb": {
+    "samples": 24,
+    "home_win_rate": 0.5833333333333334,
+    "away_win_rate": 0.4166666666666667,
+    "avg_total_points": 171.875,
+    "std_total_points": 15.103290204455451,
+    "is_favorite_home": true
+  },
+  "NBL, Play-In": {
+    "samples": 3,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 175.66666666666666,
+    "std_total_points": 22.60285134421958,
+    "is_favorite_home": true
+  },
+  "Mountain East Conference, Playoffs": {
+    "samples": 3,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 161.33333333333334,
+    "std_total_points": 12.472191289246473,
+    "is_favorite_home": true
+  },
+  "Divisione Regionale 2 - Lazio, Girone B": {
+    "samples": 15,
+    "home_win_rate": 0.5333333333333333,
+    "away_win_rate": 0.4666666666666667,
+    "avg_total_points": 136.93333333333334,
+    "std_total_points": 17.452666144619727,
+    "is_favorite_home": true
+  },
+  "Divisione Regionale 2 - Lazio, Girone A": {
+    "samples": 17,
+    "home_win_rate": 0.7058823529411765,
+    "away_win_rate": 0.29411764705882354,
+    "avg_total_points": 121.11764705882354,
+    "std_total_points": 17.59305462204492,
+    "is_favorite_home": true
+  },
+  "Divisione Regionale 2 - Puglia, Group A": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 107.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  " 2. ko\u0161arka\u0161ke Lige Sjever": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 140.5,
+    "std_total_points": 1.5,
+    "is_favorite_home": false
+  },
+  "Kup BiH, Women": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 130.5,
+    "std_total_points": 10.5,
+    "is_favorite_home": true
+  },
+  "Azerbaijan Basketball League, A Group": {
+    "samples": 9,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 181.11111111111111,
+    "std_total_points": 15.8215355656245,
+    "is_favorite_home": false
+  },
+  "Liga Ko\u0161arka\u0161kog saveza Herceg Bosne": {
+    "samples": 16,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 160.75,
+    "std_total_points": 21.09057846527686,
+    "is_favorite_home": false
+  },
+  "Azerbaijan Basketball League, B Group": {
+    "samples": 13,
+    "home_win_rate": 0.5384615384615384,
+    "away_win_rate": 0.46153846153846156,
+    "avg_total_points": 182.46153846153845,
+    "std_total_points": 23.98273540764556,
+    "is_favorite_home": true
+  },
+  "Great Midwest Athletic Conference, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 144.5,
+    "std_total_points": 19.5,
+    "is_favorite_home": true
+  },
+  "PGKL reguliarusis sezonas": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 139.66666666666666,
+    "std_total_points": 11.025223605694151,
+    "is_favorite_home": false
+  },
+  "Conference Carolinas, Playoffs": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 153.0,
+    "std_total_points": 9.273618495495704,
+    "is_favorite_home": true
+  },
+  "Serie B Interregionale, Division D": {
+    "samples": 19,
+    "home_win_rate": 0.8947368421052632,
+    "away_win_rate": 0.10526315789473684,
+    "avg_total_points": 154.42105263157896,
+    "std_total_points": 20.62016332947128,
+    "is_favorite_home": true
+  },
+  "Princ Caffe Superliga": {
+    "samples": 23,
+    "home_win_rate": 0.4782608695652174,
+    "away_win_rate": 0.5217391304347826,
+    "avg_total_points": 158.3913043478261,
+    "std_total_points": 13.999189822628349,
+    "is_favorite_home": false
+  },
+  "Prva RL Istok": {
+    "samples": 18,
+    "home_win_rate": 0.4444444444444444,
+    "away_win_rate": 0.5555555555555556,
+    "avg_total_points": 159.72222222222223,
+    "std_total_points": 16.257666757412075,
+    "is_favorite_home": false
+  },
+  "Saku I liiga": {
+    "samples": 34,
+    "home_win_rate": 0.6176470588235294,
+    "away_win_rate": 0.38235294117647056,
+    "avg_total_points": 160.52941176470588,
+    "std_total_points": 21.457530275787384,
+    "is_favorite_home": true
+  },
+  "2. Mu\u0161ka Liga": {
+    "samples": 37,
+    "home_win_rate": 0.6486486486486487,
+    "away_win_rate": 0.35135135135135137,
+    "avg_total_points": 165.51351351351352,
+    "std_total_points": 15.990912320577962,
+    "is_favorite_home": true
+  },
+  "Estonian National Women's Basketball League": {
+    "samples": 18,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 129.11111111111111,
+    "std_total_points": 15.761728926911287,
+    "is_favorite_home": false
+  },
+  "Serie B Interregionale, Division C": {
+    "samples": 22,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 151.54545454545453,
+    "std_total_points": 21.66422957262055,
+    "is_favorite_home": false
+  },
+  "National League": {
+    "samples": 10,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 154.2,
+    "std_total_points": 14.358272876638054,
+    "is_favorite_home": false
+  },
+  "Chinese Taipei TPBL": {
+    "samples": 12,
+    "home_win_rate": 0.5833333333333334,
+    "away_win_rate": 0.4166666666666667,
+    "avg_total_points": 197.16666666666666,
+    "std_total_points": 16.856419812311536,
+    "is_favorite_home": true
+  },
+  "Stoiximan GBL": {
+    "samples": 23,
+    "home_win_rate": 0.5217391304347826,
+    "away_win_rate": 0.4782608695652174,
+    "avg_total_points": 165.7391304347826,
+    "std_total_points": 18.345044091582807,
+    "is_favorite_home": true
+  },
+  "A Dodekanisou - Rhodes Groups": {
+    "samples": 5,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 148.8,
+    "std_total_points": 8.611620056644394,
+    "is_favorite_home": false
+  },
+  "A Dodekanisou - Islands Group": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 152.25,
+    "std_total_points": 17.541023345289748,
+    "is_favorite_home": true
+  },
+  "Liga de Baloncesto Puertorriquena , Final Nacional": {
+    "samples": 3,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 142.33333333333334,
+    "std_total_points": 16.110727964792765,
+    "is_favorite_home": true
+  },
+  "Basket World League": {
+    "samples": 26,
+    "home_win_rate": 0.4230769230769231,
+    "away_win_rate": 0.5769230769230769,
+    "avg_total_points": 181.80769230769232,
+    "std_total_points": 17.560925222622988,
+    "is_favorite_home": false
+  },
+  "Tre\u0107a mu\u0161ka liga - Centar": {
+    "samples": 14,
+    "home_win_rate": 0.7142857142857143,
+    "away_win_rate": 0.2857142857142857,
+    "avg_total_points": 146.64285714285714,
+    "std_total_points": 15.650682973947827,
+    "is_favorite_home": true
+  },
+  "Uruguay LUB, Relegation Round": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 151.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "FBU Superleague": {
+    "samples": 29,
+    "home_win_rate": 0.6551724137931034,
+    "away_win_rate": 0.3448275862068966,
+    "avg_total_points": 155.82758620689654,
+    "std_total_points": 15.258844728532528,
+    "is_favorite_home": true
+  },
+  "Divisione Regionale 2 - Lazio, Girone D": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 121.33333333333333,
+    "std_total_points": 8.93805845186128,
+    "is_favorite_home": false
+  },
+  "Druga mu\u0161ka liga - Sjever": {
+    "samples": 18,
+    "home_win_rate": 0.5555555555555556,
+    "away_win_rate": 0.4444444444444444,
+    "avg_total_points": 158.44444444444446,
+    "std_total_points": 17.160103024238204,
+    "is_favorite_home": true
+  },
+  "Nationale 1, Promotion Round": {
+    "samples": 31,
+    "home_win_rate": 0.7096774193548387,
+    "away_win_rate": 0.2903225806451613,
+    "avg_total_points": 158.70967741935485,
+    "std_total_points": 16.613623535903177,
+    "is_favorite_home": true
+  },
+  "Enovos League, Regular Season": {
+    "samples": 19,
+    "home_win_rate": 0.5263157894736842,
+    "away_win_rate": 0.47368421052631576,
+    "avg_total_points": 168.6315789473684,
+    "std_total_points": 16.89662229190634,
+    "is_favorite_home": true
+  },
+  "Swedish Basketball League Women": {
+    "samples": 38,
+    "home_win_rate": 0.4473684210526316,
+    "away_win_rate": 0.5526315789473685,
+    "avg_total_points": 151.21052631578948,
+    "std_total_points": 18.073181490724757,
+    "is_favorite_home": false
+  },
+  "Prva liga Republike Srpske": {
+    "samples": 17,
+    "home_win_rate": 0.5294117647058824,
+    "away_win_rate": 0.47058823529411764,
+    "avg_total_points": 155.7058823529412,
+    "std_total_points": 23.4840739673466,
+    "is_favorite_home": true
+  },
+  "Champions League Americas, Knockout stage": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 195.5,
+    "std_total_points": 4.5,
+    "is_favorite_home": false
+  },
+  "Meridianbet KLS": {
+    "samples": 54,
+    "home_win_rate": 0.6296296296296297,
+    "away_win_rate": 0.37037037037037035,
+    "avg_total_points": 175.25925925925927,
+    "std_total_points": 19.99461518730331,
+    "is_favorite_home": true
+  },
+  "Erkekler B\u00f6lgesel Basketbol Ligi, E Grubu": {
+    "samples": 7,
+    "home_win_rate": 0.7142857142857143,
+    "away_win_rate": 0.2857142857142857,
+    "avg_total_points": 142.85714285714286,
+    "std_total_points": 14.237060003772564,
+    "is_favorite_home": true
+  },
+  "Erkekler B\u00f6lgesel Basketbol Ligi, D Grubu": {
+    "samples": 8,
+    "home_win_rate": 0.875,
+    "away_win_rate": 0.125,
+    "avg_total_points": 153.875,
+    "std_total_points": 11.117975310280196,
+    "is_favorite_home": true
+  },
+  "Erkekler B\u00f6lgesel Basketbol Ligi, B Grubu": {
+    "samples": 9,
+    "home_win_rate": 0.8888888888888888,
+    "away_win_rate": 0.1111111111111111,
+    "avg_total_points": 138.0,
+    "std_total_points": 12.409673645990857,
+    "is_favorite_home": true
+  },
+  "1st Division Women": {
+    "samples": 15,
+    "home_win_rate": 0.7333333333333333,
+    "away_win_rate": 0.26666666666666666,
+    "avg_total_points": 154.06666666666666,
+    "std_total_points": 23.155896777183035,
+    "is_favorite_home": true
+  },
+  "Nostra.lt-RKL Division B, Reguliarusis sezonas": {
+    "samples": 71,
+    "home_win_rate": 0.5070422535211268,
+    "away_win_rate": 0.49295774647887325,
+    "avg_total_points": 163.33802816901408,
+    "std_total_points": 19.90183207786521,
+    "is_favorite_home": true
+  },
+  "Superleague Women": {
+    "samples": 13,
+    "home_win_rate": 0.5384615384615384,
+    "away_win_rate": 0.46153846153846156,
+    "avg_total_points": 136.0,
+    "std_total_points": 14.153010008746985,
+    "is_favorite_home": true
+  },
+  "1st Division Men": {
+    "samples": 23,
+    "home_win_rate": 0.6086956521739131,
+    "away_win_rate": 0.391304347826087,
+    "avg_total_points": 179.34782608695653,
+    "std_total_points": 16.271096528219104,
+    "is_favorite_home": true
+  },
+  "Slovenian Second Basketball League, Regular Season": {
+    "samples": 25,
+    "home_win_rate": 0.44,
+    "away_win_rate": 0.56,
+    "avg_total_points": 162.32,
+    "std_total_points": 12.347372190065384,
+    "is_favorite_home": false
+  },
+  "Portugal LBP": {
+    "samples": 30,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 175.26666666666668,
+    "std_total_points": 16.61110739502002,
+    "is_favorite_home": false
+  },
+  "T\u00fcrkiye Kad\u0131nlar Basketbol Ligi": {
+    "samples": 22,
+    "home_win_rate": 0.5454545454545454,
+    "away_win_rate": 0.45454545454545453,
+    "avg_total_points": 142.27272727272728,
+    "std_total_points": 17.95747962215648,
+    "is_favorite_home": true
+  },
+  "Swiss Basketball League Women": {
+    "samples": 23,
+    "home_win_rate": 0.6521739130434783,
+    "away_win_rate": 0.34782608695652173,
+    "avg_total_points": 147.2173913043478,
+    "std_total_points": 18.299338362330342,
+    "is_favorite_home": true
+  },
+  "Turkish Basketball Super League": {
+    "samples": 36,
+    "home_win_rate": 0.5833333333333334,
+    "away_win_rate": 0.3888888888888889,
+    "avg_total_points": 169.83333333333334,
+    "std_total_points": 17.21836874451881,
+    "is_favorite_home": true
+  },
+  "1. Liga, Relegation Round": {
+    "samples": 21,
+    "home_win_rate": 0.2857142857142857,
+    "away_win_rate": 0.7142857142857143,
+    "avg_total_points": 167.57142857142858,
+    "std_total_points": 16.66353712114433,
+    "is_favorite_home": false
+  },
+  "1. Liga, Qualifying Round": {
+    "samples": 9,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 157.77777777777777,
+    "std_total_points": 17.067042819928822,
+    "is_favorite_home": true
+  },
+  "1. Liga, Promotion Round": {
+    "samples": 11,
+    "home_win_rate": 0.5454545454545454,
+    "away_win_rate": 0.45454545454545453,
+    "avg_total_points": 159.27272727272728,
+    "std_total_points": 16.45429432254366,
+    "is_favorite_home": true
+  },
+  "Korisliiga, Qualifying round": {
+    "samples": 18,
+    "home_win_rate": 0.6111111111111112,
+    "away_win_rate": 0.3888888888888889,
+    "avg_total_points": 171.94444444444446,
+    "std_total_points": 20.062325727099708,
+    "is_favorite_home": true
+  },
+  "BLNO, Women": {
+    "samples": 11,
+    "home_win_rate": 0.36363636363636365,
+    "away_win_rate": 0.6363636363636364,
+    "avg_total_points": 130.54545454545453,
+    "std_total_points": 14.176572456400391,
+    "is_favorite_home": false
+  },
+  "NBL": {
+    "samples": 52,
+    "home_win_rate": 0.5576923076923077,
+    "away_win_rate": 0.4423076923076923,
+    "avg_total_points": 188.65384615384616,
+    "std_total_points": 19.22526844404421,
+    "is_favorite_home": true
+  },
+  "Prva Liga": {
+    "samples": 44,
+    "home_win_rate": 0.6363636363636364,
+    "away_win_rate": 0.36363636363636365,
+    "avg_total_points": 162.5,
+    "std_total_points": 19.25368913882598,
+    "is_favorite_home": true
+  },
+  "TB2L, Group B": {
+    "samples": 13,
+    "home_win_rate": 0.5384615384615384,
+    "away_win_rate": 0.38461538461538464,
+    "avg_total_points": 158.23076923076923,
+    "std_total_points": 20.092684647188413,
+    "is_favorite_home": true
+  },
+  "TB2L, Group A": {
+    "samples": 12,
+    "home_win_rate": 0.5833333333333334,
+    "away_win_rate": 0.4166666666666667,
+    "avg_total_points": 146.5,
+    "std_total_points": 18.710513978331363,
+    "is_favorite_home": true
+  },
+  "NBL, West": {
+    "samples": 30,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 171.7,
+    "std_total_points": 25.02152406762359,
+    "is_favorite_home": false
+  },
+  "NBL, East": {
+    "samples": 33,
+    "home_win_rate": 0.5454545454545454,
+    "away_win_rate": 0.45454545454545453,
+    "avg_total_points": 174.12121212121212,
+    "std_total_points": 19.189260847257653,
+    "is_favorite_home": true
+  },
+  "B1 League": {
+    "samples": 124,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 163.43548387096774,
+    "std_total_points": 19.03784089796402,
+    "is_favorite_home": false
+  },
+  "Cyprus Basketball Division A": {
+    "samples": 14,
+    "home_win_rate": 0.5714285714285714,
+    "away_win_rate": 0.42857142857142855,
+    "avg_total_points": 168.35714285714286,
+    "std_total_points": 16.197914957783667,
+    "is_favorite_home": true
+  },
+  "1. Division": {
+    "samples": 29,
+    "home_win_rate": 0.5172413793103449,
+    "away_win_rate": 0.4827586206896552,
+    "avg_total_points": 161.31034482758622,
+    "std_total_points": 21.98448269101274,
+    "is_favorite_home": true
+  },
+  "Liga Femenina": {
+    "samples": 41,
+    "home_win_rate": 0.4878048780487805,
+    "away_win_rate": 0.5121951219512195,
+    "avg_total_points": 147.02439024390245,
+    "std_total_points": 18.012851516352118,
+    "is_favorite_home": false
+  },
+  "Liga Sigal U20, Liga Sigal Meshkuj": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 136.66666666666666,
+    "std_total_points": 3.39934634239519,
+    "is_favorite_home": true
+  },
+  "Liga Unike - Group A": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 172.33333333333334,
+    "std_total_points": 4.496912521077347,
+    "is_favorite_home": false
+  },
+  "Egyptian Basketball Super League, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 137.5,
+    "std_total_points": 12.5,
+    "is_favorite_home": true
+  },
+  "Sunshine State Conference, Playoffs": {
+    "samples": 3,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 182.33333333333334,
+    "std_total_points": 9.843215373488935,
+    "is_favorite_home": true
+  },
+  "\u0160ibenska Rekreativna Ko\u0161arka\u0161ka Liga": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 165.5,
+    "std_total_points": 24.469368606484313,
+    "is_favorite_home": true
+  },
+  "Great Lakes Valley Conference, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 169.5,
+    "std_total_points": 23.5,
+    "is_favorite_home": false
+  },
+  "Lone Star Conference, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 156.5,
+    "std_total_points": 0.5,
+    "is_favorite_home": true
+  },
+  "A1": {
+    "samples": 22,
+    "home_win_rate": 0.4090909090909091,
+    "away_win_rate": 0.5909090909090909,
+    "avg_total_points": 153.77272727272728,
+    "std_total_points": 16.076328782014816,
+    "is_favorite_home": false
+  },
+  "Kad\u0131nlar B\u00f6lgesel Basketbol Ligi, Playoff Ma\u00e7lar\u0131": {
+    "samples": 24,
+    "home_win_rate": 0.4583333333333333,
+    "away_win_rate": 0.5416666666666666,
+    "avg_total_points": 131.875,
+    "std_total_points": 18.065419314258943,
+    "is_favorite_home": false
+  },
+  "National A League, Super Playoffs": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 159.5,
+    "std_total_points": 11.5,
+    "is_favorite_home": false
+  },
+  "Basketligaen, Championship round": {
+    "samples": 7,
+    "home_win_rate": 0.8571428571428571,
+    "away_win_rate": 0.14285714285714285,
+    "avg_total_points": 173.71428571428572,
+    "std_total_points": 21.63142083514023,
+    "is_favorite_home": true
+  },
+  "Libyan Basketball League, West Region - Group 2": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 196.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Premier League, Women, Qualifying round": {
+    "samples": 15,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 137.06666666666666,
+    "std_total_points": 12.577581466862203,
+    "is_favorite_home": true
+  },
+  "NKL, Relegation Round": {
+    "samples": 24,
+    "home_win_rate": 0.5833333333333334,
+    "away_win_rate": 0.4166666666666667,
+    "avg_total_points": 164.20833333333334,
+    "std_total_points": 18.101517355060476,
+    "is_favorite_home": true
+  },
+  "NKL, Championship Round": {
+    "samples": 16,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 166.3125,
+    "std_total_points": 15.75880210390371,
+    "is_favorite_home": true
+  },
+  "A ASETH, Phase B Championship Group": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 136.6,
+    "std_total_points": 12.273548794053006,
+    "is_favorite_home": true
+  },
+  "A league , VIII Tour": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 180.33333333333334,
+    "std_total_points": 1.699673171197595,
+    "is_favorite_home": true
+  },
+  "A Dodekanisou U18, Islands Group": {
+    "samples": 9,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 118.11111111111111,
+    "std_total_points": 26.27396025829226,
+    "is_favorite_home": true
+  },
+  "I A ZCKL, Women": {
+    "samples": 8,
+    "home_win_rate": 0.625,
+    "away_win_rate": 0.375,
+    "avg_total_points": 154.5,
+    "std_total_points": 23.50531854708632,
+    "is_favorite_home": true
+  },
+  "Serie B Interregionale, Division F": {
+    "samples": 15,
+    "home_win_rate": 0.7333333333333333,
+    "away_win_rate": 0.26666666666666666,
+    "avg_total_points": 152.93333333333334,
+    "std_total_points": 15.320864495480954,
+    "is_favorite_home": true
+  },
+  "1. Division B": {
+    "samples": 27,
+    "home_win_rate": 0.5555555555555556,
+    "away_win_rate": 0.4444444444444444,
+    "avg_total_points": 175.88888888888889,
+    "std_total_points": 22.32642236907806,
+    "is_favorite_home": true
+  },
+  "ABA League 2": {
+    "samples": 15,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 172.93333333333334,
+    "std_total_points": 20.576577838784456,
+    "is_favorite_home": false
+  },
+  "EuroCup Regular Season": {
+    "samples": 14,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 124.42857142857143,
+    "std_total_points": 16.038855880616413,
+    "is_favorite_home": false
+  },
+  "Northeast Ten, Playoffs": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 150.0,
+    "std_total_points": 29.13417237540823,
+    "is_favorite_home": true
+  },
+  "Unrivaled, Women, Playoffs": {
+    "samples": 5,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 144.8,
+    "std_total_points": 13.934130758680285,
+    "is_favorite_home": false
+  },
+  "Peach Belt Conference, Playoffs": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 153.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "PSAC, Playoffs": {
+    "samples": 7,
+    "home_win_rate": 0.8571428571428571,
+    "away_win_rate": 0.14285714285714285,
+    "avg_total_points": 155.0,
+    "std_total_points": 13.596217961519404,
+    "is_favorite_home": true
+  },
+  "Extraliga, Women, Placement 5-8": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 124.2,
+    "std_total_points": 13.555810562264433,
+    "is_favorite_home": true
+  },
+  "1. Liga, Playoffs": {
+    "samples": 6,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 168.33333333333334,
+    "std_total_points": 12.944325225965066,
+    "is_favorite_home": false
+  },
+  "Swedish Basketball League Women, Playoffs": {
+    "samples": 9,
+    "home_win_rate": 0.5555555555555556,
+    "away_win_rate": 0.4444444444444444,
+    "avg_total_points": 156.44444444444446,
+    "std_total_points": 16.680734803366633,
+    "is_favorite_home": true
+  },
+  "1. SKL, Women": {
+    "samples": 16,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 132.8125,
+    "std_total_points": 9.001518969040726,
+    "is_favorite_home": true
+  },
+  "SIAC, Playoffs": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 123.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "A1 ESKAH": {
+    "samples": 14,
+    "home_win_rate": 0.6428571428571429,
+    "away_win_rate": 0.35714285714285715,
+    "avg_total_points": 132.71428571428572,
+    "std_total_points": 16.93022897249841,
+    "is_favorite_home": true
+  },
+  "French Basketball Cup": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 155.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Premier League, Women, Championship round": {
+    "samples": 14,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 150.64285714285714,
+    "std_total_points": 18.15255646245038,
+    "is_favorite_home": false
+  },
+  "EuroCup, Women, Playoffs": {
+    "samples": 14,
+    "home_win_rate": 0.42857142857142855,
+    "away_win_rate": 0.5714285714285714,
+    "avg_total_points": 144.78571428571428,
+    "std_total_points": 16.575276646812487,
+    "is_favorite_home": false
+  },
+  "WABA Liga, Women, Playoffs": {
+    "samples": 5,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 141.6,
+    "std_total_points": 9.00222194794152,
+    "is_favorite_home": false
+  },
+  "Erkekler B\u00f6lgesel Basketbol Ligi, C Grubu": {
+    "samples": 8,
+    "home_win_rate": 0.625,
+    "away_win_rate": 0.375,
+    "avg_total_points": 150.375,
+    "std_total_points": 17.6134714068522,
+    "is_favorite_home": true
+  },
+  "Erkekler B\u00f6lgesel Basketbol Ligi, A Grubu": {
+    "samples": 7,
+    "home_win_rate": 0.42857142857142855,
+    "away_win_rate": 0.5714285714285714,
+    "avg_total_points": 133.57142857142858,
+    "std_total_points": 9.514757603055264,
+    "is_favorite_home": false
+  },
+  "NCAA, Women": {
+    "samples": 5,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 106.0,
+    "std_total_points": 8.17312669668102,
+    "is_favorite_home": false
+  },
+  "A1 Women": {
+    "samples": 25,
+    "home_win_rate": 0.56,
+    "away_win_rate": 0.44,
+    "avg_total_points": 138.64,
+    "std_total_points": 16.096906535107916,
+    "is_favorite_home": true
+  },
+  "Northern Sun Intercollegiate Conference, Playoffs": {
+    "samples": 9,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 150.0,
+    "std_total_points": 13.695092389449425,
+    "is_favorite_home": true
+  },
+  "Liga Unike Femrat ": {
+    "samples": 9,
+    "home_win_rate": 0.5555555555555556,
+    "away_win_rate": 0.4444444444444444,
+    "avg_total_points": 150.77777777777777,
+    "std_total_points": 29.321125405784283,
+    "is_favorite_home": true
+  },
+  "Rocky Mountain Athletic Conference, Playoffs": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 152.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "CACC, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 141.5,
+    "std_total_points": 17.5,
+    "is_favorite_home": false
+  },
+  "Euroleague Women, Play-In": {
+    "samples": 10,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 138.5,
+    "std_total_points": 15.021651041080672,
+    "is_favorite_home": true
+  },
+  "Campeonato Universit\u00e1rio de Lisboa 2\u00baDivis\u00e3o": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 96.0,
+    "std_total_points": 18.734993995195193,
+    "is_favorite_home": false
+  },
+  "1st Division Men, \u00darslitakeppni": {
+    "samples": 9,
+    "home_win_rate": 0.5555555555555556,
+    "away_win_rate": 0.4444444444444444,
+    "avg_total_points": 178.88888888888889,
+    "std_total_points": 15.088217952682628,
+    "is_favorite_home": true
+  },
+  "Gulf South Conference, Playoffs": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 205.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "EuroBasket, Pre-Qualifiers Group A": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 156.0,
+    "std_total_points": 11.597413504743201,
+    "is_favorite_home": false
+  },
+  "EuroBasket, Pre-Qualifiers Group C": {
+    "samples": 2,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 164.5,
+    "std_total_points": 2.5,
+    "is_favorite_home": false
+  },
+  "EuroBasket, Pre-Qualifiers Group B": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 161.5,
+    "std_total_points": 18.5,
+    "is_favorite_home": false
+  },
+  "FIBA World Cup, Americas Qualifiers, Rd1, Group D": {
+    "samples": 4,
+    "home_win_rate": 0.25,
+    "away_win_rate": 0.75,
+    "avg_total_points": 149.0,
+    "std_total_points": 27.027763503479157,
+    "is_favorite_home": false
+  },
+  "FIBA World Cup, Americas Qualifiers, Rd1, Group C": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 163.75,
+    "std_total_points": 14.600941750448838,
+    "is_favorite_home": false
+  },
+  "FIBA World Cup, European Qualifiers, Group C": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 158.75,
+    "std_total_points": 13.516193990913271,
+    "is_favorite_home": false
+  },
+  "FIBA World Cup, European Qualifiers, Group B": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 163.5,
+    "std_total_points": 26.462237244798484,
+    "is_favorite_home": false
+  },
+  "FIBA World Cup, European Qualifiers, Group A": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 150.75,
+    "std_total_points": 6.456585785072479,
+    "is_favorite_home": false
+  },
+  "FIBA World Cup, European Qualifiers, Group D": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 165.25,
+    "std_total_points": 11.755317945508747,
+    "is_favorite_home": true
+  },
+  "N\u0151i Amat\u0151r NB 1 - Z\u00f6ld csoport": {
+    "samples": 15,
+    "home_win_rate": 0.26666666666666666,
+    "away_win_rate": 0.7333333333333333,
+    "avg_total_points": 121.06666666666666,
+    "std_total_points": 11.456972646481365,
+    "is_favorite_home": false
+  },
+  "Prvenstvo Hrvatske za juniorke, Zavr\u0161ni turnir": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 125.5,
+    "std_total_points": 16.859715300087366,
+    "is_favorite_home": false
+  },
+  "ESportsBattle Sofia Playoffs": {
+    "samples": 6,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 125.16666666666667,
+    "std_total_points": 22.62311993416371,
+    "is_favorite_home": true
+  },
+  "Euroleague 2k, First Round Knockout": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 55.5,
+    "std_total_points": 1.5,
+    "is_favorite_home": true
+  },
+  "NBL-United States Commissioners Cup, 2k26 Commissioners Cup": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 206.66666666666666,
+    "std_total_points": 26.849374087469695,
+    "is_favorite_home": false
+  },
+  "National League 2 - Group 2": {
+    "samples": 7,
+    "home_win_rate": 0.7142857142857143,
+    "away_win_rate": 0.2857142857142857,
+    "avg_total_points": 153.42857142857142,
+    "std_total_points": 11.146519544646377,
+    "is_favorite_home": true
+  },
+  "SBL / TBL Interleague": {
+    "samples": 12,
+    "home_win_rate": 0.8333333333333334,
+    "away_win_rate": 0.16666666666666666,
+    "avg_total_points": 215.33333333333334,
+    "std_total_points": 15.309764494886553,
+    "is_favorite_home": true
+  },
+  "1. Division, Women, Qualifying Round": {
+    "samples": 4,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 122.0,
+    "std_total_points": 11.640446726822816,
+    "is_favorite_home": true
+  },
+  "EYBL U14, Group I": {
+    "samples": 15,
+    "home_win_rate": 0.5333333333333333,
+    "away_win_rate": 0.4666666666666667,
+    "avg_total_points": 149.66666666666666,
+    "std_total_points": 23.685907671487325,
+    "is_favorite_home": true
+  },
+  "Zimsko Ko\u0161arka\u0161ko Prvenstvo \u010cakovec": {
+    "samples": 15,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 118.66666666666667,
+    "std_total_points": 17.68866554856213,
+    "is_favorite_home": true
+  },
+  "Copa Baixada, Playoff": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 138.5,
+    "std_total_points": 24.5,
+    "is_favorite_home": true
+  },
+  "Kvindebasketligaen , Grundspil": {
+    "samples": 12,
+    "home_win_rate": 0.5833333333333334,
+    "away_win_rate": 0.4166666666666667,
+    "avg_total_points": 132.91666666666666,
+    "std_total_points": 20.31607874456967,
+    "is_favorite_home": true
+  },
+  "WABA 2 League, Regular Season": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 125.0,
+    "std_total_points": 8.336666000266533,
+    "is_favorite_home": true
+  },
+  "France Women's Basketball Cup": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 143.0,
+    "std_total_points": 1.0,
+    "is_favorite_home": false
+  },
+  "B ESKAH - Group 1": {
+    "samples": 10,
+    "home_win_rate": 0.7,
+    "away_win_rate": 0.3,
+    "avg_total_points": 116.5,
+    "std_total_points": 19.121976885249076,
+    "is_favorite_home": true
+  },
+  "WBBL, Women": {
+    "samples": 12,
+    "home_win_rate": 0.5833333333333334,
+    "away_win_rate": 0.4166666666666667,
+    "avg_total_points": 138.33333333333334,
+    "std_total_points": 16.177831196493003,
+    "is_favorite_home": true
+  },
+  "National League 2 - Group 5": {
+    "samples": 5,
+    "home_win_rate": 0.8,
+    "away_win_rate": 0.2,
+    "avg_total_points": 138.4,
+    "std_total_points": 3.3823069050575527,
+    "is_favorite_home": true
+  },
+  "National League 2 - Group 4": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 164.0,
+    "std_total_points": 11.916375287812984,
+    "is_favorite_home": true
+  },
+  "National League 2 - Group 3": {
+    "samples": 6,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 140.0,
+    "std_total_points": 15.989579940281942,
+    "is_favorite_home": true
+  },
+  "Divisione Regionale 2 - Puglia, Group B": {
+    "samples": 8,
+    "home_win_rate": 0.625,
+    "away_win_rate": 0.375,
+    "avg_total_points": 120.875,
+    "std_total_points": 10.647035972513665,
+    "is_favorite_home": true
+  },
+  "2. ZLS, Women": {
+    "samples": 19,
+    "home_win_rate": 0.5263157894736842,
+    "away_win_rate": 0.47368421052631576,
+    "avg_total_points": 137.89473684210526,
+    "std_total_points": 16.773709807917317,
+    "is_favorite_home": true
+  },
+  "FIBA World Cup, Americas Qualifiers, Rd1, Group B": {
+    "samples": 4,
+    "home_win_rate": 0.25,
+    "away_win_rate": 0.75,
+    "avg_total_points": 172.75,
+    "std_total_points": 21.614520582238228,
+    "is_favorite_home": false
+  },
+  "FIBA World Cup, Americas Qualifiers, Rd1, Group A": {
+    "samples": 4,
+    "home_win_rate": 0.25,
+    "away_win_rate": 0.75,
+    "avg_total_points": 173.75,
+    "std_total_points": 23.29565410114084,
+    "is_favorite_home": false
+  },
+  "Portugal LFB Women": {
+    "samples": 20,
+    "home_win_rate": 0.55,
+    "away_win_rate": 0.45,
+    "avg_total_points": 140.5,
+    "std_total_points": 14.437797615980077,
+    "is_favorite_home": true
+  },
+  "FIBA World Cup, European Qualifiers, Group G": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 153.0,
+    "std_total_points": 14.966629547095765,
+    "is_favorite_home": false
+  },
+  "FIBA World Cup, European Qualifiers, Group F": {
+    "samples": 4,
+    "home_win_rate": 0.25,
+    "away_win_rate": 0.75,
+    "avg_total_points": 164.25,
+    "std_total_points": 8.1967981553775,
+    "is_favorite_home": false
+  },
+  "FIBA World Cup, European Qualifiers, Group E": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 161.5,
+    "std_total_points": 19.397164741270824,
+    "is_favorite_home": true
+  },
+  "FIBA World Cup, European Qualifiers, Group H": {
+    "samples": 4,
+    "home_win_rate": 0.25,
+    "away_win_rate": 0.75,
+    "avg_total_points": 160.25,
+    "std_total_points": 8.257572282456872,
+    "is_favorite_home": false
+  },
+  "Chile LNB": {
+    "samples": 15,
+    "home_win_rate": 0.5333333333333333,
+    "away_win_rate": 0.4666666666666667,
+    "avg_total_points": 162.4,
+    "std_total_points": 12.284407460950924,
+    "is_favorite_home": true
+  },
+  "Basket Liga, Women": {
+    "samples": 29,
+    "home_win_rate": 0.6896551724137931,
+    "away_win_rate": 0.3103448275862069,
+    "avg_total_points": 152.75862068965517,
+    "std_total_points": 14.349468745215509,
+    "is_favorite_home": true
+  },
+  "Greek Women's Basketball League": {
+    "samples": 19,
+    "home_win_rate": 0.47368421052631576,
+    "away_win_rate": 0.5263157894736842,
+    "avg_total_points": 157.26315789473685,
+    "std_total_points": 15.011722104875796,
+    "is_favorite_home": false
+  },
+  "FIBA World Cup, African Qualifiers, Group D": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 155.83333333333334,
+    "std_total_points": 6.229410530343586,
+    "is_favorite_home": false
+  },
+  "FIBA World Cup, African Qualifiers, Group B": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 160.0,
+    "std_total_points": 14.11854572303158,
+    "is_favorite_home": false
+  },
+  "J\u016brmalas \u010cempion\u0101ts": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 170.5,
+    "std_total_points": 22.51480994071828,
+    "is_favorite_home": false
+  },
+  "A1 Liga, A1 LIGA W": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 114.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Northeast Conference, Playoffs": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 143.33333333333334,
+    "std_total_points": 35.64952859280034,
+    "is_favorite_home": true
+  },
+  "EYBL U20, Group A": {
+    "samples": 22,
+    "home_win_rate": 0.6363636363636364,
+    "away_win_rate": 0.36363636363636365,
+    "avg_total_points": 156.63636363636363,
+    "std_total_points": 22.03828374472983,
+    "is_favorite_home": true
+  },
+  "EYBL U14, EYBL U14": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 134.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "LIKAR liga": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 130.0,
+    "std_total_points": 7.788880963698615,
+    "is_favorite_home": false
+  },
+  "WNBL, Playoffs": {
+    "samples": 6,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 167.33333333333334,
+    "std_total_points": 21.226293966577295,
+    "is_favorite_home": true
+  },
+  "Women First Division, Aller - Retour": {
+    "samples": 32,
+    "home_win_rate": 0.46875,
+    "away_win_rate": 0.53125,
+    "avg_total_points": 144.28125,
+    "std_total_points": 20.81651143773855,
+    "is_favorite_home": false
+  },
+  "A league , VII Tour": {
+    "samples": 3,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 165.0,
+    "std_total_points": 8.04155872120988,
+    "is_favorite_home": false
+  },
+  "Turkey KBSL, Women": {
+    "samples": 12,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 147.83333333333334,
+    "std_total_points": 41.04841315108566,
+    "is_favorite_home": false
+  },
+  "NCAA": {
+    "samples": 385,
+    "home_win_rate": 0.5948051948051948,
+    "away_win_rate": 0.4051948051948052,
+    "avg_total_points": 155.02337662337663,
+    "std_total_points": 22.10604839430606,
+    "is_favorite_home": true
+  },
+  "NCAA Men's Division III, Regular season": {
+    "samples": 300,
+    "home_win_rate": 0.5633333333333334,
+    "away_win_rate": 0.43666666666666665,
+    "avg_total_points": 152.42666666666668,
+    "std_total_points": 21.84257209111499,
+    "is_favorite_home": true
+  },
+  "NBL1 East, Women": {
+    "samples": 20,
+    "home_win_rate": 0.45,
+    "away_win_rate": 0.55,
+    "avg_total_points": 141.75,
+    "std_total_points": 18.3653886427704,
+    "is_favorite_home": false
+  },
+  "Big V": {
+    "samples": 10,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 183.8,
+    "std_total_points": 16.880758276807352,
+    "is_favorite_home": false
+  },
+  "NBL1, East": {
+    "samples": 22,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 165.3181818181818,
+    "std_total_points": 17.06507961155647,
+    "is_favorite_home": false
+  },
+  "NBL1, South": {
+    "samples": 22,
+    "home_win_rate": 0.6363636363636364,
+    "away_win_rate": 0.36363636363636365,
+    "avg_total_points": 179.13636363636363,
+    "std_total_points": 19.732979903394433,
+    "is_favorite_home": true
+  },
+  "NBL1 South, Women": {
+    "samples": 24,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 163.08333333333334,
+    "std_total_points": 11.525033140468139,
+    "is_favorite_home": false
+  },
+  "2nd League": {
+    "samples": 30,
+    "home_win_rate": 0.4666666666666667,
+    "away_win_rate": 0.5333333333333333,
+    "avg_total_points": 163.36666666666667,
+    "std_total_points": 19.3174935112078,
+    "is_favorite_home": false
+  },
+  "ZBL, Playoffs": {
+    "samples": 10,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 150.4,
+    "std_total_points": 22.548614148102317,
+    "is_favorite_home": false
+  },
+  "Korisliiga, Playoffs": {
+    "samples": 8,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 157.625,
+    "std_total_points": 11.76793843457723,
+    "is_favorite_home": false
+  },
+  "1. Division B, Playoffs": {
+    "samples": 7,
+    "home_win_rate": 0.7142857142857143,
+    "away_win_rate": 0.2857142857142857,
+    "avg_total_points": 171.0,
+    "std_total_points": 23.16401149566777,
+    "is_favorite_home": true
+  },
+  "A league , Playoffs": {
+    "samples": 6,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 151.16666666666666,
+    "std_total_points": 8.35497190632952,
+    "is_favorite_home": false
+  },
+  "A Dodekanisou U18, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 118.0,
+    "std_total_points": 9.0,
+    "is_favorite_home": true
+  },
+  "Africa League, Group Kalahari": {
+    "samples": 8,
+    "home_win_rate": 0.625,
+    "away_win_rate": 0.375,
+    "avg_total_points": 188.75,
+    "std_total_points": 14.086784586980807,
+    "is_favorite_home": true
+  },
+  "WABA League Women, 2026 WABA Final-Four": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 130.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "1. liga, Women": {
+    "samples": 29,
+    "home_win_rate": 0.6206896551724138,
+    "away_win_rate": 0.3793103448275862,
+    "avg_total_points": 133.48275862068965,
+    "std_total_points": 19.644461691495458,
+    "is_favorite_home": true
+  },
+  "RKL Division A, Playoff": {
+    "samples": 12,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 169.08333333333334,
+    "std_total_points": 15.908374803508021,
+    "is_favorite_home": true
+  },
+  "Kvindebasketligaen , Semifinaler": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 104.5,
+    "std_total_points": 5.5,
+    "is_favorite_home": false
+  },
+  "EYBL U14, SUPERFINAL - 28./31.03.2026 - Samokov, Bulgaria": {
+    "samples": 11,
+    "home_win_rate": 0.7272727272727273,
+    "away_win_rate": 0.2727272727272727,
+    "avg_total_points": 158.54545454545453,
+    "std_total_points": 18.734332296924016,
+    "is_favorite_home": true
+  },
+  "Champions League Asia-East, Group A": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 172.0,
+    "std_total_points": 2.0,
+    "is_favorite_home": true
+  },
+  "Liga Ko\u0161arka\u0161kog saveza Herceg Bosne - Playoff": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 158.0,
+    "std_total_points": 15.0,
+    "is_favorite_home": true
+  },
+  "Slovenian Second Basketball League, Liga za obstanek": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 180.0,
+    "std_total_points": 21.598611066455177,
+    "is_favorite_home": false
+  },
+  "Extraliga, Women, Placement 9-10": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 126.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "EYBL U14, CHALLENGE CUP": {
+    "samples": 5,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 129.6,
+    "std_total_points": 9.43610088966836,
+    "is_favorite_home": false
+  },
+  "QBL, Playoffs": {
+    "samples": 3,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 160.33333333333334,
+    "std_total_points": 14.613540144521982,
+    "is_favorite_home": false
+  },
+  "Taca De Portugal, Women": {
+    "samples": 7,
+    "home_win_rate": 0.7142857142857143,
+    "away_win_rate": 0.2857142857142857,
+    "avg_total_points": 143.85714285714286,
+    "std_total_points": 10.629185850136157,
+    "is_favorite_home": true
+  },
+  "NCAA Men's Division II, Championship": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 150.0,
+    "std_total_points": 19.570385790780925,
+    "is_favorite_home": false
+  },
+  "Cyber Euroleague Playoffs": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 184.33333333333334,
+    "std_total_points": 28.709270666845967,
+    "is_favorite_home": true
+  },
+  "Leaders Cup": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 185.33333333333334,
+    "std_total_points": 26.662499674428297,
+    "is_favorite_home": true
+  },
+  "3. SKL, Liga za obstanek": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 162.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "3. SKL, Osmina finala": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 180.0,
+    "std_total_points": 21.0,
+    "is_favorite_home": true
+  },
+  "FIBA U18 Women's Asia Cup CABA Qualifiers, Group A": {
+    "samples": 2,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 114.5,
+    "std_total_points": 5.5,
+    "is_favorite_home": false
+  },
+  "Women's Basketball Invitation Tournament": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 136.8,
+    "std_total_points": 15.778466338652816,
+    "is_favorite_home": true
+  },
+  "Premier League, Playoffs": {
+    "samples": 6,
+    "home_win_rate": 0.16666666666666666,
+    "away_win_rate": 0.8333333333333334,
+    "avg_total_points": 166.16666666666666,
+    "std_total_points": 13.296825017858795,
+    "is_favorite_home": false
+  },
+  "Putin\u0173 Gimnazijos Krep\u0161inio Lyga, Atkrintamosios": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 109.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Big V, Women": {
+    "samples": 9,
+    "home_win_rate": 0.4444444444444444,
+    "away_win_rate": 0.5555555555555556,
+    "avg_total_points": 148.77777777777777,
+    "std_total_points": 21.196319270507413,
+    "is_favorite_home": false
+  },
+  "Superleague Women, \u041f\u043b\u0435\u0439-\u043e\u0444\u0444": {
+    "samples": 4,
+    "home_win_rate": 0.25,
+    "away_win_rate": 0.75,
+    "avg_total_points": 142.5,
+    "std_total_points": 12.816005617976296,
+    "is_favorite_home": false
+  },
+  "Women's Japan Basketball League, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 108.0,
+    "std_total_points": 4.0,
+    "is_favorite_home": false
+  },
+  "MOS Cup, MOS Cup": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 180.0,
+    "std_total_points": 11.0,
+    "is_favorite_home": true
+  },
+  "Winline Basket Cup, Group B": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 162.0,
+    "std_total_points": 11.430952132988164,
+    "is_favorite_home": false
+  },
+  "Israeli National League Basketball": {
+    "samples": 54,
+    "home_win_rate": 0.5925925925925926,
+    "away_win_rate": 0.4074074074074074,
+    "avg_total_points": 171.4814814814815,
+    "std_total_points": 16.69191503198007,
+    "is_favorite_home": true
+  },
+  "WKBL": {
+    "samples": 13,
+    "home_win_rate": 0.3076923076923077,
+    "away_win_rate": 0.6923076923076923,
+    "avg_total_points": 126.46153846153847,
+    "std_total_points": 18.164273406948237,
+    "is_favorite_home": false
+  },
+  "LMB, Apertura": {
+    "samples": 8,
+    "home_win_rate": 0.625,
+    "away_win_rate": 0.375,
+    "avg_total_points": 150.25,
+    "std_total_points": 19.632562237262867,
+    "is_favorite_home": true
+  },
+  "LNB 2": {
+    "samples": 14,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 148.0,
+    "std_total_points": 23.043437243605826,
+    "is_favorite_home": false
+  },
+  "Slovenian Second Basketball League, \u010cetrtfinale": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 155.25,
+    "std_total_points": 3.766629793329841,
+    "is_favorite_home": false
+  },
+  "Prvenstvo Hrvatske za pretkadetkinje , Zavr\u0161ni turnir": {
+    "samples": 2,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 134.0,
+    "std_total_points": 19.0,
+    "is_favorite_home": false
+  },
+  "Liga KS HB, Women": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 98.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Extraliga, Women, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 139.0,
+    "std_total_points": 12.0,
+    "is_favorite_home": true
+  },
+  "NB I, Women, Relegation Round": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 167.33333333333334,
+    "std_total_points": 19.344824171395878,
+    "is_favorite_home": true
+  },
+  "1st DBBL": {
+    "samples": 20,
+    "home_win_rate": 0.55,
+    "away_win_rate": 0.45,
+    "avg_total_points": 142.85,
+    "std_total_points": 10.960269157278939,
+    "is_favorite_home": true
+  },
+  "FIBA World Cup, Asian & Oceanian Qualifiers, Gr. B": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 163.0,
+    "std_total_points": 19.53202498462461,
+    "is_favorite_home": false
+  },
+  "FIBA World Cup, Asian & Oceanian Qualifiers, Gr. A": {
+    "samples": 4,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 158.25,
+    "std_total_points": 14.306903927824496,
+    "is_favorite_home": false
+  },
+  "Liga de Baloncesto Puertorriquena , Final 4": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 140.25,
+    "std_total_points": 5.3091901453988255,
+    "is_favorite_home": true
+  },
+  "Qualifier Group B - Abu Dhabi": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 165.75,
+    "std_total_points": 14.7542366796795,
+    "is_favorite_home": false
+  },
+  "Qualifier Group A - Abu Dhabi": {
+    "samples": 4,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 152.5,
+    "std_total_points": 9.526279441628825,
+    "is_favorite_home": false
+  },
+  "Club Friendlies": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 150.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "National League Cup, Gby_lwmyt_gbrym": {
+    "samples": 4,
+    "home_win_rate": 0.25,
+    "away_win_rate": 0.75,
+    "avg_total_points": 182.5,
+    "std_total_points": 33.67862823809782,
+    "is_favorite_home": false
+  },
+  "Unrivaled, Women": {
+    "samples": 12,
+    "home_win_rate": 0.5833333333333334,
+    "away_win_rate": 0.4166666666666667,
+    "avg_total_points": 143.25,
+    "std_total_points": 14.972892172189045,
+    "is_favorite_home": true
+  },
+  "Hungary Divison A Women": {
+    "samples": 24,
+    "home_win_rate": 0.5416666666666666,
+    "away_win_rate": 0.4583333333333333,
+    "avg_total_points": 152.0,
+    "std_total_points": 15.38939028465174,
+    "is_favorite_home": true
+  },
+  "Women's Cup": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 156.33333333333334,
+    "std_total_points": 8.379870059984356,
+    "is_favorite_home": true
+  },
+  "The League": {
+    "samples": 24,
+    "home_win_rate": 0.2916666666666667,
+    "away_win_rate": 0.7083333333333334,
+    "avg_total_points": 165.54166666666666,
+    "std_total_points": 17.49042396729009,
+    "is_favorite_home": false
+  },
+  "Liga de Baloncesto Puertorriquena , Liga de Baloncesto Puertorriquena 2025-2026": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 201.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "FIBA World Cup, Asian & Oceanian Qualifiers, Gr. D": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 165.0,
+    "std_total_points": 7.0,
+    "is_favorite_home": true
+  },
+  "FIBA World Cup, Asian & Oceanian Qualifiers, Gr. C": {
+    "samples": 2,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 140.5,
+    "std_total_points": 7.5,
+    "is_favorite_home": false
+  },
+  "National A League, Relegation Playoff": {
+    "samples": 2,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 142.5,
+    "std_total_points": 22.5,
+    "is_favorite_home": false
+  },
+  "A ASETH League Cup, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 126.0,
+    "std_total_points": 15.0,
+    "is_favorite_home": false
+  },
+  "Women's Basketball Division A, Playoffs": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 122.16666666666667,
+    "std_total_points": 13.618818679394414,
+    "is_favorite_home": false
+  },
+  "Zain Basketball League, Premier League": {
+    "samples": 14,
+    "home_win_rate": 0.35714285714285715,
+    "away_win_rate": 0.6428571428571429,
+    "avg_total_points": 166.57142857142858,
+    "std_total_points": 18.596137408897906,
+    "is_favorite_home": false
+  },
+  "A Dodekanisou, Women": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 128.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Azerbaijan Cup, F\u0130NAL": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 171.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Albanian Cup": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 169.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "EYBL U17, Group E": {
+    "samples": 18,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 161.5,
+    "std_total_points": 19.047455356439492,
+    "is_favorite_home": false
+  },
+  "Cup": {
+    "samples": 17,
+    "home_win_rate": 0.4117647058823529,
+    "away_win_rate": 0.5882352941176471,
+    "avg_total_points": 176.2941176470588,
+    "std_total_points": 20.908103427315822,
+    "is_favorite_home": false
+  },
+  "LNB Pro A Leaders Cup": {
+    "samples": 7,
+    "home_win_rate": 0.5714285714285714,
+    "away_win_rate": 0.42857142857142855,
+    "avg_total_points": 170.14285714285714,
+    "std_total_points": 16.881338567682796,
+    "is_favorite_home": true
+  },
+  "Final Eight": {
+    "samples": 7,
+    "home_win_rate": 0.7142857142857143,
+    "away_win_rate": 0.2857142857142857,
+    "avg_total_points": 170.28571428571428,
+    "std_total_points": 19.983666800052244,
+    "is_favorite_home": true
+  },
+  "Portuguese Basketball Cup": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 174.0,
+    "std_total_points": 3.265986323710904,
+    "is_favorite_home": false
+  },
+  "Hungarian Basketball Cup": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 152.5,
+    "std_total_points": 17.684739183827393,
+    "is_favorite_home": true
+  },
+  "Liga de Baloncesto Puertorriquena , Elite 8": {
+    "samples": 10,
+    "home_win_rate": 0.7,
+    "away_win_rate": 0.3,
+    "avg_total_points": 156.4,
+    "std_total_points": 19.535608513685975,
+    "is_favorite_home": true
+  },
+  "Superliga, Women, Kupa e Shqiperise Femra": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 133.0,
+    "std_total_points": 1.0,
+    "is_favorite_home": true
+  },
+  "BBL Pokal": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 174.0,
+    "std_total_points": 22.090722034374522,
+    "is_favorite_home": true
+  },
+  "Macedonian Women's Cup, Kup na Makedonija zeni": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 135.0,
+    "std_total_points": 6.683312551921141,
+    "is_favorite_home": true
+  },
+  "King Mindaugas Cup, Playoffs": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 187.0,
+    "std_total_points": 12.589678312014172,
+    "is_favorite_home": true
+  },
+  "Kre\u0161imir \u0106osi\u0107 Cup": {
+    "samples": 5,
+    "home_win_rate": 0.8,
+    "away_win_rate": 0.2,
+    "avg_total_points": 160.2,
+    "std_total_points": 10.796295661012623,
+    "is_favorite_home": true
+  },
+  "Slovak Basketball Cup": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 161.66666666666666,
+    "std_total_points": 4.109609335312651,
+    "is_favorite_home": true
+  },
+  "KUP BIH, KUP BIH": {
+    "samples": 3,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 166.33333333333334,
+    "std_total_points": 3.8586123009300755,
+    "is_favorite_home": true
+  },
+  "T\u00fcrkiye Kupasi, Final Round": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 169.6,
+    "std_total_points": 12.126005112979296,
+    "is_favorite_home": true
+  },
+  "Mozzart Kup": {
+    "samples": 7,
+    "home_win_rate": 0.8571428571428571,
+    "away_win_rate": 0.14285714285714285,
+    "avg_total_points": 167.42857142857142,
+    "std_total_points": 17.458989848516786,
+    "is_favorite_home": true
+  },
+  "Romanian Women's Basketball Cup": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 138.0,
+    "std_total_points": 18.708286933869708,
+    "is_favorite_home": true
+  },
+  "U19 Next Gen Cup, Final Eight": {
+    "samples": 7,
+    "home_win_rate": 0.7142857142857143,
+    "away_win_rate": 0.2857142857142857,
+    "avg_total_points": 142.0,
+    "std_total_points": 16.15991513414774,
+    "is_favorite_home": true
+  },
+  "A TE EOK Samou": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 114.0,
+    "std_total_points": 3.0,
+    "is_favorite_home": false
+  },
+  "Kup Ru\u017eica Meglaj-Rimac, Zavr\u0161ni turnir": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 141.66666666666666,
+    "std_total_points": 13.59738536958076,
+    "is_favorite_home": true
+  },
+  "Czech Basketball Cup": {
+    "samples": 6,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 189.5,
+    "std_total_points": 21.328775554791388,
+    "is_favorite_home": true
+  },
+  "Coast-to-Coast Athletic": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 162.5,
+    "std_total_points": 27.5,
+    "is_favorite_home": false
+  },
+  "Greek Basketball Cup": {
+    "samples": 5,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 157.4,
+    "std_total_points": 8.380930735902785,
+    "is_favorite_home": false
+  },
+  "Estonian Cup": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 163.0,
+    "std_total_points": 12.26104943849968,
+    "is_favorite_home": false
+  },
+  "Business Basketball League": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 90.33333333333333,
+    "std_total_points": 19.70335560817553,
+    "is_favorite_home": false
+  },
+  "EYBL U13, Group A": {
+    "samples": 20,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 133.7,
+    "std_total_points": 17.25427483263206,
+    "is_favorite_home": false
+  },
+  "LNB Pro B Leaders Cup, Playoffs": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 153.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "College Conference of Illinois and Wisconsin": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 163.0,
+    "std_total_points": 22.66053838724932,
+    "is_favorite_home": false
+  },
+  "Colegiate Conference of the South": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 165.66666666666666,
+    "std_total_points": 25.48637980482037,
+    "is_favorite_home": false
+  },
+  "American Rivers": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 151.33333333333334,
+    "std_total_points": 24.526629518862872,
+    "is_favorite_home": false
+  },
+  "Allegheny Mountain Collegiate": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 164.0,
+    "std_total_points": 26.260236099471765,
+    "is_favorite_home": true
+  },
+  "Centennial Conference": {
+    "samples": 10,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 130.9,
+    "std_total_points": 18.780042598460742,
+    "is_favorite_home": false
+  },
+  "NCAA Division III, Commonwealth Coast Conference ": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 149.5,
+    "std_total_points": 3.5,
+    "is_favorite_home": false
+  },
+  "CEWL - women, Tournament phase ": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 151.6,
+    "std_total_points": 11.359577456930342,
+    "is_favorite_home": true
+  },
+  "1st Division Women, \u00darslitakeppni": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 166.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "A2 ESKAVDE, Group A": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 131.0,
+    "std_total_points": 7.0,
+    "is_favorite_home": false
+  },
+  "Latvijas U\u017eavas kauss": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 154.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Copa Del Rey": {
+    "samples": 7,
+    "home_win_rate": 0.5714285714285714,
+    "away_win_rate": 0.42857142857142855,
+    "avg_total_points": 176.71428571428572,
+    "std_total_points": 21.352245018895292,
+    "is_favorite_home": true
+  },
+  "Swiss Cup, Women": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 152.5,
+    "std_total_points": 3.5,
+    "is_favorite_home": true
+  },
+  "ZBL, Playout": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 168.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "A league , VI Tour": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 177.66666666666666,
+    "std_total_points": 17.21110752456745,
+    "is_favorite_home": false
+  },
+  "Nationale 3 - Poule E": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 162.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Israeli Basketball Super League": {
+    "samples": 15,
+    "home_win_rate": 0.5333333333333333,
+    "away_win_rate": 0.4666666666666667,
+    "avg_total_points": 172.0,
+    "std_total_points": 18.790068298616337,
+    "is_favorite_home": true
+  },
+  "Finland Division 1A Women": {
+    "samples": 27,
+    "home_win_rate": 0.5555555555555556,
+    "away_win_rate": 0.4444444444444444,
+    "avg_total_points": 132.1851851851852,
+    "std_total_points": 10.61458478466735,
+    "is_favorite_home": true
+  },
+  "Montenegro Cup": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 165.5,
+    "std_total_points": 5.852349955359813,
+    "is_favorite_home": true
+  },
+  "Azerbaijan Cup, 1/2": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 158.5,
+    "std_total_points": 9.5,
+    "is_favorite_home": false
+  },
+  "Pokal": {
+    "samples": 5,
+    "home_win_rate": 0.8,
+    "away_win_rate": 0.2,
+    "avg_total_points": 172.6,
+    "std_total_points": 13.979985693841035,
+    "is_favorite_home": true
+  },
+  "ADA Basketball Tournament, Knockout ": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 9.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Montenegro Cup, Women": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 149.0,
+    "std_total_points": 14.966629547095765,
+    "is_favorite_home": true
+  },
+  "ADA Basketball Tournament, League": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 12.666666666666666,
+    "std_total_points": 2.494438257849294,
+    "is_favorite_home": true
+  },
+  "Azerbaijan Cup, 1/4": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 180.25,
+    "std_total_points": 8.699856320652657,
+    "is_favorite_home": true
+  },
+  "Israeli Basketball State Cup": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 186.66666666666666,
+    "std_total_points": 8.806563209081938,
+    "is_favorite_home": true
+  },
+  "Basket League Cup, Basket League Cup": {
+    "samples": 4,
+    "home_win_rate": 0.25,
+    "away_win_rate": 0.75,
+    "avg_total_points": 160.0,
+    "std_total_points": 7.245688373094719,
+    "is_favorite_home": false
+  },
+  "Zain Basketball League, League B": {
+    "samples": 7,
+    "home_win_rate": 0.42857142857142855,
+    "away_win_rate": 0.5714285714285714,
+    "avg_total_points": 172.57142857142858,
+    "std_total_points": 13.058737008030217,
+    "is_favorite_home": false
+  },
+  "Uruguay LUB": {
+    "samples": 22,
+    "home_win_rate": 0.6818181818181818,
+    "away_win_rate": 0.3181818181818182,
+    "avg_total_points": 168.45454545454547,
+    "std_total_points": 18.588186064192087,
+    "is_favorite_home": true
+  },
+  "WASL West Asia": {
+    "samples": 6,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 188.5,
+    "std_total_points": 13.35102992281869,
+    "is_favorite_home": true
+  },
+  "Nationale 1, Group B": {
+    "samples": 27,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 157.77777777777777,
+    "std_total_points": 19.061952279117637,
+    "is_favorite_home": true
+  },
+  "Nationale 1, Group A": {
+    "samples": 28,
+    "home_win_rate": 0.5714285714285714,
+    "away_win_rate": 0.42857142857142855,
+    "avg_total_points": 164.64285714285714,
+    "std_total_points": 17.82296729687024,
+    "is_favorite_home": true
+  },
+  "Basketligaen": {
+    "samples": 21,
+    "home_win_rate": 0.5714285714285714,
+    "away_win_rate": 0.42857142857142855,
+    "avg_total_points": 186.33333333333334,
+    "std_total_points": 17.18341762484522,
+    "is_favorite_home": true
+  },
+  "Kupa e Kosov\u00ebs, Kosova Cup Male 2025/2026": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 152.4,
+    "std_total_points": 6.216108107168021,
+    "is_favorite_home": true
+  },
+  "Romanian Basketball Cup": {
+    "samples": 7,
+    "home_win_rate": 0.5714285714285714,
+    "away_win_rate": 0.42857142857142855,
+    "avg_total_points": 169.71428571428572,
+    "std_total_points": 10.429549856253702,
+    "is_favorite_home": true
+  },
+  "FSHB Superliga, Kupa e Shqiperise Meshkuj": {
+    "samples": 7,
+    "home_win_rate": 0.42857142857142855,
+    "away_win_rate": 0.5714285714285714,
+    "avg_total_points": 160.14285714285714,
+    "std_total_points": 26.17757257887845,
+    "is_favorite_home": false
+  },
+  "Lebanese Basketball League": {
+    "samples": 18,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 182.72222222222223,
+    "std_total_points": 19.77036377891457,
+    "is_favorite_home": true
+  },
+  "Campeonato Universit\u00e1rio de Lisboa 1\u00baDivis\u00e3o": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 101.75,
+    "std_total_points": 8.042853971072706,
+    "is_favorite_home": false
+  },
+  "Iceland Women's Basketball Premier League": {
+    "samples": 12,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 169.0,
+    "std_total_points": 15.67907310185565,
+    "is_favorite_home": false
+  },
+  "WBL, Women, Relegation round": {
+    "samples": 10,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 143.6,
+    "std_total_points": 15.704776343520463,
+    "is_favorite_home": true
+  },
+  "WBL, Women, Championship round": {
+    "samples": 12,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 150.66666666666666,
+    "std_total_points": 16.539514973407037,
+    "is_favorite_home": true
+  },
+  "SBL Cup, Women": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 150.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Saudi Arabia Basketball Women's League": {
+    "samples": 18,
+    "home_win_rate": 0.5555555555555556,
+    "away_win_rate": 0.4444444444444444,
+    "avg_total_points": 126.55555555555556,
+    "std_total_points": 14.851944213253033,
+    "is_favorite_home": true
+  },
+  "A league , V Tour": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 172.66666666666666,
+    "std_total_points": 10.498677165349081,
+    "is_favorite_home": true
+  },
+  "Iceland Women's Basketball Premier League, Playoffs": {
+    "samples": 6,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 151.16666666666666,
+    "std_total_points": 18.658480347790622,
+    "is_favorite_home": false
+  },
+  "1LRM": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 150.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Swiss Basketball League Women, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 161.0,
+    "std_total_points": 8.0,
+    "is_favorite_home": false
+  },
+  "BCL Champions League (Cyber), Group C": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 74.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Egyptian Basketball Super League, Regular Season": {
+    "samples": 2,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 144.0,
+    "std_total_points": 21.0,
+    "is_favorite_home": false
+  },
+  "Serie B Interregionale, Girone F": {
+    "samples": 7,
+    "home_win_rate": 0.7142857142857143,
+    "away_win_rate": 0.2857142857142857,
+    "avg_total_points": 155.42857142857142,
+    "std_total_points": 20.920646963890842,
+    "is_favorite_home": true
+  },
+  "Serie B Interregionale, Girone B": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 158.83333333333334,
+    "std_total_points": 19.454362549881253,
+    "is_favorite_home": false
+  },
+  "Serie B Interregionale, Girone D": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 144.0,
+    "std_total_points": 9.93310961716756,
+    "is_favorite_home": false
+  },
+  "Serie B Interregionale, Girone C": {
+    "samples": 5,
+    "home_win_rate": 0.8,
+    "away_win_rate": 0.2,
+    "avg_total_points": 146.2,
+    "std_total_points": 16.557777628655362,
+    "is_favorite_home": true
+  },
+  "Serie B Interregionale, Girone A": {
+    "samples": 5,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 159.0,
+    "std_total_points": 19.172897537930986,
+    "is_favorite_home": false
+  },
+  "Macedonian Cup, Kup na Makedonija mazi": {
+    "samples": 7,
+    "home_win_rate": 0.5714285714285714,
+    "away_win_rate": 0.42857142857142855,
+    "avg_total_points": 158.42857142857142,
+    "std_total_points": 13.468027142163058,
+    "is_favorite_home": true
+  },
+  "NBA All Star Game, Round Robin": {
+    "samples": 3,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 82.33333333333333,
+    "std_total_points": 8.576453553512405,
+    "is_favorite_home": true
+  },
+  "EYBL U16, Group F": {
+    "samples": 22,
+    "home_win_rate": 0.45454545454545453,
+    "away_win_rate": 0.5454545454545454,
+    "avg_total_points": 142.5,
+    "std_total_points": 18.5098254006794,
+    "is_favorite_home": false
+  },
+  "EYBL U20, Group E": {
+    "samples": 20,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 143.45,
+    "std_total_points": 22.833035277860017,
+    "is_favorite_home": false
+  },
+  "EYBL U17, Group A": {
+    "samples": 15,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 159.86666666666667,
+    "std_total_points": 16.504006247642486,
+    "is_favorite_home": false
+  },
+  "NBA All Star Game, Final": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 68.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "SLB Cup": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 175.0,
+    "std_total_points": 14.543039572248986,
+    "is_favorite_home": true
+  },
+  "The Women League, \u0424\u0438\u043d\u0430\u043b": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 167.33333333333334,
+    "std_total_points": 12.256517540566826,
+    "is_favorite_home": false
+  },
+  "Campeonato Nacional da 1\u00aa Divisao Feminina, 1\u00aa Fase - Sul": {
+    "samples": 12,
+    "home_win_rate": 0.5833333333333334,
+    "away_win_rate": 0.4166666666666667,
+    "avg_total_points": 129.66666666666666,
+    "std_total_points": 24.780144381249183,
+    "is_favorite_home": true
+  },
+  "Campeonato Nacional da 1\u00aa Divisao Feminina, 1\u00aa Fase - Norte": {
+    "samples": 9,
+    "home_win_rate": 0.4444444444444444,
+    "away_win_rate": 0.5555555555555556,
+    "avg_total_points": 120.77777777777777,
+    "std_total_points": 12.959576277176296,
+    "is_favorite_home": false
+  },
+  "Serie C Unica Toscana": {
+    "samples": 7,
+    "home_win_rate": 0.5714285714285714,
+    "away_win_rate": 0.42857142857142855,
+    "avg_total_points": 142.57142857142858,
+    "std_total_points": 12.022088514268141,
+    "is_favorite_home": true
+  },
+  "K\u0131zlar Basketbol Gen\u00e7ler Ligi - A Grubu": {
+    "samples": 13,
+    "home_win_rate": 0.38461538461538464,
+    "away_win_rate": 0.6153846153846154,
+    "avg_total_points": 121.61538461538461,
+    "std_total_points": 15.809142737126521,
+    "is_favorite_home": false
+  },
+  "Erkekler Basketbol Gen\u00e7ler Ligi - A Grubu": {
+    "samples": 12,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 147.41666666666666,
+    "std_total_points": 8.683877142280528,
+    "is_favorite_home": true
+  },
+  "Serie B Interregionale, Girone E": {
+    "samples": 4,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 142.5,
+    "std_total_points": 13.937359864766353,
+    "is_favorite_home": true
+  },
+  "ZBL, Women": {
+    "samples": 12,
+    "home_win_rate": 0.4166666666666667,
+    "away_win_rate": 0.5833333333333334,
+    "avg_total_points": 150.75,
+    "std_total_points": 14.725969124871432,
+    "is_favorite_home": false
+  },
+  "Liga de Baloncesto Puertorriquena , Este Series Mejores 16": {
+    "samples": 11,
+    "home_win_rate": 0.45454545454545453,
+    "away_win_rate": 0.5454545454545454,
+    "avg_total_points": 160.0909090909091,
+    "std_total_points": 14.374564312477569,
+    "is_favorite_home": false
+  },
+  "Liga de Baloncesto Puertorriquena , Oeste Series Mejores 16": {
+    "samples": 8,
+    "home_win_rate": 0.625,
+    "away_win_rate": 0.375,
+    "avg_total_points": 145.75,
+    "std_total_points": 11.199888392301059,
+    "is_favorite_home": true
+  },
+  "EYBL U15, Group D": {
+    "samples": 16,
+    "home_win_rate": 0.375,
+    "away_win_rate": 0.625,
+    "avg_total_points": 140.4375,
+    "std_total_points": 22.668725013771727,
+    "is_favorite_home": false
+  },
+  "Swiss Cup": {
+    "samples": 2,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 158.5,
+    "std_total_points": 3.5,
+    "is_favorite_home": false
+  },
+  "Troph\u00e9e Coupe de France Amateur": {
+    "samples": 6,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 155.5,
+    "std_total_points": 22.41093483101497,
+    "is_favorite_home": false
+  },
+  "Kosova Cup Female ": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 146.33333333333334,
+    "std_total_points": 10.96458946893235,
+    "is_favorite_home": true
+  },
+  "Iceland Basketball Premier League, Playoffs": {
+    "samples": 7,
+    "home_win_rate": 0.7142857142857143,
+    "away_win_rate": 0.2857142857142857,
+    "avg_total_points": 177.28571428571428,
+    "std_total_points": 18.35922723019125,
+    "is_favorite_home": true
+  },
+  "Premier League, Women, Placement matches 9-12": {
+    "samples": 5,
+    "home_win_rate": 0.8,
+    "away_win_rate": 0.2,
+    "avg_total_points": 151.0,
+    "std_total_points": 35.64267105591274,
+    "is_favorite_home": true
+  },
+  "CBA Club Cup, Knockout Stage": {
+    "samples": 6,
+    "home_win_rate": 0.8333333333333334,
+    "away_win_rate": 0.16666666666666666,
+    "avg_total_points": 182.83333333333334,
+    "std_total_points": 25.93849563015472,
+    "is_favorite_home": true
+  },
+  "Iranian Basketball Super League": {
+    "samples": 8,
+    "home_win_rate": 0.375,
+    "away_win_rate": 0.625,
+    "avg_total_points": 147.875,
+    "std_total_points": 16.04242422453664,
+    "is_favorite_home": false
+  },
+  "Champions League Americas, Group A": {
+    "samples": 7,
+    "home_win_rate": 0.7142857142857143,
+    "away_win_rate": 0.2857142857142857,
+    "avg_total_points": 190.42857142857142,
+    "std_total_points": 12.737538928662149,
+    "is_favorite_home": true
+  },
+  "LNB, Women": {
+    "samples": 10,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 152.1,
+    "std_total_points": 15.769908052997646,
+    "is_favorite_home": false
+  },
+  "NBA G League, Playoffs": {
+    "samples": 10,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 225.5,
+    "std_total_points": 18.326210737629317,
+    "is_favorite_home": true
+  },
+  "East Asia Super League, Group B": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 168.5,
+    "std_total_points": 1.5,
+    "is_favorite_home": false
+  },
+  "Champions League, Group K": {
+    "samples": 6,
+    "home_win_rate": 0.8333333333333334,
+    "away_win_rate": 0.16666666666666666,
+    "avg_total_points": 162.0,
+    "std_total_points": 17.048949136725895,
+    "is_favorite_home": true
+  },
+  "European North Basketball League, Group C": {
+    "samples": 5,
+    "home_win_rate": 0.8,
+    "away_win_rate": 0.2,
+    "avg_total_points": 178.0,
+    "std_total_points": 15.28397853963424,
+    "is_favorite_home": true
+  },
+  "Russian Women's Basketball Premier League": {
+    "samples": 13,
+    "home_win_rate": 0.46153846153846156,
+    "away_win_rate": 0.5384615384615384,
+    "avg_total_points": 148.07692307692307,
+    "std_total_points": 12.009365181848953,
+    "is_favorite_home": false
+  },
+  "Europe Cup, Group N": {
+    "samples": 5,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 153.8,
+    "std_total_points": 11.617228585166083,
+    "is_favorite_home": false
+  },
+  "Europe Cup, Group M": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 163.0,
+    "std_total_points": 11.554220008291344,
+    "is_favorite_home": true
+  },
+  "Europe Cup, Group L": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 171.5,
+    "std_total_points": 20.766559657295186,
+    "is_favorite_home": false
+  },
+  "Europe Cup, Group K": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 159.75,
+    "std_total_points": 6.7592529172978875,
+    "is_favorite_home": false
+  },
+  "European North Basketball League, Group A": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 172.66666666666666,
+    "std_total_points": 20.58856208890968,
+    "is_favorite_home": false
+  },
+  "East Asia Super League, Group A": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 178.33333333333334,
+    "std_total_points": 10.873004286866726,
+    "is_favorite_home": true
+  },
+  "Eurocup, Group A": {
+    "samples": 15,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 181.2,
+    "std_total_points": 20.868477024769522,
+    "is_favorite_home": true
+  },
+  "Eurocup, Group B": {
+    "samples": 15,
+    "home_win_rate": 0.8,
+    "away_win_rate": 0.2,
+    "avg_total_points": 162.06666666666666,
+    "std_total_points": 18.17495223897133,
+    "is_favorite_home": true
+  },
+  "WASL Gulf League, Playoffs": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 183.0,
+    "std_total_points": 22.726636354727024,
+    "is_favorite_home": true
+  },
+  "A league , IV Tour": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 173.0,
+    "std_total_points": 11.86029791643813,
+    "is_favorite_home": false
+  },
+  "NKL": {
+    "samples": 21,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 163.42857142857142,
+    "std_total_points": 14.821385542106214,
+    "is_favorite_home": false
+  },
+  "European North Basketball League, Group B": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 184.0,
+    "std_total_points": 4.636809247747852,
+    "is_favorite_home": false
+  },
+  "East Asia Super League, Group C": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 180.5,
+    "std_total_points": 9.5,
+    "is_favorite_home": false
+  },
+  "WABA Liga, Women": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 126.0,
+    "std_total_points": 15.8871016865884,
+    "is_favorite_home": true
+  },
+  "Champions League Americas, Group D": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 163.0,
+    "std_total_points": 7.118052168020874,
+    "is_favorite_home": false
+  },
+  "Champions League Americas, Group B": {
+    "samples": 3,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 159.33333333333334,
+    "std_total_points": 7.363574011458174,
+    "is_favorite_home": true
+  },
+  "ABA Liga, Group A": {
+    "samples": 6,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 168.33333333333334,
+    "std_total_points": 16.967288790165885,
+    "is_favorite_home": false
+  },
+  "ABA Liga, Group B": {
+    "samples": 4,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 172.5,
+    "std_total_points": 7.123903424387503,
+    "is_favorite_home": false
+  },
+  "Liga Argentina, Playoffs": {
+    "samples": 13,
+    "home_win_rate": 0.6153846153846154,
+    "away_win_rate": 0.38461538461538464,
+    "avg_total_points": 161.0,
+    "std_total_points": 19.81840636300585,
+    "is_favorite_home": true
+  },
+  "EGBL U19, Superfinal": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 107.2,
+    "std_total_points": 15.727682601069999,
+    "is_favorite_home": true
+  },
+  "EYBL U17, SUPERFINAL - 02./05.04.2026 - Warsaw, Poland": {
+    "samples": 20,
+    "home_win_rate": 0.55,
+    "away_win_rate": 0.45,
+    "avg_total_points": 164.9,
+    "std_total_points": 16.223131633565696,
+    "is_favorite_home": true
+  },
+  "EYBL U15, CHALLENGE CUP": {
+    "samples": 8,
+    "home_win_rate": 0.375,
+    "away_win_rate": 0.625,
+    "avg_total_points": 165.0,
+    "std_total_points": 16.278820596099706,
+    "is_favorite_home": false
+  },
+  "Finland Division 1A Women, Playoffs": {
+    "samples": 5,
+    "home_win_rate": 0.8,
+    "away_win_rate": 0.2,
+    "avg_total_points": 118.6,
+    "std_total_points": 15.291827882892221,
+    "is_favorite_home": true
+  },
+  "Poland 2nd Basketball League, PO": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 149.0,
+    "std_total_points": 13.0,
+    "is_favorite_home": false
+  },
+  "1 Liga Kobiet, \u0106wier\u0107fina\u0142y": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 142.25,
+    "std_total_points": 18.73999733191016,
+    "is_favorite_home": true
+  },
+  "Qatari Basketball League, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 164.0,
+    "std_total_points": 6.0,
+    "is_favorite_home": false
+  },
+  "1. SKL, Women, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 152.0,
+    "std_total_points": 4.0,
+    "is_favorite_home": false
+  },
+  "Portugal LFB Women, Playoffs": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 159.6,
+    "std_total_points": 21.490463001061656,
+    "is_favorite_home": true
+  },
+  "Liga de Baloncesto Puertorriquena , Ronda Suicida Este": {
+    "samples": 8,
+    "home_win_rate": 0.625,
+    "away_win_rate": 0.375,
+    "avg_total_points": 154.875,
+    "std_total_points": 22.485759382329075,
+    "is_favorite_home": true
+  },
+  "Liga de Baloncesto Puertorriquena , Ronda Suicida Oeste": {
+    "samples": 8,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 155.75,
+    "std_total_points": 14.402690720834077,
+    "is_favorite_home": true
+  },
+  "EYBL U14, Group C": {
+    "samples": 20,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 139.9,
+    "std_total_points": 20.05467526538388,
+    "is_favorite_home": true
+  },
+  "EYBL U14, Group D": {
+    "samples": 22,
+    "home_win_rate": 0.4090909090909091,
+    "away_win_rate": 0.5909090909090909,
+    "avg_total_points": 127.0,
+    "std_total_points": 22.368809453425015,
+    "is_favorite_home": false
+  },
+  "EYBL U17, Group G": {
+    "samples": 26,
+    "home_win_rate": 0.46153846153846156,
+    "away_win_rate": 0.5384615384615384,
+    "avg_total_points": 136.03846153846155,
+    "std_total_points": 16.976184153170784,
+    "is_favorite_home": false
+  },
+  "EYBL U17, Group B": {
+    "samples": 22,
+    "home_win_rate": 0.4090909090909091,
+    "away_win_rate": 0.5909090909090909,
+    "avg_total_points": 164.0909090909091,
+    "std_total_points": 18.21065894396888,
+    "is_favorite_home": false
+  },
+  "Prvenstvo Hrvatske za juniorke, Skupina B": {
+    "samples": 6,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 129.66666666666666,
+    "std_total_points": 6.209312003399052,
+    "is_favorite_home": true
+  },
+  "Prvenstvo Hrvatske za juniorke, Skupina A": {
+    "samples": 6,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 102.5,
+    "std_total_points": 10.111874208078342,
+    "is_favorite_home": true
+  },
+  "EYBL U16, Group A": {
+    "samples": 18,
+    "home_win_rate": 0.5555555555555556,
+    "away_win_rate": 0.4444444444444444,
+    "avg_total_points": 163.55555555555554,
+    "std_total_points": 12.171105227921407,
+    "is_favorite_home": true
+  },
+  "Premier League": {
+    "samples": 9,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 159.77777777777777,
+    "std_total_points": 19.054178764645346,
+    "is_favorite_home": false
+  },
+  "Copa Baixada, Classifica\u00e7\u00e3o": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 110.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  " Liga 1 Masculin, Liga I de Baschet Masculin": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 144.5,
+    "std_total_points": 3.5,
+    "is_favorite_home": false
+  },
+  "CIBACOPA , Segunda Vuelta": {
+    "samples": 15,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 199.93333333333334,
+    "std_total_points": 31.894548471834838,
+    "is_favorite_home": true
+  },
+  "Liga de Baloncesto Puertorriquena , Juegos desempates": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 156.0,
+    "std_total_points": 41.0,
+    "is_favorite_home": false
+  },
+  "EYBL U14, Group E": {
+    "samples": 16,
+    "home_win_rate": 0.5625,
+    "away_win_rate": 0.4375,
+    "avg_total_points": 132.8125,
+    "std_total_points": 15.733001739973208,
+    "is_favorite_home": true
+  },
+  "EYBL U20, Group C": {
+    "samples": 10,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 154.2,
+    "std_total_points": 24.387701818744628,
+    "is_favorite_home": false
+  },
+  "WABA League Women, Regular Season": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 137.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Austrian Basketball Superliga": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 184.83333333333334,
+    "std_total_points": 26.67968432263687,
+    "is_favorite_home": false
+  },
+  "WNBL": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 158.4,
+    "std_total_points": 22.03270296627266,
+    "is_favorite_home": true
+  },
+  "Liga de Baloncesto Puertorriquena , Seccion Norte": {
+    "samples": 7,
+    "home_win_rate": 0.5714285714285714,
+    "away_win_rate": 0.42857142857142855,
+    "avg_total_points": 160.71428571428572,
+    "std_total_points": 18.475576818478775,
+    "is_favorite_home": true
+  },
+  "Saudi Basketball League, Premier League": {
+    "samples": 5,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 171.4,
+    "std_total_points": 19.724096937502612,
+    "is_favorite_home": false
+  },
+  "Champions League Americas, Group C": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 151.66666666666666,
+    "std_total_points": 5.436502143433363,
+    "is_favorite_home": false
+  },
+  "Liga de Baloncesto Puertorriquena , Seccion Este": {
+    "samples": 8,
+    "home_win_rate": 0.375,
+    "away_win_rate": 0.625,
+    "avg_total_points": 160.75,
+    "std_total_points": 24.508926945094924,
+    "is_favorite_home": false
+  },
+  "EYBL U14, Group A": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 146.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Rwanda Super Cup": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 146.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Rwanda Super Cup, Women": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 137.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "BIH Cup": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 183.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Liga de Baloncesto Puertorriquena , Seccion Oeste": {
+    "samples": 6,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 174.16666666666666,
+    "std_total_points": 17.582345943840625,
+    "is_favorite_home": false
+  },
+  "Liga de Baloncesto Puertorriquena , Seccion Sur": {
+    "samples": 4,
+    "home_win_rate": 0.25,
+    "away_win_rate": 0.75,
+    "avg_total_points": 167.0,
+    "std_total_points": 19.761072845369505,
+    "is_favorite_home": false
+  },
+  "Euroleague Women, Main Round, Group F": {
+    "samples": 6,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 133.5,
+    "std_total_points": 14.648663192705788,
+    "is_favorite_home": true
+  },
+  "Euroleague Women, Main Round, Group E": {
+    "samples": 5,
+    "home_win_rate": 0.8,
+    "away_win_rate": 0.2,
+    "avg_total_points": 143.8,
+    "std_total_points": 11.034491379306976,
+    "is_favorite_home": true
+  },
+  "A league , III Tour": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 144.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Youth Basketball Champions League, Semi-Finals 9-12 ": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 153.0,
+    "std_total_points": 1.0,
+    "is_favorite_home": false
+  },
+  "PBA Philippine Cup, Playoffs": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 181.33333333333334,
+    "std_total_points": 11.671427600007732,
+    "is_favorite_home": false
+  },
+  "Liga Se\u00f1al Colombia de Baloncesto , I Fase - Eliminatoria": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 130.5,
+    "std_total_points": 16.08570794214541,
+    "is_favorite_home": false
+  },
+  "Liga Nacional Femenina Chile, Fase regular": {
+    "samples": 4,
+    "home_win_rate": 0.25,
+    "away_win_rate": 0.75,
+    "avg_total_points": 147.5,
+    "std_total_points": 21.73131381210073,
+    "is_favorite_home": false
+  },
+  "Liga Femenina, Women, Clausura, Playoffs": {
+    "samples": 10,
+    "home_win_rate": 0.7,
+    "away_win_rate": 0.3,
+    "avg_total_points": 120.9,
+    "std_total_points": 13.70729732660673,
+    "is_favorite_home": true
+  },
+  "Uruguay LUB, Championship Round": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 157.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Iceland Women's Basketball Premier League, Rel/Prom Playoff": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 190.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Top Division Women, Play Offs": {
+    "samples": 4,
+    "home_win_rate": 0.25,
+    "away_win_rate": 0.75,
+    "avg_total_points": 132.0,
+    "std_total_points": 12.98075498574717,
+    "is_favorite_home": false
+  },
+  "EYBL U20, SUPERFINAL - 09./12.04.2026 - Reggio Calabria, Italy": {
+    "samples": 19,
+    "home_win_rate": 0.6842105263157895,
+    "away_win_rate": 0.3157894736842105,
+    "avg_total_points": 165.89473684210526,
+    "std_total_points": 17.432259076485046,
+    "is_favorite_home": true
+  },
+  "Youth Basketball Champions League, Semi-Finals 5-8 2": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 129.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "EYBL U20, CHALLENGE CUP": {
+    "samples": 19,
+    "home_win_rate": 0.47368421052631576,
+    "away_win_rate": 0.5263157894736842,
+    "avg_total_points": 156.68421052631578,
+    "std_total_points": 22.8681636470281,
+    "is_favorite_home": false
+  },
+  "Nostra.lt-RKL Division B, Pusfinaliai": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 157.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Tipos SBL, Playoffs": {
+    "samples": 4,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 163.75,
+    "std_total_points": 14.566657131957214,
+    "is_favorite_home": true
+  },
+  "United Cup, Knockout Stage": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 167.0,
+    "std_total_points": 20.844663585675832,
+    "is_favorite_home": true
+  },
+  "1st DBBL, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 137.5,
+    "std_total_points": 29.5,
+    "is_favorite_home": false
+  },
+  "KML, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 154.5,
+    "std_total_points": 13.5,
+    "is_favorite_home": true
+  },
+  "EGBL U14, Superfinal": {
+    "samples": 12,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 93.08333333333333,
+    "std_total_points": 13.96100720658156,
+    "is_favorite_home": true
+  },
+  "Youth Basketball Champions League, Semi-Finals 5-8 ": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 127.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "FBU Superleague, Playoffs": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 149.75,
+    "std_total_points": 13.216939887886303,
+    "is_favorite_home": false
+  },
+  "Premier League, Women, Placement matches 5 to 8": {
+    "samples": 4,
+    "home_win_rate": 0.25,
+    "away_win_rate": 0.75,
+    "avg_total_points": 149.25,
+    "std_total_points": 16.723860200324566,
+    "is_favorite_home": false
+  },
+  "Super League, Playoffs": {
+    "samples": 4,
+    "home_win_rate": 0.25,
+    "away_win_rate": 0.75,
+    "avg_total_points": 162.5,
+    "std_total_points": 9.937303457175895,
+    "is_favorite_home": false
+  },
+  "MPBL": {
+    "samples": 6,
+    "home_win_rate": 0.8333333333333334,
+    "away_win_rate": 0.16666666666666666,
+    "avg_total_points": 156.5,
+    "std_total_points": 20.878617451035083,
+    "is_favorite_home": true
+  },
+  "New Zealand NBL": {
+    "samples": 5,
+    "home_win_rate": 0.4,
+    "away_win_rate": 0.6,
+    "avg_total_points": 187.6,
+    "std_total_points": 17.670314088889306,
+    "is_favorite_home": false
+  },
+  "Rapid League, Regular Season": {
+    "samples": 5,
+    "home_win_rate": 0.6,
+    "away_win_rate": 0.4,
+    "avg_total_points": 73.2,
+    "std_total_points": 7.05407683541936,
+    "is_favorite_home": true
+  },
+  "Copa Super 8": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 167.0,
+    "std_total_points": 6.0,
+    "is_favorite_home": false
+  },
+  "Super League, Relegation Round": {
+    "samples": 3,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 161.33333333333334,
+    "std_total_points": 11.469767022723502,
+    "is_favorite_home": true
+  },
+  "Youth Basketball Champions League, Group D": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 145.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Qatar Cup , Knock-out Phase": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 168.0,
+    "std_total_points": 9.0,
+    "is_favorite_home": false
+  },
+  "Golden Square, Golden Square": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 175.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Youth Basketball Champions League, Group B": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 170.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Youth Basketball Champions League, Group C": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 153.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "FIBA U18 Asia Cup CABA Qualifiers, Group A": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 138.0,
+    "std_total_points": 8.0,
+    "is_favorite_home": true
+  },
+  "1. Liga, Group East": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 170.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Champions League Asia-East, Group B": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 155.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "1. Liga, Group West": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 165.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Youth Basketball Champions League, Group A": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 132.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "A league , II Tour": {
+    "samples": 3,
+    "home_win_rate": 0.3333333333333333,
+    "away_win_rate": 0.6666666666666666,
+    "avg_total_points": 185.0,
+    "std_total_points": 10.23067283548187,
+    "is_favorite_home": false
+  },
+  "Austrian Women's Basketball Bundesliga, Playoffs": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 122.75,
+    "std_total_points": 7.292976072907411,
+    "is_favorite_home": false
+  },
+  "Azerbaijan Basketball League, PLAY-IN": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 228.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "EYBL U13, Group B": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 155.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "The Women League, \u041f\u043b\u044d\u0439\u043e\u0444\u0444 1 \u0448\u0430\u0442": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 110.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "QBL": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 164.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "Serie A2, Women, Playoffs": {
+    "samples": 6,
+    "home_win_rate": 0.6666666666666666,
+    "away_win_rate": 0.3333333333333333,
+    "avg_total_points": 130.83333333333334,
+    "std_total_points": 12.889487533990204,
+    "is_favorite_home": true
+  },
+  "France LFB Women, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 132.5,
+    "std_total_points": 1.5,
+    "is_favorite_home": true
+  },
+  "Poland 2nd Basketball League, II Runda": {
+    "samples": 7,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 161.57142857142858,
+    "std_total_points": 16.308255077520386,
+    "is_favorite_home": true
+  },
+  "Enovos League, Play Offs": {
+    "samples": 3,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 160.33333333333334,
+    "std_total_points": 16.579773487261185,
+    "is_favorite_home": false
+  },
+  "Top Division Women, Play Out": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 139.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "Enovos League, Relegation Group": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 175.5,
+    "std_total_points": 4.5,
+    "is_favorite_home": true
+  },
+  "Slovenian Second Basketball League, Polfinale": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 150.0,
+    "std_total_points": 2.0,
+    "is_favorite_home": true
+  },
+  "Youth Basketball Champions League, Semi-Finals 1-4 ": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 156.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  },
+  "France LF2, Women, Phase 1 - Poule A": {
+    "samples": 4,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 130.25,
+    "std_total_points": 10.425329730996522,
+    "is_favorite_home": false
+  },
+  "France LFB Women, Relegation Round": {
+    "samples": 2,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 138.0,
+    "std_total_points": 11.0,
+    "is_favorite_home": false
+  },
+  "Zweite Liga, Relegation Round": {
+    "samples": 1,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 141.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": true
+  },
+  "1. Division, Women, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 121.5,
+    "std_total_points": 15.5,
+    "is_favorite_home": false
+  },
+  "Prvenstvo RH za kadetkinje , Zavr\u0161ni turnir": {
+    "samples": 4,
+    "home_win_rate": 0.75,
+    "away_win_rate": 0.25,
+    "avg_total_points": 108.25,
+    "std_total_points": 17.41228014936585,
+    "is_favorite_home": true
+  },
+  "Youth Basketball Champions League, Classification 9-12 ": {
+    "samples": 2,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 131.5,
+    "std_total_points": 16.5,
+    "is_favorite_home": false
+  },
+  "I A MCKL, Playoffs": {
+    "samples": 2,
+    "home_win_rate": 0.5,
+    "away_win_rate": 0.5,
+    "avg_total_points": 179.5,
+    "std_total_points": 6.5,
+    "is_favorite_home": false
+  },
+  "Super League, Championship Round": {
+    "samples": 3,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 156.33333333333334,
+    "std_total_points": 2.0548046676563256,
+    "is_favorite_home": true
+  },
+  "Youth Basketball Champions League, Classification 5-8 ": {
+    "samples": 2,
+    "home_win_rate": 1.0,
+    "away_win_rate": 0.0,
+    "avg_total_points": 128.5,
+    "std_total_points": 17.5,
+    "is_favorite_home": true
+  },
+  "Korean Basketball League, Playoffs": {
+    "samples": 1,
+    "home_win_rate": 0.0,
+    "away_win_rate": 1.0,
+    "avg_total_points": 181.0,
+    "std_total_points": 0.0,
+    "is_favorite_home": false
+  }
+}

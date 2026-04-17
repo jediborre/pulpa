@@ -1,0 +1,45 @@
+{
+  "version": "v12",
+  "evaluated_at": "2026-04-12T23:57:56.756869",
+  "odds": 1.91,
+  "loss_penalty": 2.0,
+  "skipped_data": 0,
+  "skipped_model": 0,
+  "quarters": {
+    "q3": {
+      "total_matches": 500,
+      "valid_matches": 500,
+      "bets_placed": 148,
+      "coverage": 0.296,
+      "correct": 121,
+      "wrong": 27,
+      "pushes": 25,
+      "accuracy": 0.8176,
+      "hit_rate": 0.8176,
+      "profit": 56.11,
+      "roi": 0.3791,
+      "top_leagues": {}
+    },
+    "q4": {
+      "total_matches": 500,
+      "valid_matches": 500,
+      "bets_placed": 176,
+      "coverage": 0.352,
+      "correct": 157,
+      "wrong": 19,
+      "pushes": 26,
+      "accuracy": 0.892,
+      "hit_rate": 0.892,
+      "profit": 104.87,
+      "roi": 0.5959,
+      "top_leagues": {
+        "Euroleague": {
+          "bets": 11,
+          "hits": 8,
+          "hit_rate": 0.7273,
+          "profit": 1.28
+        }
+      }
+    }
+  }
+}
