@@ -26,11 +26,23 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+from telegram.request import HTTPXRequest
 
 import db as db_mod
 import ml_tools as ml_mod
 import scraper as scraper_mod
 import bet_monitor as bet_monitor_mod
+
+
+class CustomHTTPXRequest(HTTPXRequest):
+    """HTTPXRequest with extended timeouts for slow networks and webhooks."""
+    def __init__(self, *args, **kwargs):
+        # Set extended connect/pool/read/write timeouts (60 seconds each)
+        kwargs.setdefault('connect_timeout', 60.0)
+        kwargs.setdefault('pool_timeout', 60.0)
+        kwargs.setdefault('read_timeout', 60.0)
+        kwargs.setdefault('write_timeout', 60.0)
+        super().__init__(*args, **kwargs)
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -85,8 +97,8 @@ _MONITOR_THREAD: threading.Thread | None = None
 _MONITOR_LOOP: asyncio.AbstractEventLoop | None = None
 _MONITOR_STOP_REF: list = [None]  # holds the asyncio.Event created inside the thread
 # chat_ids subscribed to monitor notifications.
-# Value: "all" (BET + NO_BET + result) or "bet_only" (BET + result only).
-_MONITOR_SUBSCRIBERS: dict[int, str] = {}
+# Value: dict with {"signal_type": "all"|"bet_only", "quarters": ["q3", "q4"]}
+_MONITOR_SUBSCRIBERS: dict[int, dict] = {}
 _SUBSCRIBERS_SETTING_KEY = "monitor_subscribers"  # JSON stored in settings table
 
 
@@ -109,9 +121,35 @@ def _load_subscribers() -> None:
         try:
             data = _json.loads(raw)
             if isinstance(data, dict):
-                _MONITOR_SUBSCRIBERS = {int(k): str(v) for k, v in data.items()}
+                for k, v in data.items():
+                    chat_id = int(k)
+                    # Handle old format (string) and new format (dict)
+                    if isinstance(v, str):
+                        # Convert old "all"/"bet_only" to new format
+                        _MONITOR_SUBSCRIBERS[chat_id] = {
+                            "signal_type": v,
+                            "quarters": ["q3", "q4"]
+                        }
+                    elif isinstance(v, dict):
+                        # Ensure fields exist
+                        _MONITOR_SUBSCRIBERS[chat_id] = {
+                            "signal_type": v.get("signal_type", "all"),
+                            "quarters": v.get("quarters", ["q3", "q4"])
+                        }
         except Exception:
             pass
+
+
+def _get_subscriber_pref(chat_id: int | None) -> tuple[str, list[str]]:
+    """Get subscriber preference for signal type and quarters.
+    Returns (signal_type, quarters) tuple.
+    """
+    if chat_id is None:
+        return "all", ["q3", "q4"]
+    pref = _MONITOR_SUBSCRIBERS.get(chat_id)
+    if pref is None:
+        return "all", ["q3", "q4"]
+    return pref.get("signal_type", "all"), pref.get("quarters", ["q3", "q4"])
 MODEL_OUTPUTS_V4_DIR = BASE_DIR / "training" / "model_outputs_v4"
 MODEL_OUTPUTS_V2_DIR = BASE_DIR / "training" / "model_outputs_v2"
 MODEL_OUTPUTS_V6_DIR = BASE_DIR / "training" / "model_outputs_v6"
@@ -122,6 +160,7 @@ V12_LIVE_SCRIPT = BASE_DIR / "training" / "v12" / "live_engine" / "virtual_bookm
 MODEL_OUTPUTS_V13_DIR = BASE_DIR / "training" / "v13" / "model_outputs"
 MODEL_OUTPUTS_V15_DIR = BASE_DIR / "training" / "v15" / "model_outputs"
 MODEL_OUTPUTS_V16_DIR = BASE_DIR / "training" / "v16" / "model_outputs"
+MODEL_OUTPUTS_V17_DIR = BASE_DIR / "training" / "v17" / "model_outputs"
 V13_INFERENCE_SCRIPT = BASE_DIR / "training" / "v13" / "infer_match_v13.py"
 FOLLOW_REFRESH_SECONDS = 45
 FOLLOW_STALE_CYCLES_LIMIT = 8
@@ -131,7 +170,7 @@ FOLLOW_STALE_CYCLES_LIMIT = 8
 # MONITOR_MODEL_CONFIG → used by the bet_monitor daemon for automated bet evaluation
 MODEL_CONFIG: dict[str, str] = {"q3": "v4", "q4": "v4"}
 MONITOR_MODEL_CONFIG: dict[str, str] = {"q3": "v4", "q4": "v4"}
-AVAILABLE_MODELS: list[str] = ["v2", "v4", "v6", "v9", "v12", "v13"]
+AVAILABLE_MODELS: list[str] = ["v2", "v4", "v6", "v9", "v12", "v13", "v15", "v16", "v17"]
 
 
 def _log_raw_inference_result(match_id: str, source: str, infer_result: object) -> None:
@@ -391,6 +430,145 @@ def _run_v13_inference(match_id: str, target: str = "q4") -> dict:
         }
     except Exception as exc:
         return {"ok": False, "reason": f"V13: {exc}"}
+
+
+# ─── V15 / V16 / V17 engine caches (loaded once, reused across predictions) ─────────
+_V15_ENGINE_INSTANCE: object | None = None
+_V16_ENGINE_INSTANCE: object | None = None
+_V17_ENGINE_INSTANCE: object | None = None
+
+
+def _get_v15_engine():
+    global _V15_ENGINE_INSTANCE
+    if _V15_ENGINE_INSTANCE is None:
+        v15_mod = importlib.import_module("training.v15.inference")
+        _V15_ENGINE_INSTANCE = v15_mod.V15Engine.load()
+    return _V15_ENGINE_INSTANCE
+
+
+def _get_v16_engine():
+    global _V16_ENGINE_INSTANCE
+    if _V16_ENGINE_INSTANCE is None:
+        # V16's inference.py also names its main class V15Engine
+        v16_mod = importlib.import_module("training.v16.inference")
+        _V16_ENGINE_INSTANCE = v16_mod.V15Engine.load()
+    return _V16_ENGINE_INSTANCE
+
+
+def _get_v17_engine():
+    global _V17_ENGINE_INSTANCE
+    if _V17_ENGINE_INSTANCE is None:
+        # V17's inference.py also names its main class V15Engine
+        v17_mod = importlib.import_module("training.v17.inference")
+        _V17_ENGINE_INSTANCE = v17_mod.V15Engine.load()
+    return _V17_ENGINE_INSTANCE
+
+
+def _extract_v15v16_inputs(data: dict, match_id: str, target: str):
+    """Return (league, quarter_scores, graph_points, pbp_events) from a data dict."""
+    m = data.get("match", {})
+    s = data.get("score", {})
+    quarters = s.get("quarters", {})
+    gp: list[dict] = data.get("graph_points") or []
+    # Flatten quarter-keyed PBP dict → flat list with 'quarter' key injected
+    pbp: list[dict] = []
+    for q_code, evts in (data.get("play_by_play") or {}).items():
+        for e in (evts or []):
+            pbp.append({**e, "quarter": q_code})
+    league = str(m.get("league") or "Unknown")
+
+    def _qsc(q_code: str, side: str) -> int:
+        return int((quarters.get(q_code) or {}).get(side) or 0)
+
+    quarter_scores: dict[str, int] = {
+        "q1_home": _qsc("Q1", "home"), "q1_away": _qsc("Q1", "away"),
+        "q2_home": _qsc("Q2", "home"), "q2_away": _qsc("Q2", "away"),
+    }
+    if target == "q4":
+        quarter_scores["q3_home"] = _qsc("Q3", "home")
+        quarter_scores["q3_away"] = _qsc("Q3", "away")
+    return league, quarter_scores, gp, pbp
+
+
+def _v15v16_pred_to_dict(pred: object, target: str) -> dict:
+    """Normalise a V15/V16 Prediction dataclass to the standard predictions dict."""
+    sig = getattr(pred, "signal", "NO_BET")
+    d = getattr(pred, "debug", None)
+    winner_pick = "home" if sig == "BET_HOME" else ("away" if sig == "BET_AWAY" else None)
+    return {
+        "available": True,
+        "predicted_winner": winner_pick,
+        "confidence": getattr(pred, "confidence", None),
+        "bet_signal": sig,
+        "final_recommendation": sig,
+        "predicted_total": getattr(d, "pred_total", None) if d else None,
+        "predicted_home": getattr(d, "pred_home", None) if d else None,
+        "predicted_away": getattr(d, "pred_away", None) if d else None,
+        "reasoning": getattr(pred, "reason", ""),
+        "mae": getattr(d, "reg_mae_total", None) if d else None,
+        "mae_home": None,
+        "mae_away": None,
+        "league_quality": None,
+        "league_bettable": sig != "NO_BET",
+        "volatility_index": None,
+        "data_quality": None,
+        # V15/V16-specific extras for display
+        "model_found": getattr(d, "model_found", None) if d else None,
+        "gp_count": getattr(d, "gp_count", None) if d else None,
+        "threshold": getattr(pred, "threshold", None),
+        "probability": getattr(pred, "probability", None),
+    }
+
+
+def _run_v15_inference(match_id: str, target: str = "q4") -> dict:
+    """Run V15 (per-league gradient boosting) inference."""
+    try:
+        data = _get_match_detail(match_id)
+        if not data:
+            return {"ok": False, "reason": "V15: match no encontrado en DB"}
+        league, quarter_scores, gp, pbp = _extract_v15v16_inputs(data, match_id, target)
+        engine = _get_v15_engine()
+        pred = engine.predict(
+            match_id=match_id, target=target, league=league,
+            quarter_scores=quarter_scores, graph_points=gp, pbp_events=pbp,
+        )
+        return {"ok": True, "predictions": {target: _v15v16_pred_to_dict(pred, target)}}
+    except Exception as exc:
+        return {"ok": False, "reason": f"V15 error: {exc}"}
+
+
+def _run_v16_inference(match_id: str, target: str = "q4") -> dict:
+    """Run V16 (per-league + TFM features) inference."""
+    try:
+        data = _get_match_detail(match_id)
+        if not data:
+            return {"ok": False, "reason": "V16: match no encontrado en DB"}
+        league, quarter_scores, gp, pbp = _extract_v15v16_inputs(data, match_id, target)
+        engine = _get_v16_engine()
+        pred = engine.predict(
+            match_id=match_id, target=target, league=league,
+            quarter_scores=quarter_scores, graph_points=gp, pbp_events=pbp,
+        )
+        return {"ok": True, "predictions": {target: _v15v16_pred_to_dict(pred, target)}}
+    except Exception as exc:
+        return {"ok": False, "reason": f"V16 error: {exc}"}
+
+
+def _run_v17_inference(match_id: str, target: str = "q4") -> dict:
+    """Run V17 inference."""
+    try:
+        data = _get_match_detail(match_id)
+        if not data:
+            return {"ok": False, "reason": "V17: match no encontrado en DB"}
+        league, quarter_scores, gp, pbp = _extract_v15v16_inputs(data, match_id, target)
+        engine = _get_v17_engine()
+        pred = engine.predict(
+            match_id=match_id, target=target, league=league,
+            quarter_scores=quarter_scores, graph_points=gp, pbp_events=pbp,
+        )
+        return {"ok": True, "predictions": {target: _v15v16_pred_to_dict(pred, target)}}
+    except Exception as exc:
+        return {"ok": False, "reason": f"V17 error: {exc}"}
 
 
 # V12 LIVE tracking state
@@ -973,7 +1151,7 @@ def _fetch_monitor_log_pred(event_date: str) -> dict[str, dict]:
     try:
         log_rows = conn.execute(
             """
-            SELECT match_id, target, signal, pick, result
+            SELECT match_id, target, signal, pick, result, confidence
             FROM bet_monitor_log
             WHERE event_date = ?
             ORDER BY match_id, id ASC
@@ -994,17 +1172,20 @@ def _fetch_monitor_log_pred(event_date: str) -> dict[str, dict]:
         pick = str(row["pick"] or "").lower()
         db_result = str(row["result"] or "pending").lower()
         outcome = result_map.get(db_result)  # None = pending
+        confidence = float(row["confidence"] or 0.0)
         if mid not in out:
             out[mid] = {
                 "q3_available": False, "q4_available": False,
                 "q3_signal": None, "q4_signal": None,
                 "q3_outcome": None, "q4_outcome": None,
                 "q3_pick": None, "q4_pick": None,
+                "q3_confidence": 0.0, "q4_confidence": 0.0,
             }
         out[mid][f"{target}_available"] = True
         out[mid][f"{target}_signal"] = signal
         out[mid][f"{target}_pick"] = pick
         out[mid][f"{target}_outcome"] = outcome
+        out[mid][f"{target}_confidence"] = confidence
     return out
 
 
@@ -1095,6 +1276,23 @@ def _fetch_date_pred_outcomes(event_date: str) -> dict[str, dict]:
 
 
 def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] | None = None) -> str:
+    # ── League exclusion list (same as monitor/signals) ───────────────
+    _EXCLUDED_LEAGUE_PATTERNS = [
+        "WNBA", "Women", "women", "Feminina",
+        "Playoff", "PLAY OFF", "U21 Espoirs Elite", "Liga Femenina",
+        "LF Challenge", "Polish Basketball League",
+        "SuperSport Premijer Liga", "Prvenstvo Hrvatske za d",
+        "ABA Liga", "Argentina Liga Nacional", "Basketligaen",
+        "lite 2", "EYBL", "I B MCKL", "Liga 1 Masculin",
+        "Liga Nationala", "NBL1", "PBA Commissioner",
+        "Rapid League", "Stoiximan GBL", "Playout",
+        "Superleague", "Superliga", "Swedish Basketball Superettan",
+        "Swiss Cup", "Финал", "Turkish Basketball Super League",
+        "NBA",
+    ]
+
+    def _league_excluded(league: str) -> bool:
+        return any(p in league for p in _EXCLUDED_LEAGUE_PATTERNS)
     def _pct(count: int, total: int) -> str:
         if total <= 0:
             return "0.0%"
@@ -1112,16 +1310,18 @@ def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] 
             out.append(" | ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)))
         return out
 
-    # Read configured odds/stake from DB settings
+    # Read configured odds/stake/bank from DB settings
     _conn = _open_conn()
     _stake = float(db_mod.get_setting(_conn, "sig_bet_size", "100") or 100)
     _odds  = float(db_mod.get_setting(_conn, "sig_odds",     "1.4")  or 1.4)
+    _bank  = float(db_mod.get_setting(_conn, "sig_bank",     "1000") or 1000)
     _conn.close()
 
     def _profit_text(hit: int, miss: int, push: int) -> str:
         net = hit * (_stake * (_odds - 1.0)) - (miss + push) * _stake
+        bank_end = _bank + net
         sign = "+" if net >= 0 else ""
-        return f"{sign}${net:.1f}"
+        return f"{sign}${net:.0f} (${bank_end:.0f})"
 
     def _resolve_outcome(pred: dict, quarter: str, row: dict) -> str:
         """Return 'hit'|'miss'|'push'|'pending'|'no_bet'."""
@@ -1190,6 +1390,11 @@ def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] 
     for match_id, pred in pred_map.items():
         row = match_lookup.get(match_id, {})
         league = str(row.get("league", "") or "").strip()
+
+        # Skip excluded leagues (same filter as monitor/signals)
+        if _league_excluded(league):
+            continue
+
         # Shorten to first segment before comma/dash for table readability
         league_short = league.split(",")[0].split("-")[0].strip()[:18] or "?"
 
@@ -1201,6 +1406,19 @@ def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] 
 
         for quarter in ("q3", "q4"):
             outcome = _resolve_outcome(pred, quarter, row)
+
+            # For BET signals from monitor log, apply confidence > 30% filter.
+            # Only filter when confidence is explicitly known (> 0).
+            # eval_match_results entries have no confidence, so conf=0.0 → skip filter.
+            if outcome not in ("no_bet", "pending"):
+                signal = str(pred.get(f"{quarter}_signal") or "").strip().upper().replace("_", " ")
+                _NO_BET_SIGS_SET = {"NO BET", "NO_BET"}
+                if signal not in _NO_BET_SIGS_SET:
+                    conf = float(pred.get(f"{quarter}_confidence") or 0.0)
+                    if 0.0 < conf <= 0.30:
+                        stats[quarter]["no_bet"] += 1
+                        continue
+
             if outcome == "no_bet":
                 stats[quarter]["no_bet"] += 1
                 # Phantom no-bet tendency check
@@ -1221,9 +1439,8 @@ def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] 
             else:
                 stats[quarter]["pending"] += 1
 
-    missing = max(total_matches - len(pred_map), 0)
-    stats["q3"]["no_bet"] += missing
-    stats["q4"]["no_bet"] += missing
+    # Note: we don't add "missing" matches to NB anymore, since we now filter
+    # by league so total_matches no longer matches the filtered pred_map count.
 
     total_hit = stats["q3"]["hit"] + stats["q4"]["hit"]
     total_miss = stats["q3"]["miss"] + stats["q4"]["miss"]
@@ -1233,17 +1450,18 @@ def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] 
     resolved_total = total_hit + total_miss + total_push
 
     # ── Main summary table ───────────────────────────────────────────
-    headers = ["Filtro", "W", "L", "P", "NB", "%W", "Ganancia"]
+    headers = ["Filtro", "W", "L", "NB", "%W", "Ganancia"]
     rows_main: list[list[str]] = []
     for quarter in ("q3", "q4"):
         s = stats[quarter]
-        resolved = max(s["hit"] + s["miss"] + s["push"], 0)
+        # Push counts as loss
+        total_loss = s["miss"] + s["push"]
+        resolved = max(s["hit"] + total_loss, 0)
         no_bet_total = s["no_bet"] + s["pending"]
         rows_main.append([
             quarter.upper(),
             str(s["hit"]),
-            str(s["miss"]),
-            str(s["push"]),
+            str(total_loss),
             str(no_bet_total),
             _pct(s["hit"], resolved),
             _profit_text(s["hit"], s["miss"], s["push"]),
@@ -1251,8 +1469,7 @@ def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] 
     rows_main.append([
         "GLOBAL",
         str(total_hit),
-        str(total_miss),
-        str(total_push),
+        str(total_miss + total_push),
         str(total_no_bet + total_pending),
         _pct(total_hit, resolved_total),
         _profit_text(total_hit, total_miss, total_push),
@@ -1266,14 +1483,14 @@ def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] 
     ]
     if active_leagues:
         # Determine dominant loss quarter globally (Q3 losses vs Q4 losses)
-        total_q3_losses = sum(league_stats[lg]["q3"]["miss"] for lg in active_leagues)
-        total_q4_losses = sum(league_stats[lg]["q4"]["miss"] for lg in active_leagues)
+        total_q3_losses = sum(league_stats[lg]["q3"]["miss"] + league_stats[lg]["q3"]["push"] for lg in active_leagues)
+        total_q4_losses = sum(league_stats[lg]["q4"]["miss"] + league_stats[lg]["q4"]["push"] for lg in active_leagues)
         loss_quarter = "q3" if total_q3_losses >= total_q4_losses else "q4"
         # Sort: primary = losses in dominant quarter (desc), secondary = total losses (desc)
         active_leagues.sort(
             key=lambda lg: (
-                league_stats[lg][loss_quarter]["miss"],
-                league_stats[lg]["q3"]["miss"] + league_stats[lg]["q4"]["miss"],
+                league_stats[lg][loss_quarter]["miss"] + league_stats[lg][loss_quarter]["push"],
+                sum(league_stats[lg][q]["miss"] + league_stats[lg][q]["push"] for q in ("q3", "q4")),
             ),
             reverse=True,
         )
@@ -1283,13 +1500,16 @@ def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] 
             q3s = league_stats[lg]["q3"]
             q4s = league_stats[lg]["q4"]
             total_w = q3s["hit"] + q4s["hit"]
-            total_r = total_w + q3s["miss"] + q4s["miss"] + q3s["push"] + q4s["push"]
+            # Push counts as loss in league table too
+            q3_loss = q3s["miss"] + q3s["push"]
+            q4_loss = q4s["miss"] + q4s["push"]
+            total_r = total_w + q3_loss + q4_loss
             lg_rows.append([
                 lg,
                 str(q3s["hit"]),
-                str(q3s["miss"]),
+                str(q3_loss),
                 str(q4s["hit"]),
-                str(q4s["miss"]),
+                str(q4_loss),
                 _pct(total_w, total_r),
             ])
         out_parts.append("\n\nPor liga:\n" + "\n".join(_table(lg_headers, lg_rows)))
@@ -2854,6 +3074,8 @@ def _main_menu_keyboard(chat_id: int | None = None) -> InlineKeyboardMarkup:
                 callback_data="menu:monitor",
             )
         ],
+        [InlineKeyboardButton("📊 Señales de Hoy", callback_data="monitor:signals_today")],
+        [InlineKeyboardButton("📆 Reporte del Mes", callback_data="menu:monthly_report")],
     ]
     if chat_id is not None and chat_id in DATE_INGEST_JOBS:
         rows.append(
@@ -3440,11 +3662,18 @@ def _monitor_keyboard(running: bool, chat_id: int | None = None) -> InlineKeyboa
     if chat_id is not None:
         pref = _MONITOR_SUBSCRIBERS.get(chat_id)
         if pref is not None:
-            bet_mark = "✅" if pref == "bet_only" else "☑️"
-            all_mark = "✅" if pref == "all" else "☑️"
+            signal_type = pref.get("signal_type", "all")
+            quarters = pref.get("quarters", ["q3", "q4"])
+            bet_mark = "✅" if signal_type == "bet_only" else "☑️"
+            all_mark = "✅" if signal_type == "all" else "☑️"
             rows.append([
                 InlineKeyboardButton(f"{bet_mark} Solo apuestas", callback_data="monitor:sub_bet_only"),
                 InlineKeyboardButton(f"{all_mark} Todo", callback_data="monitor:sub_all"),
+            ])
+            q3_mark = "✅" if "q3" in quarters else "☑️"
+            q4_mark = "✅" if "q4" in quarters else "☑️"
+            rows.append([
+                InlineKeyboardButton(f"🔔 {q3_mark} Q3 {q4_mark} Q4", callback_data="monitor:quarters_menu"),
             ])
             rows.append([InlineKeyboardButton("🔕 Desuscribirme", callback_data="monitor:unsubscribe")])
         else:
@@ -3453,24 +3682,60 @@ def _monitor_keyboard(running: bool, chat_id: int | None = None) -> InlineKeyboa
     return InlineKeyboardMarkup(rows)
 
 
+def _monitor_quarters_keyboard(chat_id: int | None = None) -> InlineKeyboardMarkup:
+    """Quarters selector (Q3/Q4 checkboxes) that returns to the monitor menu."""
+    rows: list[list[InlineKeyboardButton]] = []
+    
+    if chat_id is not None:
+        pref = _MONITOR_SUBSCRIBERS.get(chat_id)
+        quarters = pref.get("quarters", ["q3", "q4"]) if pref else ["q3", "q4"]
+    else:
+        quarters = ["q3", "q4"]
+    
+    q3_mark = "✅" if "q3" in quarters else "☑️"
+    q4_mark = "✅" if "q4" in quarters else "☑️"
+    
+    rows.append([
+        InlineKeyboardButton(f"{q3_mark} Q3", callback_data="monitor:toggle_q3"),
+        InlineKeyboardButton(f"{q4_mark} Q4", callback_data="monitor:toggle_q4"),
+    ])
+    rows.append([InlineKeyboardButton("⬅️ Monitor", callback_data="menu:monitor")])
+    return InlineKeyboardMarkup(rows)
+
+
 def _monitor_model_keyboard(chat_id: int | None = None) -> InlineKeyboardMarkup:
     """Model selector that returns to the monitor menu."""
     q3_v = MONITOR_MODEL_CONFIG["q3"]
     q4_v = MONITOR_MODEL_CONFIG["q4"]
     rows: list[list[InlineKeyboardButton]] = []
+    half = len(AVAILABLE_MODELS) // 2
     rows.append([
         InlineKeyboardButton(
-            f"{'✅' if q3_v == v else ''} Q3={v}",
+            f"Q3:{'✅' if q3_v == v else ''}{v}",
             callback_data=f"monmodel:set:q3:{v}",
         )
-        for v in AVAILABLE_MODELS
+        for v in AVAILABLE_MODELS[:half]
     ])
     rows.append([
         InlineKeyboardButton(
-            f"{'✅' if q4_v == v else ''} Q4={v}",
+            f"Q3:{'✅' if q3_v == v else ''}{v}",
+            callback_data=f"monmodel:set:q3:{v}",
+        )
+        for v in AVAILABLE_MODELS[half:]
+    ])
+    rows.append([
+        InlineKeyboardButton(
+            f"Q4:{'✅' if q4_v == v else ''}{v}",
             callback_data=f"monmodel:set:q4:{v}",
         )
-        for v in AVAILABLE_MODELS
+        for v in AVAILABLE_MODELS[:half]
+    ])
+    rows.append([
+        InlineKeyboardButton(
+            f"Q4:{'✅' if q4_v == v else ''}{v}",
+            callback_data=f"monmodel:set:q4:{v}",
+        )
+        for v in AVAILABLE_MODELS[half:]
     ])
     rows.append([InlineKeyboardButton("⬅️ Monitor", callback_data="menu:monitor")])
     return InlineKeyboardMarkup(rows)
@@ -3480,6 +3745,7 @@ async def _monitor_notify_cb(
     msg: str,
     reply_markup: dict | None = None,
     notify_type: str = "bet",
+    quarter: str | None = None,
 ) -> None:
     """Runs inside the monitor thread's own event loop.
 
@@ -3496,9 +3762,22 @@ async def _monitor_notify_cb(
         targets = [(cid, "all") for cid in ALLOWED_CHAT_IDS]
     async with httpx.AsyncClient() as client:
         for cid, pref in targets:
-            # Filter: "bet_only" subscribers skip pure NO_BET messages
-            if pref == "bet_only" and notify_type == "no_bet":
+            # Normalize pref: may be a dict or legacy string
+            if isinstance(pref, dict):
+                signal_type = pref.get("signal_type", "all")
+                sub_quarters = [q.lower() for q in pref.get("quarters", ["q3", "q4"])]
+            else:
+                signal_type = str(pref)
+                sub_quarters = ["q3", "q4"]
+            
+            # Filter by signal type: "bet_only" subscribers skip NO_BET messages
+            if signal_type == "bet_only" and notify_type == "no_bet":
                 continue
+            
+            # Filter by quarter: skip if subscriber doesn't have this quarter enabled
+            if quarter and quarter.lower() not in sub_quarters:
+                continue
+            
             try:
                 payload: dict = {"chat_id": cid, "text": msg}
                 if reply_markup:
@@ -3512,26 +3791,39 @@ def _model_submenu_keyboard() -> InlineKeyboardMarkup:
     q3_v = MODEL_CONFIG["q3"]
     q4_v = MODEL_CONFIG["q4"]
     rows: list[list[InlineKeyboardButton]] = []
+    half = len(AVAILABLE_MODELS) // 2
 
-    # Q3 selector row
-    q3_btns = [
+    # Q3 rows (first half and second half)
+    rows.append([
         InlineKeyboardButton(
-            f"{'✅' if q3_v == v else ''} Q3={v}",
+            f"Q3:{'✅' if q3_v == v else ''}{v}",
             callback_data=f"model:set:q3:{v}",
         )
-        for v in AVAILABLE_MODELS
-    ]
-    rows.append(q3_btns)
-
-    # Q4 selector row
-    q4_btns = [
+        for v in AVAILABLE_MODELS[:half]
+    ])
+    rows.append([
         InlineKeyboardButton(
-            f"{'✅' if q4_v == v else ''} Q4={v}",
+            f"Q3:{'✅' if q3_v == v else ''}{v}",
+            callback_data=f"model:set:q3:{v}",
+        )
+        for v in AVAILABLE_MODELS[half:]
+    ])
+
+    # Q4 rows
+    rows.append([
+        InlineKeyboardButton(
+            f"Q4:{'✅' if q4_v == v else ''}{v}",
             callback_data=f"model:set:q4:{v}",
         )
-        for v in AVAILABLE_MODELS
-    ]
-    rows.append(q4_btns)
+        for v in AVAILABLE_MODELS[:half]
+    ])
+    rows.append([
+        InlineKeyboardButton(
+            f"Q4:{'✅' if q4_v == v else ''}{v}",
+            callback_data=f"model:set:q4:{v}",
+        )
+        for v in AVAILABLE_MODELS[half:]
+    ])
 
     rows.append([InlineKeyboardButton("Menu principal", callback_data="nav:main")])
     return InlineKeyboardMarkup(rows)
@@ -3542,24 +3834,36 @@ def _match_model_submenu_keyboard(match_id: str, token: str, page: int) -> Inlin
     q3_v = MODEL_CONFIG["q3"]
     q4_v = MODEL_CONFIG["q4"]
     rows: list[list[InlineKeyboardButton]] = []
+    half = len(AVAILABLE_MODELS) // 2
 
-    q3_btns = [
+    rows.append([
         InlineKeyboardButton(
-            f"{'✅' if q3_v == v else ''} Q3={v}",
+            f"Q3:{'✅' if q3_v == v else ''}{v}",
             callback_data=f"matchmodel:set:q3:{v}:{match_id}:{token}:{page}",
         )
-        for v in AVAILABLE_MODELS
-    ]
-    rows.append(q3_btns)
-
-    q4_btns = [
+        for v in AVAILABLE_MODELS[:half]
+    ])
+    rows.append([
         InlineKeyboardButton(
-            f"{'✅' if q4_v == v else ''} Q4={v}",
+            f"Q3:{'✅' if q3_v == v else ''}{v}",
+            callback_data=f"matchmodel:set:q3:{v}:{match_id}:{token}:{page}",
+        )
+        for v in AVAILABLE_MODELS[half:]
+    ])
+    rows.append([
+        InlineKeyboardButton(
+            f"Q4:{'✅' if q4_v == v else ''}{v}",
             callback_data=f"matchmodel:set:q4:{v}:{match_id}:{token}:{page}",
         )
-        for v in AVAILABLE_MODELS
-    ]
-    rows.append(q4_btns)
+        for v in AVAILABLE_MODELS[:half]
+    ])
+    rows.append([
+        InlineKeyboardButton(
+            f"Q4:{'✅' if q4_v == v else ''}{v}",
+            callback_data=f"matchmodel:set:q4:{v}:{match_id}:{token}:{page}",
+        )
+        for v in AVAILABLE_MODELS[half:]
+    ])
 
     rows.append([InlineKeyboardButton(
         "Regresar (recalcular)",
@@ -3573,24 +3877,36 @@ def _date_model_submenu_keyboard(event_date: str) -> InlineKeyboardMarkup:
     q3_v = MODEL_CONFIG["q3"]
     q4_v = MODEL_CONFIG["q4"]
     rows: list[list[InlineKeyboardButton]] = []
+    half = len(AVAILABLE_MODELS) // 2
 
-    q3_btns = [
+    rows.append([
         InlineKeyboardButton(
-            f"{'\u2705' if q3_v == v else ''} Q3={v}",
+            f"Q3:{'✅' if q3_v == v else ''}{v}",
             callback_data=f"datemodel:set:q3:{v}:{event_date}",
         )
-        for v in AVAILABLE_MODELS
-    ]
-    rows.append(q3_btns)
-
-    q4_btns = [
+        for v in AVAILABLE_MODELS[:half]
+    ])
+    rows.append([
         InlineKeyboardButton(
-            f"{'\u2705' if q4_v == v else ''} Q4={v}",
+            f"Q3:{'✅' if q3_v == v else ''}{v}",
+            callback_data=f"datemodel:set:q3:{v}:{event_date}",
+        )
+        for v in AVAILABLE_MODELS[half:]
+    ])
+    rows.append([
+        InlineKeyboardButton(
+            f"Q4:{'✅' if q4_v == v else ''}{v}",
             callback_data=f"datemodel:set:q4:{v}:{event_date}",
         )
-        for v in AVAILABLE_MODELS
-    ]
-    rows.append(q4_btns)
+        for v in AVAILABLE_MODELS[:half]
+    ])
+    rows.append([
+        InlineKeyboardButton(
+            f"Q4:{'✅' if q4_v == v else ''}{v}",
+            callback_data=f"datemodel:set:q4:{v}:{event_date}",
+        )
+        for v in AVAILABLE_MODELS[half:]
+    ])
 
     rows.append([InlineKeyboardButton(
         "Regresar",
@@ -3893,9 +4209,11 @@ async def _run_calc_date_job(
                 fail += 1
 
         if i % NOTIFY_EVERY == 0 and i < total:
+            _rc_label = _event_date_title_es(event_date, total).split("[")[0].strip()
+            _rc_model = f"Q3={MODEL_CONFIG['q3']} Q4={MODEL_CONFIG['q4']}"
             await _edit(
-                f"Recalculando {event_date}...\n"
-                f"{i}/{total} procesados | OK: {ok} | Fail: {fail}"
+                f"Recalculando Partidos {_rc_label}\n"
+                f"{i}/{total} Procesados {_rc_model} | OK: {ok} | Fail: {fail}"
             )
 
     summary = (
@@ -4444,8 +4762,8 @@ def _compute_and_store_predictions(match_id: str, data: dict, config_override: d
     _active_config = dict(config_override) if config_override is not None else dict(MONITOR_MODEL_CONFIG)
     logger.info(f"[COMPUTE_PRED] Using config: Q3={_active_config.get('q3')} Q4={_active_config.get('q4')}")
 
-    # Check if any advanced model (v12, v13) is selected for either quarter
-    _ADVANCED_MODELS = {"v12", "v13"}
+    # Check if any advanced model (v12, v13, v15, v16) is selected for either quarter
+    _ADVANCED_MODELS = {"v12", "v13", "v15", "v16", "v17"}
     using_advanced = any(v in _ADVANCED_MODELS for v in _active_config.values())
 
     if using_advanced:
@@ -4459,6 +4777,12 @@ def _compute_and_store_predictions(match_id: str, data: dict, config_override: d
                 qr = _run_v12_inference(match_id, quarter)
             elif qv == "v13":
                 qr = _run_v13_inference(match_id, quarter)
+            elif qv == "v15":
+                qr = _run_v15_inference(match_id, quarter)
+            elif qv == "v16":
+                qr = _run_v16_inference(match_id, quarter)
+            elif qv == "v17":
+                qr = _run_v17_inference(match_id, quarter)
             else:
                 qr = None  # handled below by regular inference
 
@@ -4570,10 +4894,10 @@ def _get_or_compute_predictions(match_id: str, data: dict) -> dict | None:
                     pass
         return from_db
     if from_db is not None:
-        # When an advanced model (v13, v12) is active, always recompute via
+        # When an advanced model (v13, v12, v15, v16) is active, always recompute via
         # _compute_and_store_predictions so the correct engine is called and
         # the raw JSON is logged to console.
-        _ADVANCED = {"v12", "v13"}
+        _ADVANCED = {"v12", "v13", "v15", "v16"}
         _using_advanced = any(v in _ADVANCED for v in MONITOR_MODEL_CONFIG.values())
         if _using_advanced:
             try:
@@ -4838,6 +5162,8 @@ def _prediction_text(pred_row: dict | None, data: dict | None = None, v10_preds:
         signal_up = str(signal).upper()
         signal_map = {
             "BET": "APUESTA",
+            "BET_HOME": "APUESTA",
+            "BET_AWAY": "APUESTA",
             "LEAN": "NO APOSTAR",
             "NO BET": "NO APOSTAR",
             "NO_BET": "NO APOSTAR",
@@ -5081,7 +5407,7 @@ def _get_v10_predictions(match_id: str) -> dict | None:
         return None
 
 
-_BET_SIGNALS_SET = {"BET"}
+_BET_SIGNALS_SET = {"BET", "BET_HOME", "BET_AWAY"}
 _NOBET_SIGNALS_SET = {"NO_BET", "NO BET", "LEAN", "UNAVAILABLE", "ERROR", "window_missed"}
 
 
@@ -5409,6 +5735,18 @@ async def _set_waiting_state(update: Update, text: str = "Espere...") -> None:
 
 async def _on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     err = context.error
+    # BadRequest is a subclass of NetworkError in this version — check it FIRST
+    if isinstance(err, BadRequest):
+        # Log callback data + full message to help diagnose which handler triggered it
+        update_data = ""
+        if hasattr(update, "callback_query") and getattr(update, "callback_query", None):
+            cb = update.callback_query  # type: ignore[union-attr]
+            update_data = f" | callback_data={getattr(cb, 'data', '?')!r}"
+        elif hasattr(update, "message") and getattr(update, "message", None):
+            msg = update.message  # type: ignore[union-attr]
+            update_data = f" | text={getattr(msg, 'text', '?')!r}"
+        logger.warning("[telegram] BadRequest%s: %s", update_data, err)
+        return
     if isinstance(err, (TimedOut, NetworkError)):
         logger.warning("[telegram] network timeout error: %s", type(err).__name__)
         return
@@ -5442,11 +5780,20 @@ async def _replace_callback_message(
             pass
         return
 
-    await query.edit_message_text(
-        text=text,
-        reply_markup=reply_markup,
-        parse_mode=parse_mode,
-    )
+    try:
+        await query.edit_message_text(
+            text=text,
+            reply_markup=reply_markup,
+            parse_mode=parse_mode,
+        )
+    except Exception as _exc:
+        _exc_text = str(_exc).lower()
+        if "message is not modified" in _exc_text or "message_not_modified" in _exc_text:
+            pass  # same content, ignore silently
+        elif "message to edit not found" in _exc_text or "chat not found" in _exc_text:
+            pass  # message already gone, ignore
+        else:
+            raise
 
 
 async def _send_detail_message(
@@ -5659,6 +6006,8 @@ async def _render_dates(update: Update, page: int) -> None:
 
 async def _render_matches_for_date(update: Update, event_date: str, page: int) -> None:
     rows = _fetch_matches_for_date(event_date)
+    # Filter excluded leagues (same list as signals/reports)
+    rows = [r for r in rows if not any(p in (r.get("league") or "") for p in _MONTHLY_EXCL_PATTERNS)]
     if not rows:
         await _replace_callback_message(
             update,
@@ -5677,7 +6026,18 @@ async def _render_matches_for_date(update: Update, event_date: str, page: int) -
     model_line = f"Modelo: Q3={MODEL_CONFIG['q3']} Q4={MODEL_CONFIG['q4']}"
     header = f"{model_line}\n{_event_date_title_es(event_date, len(rows))}"
     if stats:
-        header += f"\n<pre>{html.escape(stats)}</pre>"
+        _stats_block = f"\n<pre>{html.escape(stats)}</pre>"
+        # Telegram message limit is 4096 chars; leave room for the keyboard header
+        _MAX = 3900
+        if len(header) + len(_stats_block) > _MAX:
+            # Truncate stats to fit — keep at least the summary table (first block)
+            _first_block_end = stats.find("\n\nPor liga:")
+            if _first_block_end != -1:
+                _stats_block = f"\n<pre>{html.escape(stats[:_first_block_end])}</pre>"
+            # Still too long? Drop stats entirely
+            if len(header) + len(_stats_block) > _MAX:
+                _stats_block = ""
+        header += _stats_block
     await _replace_callback_message(
         update,
         text=header,
@@ -6187,6 +6547,10 @@ def _build_model_stats_text() -> str:
         ("v4", MODEL_OUTPUTS_V4_DIR),
         ("v6", MODEL_OUTPUTS_V6_DIR),
         ("v9", MODEL_OUTPUTS_V9_DIR),
+        ("v13", MODEL_OUTPUTS_V13_DIR),
+        ("v15", MODEL_OUTPUTS_V15_DIR),
+        ("v16", MODEL_OUTPUTS_V16_DIR),
+        ("v17", MODEL_OUTPUTS_V17_DIR),
     ]
     version_dirs = [
         (v, d) for v, d in all_version_dirs if d.exists()
@@ -6194,7 +6558,7 @@ def _build_model_stats_text() -> str:
 
     metrics_sections: list[str] = []
     metrics_sections.append(
-        f"Activos: Q3={active_q3}  Q4={active_q4}"
+        f"🏆 Modelos Activos: Q3={active_q3}  Q4={active_q4}"
     )
     metrics_sections.append("")
 
@@ -6296,7 +6660,8 @@ def _build_model_stats_text() -> str:
                 metrics_sections.append("")
         except Exception:
             metrics_sections.append("v12: error leyendo training_summary.json")
-            metrics_sections.append("")
+
+
 
     # ── v13 stats (from training_summary.json, models_trained) ────────────
     v13_summary = MODEL_OUTPUTS_V13_DIR / "training_summary.json"
@@ -6407,8 +6772,516 @@ def _build_model_stats_text() -> str:
             metrics_sections.append("v16: error leyendo training_summary_v16.json")
             metrics_sections.append("")
 
+    # ── v17 stats (from training_summary_v17.json, per-league) ────────────
+    v17_summary = MODEL_OUTPUTS_V17_DIR / "training_summary_v17.json"
+    if v17_summary.exists():
+        try:
+            with v17_summary.open("r", encoding="utf-8") as f:
+                s17 = json.load(f)
+            q17m = " ✅" if active_q3 == "v17" or active_q4 == "v17" else ""
+            n_trained = s17.get("n_leagues_trained", "?")
+            n_skip = s17.get("n_leagues_skipped", "?")
+            metrics_sections.append(f"Modelos v17{q17m} ({n_trained} ligas, {n_skip} omitidas):")
+            hdrs17 = ["Liga", "Tgt", "F1val", "ACCval", "Ntrain", "Nval"]
+            rows17 = []
+            for m in s17.get("models", []):
+                league = str(m.get("league", "?"))[:20]
+                tgt = str(m.get("target", "?"))
+                vm = m.get("val_metrics") or {}
+                f1v = vm.get("f1")
+                accv = vm.get("accuracy")
+                tgt_mk = ""
+                if tgt == "q3" and active_q3 == "v17":
+                    tgt_mk = "✅"
+                elif tgt == "q4" and active_q4 == "v17":
+                    tgt_mk = "✅"
+                rows17.append([
+                    league,
+                    f"{tgt_mk}{tgt}",
+                    f"{float(f1v)*100:.1f}%" if f1v is not None else "?",
+                    f"{float(accv)*100:.1f}%" if accv is not None else "?",
+                    str(m.get("n_train", "?")),
+                    str(m.get("n_val", "?")),
+                ])
+            metrics_sections.extend(_table(hdrs17, rows17))
+            metrics_sections.append("")
+        except Exception:
+            metrics_sections.append("v17: error leyendo training_summary_v17.json")
+            metrics_sections.append("")
+
     sections = metrics_sections + gate_lines
     return "\n".join(sections)
+
+
+# ─── Monthly report ───────────────────────────────────────────────────────────
+
+_MONTHLY_EXCL_PATTERNS = [
+    "WNBA", "Women", "women", "Feminina",
+    "Playoff", "PLAY OFF", "U21 Espoirs Elite", "Liga Femenina",
+    "LF Challenge", "Polish Basketball League",
+    "SuperSport Premijer Liga", "Prvenstvo Hrvatske za d",
+    "ABA Liga", "Argentina Liga Nacional", "Basketligaen",
+    "lite 2", "EYBL", "I B MCKL", "Liga 1 Masculin",
+    "Liga Nationala", "NBL1", "PBA Commissioner",
+    "Rapid League", "Stoiximan GBL", "Playout",
+    "Superleague", "Superliga", "Swedish Basketball Superettan",
+    "Swiss Cup", "Финал", "Turkish Basketball Super League",
+    "NBA",
+]
+_BET_SIGNALS_MONTHLY = {"BET", "BET HOME", "BET_HOME", "BET AWAY", "BET_AWAY"}
+
+
+def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = None) -> bytes:
+    """Build monthly performance Excel from eval_match_results (normal review model).
+
+    Uses the same data source as the per-date stats view (_fetch_date_pred_outcomes),
+    so the model version is always the currently configured MODEL_CONFIG, not the
+    mixed versions stored in bet_monitor_log.
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    from io import BytesIO
+
+    if quarters is None:
+        quarters = ["q3", "q4"]
+    quarters_lower = [q.lower() for q in quarters]
+
+    conn = _open_conn()
+    _stake = float(db_mod.get_setting(conn, "sig_bet_size", "100") or 100)
+    _odds  = float(db_mod.get_setting(conn, "sig_odds",     "1.4")  or 1.4)
+    _bank  = float(db_mod.get_setting(conn, "sig_bank",     "1000") or 1000)
+    # Distinct local dates for the month (using UTC_OFFSET_HOURS so date boundaries are correct)
+    date_rows = conn.execute(
+        f"""
+        SELECT DISTINCT date(datetime(date || ' ' || time, '{UTC_OFFSET_HOURS} hours')) AS local_date
+        FROM matches
+        WHERE local_date LIKE ?
+        ORDER BY local_date
+        """,
+        (f"{year_month}-%",),
+    ).fetchall()
+    conn.close()
+    all_dates = [r["local_date"] for r in date_rows if r["local_date"]]
+
+    def _excl(league: str) -> bool:
+        return any(p in league for p in _MONTHLY_EXCL_PATTERNS)
+
+    q3_model = MODEL_CONFIG.get("q3", "v?")
+    q4_model = MODEL_CONFIG.get("q4", "v?")
+
+    rows_q3: list[dict] = []
+    rows_q4: list[dict] = []
+    day_stats: dict[str, dict] = {}
+
+    for date in all_dates:
+        match_rows = _fetch_matches_for_date(date)
+        pred_map = _fetch_date_pred_outcomes(date)
+        match_lookup = {str(r["match_id"]): r for r in match_rows}
+
+        for mid, pred in pred_map.items():
+            row = match_lookup.get(mid, {})
+            league = str(row.get("league", "") or "").strip()
+            if _excl(league):
+                continue
+
+            for quarter in quarters_lower:
+                if not pred.get(f"{quarter}_available"):
+                    continue
+                signal = str(pred.get(f"{quarter}_signal") or "").strip().upper().replace("_", " ")
+                if signal not in _BET_SIGNALS_MONTHLY:
+                    continue
+                conf = float(pred.get(f"{quarter}_confidence") or 0.0)
+                if 0.0 < conf <= 0.30:
+                    continue
+
+                # Resolve outcome from stored field (for past months this is already determined)
+                raw_outcome = str(pred.get(f"{quarter}_outcome") or "pending").lower()
+                if raw_outcome == "hit":
+                    result_str, profit = "win", _stake * (_odds - 1)
+                elif raw_outcome in ("miss", "push"):  # push = loss
+                    result_str, profit = "loss", -_stake
+                else:
+                    result_str, profit = "pending", 0.0
+
+                pick = str(pred.get(f"{quarter}_pick") or "")
+                ts = row.get("scheduled_utc_ts")
+                model_name = q3_model if quarter == "q3" else q4_model
+
+                bet_row = {
+                    "match_id": mid,
+                    "event_date": date,
+                    "home": str(row.get("home_team", "?") or "?"),
+                    "away": str(row.get("away_team", "?") or "?"),
+                    "league": league,
+                    "pick": pick,
+                    "confidence": conf if conf > 0 else None,
+                    "result": result_str,
+                    "profit": profit,
+                    "scheduled_utc_ts": ts,
+                    "model": model_name,
+                }
+                if quarter == "q3":
+                    rows_q3.append(bet_row)
+                else:
+                    rows_q4.append(bet_row)
+
+                if date not in day_stats:
+                    day_stats[date] = {
+                        "q3": {"w": 0, "l": 0, "profit": 0.0},
+                        "q4": {"w": 0, "l": 0, "profit": 0.0},
+                    }
+                ds = day_stats[date][quarter]
+                if result_str == "win":
+                    ds["w"] += 1
+                    ds["profit"] += profit
+                elif result_str == "loss":
+                    ds["l"] += 1
+                    ds["profit"] += profit
+
+    # ── Excel styles ─────────────────────────────────────────────────────────
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    hdr_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    hdr_font = Font(bold=True, color="FFFFFF")
+    bdr = Border(
+        left=Side(style="thin"), right=Side(style="thin"),
+        top=Side(style="thin"), bottom=Side(style="thin"),
+    )
+    ca = Alignment(horizontal="center", vertical="center")
+    la = Alignment(horizontal="left", vertical="center")
+    ra = Alignment(horizontal="right")
+    green_f = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+    red_f   = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+    gray_f  = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+    sum_hdr = PatternFill(start_color="2F5496", end_color="2F5496", fill_type="solid")
+    tot_f   = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
+
+    BET_HEADERS = [
+        "Nro", "Match ID", "Fecha", "Hora (UTC-6)",
+        "Home", "Away", "Liga", "Pick", "Modelo", "Confianza",
+        "Resultado", "Bank Antes", "Ganancia", "Bank Despues",
+    ]
+
+    def _add_bet_sheet(ws, rows: list[dict]):
+        for col, h in enumerate(BET_HEADERS, 1):
+            cell = ws.cell(row=1, column=col)
+            cell.value = h
+            cell.fill = hdr_fill
+            cell.font = hdr_font
+            cell.alignment = ca
+            cell.border = bdr
+
+        current_bank = _bank
+        for i, r in enumerate(rows, 1):
+            profit = r["profit"]
+            if r["result"] == "win":
+                outcome_txt, rf = "✅", green_f
+            elif r["result"] == "pending":
+                outcome_txt, rf = "⏳", gray_f
+            else:
+                outcome_txt, rf = "❌", red_f
+
+            ts = r.get("scheduled_utc_ts")
+            if ts:
+                try:
+                    dt = datetime.fromtimestamp(int(ts), tz=timezone.utc) + timedelta(hours=UTC_OFFSET_HOURS)
+                    date_str, time_str = dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M")
+                except Exception:
+                    date_str, time_str = r["event_date"], ""
+            else:
+                date_str, time_str = r["event_date"], ""
+
+            pick = r["pick"]
+            pick_sym = "🏠" if pick == "home" else ("✈️" if pick == "away" else "")
+            bank_before = current_bank
+            bank_after  = current_bank + profit
+            current_bank = bank_after
+
+            sofascore_url = _sofascore_match_url(r["match_id"])
+            rn = i + 1
+            ws.cell(rn, 1).value = i
+            mc = ws.cell(rn, 2)
+            mc.value = r["match_id"]
+            mc.hyperlink = sofascore_url
+            mc.font = Font(color="0563C1", underline="single")
+            ws.cell(rn, 3).value = date_str
+            ws.cell(rn, 4).value = time_str
+            ws.cell(rn, 5).value = r["home"]
+            ws.cell(rn, 6).value = r["away"]
+            ws.cell(rn, 7).value = r["league"]
+            ws.cell(rn, 8).value = f"{pick_sym} {pick}".strip()
+            ws.cell(rn, 9).value = r["model"]
+            conf = r.get("confidence")
+            ws.cell(rn, 10).value = conf
+            ws.cell(rn, 11).value = outcome_txt
+            ws.cell(rn, 12).value = bank_before
+            ws.cell(rn, 13).value = profit
+            ws.cell(rn, 14).value = bank_after
+
+            for col in range(1, 15):
+                cell = ws.cell(rn, col)
+                cell.border = bdr
+                if col == 11:
+                    cell.fill = rf
+                    cell.alignment = ca
+                elif col in (1, 3, 4, 8, 9, 10, 11):
+                    cell.alignment = ca
+                elif col in (5, 6):
+                    cell.alignment = la
+                if col == 10 and conf is not None:
+                    cell.number_format = "0.0%"
+                    cell.alignment = ca
+                if col in (12, 13, 14):
+                    cell.number_format = "$#,##0.00"
+                    cell.alignment = ra
+
+        for col_num in range(1, 15):
+            cl = get_column_letter(col_num)
+            mw = max((len(str(c.value)) for c in ws[cl] if c.value), default=8)
+            ws.column_dimensions[cl].width = min(mw + 2, 50)
+
+    if rows_q3:
+        ws_q3 = wb.create_sheet(f"Q3 ({q3_model})", 0)
+        _add_bet_sheet(ws_q3, rows_q3)
+    if rows_q4:
+        ws_q4 = wb.create_sheet(f"Q4 ({q4_model})", 1 if rows_q3 else 0)
+        _add_bet_sheet(ws_q4, rows_q4)
+
+    # ── Resumen sheet ─────────────────────────────────────────────────────────
+    ws_res = wb.create_sheet("Resumen", 0)
+    res_hdrs = [
+        "Fecha", "Q3 W", "Q3 L", "Q3 ROI", "Q3 Ganancia",
+        "Q4 W", "Q4 L", "Q4 ROI", "Q4 Ganancia",
+        "Total W", "Total L", "Total Ganancia", "Bank Final",
+    ]
+    for c, h in enumerate(res_hdrs, 1):
+        cell = ws_res.cell(1, c)
+        cell.value = h
+        cell.fill = sum_hdr
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.alignment = ca
+        cell.border = bdr
+
+    running_bank = _bank
+    tot_w = tot_l = 0
+    tot_profit = 0.0
+
+    def _roi_val(w, l):
+        played = w + l
+        if played == 0:
+            return None
+        return (w * _stake * (_odds - 1) - l * _stake) / (played * _stake)
+
+    for row_i, day in enumerate(sorted(day_stats.keys()), 2):
+        ds = day_stats[day]
+        q3w, q3l, q3p = ds["q3"]["w"], ds["q3"]["l"], ds["q3"]["profit"]
+        q4w, q4l, q4p = ds["q4"]["w"], ds["q4"]["l"], ds["q4"]["profit"]
+        dw, dl, dp = q3w + q4w, q3l + q4l, q3p + q4p
+        tot_w += dw; tot_l += dl; tot_profit += dp
+        running_bank += dp
+
+        vals = [
+            day,
+            q3w, q3l, _roi_val(q3w, q3l), q3p,
+            q4w, q4l, _roi_val(q4w, q4l), q4p,
+            dw, dl, dp, running_bank,
+        ]
+        for c, v in enumerate(vals, 1):
+            cell = ws_res.cell(row_i, c)
+            cell.value = v
+            cell.border = bdr
+            cell.alignment = ca
+            if c in (4, 8) and v is not None:
+                cell.number_format = "0.0%"
+            elif c in (5, 9, 12, 13):
+                cell.number_format = "$#,##0.00"
+                cell.alignment = ra
+            if c == 12:
+                cell.fill = green_f if (v or 0) >= 0 else red_f
+
+    # Totals row
+    tot_row = len(day_stats) + 2
+    tot_roi = _roi_val(tot_w, tot_l)
+    tot_vals = [
+        "TOTAL", "", "", tot_roi, "",
+        "", "", "", "",
+        tot_w, tot_l, tot_profit, _bank + tot_profit,
+    ]
+    for c, v in enumerate(tot_vals, 1):
+        cell = ws_res.cell(tot_row, c)
+        cell.value = v
+        cell.fill = tot_f
+        cell.font = Font(bold=True)
+        cell.border = bdr
+        cell.alignment = ca
+        if c == 4 and v is not None:
+            cell.number_format = "0.0%"
+        elif c in (12, 13):
+            cell.number_format = "$#,##0.00"
+            cell.alignment = ra
+
+    for col_num in range(1, len(res_hdrs) + 1):
+        cl = get_column_letter(col_num)
+        mw = max((len(str(c.value)) for c in ws_res[cl] if c.value), default=8)
+        ws_res.column_dimensions[cl].width = min(mw + 2, 30)
+
+    if not rows_q3 and not rows_q4:
+        ws_res.cell(2, 1).value = "Sin apuestas para el mes"
+
+    out = BytesIO()
+    wb.save(out)
+    out.seek(0)
+    return out.getvalue()
+
+
+async def _recalculate_month_evals(year_month: str, cid: int, msg, quarters: list[str]) -> None:
+    """Re-run inference for every match in the month using current MODEL_CONFIG."""
+    conn = _open_conn()
+    match_ids = [
+        r["match_id"]
+        for r in conn.execute(
+            "SELECT match_id FROM matches WHERE date LIKE ? ORDER BY date",
+            (f"{year_month}-%",),
+        ).fetchall()
+    ]
+    conn.close()
+
+    total = len(match_ids)
+    if total == 0:
+        await msg.edit_text(f"❌ Sin partidos encontrados para {year_month}")
+        return
+
+    done = errors = 0
+    for mid in match_ids:
+        try:
+            conn2 = _open_conn()
+            data = db_mod.get_match(conn2, mid)
+            conn2.close()
+            if data:
+                await asyncio.to_thread(
+                    _compute_and_store_predictions, mid, data, dict(MODEL_CONFIG)
+                )
+        except Exception as exc:
+            errors += 1
+            logger.warning("Recalc %s: %s", mid, exc)
+        done += 1
+        if done % 25 == 0 or done == total:
+            try:
+                await msg.edit_text(
+                    f"🔄 Recalculando {year_month}...\n"
+                    f"{done}/{total} partidos  ({errors} errores)"
+                )
+            except Exception:
+                pass
+
+
+async def _send_monthly_report(update: Update, context: ContextTypes.DEFAULT_TYPE, year_month: str) -> None:
+    """Show confirmation dialog: use existing data vs recalculate first."""
+    cid = update.effective_chat.id if update.effective_chat else None
+    q = update.callback_query
+    if q:
+        try:
+            await q.answer()
+        except Exception:
+            pass
+
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton(
+            "📊 Datos actuales",
+            callback_data=f"monthly:{year_month}:current",
+        )],
+        [InlineKeyboardButton(
+            "🔄 Recalcular primero (lento)",
+            callback_data=f"monthly:{year_month}:recalc",
+        )],
+        [InlineKeyboardButton("⬅️ Cancelar", callback_data="nav:main")],
+    ])
+    txt = (
+        f"📅 Reporte Mensual: {year_month}\n\n"
+        f"Modelo activo: Q3=[{MODEL_CONFIG.get('q3','v?')}]  "
+        f"Q4=[{MODEL_CONFIG.get('q4','v?')}]\n\n"
+        "• Datos actuales: genera inmediatamente con lo que ya "
+        "está en eval_match_results.\n"
+        "• Recalcular primero: re-evalúa todos los partidos del "
+        "mes con el modelo activo y luego genera el reporte (puede "
+        "tardar varios minutos)."
+    )
+    if q:
+        try:
+            await q.edit_message_text(txt, reply_markup=kb)
+        except Exception:
+            await context.bot.send_message(chat_id=cid, text=txt, reply_markup=kb)
+    else:
+        await context.bot.send_message(chat_id=cid, text=txt, reply_markup=kb)
+
+
+async def _send_stats_report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Unificado: genera y envia las estadisticas con manejo de longitud para Telegram."""
+    try:
+        model_txt = await asyncio.to_thread(_build_model_stats_text)
+        universe_txt = await asyncio.to_thread(_build_universe_stats_text)
+        stats_txt = model_txt + "\n\n" + universe_txt
+    except Exception as exc:
+        logger.error("Error building stats: %s", exc, exc_info=True)
+        stats_txt = f"Error al leer estadisticas: {exc}"
+
+    MAX_CHUNK = 3800
+    escaped = html.escape(stats_txt)
+    chunks: list[str] = []
+    while escaped:
+        chunk = escaped[:MAX_CHUNK]
+        if len(escaped) > MAX_CHUNK:
+            nl = chunk.rfind("\n")
+            if nl > 0:
+                chunk = escaped[:nl]
+        chunks.append(f"<pre>{chunk}</pre>")
+        escaped = escaped[len(chunk):].lstrip("\n")
+
+    message = update.effective_message
+    if not message:
+        return
+
+    # Si es un callback, actualizamos el mensaje original con la primera parte
+    if update.callback_query:
+        query = update.callback_query
+        try:
+            # Edit current message with first part
+            await query.edit_message_text(
+                text=chunks[0],
+                parse_mode="HTML",
+                reply_markup=_train_submenu_keyboard()
+            )
+            # Send following parts as new messages
+            for part in chunks[1:]:
+                await context.bot.send_message(
+                    chat_id=message.chat_id,
+                    text=part,
+                    parse_mode="HTML"
+                )
+        except Exception as e:
+            if "message is not modified" not in str(e).lower():
+                await context.bot.send_message(chat_id=message.chat_id, text=chunks[0], parse_mode="HTML")
+    else:
+        # Si es un comando o boton de teclado
+        for idx, part in enumerate(chunks):
+            # Only the LAST chunk gets the reply keyboard to keep the chat usable
+            kb = _menu_reply_keyboard() if idx == len(chunks) - 1 else None
+            await context.bot.send_message(
+                chat_id=message.chat_id,
+                text=part,
+                parse_mode="HTML",
+                reply_markup=kb
+            )
+
+
+async def modelstats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not _is_allowed(update):
+        return
+    await _send_stats_report(update, context)
+
+
 
 
 def _train_status_text() -> str:
@@ -6440,6 +7313,13 @@ def _train_status_text() -> str:
     if last_exit != 0 and last_error:
         return base + "\n" + "ultimo_error_tail:\n" + last_error
     return base
+
+
+def _is_allowed(update: Update) -> bool:
+    chat_id = update.effective_chat.id if update.effective_chat else None
+    if not ALLOWED_CHAT_IDS:
+        return True
+    return chat_id in ALLOWED_CHAT_IDS
 
 
 def _is_train_allowed(chat_id: int | None) -> bool:
@@ -6676,6 +7556,71 @@ async def monitor_cmd(
     )
 
 
+async def signals_cmd(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """Show today's signals."""
+    if not _is_allowed(update):
+        return
+    
+    today_str = datetime.now().date().isoformat()
+    cid = update.effective_chat.id if update.effective_chat else None
+    # Reconcile any ⏳ pending bets from quarter_scores already in DB
+    await asyncio.to_thread(bet_monitor_mod.reconcile_pending_results, DB_PATH)
+    signal_type, quarters = _get_subscriber_pref(cid)
+    text = bet_monitor_mod.signals_text_today(DB_PATH, today_str, pref=signal_type, quarters=quarters)
+    nav_markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📋 Reporte Detallado", callback_data="monitor:report_today")],
+        [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
+    ])
+    await update.effective_message.reply_text(text=text, reply_markup=nav_markup)
+
+
+async def signals_report_cmd(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+) -> None:
+    """Download today's detailed report (Excel)."""
+    if not _is_allowed(update):
+        return
+    
+    today_str = datetime.now().date().isoformat()
+    cid = update.effective_chat.id if update.effective_chat else None
+    signal_type, quarters = _get_subscriber_pref(cid)
+    
+    # Show loading message
+    msg = await update.effective_message.reply_text("⏳ Generando Reporte Detallado...")
+    
+    try:
+        # Generate Excel in thread with extended timeout (120 seconds)
+        excel_bytes = await asyncio.wait_for(
+            asyncio.to_thread(bet_monitor_mod.signals_excel_today, DB_PATH, today_str, quarters),
+            timeout=120.0
+        )
+        filename = f"Reporte_Señales_{today_str}.xlsx"
+        from io import BytesIO
+        
+        # Send document with extended timeout (120 seconds)
+        await asyncio.wait_for(
+            context.bot.send_document(
+                chat_id=cid,
+                document=BytesIO(excel_bytes),
+                filename=filename,
+            ),
+            timeout=120.0
+        )
+        
+        # Update loading message to confirmation
+        await msg.edit_text("✅ Reporte enviado")
+    except asyncio.TimeoutError:
+        logger.error("Error generating/sending report: Timeout after 120 seconds")
+        await msg.edit_text("❌ Timeout al generar/enviar el reporte (muy lento)")
+    except Exception as e:
+        logger.error("Error generating report: %s", e)
+        await msg.edit_text("❌ Error al generar el reporte")
+
+
 def _start_monitor_thread() -> None:
     """Spawn the monitor background thread (mirrors monitor:start handler)."""
     global _MONITOR_THREAD, _MONITOR_LOOP
@@ -6727,7 +7672,10 @@ async def _post_init(app: Application) -> None:
             BotCommand("myid", "Ver chat_id y user_id"),
             BotCommand("trainstatus", "Estado del ultimo reentreno"),
             BotCommand("dates", "Matches por fecha"),
+            BotCommand("signals", "Señales de hoy"),
+            BotCommand("report", "Reporte detallado de hoy"),
             BotCommand("monitor", "Menu monitor apuestas"),
+            BotCommand("modelstats", "Estadisticas de los modelos"),
         ]
     )
     await app.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
@@ -7061,6 +8009,61 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         return
 
+    if data == "menu:monthly_report":
+        from datetime import datetime as _dt_now
+        _ym = _dt_now.utcnow().strftime("%Y-%m")
+        await _send_monthly_report(update, context, _ym)
+        return
+
+    if data.startswith("monthly:"):
+        # format: monthly:YYYY-MM:current  OR  monthly:YYYY-MM:recalc
+        _parts = data.split(":")
+        # parts[0]="monthly", parts[1]="YYYY-MM", parts[2]="current"|"recalc"
+        # but YYYY-MM has a dash so split(":")  gives 3 or 4 parts
+        if len(_parts) >= 3:
+            _ym = _parts[1]  # "YYYY-MM"
+            _action = _parts[-1]  # "current" or "recalc"
+        else:
+            _ym = datetime.now().strftime("%Y-%m")
+            _action = "current"
+        cid = update.effective_chat.id if update.effective_chat else None
+        _, quarters = _get_subscriber_pref(cid)
+        if update.callback_query:
+            try:
+                await update.callback_query.answer()
+            except Exception:
+                pass
+        msg = await context.bot.send_message(
+            chat_id=cid,
+            text=f"⏳ {'Recalculando' if _action == 'recalc' else 'Generando'} reporte {_ym}...",
+        )
+        try:
+            if _action == "recalc":
+                await _recalculate_month_evals(_ym, cid, msg, quarters)
+
+            excel_bytes = await asyncio.wait_for(
+                asyncio.to_thread(_build_monthly_excel_bytes, _ym, quarters),
+                timeout=180.0,
+            )
+            filename = f"Reporte_Mensual_{_ym}.xlsx"
+            from io import BytesIO
+            await asyncio.wait_for(
+                context.bot.send_document(
+                    chat_id=cid,
+                    document=BytesIO(excel_bytes),
+                    filename=filename,
+                ),
+                timeout=120.0,
+            )
+            await msg.edit_text(f"✅ Reporte {_ym} enviado")
+        except asyncio.TimeoutError:
+            logger.error("Monthly report timeout for %s", _ym)
+            await msg.edit_text("❌ Timeout al generar el reporte")
+        except Exception as exc:
+            logger.error("Monthly report error: %s", exc, exc_info=True)
+            await msg.edit_text(f"❌ Error: {exc}")
+        return
+
     if data == "monitor:start":
         _mon_thread = _MONITOR_THREAD
         running = bool(
@@ -7097,7 +8100,10 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if data == "monitor:subscribe":
         cid = query.from_user.id if query.from_user else None
         if cid:
-            _MONITOR_SUBSCRIBERS.setdefault(cid, "bet_only")
+            _MONITOR_SUBSCRIBERS.setdefault(cid, {
+                "signal_type": "bet_only",
+                "quarters": ["q3", "q4"]
+            })
             _persist_subscribers()
         running = bool(
             bet_monitor_mod.MONITOR_STATUS.get("running", False)
@@ -7126,18 +8132,48 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     if data in ("monitor:sub_bet_only", "monitor:sub_all"):
         cid = query.from_user.id if query.from_user else None
-        pref = "bet_only" if data == "monitor:sub_bet_only" else "all"
+        signal_type = "bet_only" if data == "monitor:sub_bet_only" else "all"
         if cid:
-            _MONITOR_SUBSCRIBERS[cid] = pref
+            if cid not in _MONITOR_SUBSCRIBERS:
+                _MONITOR_SUBSCRIBERS[cid] = {"signal_type": signal_type, "quarters": ["q3", "q4"]}
+            else:
+                _MONITOR_SUBSCRIBERS[cid]["signal_type"] = signal_type
             _persist_subscribers()
         running = bool(
             bet_monitor_mod.MONITOR_STATUS.get("running", False)
             or (_MONITOR_THREAD is not None and _MONITOR_THREAD.is_alive())
         )
-        label = "solo apuestas" if pref == "bet_only" else "apuestas + no-apuesta"
+        label = "solo apuestas" if signal_type == "bet_only" else "apuestas + no-apuesta"
         await query.edit_message_text(
             text=f"🔔 Recibirás alertas de {label}.\n\n" + bet_monitor_mod.status_text(),
             reply_markup=_monitor_keyboard(running, chat_id=cid),
+        )
+        return
+
+    if data == "monitor:quarters_menu":
+        cid = query.from_user.id if query.from_user else None
+        await query.edit_message_text(
+            text="Selecciona qué quarters quieres monitorear:",
+            reply_markup=_monitor_quarters_keyboard(chat_id=cid),
+        )
+        return
+
+    if data in ("monitor:toggle_q3", "monitor:toggle_q4"):
+        cid = query.from_user.id if query.from_user else None
+        quarter = "q3" if data == "monitor:toggle_q3" else "q4"
+        if cid:
+            if cid not in _MONITOR_SUBSCRIBERS:
+                _MONITOR_SUBSCRIBERS[cid] = {"signal_type": "all", "quarters": ["q3", "q4"]}
+            quarters = _MONITOR_SUBSCRIBERS[cid].get("quarters", ["q3", "q4"])
+            if quarter in quarters:
+                quarters.remove(quarter)
+            else:
+                quarters.append(quarter)
+            _MONITOR_SUBSCRIBERS[cid]["quarters"] = sorted(quarters)
+            _persist_subscribers()
+        await query.edit_message_text(
+            text="Selecciona qué quarters quieres monitorear:",
+            reply_markup=_monitor_quarters_keyboard(chat_id=cid),
         )
         return
 
@@ -7273,13 +8309,65 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         cid = query.from_user.id if query.from_user else None
         # Reconcile any ⏳ pending bets from quarter_scores already in DB
         await asyncio.to_thread(bet_monitor_mod.reconcile_pending_results, DB_PATH)
-        user_pref = _MONITOR_SUBSCRIBERS.get(cid, "all") if cid else "all"
-        text = bet_monitor_mod.signals_text_today(DB_PATH, today_str, pref=user_pref)
+        signal_type, quarters = _get_subscriber_pref(cid)
+        text = bet_monitor_mod.signals_text_today(DB_PATH, today_str, pref=signal_type, quarters=quarters)
         nav_markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📋 Reporte Detallado", callback_data="monitor:report_today")],
             [InlineKeyboardButton("⬅️ Monitor", callback_data="menu:monitor")],
             [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
         ])
         await query.edit_message_text(text=text, reply_markup=nav_markup)
+        return
+
+    if data == "monitor:report_today":
+        today_str = datetime.now().date().isoformat()
+        cid = query.from_user.id if query.from_user else None
+        signal_type, quarters = _get_subscriber_pref(cid)
+        try:
+            # Show loading message
+            await query.edit_message_text(text="⏳ Generando Reporte Detallado...", reply_markup=None)
+            
+            # Generate Excel in thread with extended timeout (120 seconds)
+            excel_bytes = await asyncio.wait_for(
+                asyncio.to_thread(bet_monitor_mod.signals_excel_today, DB_PATH, today_str, quarters),
+                timeout=120.0
+            )
+            filename = f"Reporte_Señales_{today_str}.xlsx"
+            from io import BytesIO
+            
+            # Send document with extended timeout (120 seconds)
+            await asyncio.wait_for(
+                context.bot.send_document(
+                    chat_id=query.from_user.id if query.from_user else query.message.chat_id,
+                    document=BytesIO(excel_bytes),
+                    filename=filename,
+                ),
+                timeout=120.0
+            )
+            
+            # Show confirmation
+            await query.edit_message_text(
+                text="✅ Reporte enviado",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("⬅️ Volver a Señales", callback_data="monitor:signals_today")
+                ]])
+            )
+        except asyncio.TimeoutError:
+            logger.error("Error generating/sending report: Timeout after 120 seconds")
+            await query.edit_message_text(
+                text="❌ Timeout al generar/enviar el reporte (muy lento)",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("⬅️ Volver a Señales", callback_data="monitor:signals_today")
+                ]])
+            )
+        except Exception as e:
+            logger.error("Error generating report: %s", e)
+            await query.edit_message_text(
+                text="❌ Error al generar el reporte",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("⬅️ Volver a Señales", callback_data="monitor:signals_today")
+                ]])
+            )
         return
 
     if data == "monitor:log":
@@ -7542,18 +8630,7 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     if data == "train:stats":
-        try:
-            model_txt = await asyncio.to_thread(_build_model_stats_text)
-            universe_txt = await asyncio.to_thread(_build_universe_stats_text)
-            stats_txt = model_txt + "\n\n" + universe_txt
-            stats_render = f"<pre>{html.escape(stats_txt)}</pre>"
-        except Exception as exc:
-            stats_render = f"Error al leer stats: {exc}"
-        await query.edit_message_text(
-            text=stats_render,
-            parse_mode="HTML",
-            reply_markup=_train_submenu_keyboard(),
-        )
+        await _send_stats_report(update, context)
         return
 
     if data == "train:run":
@@ -7977,9 +9054,11 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             return
         rows_preview = _fetch_matches_for_date(event_date)
         total_preview = len(rows_preview)
+        _rc_label = _event_date_title_es(event_date, total_preview).split("[")[0].strip()
+        _rc_model = f"Q3={MODEL_CONFIG['q3']} Q4={MODEL_CONFIG['q4']}"
         await _set_waiting_state(
             update,
-            text=f"Recalculando {event_date}...\n0/{total_preview} procesados",
+            text=f"Recalculando Partidos {_rc_label}\n0/{total_preview} Procesados {_rc_model}",
         )
         context.application.create_task(
             _run_calc_date_job(context.application, chat_id, message_id, event_date)
@@ -8167,32 +9246,7 @@ async def _handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     if raw.lower() == STATS_BUTTON_TEXT.lower():
-        try:
-            model_txt = await asyncio.to_thread(_build_model_stats_text)
-            universe_txt = await asyncio.to_thread(_build_universe_stats_text)
-            stats_txt = model_txt + "\n\n" + universe_txt
-        except Exception as exc:
-            stats_txt = f"Error al leer stats: {exc}"
-        # Split into chunks of ≤4000 chars to stay within Telegram's limit
-        MAX_CHUNK = 4000
-        escaped = html.escape(stats_txt)
-        chunks: list[str] = []
-        while escaped:
-            chunk = escaped[:MAX_CHUNK]
-            # Try to break at a newline so we don't cut mid-line
-            if len(escaped) > MAX_CHUNK:
-                nl = chunk.rfind("\n")
-                if nl > 0:
-                    chunk = escaped[:nl]
-            chunks.append(f"<pre>{chunk}</pre>")
-            escaped = escaped[len(chunk):].lstrip("\n")
-        for idx, chunk_text in enumerate(chunks):
-            kb = _menu_reply_keyboard() if idx == len(chunks) - 1 else None
-            await update.message.reply_text(
-                text=chunk_text,
-                parse_mode="HTML",
-                reply_markup=kb,
-            )
+        await _send_stats_report(update, context)
         return
 
     if context.user_data.get(AWAITING_FETCH_DATE_KEY):
@@ -8472,14 +9526,19 @@ def main() -> None:
             "Falta TELEGRAM_BOT_TOKEN. Define la variable en .env"
         )
 
-    app = Application.builder().token(BOT_TOKEN).post_init(_post_init).build()
+    # Create custom request with extended timeouts
+    request = CustomHTTPXRequest()
+    app = Application.builder().token(BOT_TOKEN).request(request).post_init(_post_init).build()
 
     app.add_handler(CommandHandler("start", start_cmd))
     app.add_handler(CommandHandler("myid", myid_cmd))
     app.add_handler(CommandHandler("trainstatus", train_status_cmd))
     app.add_handler(CommandHandler("dates", dates_cmd))
+    app.add_handler(CommandHandler("signals", signals_cmd))
+    app.add_handler(CommandHandler("report", signals_report_cmd))
     app.add_handler(CommandHandler("monitor", monitor_cmd))
     app.add_handler(CommandHandler("reporte", reporte_cmd))
+    app.add_handler(CommandHandler("modelstats", modelstats_cmd))
     app.add_handler(CallbackQueryHandler(_handle_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _handle_text))
     app.add_error_handler(_on_error)
@@ -8489,7 +9548,29 @@ def main() -> None:
         print(f"[telegram-bot] allowed_chat_ids={sorted(ALLOWED_CHAT_IDS)}")
     else:
         print("[telegram-bot] allowed_chat_ids=ALL (sin restriccion)")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    
+    # Start polling with retry logic for bootstrap network errors
+    max_retries = 3
+    retry_delay = 5  # seconds
+    for attempt in range(1, max_retries + 1):
+        try:
+            app.run_polling(allowed_updates=Update.ALL_TYPES)
+            break  # If successful, exit the retry loop
+        except KeyboardInterrupt:
+            print("\n[telegram-bot] Interrupción del usuario. Saliendo...")
+            break
+        except (NetworkError, TimedOut) as e:
+            if attempt < max_retries:
+                logger.error(
+                    f"[bootstrap] NetworkError en intento {attempt}/{max_retries}: {e}"
+                )
+                logger.info(f"[bootstrap] Reintentando en {retry_delay} segundos...")
+                time.sleep(retry_delay)
+            else:
+                logger.error(
+                    f"[bootstrap] Error definitivo después de {max_retries} intentos: {e}"
+                )
+                raise
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ export interface MatchData {
   winner_pick: string;
   target_winner: string;
   hit: boolean;
+  outcome?: string;  // 'hit' | 'miss' | 'push' | 'pending'
   q1_home: number;
   q1_away: number;
   q2_home: number;

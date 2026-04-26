@@ -77,6 +77,9 @@ MONITOR_STATUS: dict = {
 _notify_cb: Callable[..., Awaitable[None]] | None = None
 _model_config: dict[str, str] = {"q3": "v4", "q4": "v4"}
 
+# Persistent engine cache: loaded once, reused across inference calls
+_ENGINE_CACHE: dict[str, object] = {}
+
 
 def _is_bet_signal(signal: str) -> bool:
     """True for BET, BET_HOME, BET_AWAY — but not NO_BET."""
@@ -84,19 +87,37 @@ def _is_bet_signal(signal: str) -> bool:
     return "BET" in s and "NO_BET" not in s and "NO BET" not in s
 
 
+def _q3_timing() -> tuple[int, int, int]:
+    """Return (cutoff_minute, min_gp, wake_before) for Q3.
+
+    V13/V15/V16/V17 were trained with graph_points up to minute 22, so they
+    can fire inference at minute ~22 — near halftime for 10-min quarter
+    leagues (Q2 ends at minute 20) and 2 min pre-Q3 for 12-min leagues.
+    A wake_before of 6 means polling starts at minute 16.
+    Older models need data up to minute 24 and wake at minute 20.
+    """
+    model = _model_config.get("q3", "v4")
+    if model in ("v13", "v15", "v16", "v17"):
+        # Cutoff at minute 22; start polling at minute 16.
+        return 22, 14, 6
+    # default (v2, v3, v4, v6, v9, v12, ...)
+    return Q3_MINUTE, MIN_GP_Q3, WAKE_BEFORE_MINUTES
+
+
 def _q4_timing() -> tuple[int, int, bool, int]:
     """Return (cutoff_minute, min_gp, requires_q3_score, wake_before) for Q4.
 
-    V13/V15/V16 fire Q4 inference at minute ~31 (pre-Q4 or start of Q4
+    V13/V15/V16/V17 fire Q4 inference at minute ~31 (pre-Q4 or start of Q4
     in 10-min quarter leagues). A large wake_before ensures the monitor
     starts polling long before Q4 so the user has time to place the bet.
     Older models need minute-36 data with Q3 complete.
     """
     model = _model_config.get("q4", "v4")
-    if model in ("v13", "v15", "v16"):
-        # Start polling at minute 31-12=19 so the bet signal always fires
-        # before Q4 even begins, regardless of quarter length (10 or 12 min).
-        return 31, 16, False, 12
+    if model in ("v13", "v15", "v16", "v17"):
+        # Cutoff at minute 31 (late Q3 / pre-Q4).
+        # requires_q3_score=True ensures Q3 final score exists before Q4 inference.
+        # wake_before=6: start polling at minute ~25 (Q3 underway), never in Q2.
+        return 31, 16, True, 6
     # default (v4, v6, v9, v12, ...)
     return Q4_MINUTE, MIN_GP_Q4, True, WAKE_BEFORE_MINUTES
 
@@ -133,11 +154,12 @@ async def _notify(
     msg: str,
     reply_markup: dict | None = None,
     notify_type: str = "bet",
+    quarter: str | None = None,
 ) -> None:
     """notify_type: 'bet' | 'no_bet' | 'result'"""
     if _notify_cb:
         try:
-            await _notify_cb(msg, reply_markup, notify_type)
+            await _notify_cb(msg, reply_markup, notify_type, quarter)
         except Exception as exc:
             logger.error("[MONITOR] notify error: %s", exc)
     else:
@@ -267,6 +289,34 @@ def _get_pending_rows(conn: sqlite3.Connection, local_date: str) -> list[dict]:
         SELECT * FROM bet_monitor_schedule
         WHERE event_date = ?
           AND status NOT IN ('done', 'discarded')
+          AND NOT (league LIKE '%WNBA%' OR league LIKE '%Women%' OR league LIKE '%women%' OR league LIKE '%Feminina%')
+          AND NOT (league LIKE '%Playoff%' OR league LIKE '%PLAY OFF%')
+          AND NOT league LIKE '%U21 Espoirs Elite%'
+          AND NOT league LIKE '%Liga Femenina%'
+          AND NOT league LIKE '%LF Challenge%'
+          AND NOT league LIKE '%Polish Basketball League%'
+          AND NOT league LIKE '%SuperSport Premijer Liga%'
+          AND NOT league LIKE '%Prvenstvo Hrvatske za d%'
+          AND NOT league LIKE '%ABA Liga%'
+          AND NOT league LIKE '%Argentina Liga Nacional%'
+          AND NOT league LIKE '%Basketligaen%'
+          AND NOT league LIKE '%lite 2%'
+          AND NOT league LIKE '%EYBL%'
+          AND NOT league LIKE '%I B MCKL%'
+          AND NOT league LIKE '%Liga 1 Masculin%'
+          AND NOT league LIKE '%Liga Nationala%'
+          AND NOT league LIKE '%NBL1%'
+          AND NOT league LIKE '%PBA Commissioner%'
+          AND NOT league LIKE '%Rapid League%'
+          AND NOT league LIKE '%Stoiximan GBL%'
+          AND NOT league LIKE '%Playout%'
+          AND NOT league LIKE '%Superleague%'
+          AND NOT league LIKE '%Superliga%'
+          AND NOT league LIKE '%Swedish Basketball Superettan%'
+          AND NOT league LIKE '%Swiss Cup%'
+          AND NOT league LIKE '%Финал%'
+          AND NOT league LIKE '%Turkish Basketball Super League%'
+          AND NOT league LIKE '%NBA%'
         ORDER BY scheduled_utc_ts ASC
         """,
         (local_date,),
@@ -611,6 +661,83 @@ def _get_v12_mae(target: str, metric_type: str) -> float | None:
     return fallbacks.get(f"{target}_{metric_type}")
 
 
+# ── V15/V16 inference helpers ──────────────────────────────────────────────────
+
+def _load_match_data_for_engine(match_id: str) -> dict | None:
+    """Load match data from DB for V15/V16/V17 engine (uses v15 dataset DB path)."""
+    try:
+        v15_ds = importlib.import_module("training.v15.dataset")
+        db_mod = importlib.import_module("db")
+        conn = v15_ds.get_db_connection()
+        data = db_mod.get_match(conn, match_id)
+        conn.close()
+        return data
+    except Exception as exc:
+        logger.warning("[MONITOR] load_match_data_for_engine %s: %s", match_id, exc)
+        return None
+
+
+def _extract_engine_data(data: dict, match_id: str, target: str):
+    """Extract (league, quarter_scores, graph_points, pbp_events) from data dict."""
+    m = data.get("match", {})
+    s = data.get("score", {})
+    quarters = s.get("quarters", {})
+    gp: list[dict] = data.get("graph_points") or []
+    # Flatten quarter-keyed PBP → flat list with 'quarter' key injected
+    pbp: list[dict] = []
+    for q_code, evts in (data.get("play_by_play") or {}).items():
+        for e in (evts or []):
+            pbp.append({**e, "quarter": q_code})
+    league = str(m.get("league") or "Unknown")
+
+    def _qsc(q_code: str, side: str) -> int:
+        return int((quarters.get(q_code) or {}).get(side) or 0)
+
+    quarter_scores: dict[str, int] = {
+        "q1_home": _qsc("Q1", "home"), "q1_away": _qsc("Q1", "away"),
+        "q2_home": _qsc("Q2", "home"), "q2_away": _qsc("Q2", "away"),
+    }
+    if target == "q4":
+        quarter_scores["q3_home"] = _qsc("Q3", "home")
+        quarter_scores["q3_away"] = _qsc("Q3", "away")
+    return league, quarter_scores, gp, pbp
+
+
+def _v15v16_pred_to_mon_dict(pred: object, target: str) -> dict:
+    """Convert V15/V16/V17 Prediction to the standard predictions[target] dict."""
+    sig = getattr(pred, "signal", "NO_BET")
+    d = getattr(pred, "debug", None)
+    winner_pick = "home" if sig == "BET_HOME" else ("away" if sig == "BET_AWAY" else None)
+    return {
+        "available": True,
+        "predicted_winner": winner_pick,
+        "confidence": getattr(pred, "confidence", None),
+        "bet_signal": sig,
+        "final_recommendation": sig,
+        "predicted_total": getattr(d, "pred_total", None) if d else None,
+        "predicted_home": getattr(d, "pred_home", None) if d else None,
+        "predicted_away": getattr(d, "pred_away", None) if d else None,
+        "reasoning": getattr(pred, "reason", ""),
+        "mae": getattr(d, "reg_mae_total", None) if d else None,
+        "mae_home": None,
+        "mae_away": None,
+        "league_quality": None,
+        "league_bettable": sig != "NO_BET",
+        "volatility_index": None,
+        "data_quality": None,
+        # V15/V16/V17 extras for terminal log
+        "model_found": getattr(d, "model_found", None) if d else None,
+        "gp_count": getattr(d, "gp_count", None) if d else None,
+        "pbp_count": getattr(d, "pbp_count", None) if d else None,
+        "threshold": getattr(pred, "threshold", None),
+        "probability": getattr(pred, "probability", None),
+        "gates": [
+            {"name": g.name, "passed": g.passed, "reason": g.reason}
+            for g in (getattr(d, "gates", None) or [])
+        ] if d else [],
+    }
+
+
 def _run_inference_sync(match_id: str, target: str) -> dict:
     """Run inference synchronously (called via asyncio.to_thread)."""
     version = _model_config.get(target, "v4")
@@ -701,6 +828,64 @@ def _run_inference_sync(match_id: str, target: str) -> dict:
             }
         except Exception as exc:
             return {"ok": False, "reason": f"V13 error: {exc}"}
+
+    if version == "v15":
+        try:
+            data = _load_match_data_for_engine(match_id)
+            if data is None:
+                return {"ok": False, "reason": "V15: match data not found in DB"}
+            league, quarter_scores, gp, pbp = _extract_engine_data(data, match_id, target)
+            v15_mod = importlib.import_module("training.v15.inference")
+            engine = _ENGINE_CACHE.get("v15")
+            if engine is None:
+                engine = v15_mod.V15Engine.load()
+                _ENGINE_CACHE["v15"] = engine
+            pred = engine.predict(
+                match_id=match_id, target=target, league=league,
+                quarter_scores=quarter_scores, graph_points=gp, pbp_events=pbp,
+            )
+            return {"ok": True, "predictions": {target: _v15v16_pred_to_mon_dict(pred, target)}}
+        except Exception as exc:
+            return {"ok": False, "reason": f"V15 error: {exc}"}
+
+    if version == "v16":
+        try:
+            data = _load_match_data_for_engine(match_id)
+            if data is None:
+                return {"ok": False, "reason": "V16: match data not found in DB"}
+            league, quarter_scores, gp, pbp = _extract_engine_data(data, match_id, target)
+            # V16 inference module also names its engine class V15Engine
+            v16_mod = importlib.import_module("training.v16.inference")
+            engine = _ENGINE_CACHE.get("v16")
+            if engine is None:
+                engine = v16_mod.V15Engine.load()
+                _ENGINE_CACHE["v16"] = engine
+            pred = engine.predict(
+                match_id=match_id, target=target, league=league,
+                quarter_scores=quarter_scores, graph_points=gp, pbp_events=pbp,
+            )
+            return {"ok": True, "predictions": {target: _v15v16_pred_to_mon_dict(pred, target)}}
+        except Exception as exc:
+            return {"ok": False, "reason": f"V16 error: {exc}"}
+
+    if version == "v17":
+        try:
+            data = _load_match_data_for_engine(match_id)
+            if data is None:
+                return {"ok": False, "reason": "V17: match data not found in DB"}
+            league, quarter_scores, gp, pbp = _extract_engine_data(data, match_id, target)
+            v17_mod = importlib.import_module("training.v17.inference")
+            engine = _ENGINE_CACHE.get("v17")
+            if engine is None:
+                engine = v17_mod.V15Engine.load()
+                _ENGINE_CACHE["v17"] = engine
+            pred = engine.predict(
+                match_id=match_id, target=target, league=league,
+                quarter_scores=quarter_scores, graph_points=gp, pbp_events=pbp,
+            )
+            return {"ok": True, "predictions": {target: _v15v16_pred_to_mon_dict(pred, target)}}
+        except Exception as exc:
+            return {"ok": False, "reason": f"V17 error: {exc}"}
 
     infer_mod = importlib.import_module("training.infer_match")
     # Suppress live snapshot fetch — we already have the data
@@ -834,7 +1019,13 @@ def _format_bet_notification(
     m_info = data.get("match") or {}
     status_type = str(m_info.get("status_type") or "")
     quarters = (data.get("score") or {}).get("quarters", {})
-    q_order = ["Q1", "Q2", "Q3", "Q4"]
+    # Only show prior quarters (don't show the quarter being bet or future ones)
+    if quarter_label == "Q3":
+        q_order = ["Q1", "Q2"]
+    elif quarter_label == "Q4":
+        q_order = ["Q1", "Q2", "Q3"]
+    else:
+        q_order = ["Q1", "Q2", "Q3", "Q4"]
     q_end_minute = {"Q1": 12, "Q2": 24, "Q3": 36, "Q4": 48}
 
     def _q_line(q: str) -> str:
@@ -1052,18 +1243,34 @@ async def _check_quarter(
         logger.warning("[MONITOR] debug log error: %s", _exc)
 
     # ── Terminal debug dump ────────────────────────────────────────────────
-    _v13_cutoff = 22 if target == "q3" else 31   # matches v13/config.py
+    _model_used = _model_config.get(target, "-")
+    # Use model-aware cutoff for GP count display
+    _cutoff = (22 if target == "q3" else 31) if _model_used in ("v13", "v15", "v16", "v17") else (24 if target == "q3" else 36)
     _gp_all = data.get("graph_points") or []
-    _gp_used = [p for p in _gp_all if int(p.get("minute", 0)) <= _v13_cutoff]
+    _gp_used = [p for p in _gp_all if int(p.get("minute", 0)) <= _cutoff]
+
+    # Build V15/V16-specific extra lines
+    _extra_lines = ""
+    if _model_used in ("v15", "v16", "v17") and result.get("ok"):
+        _p = result.get("predictions", {}).get(target, {})
+        _gates_info = _p.get("gates", [])
+        _failed_gates = [g for g in _gates_info if not g.get("passed")]
+        _extra_lines = (
+            f"  Model found: {_p.get('model_found')} | GP≤{_cutoff}={_p.get('gp_count')} | PBP={_p.get('pbp_count')}\n"
+            f"  Probability: {(_p.get('probability') or 0)*100:.1f}% | Threshold: {_p.get('threshold')}\n"
+        )
+        if _failed_gates:
+            _extra_lines += f"  Gates failed: {', '.join(g['name'] + '(' + g['reason'] + ')' for g in _failed_gates)}\n"
+
     print(
         f"\n{'='*60}\n"
         f"[MONITOR DEBUG] {home} vs {away} — {quarter_label} | match_id={match_id}\n"
-        f"  Model    : {_model_config.get(target, '-')}\n"
+        f"  Model    : {_model_used}  |  Q3={_model_config.get('q3', '-')}  Q4={_model_config.get('q4', '-')}\n"
         f"  Signal   : {signal if available else 'UNAVAILABLE'}\n"
         f"  Confidence: {confidence*100:.1f}%\n"
         f"  Min scraped: {current_minute}\n"
-        f"  GP total={len(_gp_all)} | GP used (≤min{_v13_cutoff})={len(_gp_used)}\n"
-        f"  GP used  : {json.dumps(_gp_used, default=str)}\n"
+        f"  GP total={len(_gp_all)} | GP used (≤min{_cutoff})={len(_gp_used)}\n"
+        f"{_extra_lines}"
         f"  Inference JSON:\n{json.dumps(result, ensure_ascii=False, default=str, indent=2)}\n"
         f"{'='*60}",
         flush=True,
@@ -1125,15 +1332,14 @@ async def _check_quarter(
                 )},
             ]]
         }
-        await _notify(msg, reply_markup=markup, notify_type="bet")
-        MONITOR_STATUS["bets_sent"] = MONITOR_STATUS.get("bets_sent", 0) + 1
+        await _notify(msg, reply_markup=markup, notify_type="bet", quarter=target)
         notified = True
         _log(f"🟢 BET {quarter_label} [{model_used}]: {home} vs {away} → {pick} ({confidence * 100:.0f}%)")
         # Schedule result check after match finishes
         asyncio.ensure_future(
             _resolve_bet_result(
                 match_id, target, pick, pick_name,
-                home, away, league, event_date, db_path,
+                home, away, league, event_date, db_path, model_used,
             )
         )
     else:
@@ -1175,7 +1381,7 @@ async def _check_quarter(
                     )},
                 ]]
             }
-            await _notify(no_bet_msg, reply_markup=markup, notify_type="no_bet")
+            await _notify(no_bet_msg, reply_markup=markup, notify_type="no_bet", quarter=target)
             notified = True
 
     return signal, notified, pred
@@ -1191,6 +1397,7 @@ async def _resolve_bet_result(
     league: str,
     event_date: str,
     db_path: str,
+    model_used: str = "-",
 ) -> None:
     """Wait for the match to finish then notify win/loss for the bet quarter."""
     import scraper as scraper_mod
@@ -1251,13 +1458,35 @@ async def _resolve_bet_result(
         outcome = "GANADA ✅" if q_away > q_home else "PERDIDA ❌"
         result_key = "win" if q_away > q_home else "loss"
 
+    # Format the new message with model and time info
+    pick_emoji = "🏠" if pick == "home" else ("✈️" if pick == "away" else "")
+    
+    # Extract event time from match data
+    event_time_str = event_date
+    _match_info = (data.get("match") or {}) if data else {}
+    start_ts = _match_info.get("startTimestamp", 0)
+    if start_ts:
+        try:
+            dt_utc = datetime.fromtimestamp(start_ts, tz=timezone.utc)
+            dt_local = dt_utc + timedelta(hours=UTC_OFFSET_HOURS)
+            # Map month numbers to Spanish names
+            months_es = {
+                1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+                7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+            }
+            days_es = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+            day_name = days_es[dt_local.weekday()]
+            month_name = months_es[dt_local.month].lower()
+            event_time_str = f"{day_name} {dt_local.day} {month_name} {dt_local.year}, {dt_local.hour:02d}:{dt_local.minute:02d}"
+        except Exception:
+            pass
+
     msg = (
         f"{'✅' if result_key == 'win' else ('❌' if result_key == 'loss' else '➖')} "
-        f"RESULTADO {quarter_label} — {outcome}\n"
-        f"Match: {home} vs {away}\n"
-        f"Liga: {league}\n"
-        f"Pick: {pick_name}  |  Score {q_key}: {q_home}-{q_away}\n"
-        f"Fecha: {event_date}  |  ID: {match_id}"
+        f"{q_key} [{model_used}] — {outcome} {pick_emoji} {pick_name}\n"
+        f"{home} vs {away} {q_key}: {q_home}-{q_away}\n"
+        f"{league}\n"
+        f"{event_time_str}"
     )
     _m = (data.get("match") or {}) if data else {}
     _ev_slug = _m.get("event_slug") or ""
@@ -1438,8 +1667,9 @@ async def _watch_match(
             # Match finished — do final checks and exit
             if status_type == "finished":
                 if not q3_done:
-                    gp3 = _count_gp_up_to(data, Q3_MINUTE)
-                    if _has_scores(data, "Q1", "Q2") and gp3 >= MIN_GP_Q3:
+                    q3_cut, q3_mgp, _q3wb = _q3_timing()
+                    gp3 = _count_gp_up_to(data, q3_cut)
+                    if _has_scores(data, "Q1", "Q2") and gp3 >= q3_mgp:
                         sig, notified, _ = await _check_quarter(
                             match_id, data, "q3", db_path, conn,
                             home, away, league, event_date, minute,
@@ -1512,17 +1742,18 @@ async def _watch_match(
                         break
                     continue
 
-                gp3 = _count_gp_up_to(data, Q3_MINUTE)
+                q3_cut, q3_mgp, q3_wake_before = _q3_timing()
+                gp3 = _count_gp_up_to(data, q3_cut)
 
-                if minute > Q3_MINUTE + 6:
+                if minute > q3_cut + 6:
                     # Q3 window has passed
                     _update_row(conn, match_id, q3_checked=1, q3_signal="window_missed")
                     q3_done = True
                     _log(f"{home} vs {away}: ventana Q3 pasada (min {minute})")
 
-                elif minute >= Q3_MINUTE - WAKE_BEFORE_MINUTES:
+                elif minute >= q3_cut - q3_wake_before:
                     # In Q3 window — check if data is ready
-                    if _has_scores(data, "Q1", "Q2") and gp3 >= MIN_GP_Q3:
+                    if _has_scores(data, "Q1", "Q2") and gp3 >= q3_mgp:
                         _is_last_q3 = q3_no_bet_ticks >= NO_BET_CONFIRM_TICKS
                         sig, notified, _ = await _check_quarter(
                             match_id, data, "q3", db_path, conn,
@@ -1557,7 +1788,7 @@ async def _watch_match(
 
                 else:
                     # Still before Q3 window — smart sleep
-                    mins_to_wake = (Q3_MINUTE - WAKE_BEFORE_MINUTES) - minute
+                    mins_to_wake = (q3_cut - q3_wake_before) - minute
                     sleep_secs = max(30.0, min(mins_to_wake * secs_per_gmin, IDLE_POLL_SECS))
                     _log(
                         f"{home} vs {away}: Q3 en ~{mins_to_wake:.0f} game-min, "
@@ -1567,7 +1798,7 @@ async def _watch_match(
                         break
                     continue
 
-            # ── Q4 logic ─────────────────────────────────────────────────────
+            # ── Q4 logic ─────────────────────────────────
             if not q4_done:
                 if minute is None:
                     if await _sleep(POLL_NEAR_SECS):
@@ -1583,6 +1814,21 @@ async def _watch_match(
                     _log(f"{home} vs {away}: ventana Q4 pasada (min {minute}, cutoff={q4_cut})")
 
                 elif minute >= q4_cut - q4_wake_before:
+                    # Hard guard: minute must be >= 27 (Q3 well underway)
+                    # before running Q4 inference. Prevents false BET signals
+                    # fired while the game is still in Q2 (minute ~19-24).
+                    Q4_EARLIEST_MINUTE = 27
+                    if minute < Q4_EARLIEST_MINUTE:
+                        mins_wait = Q4_EARLIEST_MINUTE - minute
+                        sleep_secs = max(30.0, min(mins_wait * secs_per_gmin, IDLE_POLL_SECS))
+                        _log(
+                            f"{home} vs {away}: Q4 bloqueado - minuto {minute} "
+                            f"(minimo requerido {Q4_EARLIEST_MINUTE}), esperando {sleep_secs:.0f}s"
+                        )
+                        if await _sleep(sleep_secs):
+                            break
+                        continue
+
                     score_ok = (_has_scores(data, "Q1", "Q2", "Q3") if q4_need_q3
                                 else _has_scores(data, "Q1", "Q2"))
                     if score_ok and gp4 >= q4_mgp:
@@ -1628,6 +1874,8 @@ async def _watch_match(
                     )
                     if await _sleep(sleep_secs):
                         break
+                    continue
+
                     continue
 
     except asyncio.CancelledError:
@@ -2020,13 +2268,19 @@ def signals_text_today(
     db_path: str,
     local_date: str,
     pref: str = "all",
+    quarters: list[str] | None = None,
 ) -> str:
     """Return a formatted list of today's signals (BET and/or NO_BET).
 
     pref='bet_only' hides NO_BET-only matches and NO_BET lines inside
     matches that have at least one BET signal.
     pref='all' (default) shows everything.
+    
+    quarters: list of quarters to include (e.g., ["q3", "q4"]). If None, includes all.
     """
+    if quarters is None:
+        quarters = ["q3", "q4"]
+    quarters_lower = [q.lower() for q in quarters]
     conn = _open_db(db_path)
 
     # Latest log entry per (match_id, target) for today, ordered by schedule time
@@ -2046,6 +2300,35 @@ def signals_text_today(
                  AND l.target  = latest.target
                  AND l.id      = latest.max_id
         LEFT JOIN bet_monitor_schedule s ON l.match_id = s.match_id
+        WHERE NOT (l.league LIKE '%WNBA%' OR l.league LIKE '%Women%' OR l.league LIKE '%women%' OR l.league LIKE '%Feminina%')
+          AND NOT (l.league LIKE '%Playoff%' OR l.league LIKE '%PLAY OFF%')
+          AND NOT l.league LIKE '%U21 Espoirs Elite%'
+          AND NOT l.league LIKE '%Liga Femenina%'
+          AND NOT l.league LIKE '%LF Challenge%'
+          AND NOT l.league LIKE '%Polish Basketball League%'
+          AND NOT l.league LIKE '%SuperSport Premijer Liga%'
+          AND NOT l.league LIKE '%Prvenstvo Hrvatske za d%'
+          AND NOT l.league LIKE '%ABA Liga%'
+          AND NOT l.league LIKE '%Argentina Liga Nacional%'
+          AND NOT l.league LIKE '%Basketligaen%'
+          AND NOT l.league LIKE '%lite 2%'
+          AND NOT l.league LIKE '%EYBL%'
+          AND NOT l.league LIKE '%I B MCKL%'
+          AND NOT l.league LIKE '%Liga 1 Masculin%'
+          AND NOT l.league LIKE '%Liga Nationala%'
+          AND NOT l.league LIKE '%NBL1%'
+          AND NOT l.league LIKE '%PBA Commissioner%'
+          AND NOT l.league LIKE '%Rapid League%'
+          AND NOT l.league LIKE '%Stoiximan GBL%'
+          AND NOT l.league LIKE '%Playout%'
+          AND NOT l.league LIKE '%Superleague%'
+          AND NOT l.league LIKE '%Superliga%'
+          AND NOT l.league LIKE '%Swedish Basketball Superettan%'
+          AND NOT l.league LIKE '%Swiss Cup%'
+          AND NOT l.league LIKE '%Финал%'
+          AND NOT l.league LIKE '%Turkish Basketball Super League%'
+          AND NOT l.league LIKE '%NBA%'
+          AND (l.signal NOT IN ('BET', 'BET_HOME', 'BET_AWAY') OR l.confidence > 0.30)
         ORDER BY COALESCE(s.scheduled_utc_ts, 0) ASC, l.created_at ASC
         """,
         (local_date,),
@@ -2058,6 +2341,34 @@ def signals_text_today(
                scheduled_utc_ts, status
         FROM bet_monitor_schedule
         WHERE event_date = ?
+          AND NOT (league LIKE '%WNBA%' OR league LIKE '%Women%' OR league LIKE '%women%' OR league LIKE '%Feminina%')
+          AND NOT league LIKE '%Playoff%'
+          AND NOT league LIKE '%U21 Espoirs Elite%'
+          AND NOT league LIKE '%Liga Femenina%'
+          AND NOT league LIKE '%LF Challenge%'
+          AND NOT league LIKE '%Polish Basketball League%'
+          AND NOT league LIKE '%SuperSport Premijer Liga%'
+          AND NOT league LIKE '%Prvenstvo Hrvatske za d%'
+          AND NOT league LIKE '%ABA Liga%'
+          AND NOT league LIKE '%Argentina Liga Nacional%'
+          AND NOT league LIKE '%Basketligaen%'
+          AND NOT league LIKE '%lite 2%'
+          AND NOT league LIKE '%EYBL%'
+          AND NOT league LIKE '%I B MCKL%'
+          AND NOT league LIKE '%Liga 1 Masculin%'
+          AND NOT league LIKE '%Liga Nationala%'
+          AND NOT league LIKE '%NBL1%'
+          AND NOT league LIKE '%PBA Commissioner%'
+          AND NOT league LIKE '%Rapid League%'
+          AND NOT league LIKE '%Stoiximan GBL%'
+          AND NOT league LIKE '%Playout%'
+          AND NOT league LIKE '%Superleague%'
+          AND NOT league LIKE '%Superliga%'
+          AND NOT league LIKE '%Swedish Basketball Superettan%'
+          AND NOT league LIKE '%Swiss Cup%'
+          AND NOT league LIKE '%Финал%'
+          AND NOT league LIKE '%Turkish Basketball Super League%'
+          AND NOT league LIKE '%NBA%'
         ORDER BY scheduled_utc_ts ASC
         """,
         (local_date,),
@@ -2188,6 +2499,12 @@ def signals_text_today(
         if r["match_id"] not in signaled_ids
     ]
 
+    # Filter by quarters: remove quarters not in quarters_lower
+    for mid in match_signals:
+        quarters_to_remove = [q for q in match_signals[mid] if q not in quarters_lower]
+        for q in quarters_to_remove:
+            del match_signals[mid][q]
+
     show_no_bet = pref == "all"
 
     bet_mids = [
@@ -2218,35 +2535,7 @@ def signals_text_today(
             return []
         return lines_m
 
-    lines: list[str] = [f"📊 Señales {_date_hdr}:"]
-
-    if bet_mids:
-        lines.append("— 🟢 Apuestas —")
-        for mid in bet_mids:
-            # In bet_only mode, suppress NO_BET lines within the match
-            lines.extend(_render_match(mid, force_show_no_bet=show_no_bet))
-
-    if show_no_bet and nobet_mids:
-        lines.append("— 🔴 Sin apuesta —")
-        for mid in nobet_mids:
-            lines.extend(_render_match(mid, force_show_no_bet=True))
-
-    if pending_sched:
-        lines.append(f"— ⏳ Sin evaluar ({len(pending_sched)}) —")
-        for r in pending_sched[:20]:
-            hora = _hora(r.get("scheduled_utc_ts"))
-            home_s = str(r.get("home_team") or "?")[:14]
-            away_s = str(r.get("away_team") or "?")[:14]
-            status = str(r.get("status") or "pending")
-            disc = " [descartado]" if status == "discarded" else ""
-            lines.append(f"  {hora} {home_s} vs {away_s}{disc}")
-        if len(pending_sched) > 20:
-            lines.append(f"  ... y {len(pending_sched) - 20} más")
-
-    if not match_signals and not pending_sched:
-        lines.append("Sin datos para hoy. ¿El monitor está corriendo?")
-
-    # ── Stats + simulated bank ────────────────────────────────────────────
+    # ── Stats + simulated bank (FIRST, before signals) ────────────────────
     # Read sim config from settings
     cfg_conn = _open_db(db_path)
     try:
@@ -2269,11 +2558,15 @@ def signals_text_today(
         _odds = 1.4
     cfg_conn.close()
 
-    def _calc_stats(mids: list) -> dict:
-        """Count wins/losses/push/pending for BET signals in mids."""
+    def _calc_stats(mids: list, target: str = None) -> dict:
+        """Count wins/losses/push/pending for BET signals in mids.
+        
+        If target is provided (e.g., "q3" or "q4"), filter to that quarter only.
+        """
         w = l = p = pending = 0
         for mid in mids:
-            for tgt in ("q3", "q4"):
+            targets = [target] if target else ("q3", "q4")
+            for tgt in targets:
                 s = match_signals[mid].get(tgt)
                 if not s:
                     continue
@@ -2330,15 +2623,106 @@ def signals_text_today(
             f"Bank ${bank:.0f}→${bank_end:.0f}"
         )
 
-    bet_st    = _calc_stats(bet_mids)
+    def _format_table_stats(st_q3: dict, st_q4: dict, model_q3: str, model_q4: str,
+                            bank: float, bet: float, odds: float,
+                            active_quarters: list[str] | None = None) -> str:
+        """Format Q3 and Q4 stats side-by-side in a table.
+        active_quarters: list of lowercase quarter names to show (e.g. ['q3','q4']).
+        Columns for inactive quarters are omitted.
+        """
+        if active_quarters is None:
+            active_quarters = ["q3", "q4"]
+        show_q3 = "q3" in active_quarters
+        show_q4 = "q4" in active_quarters
+        lines = []
+
+        def _col(text: str) -> str:
+            return text.ljust(16)
+
+        # Header
+        header = ""
+        if show_q3:
+            header += _col(f"Q3 [{model_q3}]") + " "
+        if show_q4:
+            header += _col(f"Q4 [{model_q4}]")
+        lines.append(f"  {header.rstrip()}")
+
+        # Wins & hit rate
+        played_q3 = st_q3["w"] + st_q3["l"]
+        hit_q3 = (st_q3["w"] / played_q3 * 100) if played_q3 > 0 else 0.0
+        played_q4 = st_q4["w"] + st_q4["l"]
+        hit_q4 = (st_q4["w"] / played_q4 * 100) if played_q4 > 0 else 0.0
+        wins_row = ""
+        if show_q3:
+            wins_row += _col(f"{st_q3['w']}✅{hit_q3:.0f}%") + " "
+        if show_q4:
+            wins_row += _col(f"{st_q4['w']}✅{hit_q4:.0f}%")
+        lines.append(f"  {wins_row.rstrip()}")
+
+        # Losses
+        loss_row = ""
+        if show_q3:
+            loss_row += _col(f"{st_q3['l']}❌") + " "
+        if show_q4:
+            loss_row += _col(f"{st_q4['l']}❌")
+        lines.append(f"  {loss_row.rstrip()}")
+
+        # Pending
+        has_pending = (show_q3 and st_q3["pending"]) or (show_q4 and st_q4["pending"])
+        if has_pending:
+            pend_row = ""
+            if show_q3:
+                pend_row += _col(f"+{st_q3['pending']}⏳" if st_q3["pending"] else "") + " "
+            if show_q4:
+                pend_row += _col(f"+{st_q4['pending']}⏳" if st_q4["pending"] else "")
+            lines.append(f"  {pend_row.rstrip()}")
+
+        # ROI
+        profit_q3 = st_q3["w"] * bet * (odds - 1) - st_q3["l"] * bet
+        roi_q3 = (profit_q3 / (played_q3 * bet) * 100) if played_q3 > 0 else 0.0
+        sign_q3 = "+" if profit_q3 >= 0 else ""
+        profit_q4 = st_q4["w"] * bet * (odds - 1) - st_q4["l"] * bet
+        roi_q4 = (profit_q4 / (played_q4 * bet) * 100) if played_q4 > 0 else 0.0
+        sign_q4 = "+" if profit_q4 >= 0 else ""
+        roi_row = ""
+        if show_q3:
+            roi_row += _col(f"ROI {sign_q3}{roi_q3:.1f}%") + " "
+        if show_q4:
+            roi_row += _col(f"ROI {sign_q4}{roi_q4:.1f}%")
+        lines.append(f"  {roi_row.rstrip()}")
+
+        # Bank
+        bank_row = ""
+        if show_q3:
+            bank_row += _col(f"${bank:.0f}→${bank + profit_q3:.0f}") + " "
+        if show_q4:
+            bank_row += _col(f"${bank:.0f}→${bank + profit_q4:.0f}")
+        lines.append(f"  {bank_row.rstrip()}")
+
+        return "\n".join(lines)
+
+    bet_st_q3 = _calc_stats(bet_mids, "q3")
+    bet_st_q4 = _calc_stats(bet_mids, "q4")
     nobet_st  = _calc_nobet_stats(nobet_mids) if show_no_bet else None
     # Also compute nobet lines inside bet matches
     nobet_in_bet = _calc_nobet_stats(bet_mids) if show_no_bet else None
 
+    # Build stats section early with separate Q3 and Q4 simulations
     stat_lines = []
-    bet_line = _roi_line(bet_st, "💰 Apostado", _bank0, _bet_sz, _odds)
-    if bet_line:
-        stat_lines.append(bet_line)
+    
+    # Read active models from in-memory config (set_model_config keeps this current)
+    q3_model = _model_config.get("q3", "v4")
+    q4_model = _model_config.get("q4", "v4")
+    
+    # Build table with Q3 and Q4 side by side
+    played_q3 = bet_st_q3["w"] + bet_st_q3["l"]
+    played_q4 = bet_st_q4["w"] + bet_st_q4["l"]
+    has_bets = played_q3 > 0 or played_q4 > 0 or bet_st_q3["pending"] or bet_st_q4["pending"]
+    
+    if has_bets:
+        table_txt = _format_table_stats(bet_st_q3, bet_st_q4, q3_model, q4_model, _bank0, _bet_sz, _odds,
+                                        active_quarters=quarters_lower)
+        stat_lines.append(table_txt)
     if show_no_bet:
         # Merge nobet_mids + nobet quarters inside bet matches
         nb_all = {
@@ -2355,16 +2739,1030 @@ def signals_text_today(
         )
         if nb_line:
             stat_lines.append(nb_line)
+
+    # Build message with stats at TOP (after title)
+    lines: list[str] = [f"📊 Señales {_date_hdr}:"]
+    
+    # Add stats section immediately after title (so it's never truncated)
     if stat_lines:
-        lines.append("")
         cfg_txt = (
             f"(odds {_odds} · apuesta ${int(_bet_sz)}"
             f" · Bank ${int(_bank0)})"
         )
-        lines.append(f"── Resumen del día {cfg_txt} ──")
+        lines.append(f"── Resumen {cfg_txt} ──")
         lines.extend(stat_lines)
+        lines.append("")
+
+    # Then add signal sections
+    if bet_mids:
+        lines.append("— 🟢 Apuestas —")
+        for mid in bet_mids:
+            # In bet_only mode, suppress NO_BET lines within the match
+            lines.extend(_render_match(mid, force_show_no_bet=show_no_bet))
+
+    if show_no_bet and nobet_mids:
+        lines.append("— 🔴 Sin apuesta —")
+        for mid in nobet_mids:
+            lines.extend(_render_match(mid, force_show_no_bet=True))
+
+    if pending_sched:
+        lines.append(f"— ⏳ Sin evaluar ({len(pending_sched)}) —")
+        for r in pending_sched[:20]:
+            hora = _hora(r.get("scheduled_utc_ts"))
+            home_s = str(r.get("home_team") or "?")[:14]
+            away_s = str(r.get("away_team") or "?")[:14]
+            status = str(r.get("status") or "pending")
+            disc = " [descartado]" if status == "discarded" else ""
+            lines.append(f"  {hora} {home_s} vs {away_s}{disc}")
+        if len(pending_sched) > 20:
+            lines.append(f"  ... y {len(pending_sched) - 20} más")
+
+    if not match_signals and not pending_sched:
+        lines.append("Sin datos para hoy. ¿El monitor está corriendo?")
 
     text = "\n".join(lines)
     if len(text) > 3800:
         text = text[:3750] + "\n... (truncado)"
     return text
+
+
+def signals_report_today(
+    db_path: str,
+    local_date: str,
+) -> str:
+    """Return a detailed match-by-match report showing bankroll progression."""
+    conn = _open_db(db_path)
+
+    # Get all BET signals for today, ordered by schedule time
+    rows = conn.execute(
+        """
+        SELECT l.match_id, l.target, l.signal, l.pick, l.confidence,
+               l.result, l.created_at,
+               l.home_team, l.away_team, l.league, l.model,
+               s.scheduled_utc_ts
+        FROM bet_monitor_log l
+        INNER JOIN (
+            SELECT match_id, target, MAX(id) AS max_id
+            FROM bet_monitor_log
+            WHERE event_date = ? AND signal IN ('BET', 'BET_HOME', 'BET_AWAY')
+            GROUP BY match_id, target
+        ) latest ON l.match_id = latest.match_id
+                 AND l.target  = latest.target
+                 AND l.id      = latest.max_id
+        LEFT JOIN bet_monitor_schedule s ON l.match_id = s.match_id
+        ORDER BY COALESCE(s.scheduled_utc_ts, 0) ASC, l.created_at ASC
+        """,
+        (local_date,),
+    ).fetchall()
+
+    # Quarter scores
+    _qs_rows = conn.execute(
+        """
+        SELECT qs.match_id, qs.quarter, qs.home, qs.away
+        FROM quarter_scores qs
+        INNER JOIN bet_monitor_schedule s ON qs.match_id = s.match_id
+        WHERE s.event_date = ?
+        """,
+        (local_date,),
+    ).fetchall()
+    
+    # Read config
+    try:
+        _bank0  = float(conn.execute(
+            "SELECT value FROM settings WHERE key='sig_bank'"
+        ).fetchone()["value"] or 1000)
+    except Exception:
+        _bank0 = 1000.0
+    try:
+        _bet_sz = float(conn.execute(
+            "SELECT value FROM settings WHERE key='sig_bet_size'"
+        ).fetchone()["value"] or 100)
+    except Exception:
+        _bet_sz = 100.0
+    try:
+        _odds   = float(conn.execute(
+            "SELECT value FROM settings WHERE key='sig_odds'"
+        ).fetchone()["value"] or 1.4)
+    except Exception:
+        _odds = 1.4
+    
+    conn.close()
+
+    # Build quarter_actual map
+    quarter_actual: dict[tuple, str] = {}
+    for qr in _qs_rows:
+        h = qr["home"]
+        a = qr["away"]
+        if h is None or a is None:
+            continue
+        try:
+            h, a = int(h), int(a)
+        except (TypeError, ValueError):
+            continue
+        if h > a:
+            winner = "home"
+        elif a > h:
+            winner = "away"
+        else:
+            winner = "push"
+        quarter_actual[(str(qr["match_id"]), str(qr["quarter"]))] = winner
+
+    # Build report
+    lines = []
+    current_bank = _bank0
+    
+    for i, row in enumerate(rows, 1):
+        mid = str(row["match_id"])
+        tgt = str(row["target"] or "").upper()
+        home = str(row["home_team"] or "?")
+        away = str(row["away_team"] or "?")
+        pick = str(row["pick"] or "")
+        result = str(row["result"] or "pending")
+        model = str(row["model"] or "-")
+        
+        # Determine actual result
+        actual = quarter_actual.get((mid, tgt))
+        
+        # Calculate outcome
+        if result == "win":
+            outcome = "✅ GANADA"
+            profit = _bet_sz * (_odds - 1)
+        elif result == "loss":
+            outcome = "❌ PERDIDA"
+            profit = -_bet_sz
+        elif result == "push":
+            outcome = "➖ EMPATE"
+            profit = 0
+        else:  # pending
+            outcome = "⏳ PENDIENTE"
+            profit = 0
+        
+        pick_sym = "🏠" if pick == "home" else ("✈️" if pick == "away" else "")
+        pick_name = home if pick == "home" else (away if pick == "away" else pick)
+        
+        bank_before = current_bank
+        bank_after = current_bank + profit
+        current_bank = bank_after
+        
+        # Format line
+        line = (
+            f"{i}. {home} vs {away} ({tgt} [{model}])\n"
+            f"   {pick_sym} {pick_name} → {outcome}\n"
+            f"   Banco: ${bank_before:.0f} → ${bank_after:.0f} ({profit:+.0f})"
+        )
+        lines.append(line)
+    
+    # Header
+    _DAY_ES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+    _MON_ES = [
+        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+    ]
+    try:
+        _d = datetime.strptime(local_date, "%Y-%m-%d")
+        _date_hdr = (
+            f"{_DAY_ES[_d.weekday()]} {_d.day} {_MON_ES[_d.month - 1]} {_d.year}"
+        )
+    except ValueError:
+        _date_hdr = local_date
+
+    text = f"📋 Reporte {_date_hdr}\n\n"
+    if lines:
+        text += "\n\n".join(lines)
+        text += f"\n\nBanco Final: ${current_bank:.0f}"
+    else:
+        text += "Sin apuestas para hoy."
+    
+    if len(text) > 3800:
+        text = text[:3750] + "\n... (truncado)"
+    return text
+
+
+def _normalize_sofascore_slug(value: str | None) -> str:
+    """Normalize team/event names for SofaScore URL."""
+    import unicodedata
+    import re
+    text = (value or "").strip().lower()
+    if not text:
+        return "unknown"
+    normalized = unicodedata.normalize("NFKD", text)
+    ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+    ascii_text = re.sub(r"[^a-z0-9]+", "-", ascii_text).strip("-")
+    return ascii_text or "unknown"
+
+
+def _sofascore_match_url(match_id: str, match_data: dict | None = None, home_team: str | None = None, away_team: str | None = None) -> str:
+    """Generate SofaScore URL for a match."""
+    event_slug = "unknown"
+    custom_id = ""
+    home_slug = _normalize_sofascore_slug(home_team) if home_team else "unknown"
+    away_slug = _normalize_sofascore_slug(away_team) if away_team else "unknown"
+
+    if match_data and "match" in match_data:
+        match_info = match_data["match"]
+        event_slug = _normalize_sofascore_slug(match_info.get("event_slug"))
+        custom_id = str(match_info.get("custom_id") or "").strip()
+        home_slug = _normalize_sofascore_slug(match_info.get("home_slug"))
+        away_slug = _normalize_sofascore_slug(match_info.get("away_slug"))
+        if home_slug == "unknown":
+            home_slug = _normalize_sofascore_slug(match_info.get("home_team"))
+        if away_slug == "unknown":
+            away_slug = _normalize_sofascore_slug(match_info.get("away_team"))
+
+    if event_slug != "unknown" and custom_id:
+        return (
+            "https://www.sofascore.com/basketball/match/"
+            f"{event_slug}/{custom_id}#id:{match_id}"
+        )
+
+    return (
+        "https://www.sofascore.com/basketball/match/"
+        f"{home_slug}/{away_slug}#id:{match_id}"
+    )
+
+
+def signals_excel_today(
+    db_path: str,
+    local_date: str,
+    quarters: list[str] | None = None,
+) -> bytes:
+    """Generate an Excel file with Q3 and Q4 sheets showing bankroll progression.
+    
+    quarters: list of quarters to include (e.g., ["q3", "q4"]). If None, includes all.
+    
+    Filters:
+    - Excluye ligas de mujeres (WNBA, Women's, etc.)
+    """
+    if quarters is None:
+        quarters = ["q3", "q4"]
+    quarters_lower = [q.lower() for q in quarters]
+    
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    
+    conn = _open_db(db_path)
+
+    # Get all BET signals for today, grouped by target
+    rows_q3 = [] if "q3" not in quarters_lower else conn.execute(
+        """
+        SELECT l.match_id, l.target, l.signal, l.pick, l.confidence,
+               l.result, l.created_at,
+               l.home_team, l.away_team, l.league, l.model,
+               s.scheduled_utc_ts
+        FROM bet_monitor_log l
+        INNER JOIN (
+            SELECT match_id, target, MAX(id) AS max_id
+            FROM bet_monitor_log
+            WHERE event_date = ? AND signal IN ('BET', 'BET_HOME', 'BET_AWAY') AND target = 'q3'
+            GROUP BY match_id, target
+        ) latest ON l.match_id = latest.match_id
+                 AND l.target  = latest.target
+                 AND l.id      = latest.max_id
+        LEFT JOIN bet_monitor_schedule s ON l.match_id = s.match_id
+        WHERE l.confidence > 0.30
+          AND NOT (l.league LIKE '%WNBA%' OR l.league LIKE '%Women%' OR l.league LIKE '%women%' OR l.league LIKE '%Feminina%')
+          AND NOT (l.league LIKE '%Playoff%' OR l.league LIKE '%PLAY OFF%')
+          AND NOT l.league LIKE '%U21 Espoirs Elite%'
+          AND NOT l.league LIKE '%Liga Femenina%'
+          AND NOT l.league LIKE '%LF Challenge%'
+          AND NOT l.league LIKE '%Polish Basketball League%'
+          AND NOT l.league LIKE '%SuperSport Premijer Liga%'
+          AND NOT l.league LIKE '%Prvenstvo Hrvatske za d%'
+          AND NOT l.league LIKE '%ABA Liga%'
+          AND NOT l.league LIKE '%Argentina Liga Nacional%'
+          AND NOT l.league LIKE '%Basketligaen%'
+          AND NOT l.league LIKE '%lite 2%'
+          AND NOT l.league LIKE '%EYBL%'
+          AND NOT l.league LIKE '%I B MCKL%'
+          AND NOT l.league LIKE '%Liga 1 Masculin%'
+          AND NOT l.league LIKE '%Liga Nationala%'
+          AND NOT l.league LIKE '%NBL1%'
+          AND NOT l.league LIKE '%PBA Commissioner%'
+          AND NOT l.league LIKE '%Rapid League%'
+          AND NOT l.league LIKE '%Stoiximan GBL%'
+          AND NOT l.league LIKE '%Playout%'
+          AND NOT l.league LIKE '%Superleague%'
+          AND NOT l.league LIKE '%Superliga%'
+          AND NOT l.league LIKE '%Swedish Basketball Superettan%'
+          AND NOT l.league LIKE '%Swiss Cup%'
+          AND NOT l.league LIKE '%Финал%'
+          AND NOT l.league LIKE '%Turkish Basketball Super League%'
+          AND NOT l.league LIKE '%NBA%'
+        ORDER BY COALESCE(s.scheduled_utc_ts, 0) ASC, l.created_at ASC
+        """,
+        (local_date,),
+    ).fetchall()
+
+    rows_q4 = [] if "q4" not in quarters_lower else conn.execute(
+        """
+        SELECT l.match_id, l.target, l.signal, l.pick, l.confidence,
+               l.result, l.created_at,
+               l.home_team, l.away_team, l.league, l.model,
+               s.scheduled_utc_ts
+        FROM bet_monitor_log l
+        INNER JOIN (
+            SELECT match_id, target, MAX(id) AS max_id
+            FROM bet_monitor_log
+            WHERE event_date = ? AND signal IN ('BET', 'BET_HOME', 'BET_AWAY') AND target = 'q4'
+            GROUP BY match_id, target
+        ) latest ON l.match_id = latest.match_id
+                 AND l.target  = latest.target
+                 AND l.id      = latest.max_id
+        LEFT JOIN bet_monitor_schedule s ON l.match_id = s.match_id
+        WHERE l.confidence > 0.30
+          AND NOT (l.league LIKE '%WNBA%' OR l.league LIKE '%Women%' OR l.league LIKE '%women%' OR l.league LIKE '%Feminina%')
+          AND NOT (l.league LIKE '%Playoff%' OR l.league LIKE '%PLAY OFF%')
+          AND NOT l.league LIKE '%U21 Espoirs Elite%'
+          AND NOT l.league LIKE '%Liga Femenina%'
+          AND NOT l.league LIKE '%LF Challenge%'
+          AND NOT l.league LIKE '%Polish Basketball League%'
+          AND NOT l.league LIKE '%SuperSport Premijer Liga%'
+          AND NOT l.league LIKE '%Prvenstvo Hrvatske za d%'
+          AND NOT l.league LIKE '%ABA Liga%'
+          AND NOT l.league LIKE '%Argentina Liga Nacional%'
+          AND NOT l.league LIKE '%Basketligaen%'
+          AND NOT l.league LIKE '%lite 2%'
+          AND NOT l.league LIKE '%EYBL%'
+          AND NOT l.league LIKE '%I B MCKL%'
+          AND NOT l.league LIKE '%Liga 1 Masculin%'
+          AND NOT l.league LIKE '%Liga Nationala%'
+          AND NOT l.league LIKE '%NBL1%'
+          AND NOT l.league LIKE '%PBA Commissioner%'
+          AND NOT l.league LIKE '%Rapid League%'
+          AND NOT l.league LIKE '%Stoiximan GBL%'
+          AND NOT l.league LIKE '%Playout%'
+          AND NOT l.league LIKE '%Superleague%'
+          AND NOT l.league LIKE '%Superliga%'
+          AND NOT l.league LIKE '%Swedish Basketball Superettan%'
+          AND NOT l.league LIKE '%Swiss Cup%'
+          AND NOT l.league LIKE '%Финал%'
+          AND NOT l.league LIKE '%Turkish Basketball Super League%'
+          AND NOT l.league LIKE '%NBA%'
+        ORDER BY COALESCE(s.scheduled_utc_ts, 0) ASC, l.created_at ASC
+        """,
+        (local_date,),
+    ).fetchall()
+
+    # Quarter scores
+    _qs_rows = conn.execute(
+        """
+        SELECT qs.match_id, qs.quarter, qs.home, qs.away
+        FROM quarter_scores qs
+        INNER JOIN bet_monitor_schedule s ON qs.match_id = s.match_id
+        WHERE s.event_date = ?
+        """,
+        (local_date,),
+    ).fetchall()
+    
+    # Read config
+    try:
+        _bank0  = float(conn.execute(
+            "SELECT value FROM settings WHERE key='sig_bank'"
+        ).fetchone()["value"] or 1000)
+    except Exception:
+        _bank0 = 1000.0
+    try:
+        _bet_sz = float(conn.execute(
+            "SELECT value FROM settings WHERE key='sig_bet_size'"
+        ).fetchone()["value"] or 100)
+    except Exception:
+        _bet_sz = 100.0
+    try:
+        _odds   = float(conn.execute(
+            "SELECT value FROM settings WHERE key='sig_odds'"
+        ).fetchone()["value"] or 1.4)
+    except Exception:
+        _odds = 1.4
+    
+    conn.close()
+
+    # Fetch match_data for all match_ids to get event_slug and custom_id for SofaScore URLs
+    all_rows = (rows_q3 or []) + (rows_q4 or [])
+    unique_match_ids = list(set(str(row["match_id"]) for row in all_rows))
+    
+    match_data_map: dict[str, dict | None] = {}
+    if unique_match_ids:
+        try:
+            # Fetch match data from scraper (with timeout)
+            results = scraper_mod.fetch_matches_by_ids(unique_match_ids)
+            for mid, data, error in results:
+                match_data_map[str(mid)] = data if data else None
+        except Exception as e:
+            # If scraper fails, fall back to using None (URLs will use home/away fallback)
+            logger.warning(f"Failed to fetch match data for Excel: {e}")
+            for mid in unique_match_ids:
+                match_data_map[str(mid)] = None
+
+    # Build quarter_actual map: (match_id, quarter) -> ("home"|"away"|"push"|None)
+    quarter_actual: dict[tuple, str | None] = {}
+    for qr in _qs_rows:
+        h = qr["home"]
+        a = qr["away"]
+        mid = str(qr["match_id"])
+        q = str(qr["quarter"]).upper()
+        if h is None or a is None:
+            quarter_actual[(mid, q)] = None
+            continue
+        try:
+            h, a = int(h), int(a)
+        except (TypeError, ValueError):
+            quarter_actual[(mid, q)] = None
+            continue
+        if h > a:
+            winner = "home"
+        elif a > h:
+            winner = "away"
+        else:
+            winner = "push"
+        quarter_actual[(mid, q)] = winner
+
+    # Create workbook
+    wb = Workbook()
+    wb.remove(wb.active)  # Remove default sheet
+    
+    # Define styles
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    center_align = Alignment(horizontal="center", vertical="center")
+    left_align = Alignment(horizontal="left", vertical="center")
+    
+    # Colors for results
+    green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+    red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+    gray_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+    
+    def _add_sheet(ws, rows, target_quarter):
+        """Add a sheet with match data."""
+        # Headers
+        headers = ["Nro", "Match ID", "Fecha", "Hora (UTC-6)", "Home", "Away", "Liga",
+                   "Pick", "Modelo", "Confianza", "Resultado", "Q Result", "Bank Antes", "Ganancia", "Bank Despues"]
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col)
+            cell.value = header
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center_align
+            cell.border = border
+        
+        current_bank = _bank0
+        row_num = 2
+        
+        for i, row in enumerate(rows, 1):
+            mid = str(row["match_id"])
+            tgt = str(row["target"] or "").upper()
+            home = str(row["home_team"] or "?")
+            away = str(row["away_team"] or "?")
+            league = str(row["league"] or "")
+            pick = str(row["pick"] or "")
+            model = str(row["model"] or "")
+            confidence = row["confidence"]
+            result = str(row["result"] or "pending")
+            ts = row["scheduled_utc_ts"]
+            
+            # Calculate outcome (push = loss)
+            if result == "win":
+                outcome = "✅"
+                profit = _bet_sz * (_odds - 1)
+                result_fill = green_fill
+            else:  # loss, push, pending -> all treated as loss for display
+                if result == "pending":
+                    outcome = "⏳"
+                    profit = 0
+                    result_fill = gray_fill
+                else:  # loss or push
+                    outcome = "❌"
+                    profit = -_bet_sz
+                    result_fill = red_fill
+            
+            # Format date and time
+            if ts:
+                try:
+                    dt = datetime.fromtimestamp(int(ts), tz=timezone.utc)
+                    # Apply UTC-6 offset
+                    dt_local = dt + timedelta(hours=UTC_OFFSET_HOURS)
+                    date_str = dt_local.strftime("%Y-%m-%d")
+                    time_str = dt_local.strftime("%H:%M")
+                except Exception:
+                    date_str = ""
+                    time_str = ""
+            else:
+                date_str = ""
+                time_str = ""
+            
+            # Get quarter result
+            q_key = (mid, tgt)
+            quarter_result = quarter_actual.get(q_key)
+            if quarter_result == "home":
+                q_result_text = f"🏠 {home}"
+            elif quarter_result == "away":
+                q_result_text = f"✈️ {away}"
+            elif quarter_result == "push":
+                q_result_text = "➖ Push"
+            else:
+                q_result_text = "⏳"
+            
+            pick_sym = "🏠" if pick == "home" else ("✈️" if pick == "away" else "")
+            
+            bank_before = current_bank
+            bank_after = current_bank + profit
+            current_bank = bank_after
+            
+            # Build SofaScore URL with match_data if available
+            sofascore_url = _sofascore_match_url(mid, match_data=match_data_map.get(mid), home_team=home, away_team=away)
+            
+            # Row data
+            ws.cell(row=row_num, column=1).value = i
+            # Match ID with hyperlink
+            match_cell = ws.cell(row=row_num, column=2)
+            match_cell.value = mid
+            match_cell.hyperlink = sofascore_url
+            match_cell.font = Font(color="0563C1", underline="single")
+            
+            ws.cell(row=row_num, column=3).value = date_str
+            ws.cell(row=row_num, column=4).value = time_str
+            ws.cell(row=row_num, column=5).value = home
+            ws.cell(row=row_num, column=6).value = away
+            ws.cell(row=row_num, column=7).value = league
+            ws.cell(row=row_num, column=8).value = f"{pick_sym} {pick}".strip()
+            ws.cell(row=row_num, column=9).value = model
+            ws.cell(row=row_num, column=10).value = confidence
+            ws.cell(row=row_num, column=11).value = outcome
+            ws.cell(row=row_num, column=12).value = q_result_text
+            ws.cell(row=row_num, column=13).value = bank_before
+            ws.cell(row=row_num, column=14).value = profit
+            ws.cell(row=row_num, column=15).value = bank_after
+            
+            # Format cells
+            for col in range(1, 16):
+                cell = ws.cell(row=row_num, column=col)
+                cell.border = border
+                if col == 11:  # Resultado
+                    cell.fill = result_fill
+                    cell.alignment = center_align
+                elif col in (1, 3, 4, 7, 8, 9, 10, 11, 12):
+                    cell.alignment = center_align
+                elif col in (5, 6):
+                    cell.alignment = left_align
+                if col == 10:  # Confianza - percentage format
+                    if confidence is not None:
+                        cell.number_format = '0.0%'
+                    cell.alignment = center_align
+                if col in (13, 14, 15):
+                    cell.number_format = '$#,##0.00'
+                    cell.alignment = Alignment(horizontal="right")
+            
+            row_num += 1
+        
+        # Auto-fit column widths based on content
+        from openpyxl.utils import get_column_letter
+        for col_num in range(1, 16):
+            col_letter = get_column_letter(col_num)
+            max_length = 0
+            column_cells = ws[f'{col_letter}:{col_letter}']
+            for cell in column_cells:
+                try:
+                    if cell.value:
+                        cell_length = len(str(cell.value))
+                        if cell_length > max_length:
+                            max_length = cell_length
+                except:
+                    pass
+            # Add padding and set width (max 50)
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[col_letter].width = adjusted_width
+    
+    # Add Q3 sheet
+    if rows_q3:
+        ws_q3 = wb.create_sheet("Q3", 0)
+        _add_sheet(ws_q3, rows_q3, "Q3")
+    
+    # Add Q4 sheet
+    if rows_q4:
+        ws_q4 = wb.create_sheet("Q4", 1 if rows_q3 else 0)
+        _add_sheet(ws_q4, rows_q4, "Q4")
+    
+    # If no sheets, add empty summary
+    if not rows_q3 and not rows_q4:
+        ws = wb.create_sheet("Info", 0)
+        ws.cell(row=1, column=1).value = "Sin apuestas para hoy"
+    
+    # Save to bytes
+    from io import BytesIO
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output.getvalue()
+
+
+def signals_excel_monthly(
+    db_path: str,
+    year_month: str,
+    quarters: list[str] | None = None,
+) -> bytes:
+    """Generate an Excel report for a full month (year_month='YYYY-MM').
+
+    Applies identical filters as signals_excel_today:
+    - League exclusions
+    - BET confidence > 0.30
+    - Push = loss in bankroll simulation
+
+    Sheets: Q3, Q4 (bet rows by date), Resumen (per-day summary + totals).
+    """
+    if quarters is None:
+        quarters = ["q3", "q4"]
+    quarters_lower = [q.lower() for q in quarters]
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+
+    conn = _open_db(db_path)
+
+    _BET_SIGNALS_SQL = "('BET', 'BET_HOME', 'BET_AWAY')"
+    _LEAGUE_FILTER_SQL = """
+        AND NOT (l.league LIKE '%WNBA%' OR l.league LIKE '%Women%'
+                 OR l.league LIKE '%women%' OR l.league LIKE '%Feminina%')
+        AND NOT (l.league LIKE '%Playoff%' OR l.league LIKE '%PLAY OFF%')
+        AND NOT l.league LIKE '%U21 Espoirs Elite%'
+        AND NOT l.league LIKE '%Liga Femenina%'
+        AND NOT l.league LIKE '%LF Challenge%'
+        AND NOT l.league LIKE '%Polish Basketball League%'
+        AND NOT l.league LIKE '%SuperSport Premijer Liga%'
+        AND NOT l.league LIKE '%Prvenstvo Hrvatske za d%'
+        AND NOT l.league LIKE '%ABA Liga%'
+        AND NOT l.league LIKE '%Argentina Liga Nacional%'
+        AND NOT l.league LIKE '%Basketligaen%'
+        AND NOT l.league LIKE '%lite 2%'
+        AND NOT l.league LIKE '%EYBL%'
+        AND NOT l.league LIKE '%I B MCKL%'
+        AND NOT l.league LIKE '%Liga 1 Masculin%'
+        AND NOT l.league LIKE '%Liga Nationala%'
+        AND NOT l.league LIKE '%NBL1%'
+        AND NOT l.league LIKE '%PBA Commissioner%'
+        AND NOT l.league LIKE '%Rapid League%'
+        AND NOT l.league LIKE '%Stoiximan GBL%'
+        AND NOT l.league LIKE '%Playout%'
+        AND NOT l.league LIKE '%Superleague%'
+        AND NOT l.league LIKE '%Superliga%'
+        AND NOT l.league LIKE '%Swedish Basketball Superettan%'
+        AND NOT l.league LIKE '%Swiss Cup%'
+        AND NOT l.league LIKE '%Финал%'
+        AND NOT l.league LIKE '%Turkish Basketball Super League%'
+        AND NOT l.league LIKE '%NBA%'
+    """
+
+    def _fetch_quarter_rows(target: str) -> list:
+        return conn.execute(
+            f"""
+            SELECT l.match_id, l.target, l.signal, l.pick, l.confidence,
+                   l.result, l.created_at,
+                   l.home_team, l.away_team, l.league, l.model,
+                   l.event_date,
+                   s.scheduled_utc_ts
+            FROM bet_monitor_log l
+            INNER JOIN (
+                SELECT match_id, target, MAX(id) AS max_id
+                FROM bet_monitor_log
+                WHERE event_date LIKE ? AND signal IN {_BET_SIGNALS_SQL}
+                  AND target = ?
+                GROUP BY match_id, target
+            ) latest ON l.match_id = latest.match_id
+                     AND l.target  = latest.target
+                     AND l.id      = latest.max_id
+            LEFT JOIN bet_monitor_schedule s ON l.match_id = s.match_id
+            WHERE l.confidence > 0.30
+            {_LEAGUE_FILTER_SQL}
+            ORDER BY l.event_date ASC, COALESCE(s.scheduled_utc_ts, 0) ASC, l.created_at ASC
+            """,
+            (f"{year_month}-%", target),
+        ).fetchall()
+
+    rows_q3 = _fetch_quarter_rows("q3") if "q3" in quarters_lower else []
+    rows_q4 = _fetch_quarter_rows("q4") if "q4" in quarters_lower else []
+
+    # Quarter scores for the month (all match_ids present in log)
+    all_match_ids = list({str(r["match_id"]) for r in (rows_q3 + rows_q4)})
+    quarter_actual: dict[tuple, str | None] = {}
+    if all_match_ids:
+        placeholders = ",".join("?" * len(all_match_ids))
+        qs_rows = conn.execute(
+            f"""
+            SELECT match_id, quarter, home, away
+            FROM quarter_scores
+            WHERE match_id IN ({placeholders})
+            """,
+            all_match_ids,
+        ).fetchall()
+        for qr in qs_rows:
+            mid = str(qr["match_id"])
+            q = str(qr["quarter"]).upper()
+            h, a = qr["home"], qr["away"]
+            if h is None or a is None:
+                quarter_actual[(mid, q)] = None
+                continue
+            try:
+                h, a = int(h), int(a)
+            except (TypeError, ValueError):
+                quarter_actual[(mid, q)] = None
+                continue
+            quarter_actual[(mid, q)] = "home" if h > a else ("away" if a > h else "push")
+
+    try:
+        _bank0 = float(
+            conn.execute("SELECT value FROM settings WHERE key='sig_bank'").fetchone()["value"]
+            or 1000
+        )
+    except Exception:
+        _bank0 = 1000.0
+    try:
+        _bet_sz = float(
+            conn.execute("SELECT value FROM settings WHERE key='sig_bet_size'").fetchone()["value"]
+            or 100
+        )
+    except Exception:
+        _bet_sz = 100.0
+    try:
+        _odds = float(
+            conn.execute("SELECT value FROM settings WHERE key='sig_odds'").fetchone()["value"]
+            or 1.4
+        )
+    except Exception:
+        _odds = 1.4
+
+    conn.close()
+
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    border = Border(
+        left=Side(style="thin"), right=Side(style="thin"),
+        top=Side(style="thin"), bottom=Side(style="thin"),
+    )
+    center_align = Alignment(horizontal="center", vertical="center")
+    left_align = Alignment(horizontal="left", vertical="center")
+    green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+    red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+    gray_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+    summary_header_fill = PatternFill(start_color="2F5496", end_color="2F5496", fill_type="solid")
+    total_fill = PatternFill(start_color="BDD7EE", end_color="BDD7EE", fill_type="solid")
+
+    # Collect per-day stats for summary sheet
+    # day -> {q3: {w,l,nb,profit}, q4: {w,l,nb,profit}}
+    day_stats: dict[str, dict] = {}
+
+    def _add_bet_sheet(ws, rows, tgt_label: str):
+        nonlocal day_stats
+        headers = [
+            "Nro", "Match ID", "Fecha", "Hora (UTC-6)",
+            "Home", "Away", "Liga",
+            "Pick", "Modelo", "Confianza",
+            "Resultado", "Q Result",
+            "Bank Antes", "Ganancia", "Bank Despues",
+        ]
+        for col, h in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col)
+            cell.value = h
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = center_align
+            cell.border = border
+
+        current_bank = _bank0
+        tgt_key = tgt_label.lower()
+
+        for i, row in enumerate(rows, 1):
+            mid = str(row["match_id"])
+            home = str(row["home_team"] or "?")
+            away = str(row["away_team"] or "?")
+            league = str(row["league"] or "")
+            pick = str(row["pick"] or "")
+            model = str(row["model"] or "")
+            confidence = row["confidence"]
+            result = str(row["result"] or "pending")
+            event_date = str(row["event_date"] or "")
+            ts = row["scheduled_utc_ts"]
+
+            if result == "win":
+                outcome, profit, result_fill = "✅", _bet_sz * (_odds - 1), green_fill
+            elif result == "pending":
+                outcome, profit, result_fill = "⏳", 0.0, gray_fill
+            else:  # loss or push → loss
+                outcome, profit, result_fill = "❌", -_bet_sz, red_fill
+
+            # Date/time
+            if ts:
+                try:
+                    dt = datetime.fromtimestamp(int(ts), tz=timezone.utc)
+                    dt_local = dt + timedelta(hours=UTC_OFFSET_HOURS)
+                    date_str = dt_local.strftime("%Y-%m-%d")
+                    time_str = dt_local.strftime("%H:%M")
+                except Exception:
+                    date_str = event_date
+                    time_str = ""
+            else:
+                date_str = event_date
+                time_str = ""
+
+            q_key = (mid, tgt_label.upper())
+            qr = quarter_actual.get(q_key)
+            q_result_text = (
+                f"🏠 {home}" if qr == "home"
+                else (f"✈️ {away}" if qr == "away"
+                      else ("➖ Push" if qr == "push" else "⏳"))
+            )
+
+            pick_sym = "🏠" if pick == "home" else ("✈️" if pick == "away" else "")
+            bank_before = current_bank
+            bank_after = current_bank + profit
+            current_bank = bank_after
+
+            # Accumulate day stats
+            if event_date not in day_stats:
+                day_stats[event_date] = {
+                    "q3": {"w": 0, "l": 0, "profit": 0.0},
+                    "q4": {"w": 0, "l": 0, "profit": 0.0},
+                }
+            ds = day_stats[event_date][tgt_key]
+            if result == "win":
+                ds["w"] += 1
+                ds["profit"] += profit
+            elif result != "pending":
+                ds["l"] += 1
+                ds["profit"] += profit
+
+            sofascore_url = _sofascore_match_url(mid, home_team=home, away_team=away)
+            row_num = i + 1
+
+            ws.cell(row=row_num, column=1).value = i
+            match_cell = ws.cell(row=row_num, column=2)
+            match_cell.value = mid
+            match_cell.hyperlink = sofascore_url
+            match_cell.font = Font(color="0563C1", underline="single")
+            ws.cell(row=row_num, column=3).value = date_str
+            ws.cell(row=row_num, column=4).value = time_str
+            ws.cell(row=row_num, column=5).value = home
+            ws.cell(row=row_num, column=6).value = away
+            ws.cell(row=row_num, column=7).value = league
+            ws.cell(row=row_num, column=8).value = f"{pick_sym} {pick}".strip()
+            ws.cell(row=row_num, column=9).value = model
+            ws.cell(row=row_num, column=10).value = confidence
+            ws.cell(row=row_num, column=11).value = outcome
+            ws.cell(row=row_num, column=12).value = q_result_text
+            ws.cell(row=row_num, column=13).value = bank_before
+            ws.cell(row=row_num, column=14).value = profit
+            ws.cell(row=row_num, column=15).value = bank_after
+
+            for col in range(1, 16):
+                cell = ws.cell(row=row_num, column=col)
+                cell.border = border
+                if col == 11:
+                    cell.fill = result_fill
+                    cell.alignment = center_align
+                elif col in (1, 3, 4, 7, 8, 9, 10, 11, 12):
+                    cell.alignment = center_align
+                elif col in (5, 6):
+                    cell.alignment = left_align
+                if col == 10 and confidence is not None:
+                    cell.number_format = "0.0%"
+                    cell.alignment = center_align
+                if col in (13, 14, 15):
+                    cell.number_format = "$#,##0.00"
+                    cell.alignment = Alignment(horizontal="right")
+
+        # Auto-fit
+        from openpyxl.utils import get_column_letter as gcl
+        for col_num in range(1, 16):
+            col_letter = gcl(col_num)
+            max_len = max(
+                (len(str(c.value)) for c in ws[col_letter] if c.value),
+                default=8,
+            )
+            ws.column_dimensions[col_letter].width = min(max_len + 2, 50)
+
+    if rows_q3:
+        ws_q3 = wb.create_sheet("Q3", 0)
+        _add_bet_sheet(ws_q3, rows_q3, "Q3")
+    if rows_q4:
+        ws_q4 = wb.create_sheet("Q4", 1 if rows_q3 else 0)
+        _add_bet_sheet(ws_q4, rows_q4, "Q4")
+
+    # ── Resumen sheet ───────────────────────────────────────────────────────
+    ws_res = wb.create_sheet("Resumen", 0)
+
+    def _res_header(ws, col, text):
+        cell = ws.cell(row=1, column=col)
+        cell.value = text
+        cell.fill = summary_header_fill
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.alignment = center_align
+        cell.border = border
+
+    res_headers = [
+        "Fecha", "Q3 W", "Q3 L", "Q3 ROI", "Q3 Ganancia",
+        "Q4 W", "Q4 L", "Q4 ROI", "Q4 Ganancia",
+        "Total W", "Total L", "Total Ganancia", "Bank Final",
+    ]
+    for c, h in enumerate(res_headers, 1):
+        _res_header(ws_res, c, h)
+
+    running_bank = _bank0
+    tot_w = tot_l = 0
+    tot_profit = 0.0
+
+    for row_i, day in enumerate(sorted(day_stats.keys()), 2):
+        ds = day_stats[day]
+        q3w = ds["q3"]["w"]; q3l = ds["q3"]["l"]; q3p = ds["q3"]["profit"]
+        q4w = ds["q4"]["w"]; q4l = ds["q4"]["l"]; q4p = ds["q4"]["profit"]
+        dw = q3w + q4w; dl = q3l + q4l; dp = q3p + q4p
+        tot_w += dw; tot_l += dl; tot_profit += dp
+        running_bank += dp
+
+        def _roi_val(w, l):
+            played = w + l
+            if played == 0:
+                return None
+            return (w * _bet_sz * (_odds - 1) - l * _bet_sz) / (played * _bet_sz)
+
+        vals = [
+            day,
+            q3w, q3l, _roi_val(q3w, q3l), q3p,
+            q4w, q4l, _roi_val(q4w, q4l), q4p,
+            dw, dl, dp, running_bank,
+        ]
+        for c, v in enumerate(vals, 1):
+            cell = ws_res.cell(row=row_i, column=c)
+            cell.value = v
+            cell.border = border
+            if c == 1:
+                cell.alignment = center_align
+            elif c in (2, 3, 6, 7, 10, 11):
+                cell.alignment = center_align
+            elif c in (4, 8):
+                if v is not None:
+                    cell.number_format = "0.0%"
+                cell.alignment = center_align
+            elif c in (5, 9, 12, 13):
+                cell.number_format = "$#,##0.00"
+                cell.alignment = Alignment(horizontal="right")
+            # colour profit cells
+            if c == 12:
+                cell.fill = green_fill if (v or 0) >= 0 else red_fill
+
+    # Totals row
+    total_row = len(day_stats) + 2
+    total_roi = (
+        (tot_w * _bet_sz * (_odds - 1) - tot_l * _bet_sz) / ((tot_w + tot_l) * _bet_sz)
+        if (tot_w + tot_l) > 0
+        else None
+    )
+    total_vals = [
+        "TOTAL", "", "", "", "",
+        "", "", "", "",
+        tot_w, tot_l, tot_profit, _bank0 + tot_profit,
+    ]
+    for c, v in enumerate(total_vals, 1):
+        cell = ws_res.cell(row=total_row, column=c)
+        cell.value = v
+        cell.fill = total_fill
+        cell.font = Font(bold=True)
+        cell.border = border
+        cell.alignment = center_align
+        if c in (12, 13):
+            cell.number_format = "$#,##0.00"
+            cell.alignment = Alignment(horizontal="right")
+
+    # ROI in totals row (col 4 as overall)
+    roi_cell = ws_res.cell(row=total_row, column=4)
+    roi_cell.value = total_roi
+    roi_cell.fill = total_fill
+    roi_cell.font = Font(bold=True)
+    roi_cell.border = border
+    roi_cell.number_format = "0.0%"
+    roi_cell.alignment = center_align
+
+    # Auto-fit resumen
+    from openpyxl.utils import get_column_letter as gcl
+    for col_num in range(1, len(res_headers) + 1):
+        col_letter = gcl(col_num)
+        max_len = max(
+            (len(str(c.value)) for c in ws_res[col_letter] if c.value),
+            default=8,
+        )
+        ws_res.column_dimensions[col_letter].width = min(max_len + 2, 30)
+
+    if not rows_q3 and not rows_q4:
+        ws_res.cell(row=2, column=1).value = "Sin apuestas para el mes"
+
+    from io import BytesIO
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output.getvalue()
