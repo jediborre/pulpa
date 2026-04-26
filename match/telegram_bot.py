@@ -1271,6 +1271,7 @@ def _fetch_date_pred_outcomes(event_date: str) -> dict[str, dict]:
                         f"{q}_signal": pred[f"{q}_signal"],
                         f"{q}_pick": pred[f"{q}_pick"],
                         f"{q}_outcome": pred[f"{q}_outcome"],
+                        f"{q}_confidence": pred.get(f"{q}_confidence", 0.0),
                     })
     return result
 
@@ -1289,6 +1290,11 @@ def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] 
         "Superleague", "Superliga", "Swedish Basketball Superettan",
         "Swiss Cup", "Финал", "Turkish Basketball Super League",
         "NBA",
+        "Big V", "Egyptian Basketball Super League", "Lega A Basket",
+        "Liga e Par", "Liga Ouro", "Señal", "LNB",
+        "Meridianbet KLS", "MPBL", "Nationale 1", "Poland 2nd Basketball League",
+        "Portugal LBP", "Portugal Proliga", "Saku I liiga", "Serie A2",
+        "Slovenian Second Basketball", "Super League", "United Cup", "United League",
     ]
 
     def _league_excluded(league: str) -> bool:
@@ -1389,6 +1395,12 @@ def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] 
 
     for match_id, pred in pred_map.items():
         row = match_lookup.get(match_id, {})
+
+        # If match_rows was provided, only count matches present in it
+        # (any match_id missing from match_lookup was filtered out, e.g. excluded league)
+        if match_rows is not None and match_id not in match_lookup:
+            continue
+
         league = str(row.get("league", "") or "").strip()
 
         # Skip excluded leagues (same filter as monitor/signals)
@@ -6827,6 +6839,11 @@ _MONTHLY_EXCL_PATTERNS = [
     "Superleague", "Superliga", "Swedish Basketball Superettan",
     "Swiss Cup", "Финал", "Turkish Basketball Super League",
     "NBA",
+    "Big V", "Egyptian Basketball Super League", "Lega A Basket",
+    "Liga e Par", "Liga Ouro", "Señal", "LNB",
+    "Meridianbet KLS", "MPBL", "Nationale 1", "Poland 2nd Basketball League",
+    "Portugal LBP", "Portugal Proliga", "Saku I liiga", "Serie A2",
+    "Slovenian Second Basketball", "Super League", "United Cup", "United League",
 ]
 _BET_SIGNALS_MONTHLY = {"BET", "BET HOME", "BET_HOME", "BET AWAY", "BET_AWAY"}
 
@@ -6906,11 +6923,13 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
 
                 pick = str(pred.get(f"{quarter}_pick") or "")
                 ts = row.get("scheduled_utc_ts")
+                time_local = str(row.get("display_time") or "")
                 model_name = q3_model if quarter == "q3" else q4_model
 
                 bet_row = {
                     "match_id": mid,
                     "event_date": date,
+                    "time_local": time_local,
                     "home": str(row.get("home_team", "?") or "?"),
                     "away": str(row.get("away_team", "?") or "?"),
                     "league": league,
@@ -6984,7 +7003,10 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
                 outcome_txt, rf = "❌", red_f
 
             ts = r.get("scheduled_utc_ts")
-            if ts:
+            time_local = r.get("time_local", "")
+            if time_local:
+                date_str, time_str = r["event_date"], time_local
+            elif ts:
                 try:
                     dt = datetime.fromtimestamp(int(ts), tz=timezone.utc) + timedelta(hours=UTC_OFFSET_HOURS)
                     date_str, time_str = dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M")

@@ -317,6 +317,25 @@ def _get_pending_rows(conn: sqlite3.Connection, local_date: str) -> list[dict]:
           AND NOT league LIKE '%Финал%'
           AND NOT league LIKE '%Turkish Basketball Super League%'
           AND NOT league LIKE '%NBA%'
+          AND NOT league LIKE '%Big V%'
+          AND NOT league LIKE '%Egyptian Basketball Super League%'
+          AND NOT league LIKE '%Lega A Basket%'
+          AND NOT league LIKE '%Liga e Par%'
+          AND NOT league LIKE '%Liga Ouro%'
+          AND NOT league LIKE '%Señal%'
+          AND NOT league LIKE '%LNB%'
+          AND NOT league LIKE '%Meridianbet KLS%'
+          AND NOT league LIKE '%MPBL%'
+          AND NOT league LIKE '%Nationale 1%'
+          AND NOT league LIKE '%Poland 2nd Basketball League%'
+          AND NOT league LIKE '%Portugal LBP%'
+          AND NOT league LIKE '%Portugal Proliga%'
+          AND NOT league LIKE '%Saku I liiga%'
+          AND NOT league LIKE '%Serie A2%'
+          AND NOT league LIKE '%Slovenian Second Basketball%'
+          AND NOT league LIKE '%Super League%'
+          AND NOT league LIKE '%United Cup%'
+          AND NOT league LIKE '%United League%'
         ORDER BY scheduled_utc_ts ASC
         """,
         (local_date,),
@@ -1304,6 +1323,9 @@ async def _check_quarter(
 
     notified = False
     if _is_bet_signal(signal):
+        if confidence <= 0.30:
+            _log(f"🔕 BET {quarter_label} [{_model_config.get(target, '-')}]: {home} vs {away} → confianza {confidence*100:.0f}% ≤ 30%, ignorando")
+            return signal, False, pred
         pick_sym = "🏠" if pick == "home" else ("✈️" if pick == "away" else "?")
         pick_name = home if pick == "home" else (away if pick == "away" else pick)
         model_used = _model_config.get(target, "-")
@@ -1449,7 +1471,7 @@ async def _resolve_bet_result(
         return
 
     if q_home == q_away:
-        outcome = "empate"
+        outcome = "PERDIDA ❌ (empate)"
         result_key = "push"
     elif pick == "home":
         outcome = "GANADA ✅" if q_home > q_away else "PERDIDA ❌"
@@ -1482,7 +1504,7 @@ async def _resolve_bet_result(
             pass
 
     msg = (
-        f"{'✅' if result_key == 'win' else ('❌' if result_key == 'loss' else '➖')} "
+        f"{'✅' if result_key == 'win' else '❌'} "
         f"{q_key} [{model_used}] — {outcome} {pick_emoji} {pick_name}\n"
         f"{home} vs {away} {q_key}: {q_home}-{q_away}\n"
         f"{league}\n"
@@ -2328,6 +2350,25 @@ def signals_text_today(
           AND NOT l.league LIKE '%Финал%'
           AND NOT l.league LIKE '%Turkish Basketball Super League%'
           AND NOT l.league LIKE '%NBA%'
+          AND NOT l.league LIKE '%Big V%'
+          AND NOT l.league LIKE '%Egyptian Basketball Super League%'
+          AND NOT l.league LIKE '%Lega A Basket%'
+          AND NOT l.league LIKE '%Liga e Par%'
+          AND NOT l.league LIKE '%Liga Ouro%'
+          AND NOT l.league LIKE '%Señal%'
+          AND NOT l.league LIKE '%LNB%'
+          AND NOT l.league LIKE '%Meridianbet KLS%'
+          AND NOT l.league LIKE '%MPBL%'
+          AND NOT l.league LIKE '%Nationale 1%'
+          AND NOT l.league LIKE '%Poland 2nd Basketball League%'
+          AND NOT l.league LIKE '%Portugal LBP%'
+          AND NOT l.league LIKE '%Portugal Proliga%'
+          AND NOT l.league LIKE '%Saku I liiga%'
+          AND NOT l.league LIKE '%Serie A2%'
+          AND NOT l.league LIKE '%Slovenian Second Basketball%'
+          AND NOT l.league LIKE '%Super League%'
+          AND NOT l.league LIKE '%United Cup%'
+          AND NOT l.league LIKE '%United League%'
           AND (l.signal NOT IN ('BET', 'BET_HOME', 'BET_AWAY') OR l.confidence > 0.30)
         ORDER BY COALESCE(s.scheduled_utc_ts, 0) ASC, l.created_at ASC
         """,
@@ -2369,6 +2410,25 @@ def signals_text_today(
           AND NOT league LIKE '%Финал%'
           AND NOT league LIKE '%Turkish Basketball Super League%'
           AND NOT league LIKE '%NBA%'
+          AND NOT league LIKE '%Big V%'
+          AND NOT league LIKE '%Egyptian Basketball Super League%'
+          AND NOT league LIKE '%Lega A Basket%'
+          AND NOT league LIKE '%Liga e Par%'
+          AND NOT league LIKE '%Liga Ouro%'
+          AND NOT league LIKE '%Señal%'
+          AND NOT league LIKE '%LNB%'
+          AND NOT league LIKE '%Meridianbet KLS%'
+          AND NOT league LIKE '%MPBL%'
+          AND NOT league LIKE '%Nationale 1%'
+          AND NOT league LIKE '%Poland 2nd Basketball League%'
+          AND NOT league LIKE '%Portugal LBP%'
+          AND NOT league LIKE '%Portugal Proliga%'
+          AND NOT league LIKE '%Saku I liiga%'
+          AND NOT league LIKE '%Serie A2%'
+          AND NOT league LIKE '%Slovenian Second Basketball%'
+          AND NOT league LIKE '%Super League%'
+          AND NOT league LIKE '%United Cup%'
+          AND NOT league LIKE '%United League%'
         ORDER BY scheduled_utc_ts ASC
         """,
         (local_date,),
@@ -2766,16 +2826,16 @@ def signals_text_today(
             lines.extend(_render_match(mid, force_show_no_bet=True))
 
     if pending_sched:
-        lines.append(f"— ⏳ Sin evaluar ({len(pending_sched)}) —")
-        for r in pending_sched[:20]:
-            hora = _hora(r.get("scheduled_utc_ts"))
-            home_s = str(r.get("home_team") or "?")[:14]
-            away_s = str(r.get("away_team") or "?")[:14]
-            status = str(r.get("status") or "pending")
-            disc = " [descartado]" if status == "discarded" else ""
-            lines.append(f"  {hora} {home_s} vs {away_s}{disc}")
-        if len(pending_sched) > 20:
-            lines.append(f"  ... y {len(pending_sched) - 20} más")
+        _active_sched = [r for r in pending_sched if str(r.get("status") or "pending") != "discarded"]
+        if _active_sched:
+            lines.append(f"— ⏳ Sin evaluar ({len(_active_sched)}) —")
+            for r in _active_sched[:20]:
+                hora = _hora(r.get("scheduled_utc_ts"))
+                home_s = str(r.get("home_team") or "?")[:14]
+                away_s = str(r.get("away_team") or "?")[:14]
+                lines.append(f"  {hora} {home_s} vs {away_s}")
+            if len(_active_sched) > 20:
+                lines.append(f"  ... y {len(_active_sched) - 20} más")
 
     if not match_signals and not pending_sched:
         lines.append("Sin datos para hoy. ¿El monitor está corriendo?")
@@ -3049,6 +3109,25 @@ def signals_excel_today(
           AND NOT l.league LIKE '%Финал%'
           AND NOT l.league LIKE '%Turkish Basketball Super League%'
           AND NOT l.league LIKE '%NBA%'
+          AND NOT l.league LIKE '%Big V%'
+          AND NOT l.league LIKE '%Egyptian Basketball Super League%'
+          AND NOT l.league LIKE '%Lega A Basket%'
+          AND NOT l.league LIKE '%Liga e Par%'
+          AND NOT l.league LIKE '%Liga Ouro%'
+          AND NOT l.league LIKE '%Señal%'
+          AND NOT l.league LIKE '%LNB%'
+          AND NOT l.league LIKE '%Meridianbet KLS%'
+          AND NOT l.league LIKE '%MPBL%'
+          AND NOT l.league LIKE '%Nationale 1%'
+          AND NOT l.league LIKE '%Poland 2nd Basketball League%'
+          AND NOT l.league LIKE '%Portugal LBP%'
+          AND NOT l.league LIKE '%Portugal Proliga%'
+          AND NOT l.league LIKE '%Saku I liiga%'
+          AND NOT l.league LIKE '%Serie A2%'
+          AND NOT l.league LIKE '%Slovenian Second Basketball%'
+          AND NOT l.league LIKE '%Super League%'
+          AND NOT l.league LIKE '%United Cup%'
+          AND NOT l.league LIKE '%United League%'
         ORDER BY COALESCE(s.scheduled_utc_ts, 0) ASC, l.created_at ASC
         """,
         (local_date,),
@@ -3099,6 +3178,25 @@ def signals_excel_today(
           AND NOT l.league LIKE '%Финал%'
           AND NOT l.league LIKE '%Turkish Basketball Super League%'
           AND NOT l.league LIKE '%NBA%'
+          AND NOT l.league LIKE '%Big V%'
+          AND NOT l.league LIKE '%Egyptian Basketball Super League%'
+          AND NOT l.league LIKE '%Lega A Basket%'
+          AND NOT l.league LIKE '%Liga e Par%'
+          AND NOT l.league LIKE '%Liga Ouro%'
+          AND NOT l.league LIKE '%Señal%'
+          AND NOT l.league LIKE '%LNB%'
+          AND NOT l.league LIKE '%Meridianbet KLS%'
+          AND NOT l.league LIKE '%MPBL%'
+          AND NOT l.league LIKE '%Nationale 1%'
+          AND NOT l.league LIKE '%Poland 2nd Basketball League%'
+          AND NOT l.league LIKE '%Portugal LBP%'
+          AND NOT l.league LIKE '%Portugal Proliga%'
+          AND NOT l.league LIKE '%Saku I liiga%'
+          AND NOT l.league LIKE '%Serie A2%'
+          AND NOT l.league LIKE '%Slovenian Second Basketball%'
+          AND NOT l.league LIKE '%Super League%'
+          AND NOT l.league LIKE '%United Cup%'
+          AND NOT l.league LIKE '%United League%'
         ORDER BY COALESCE(s.scheduled_utc_ts, 0) ASC, l.created_at ASC
         """,
         (local_date,),
@@ -3415,6 +3513,25 @@ def signals_excel_monthly(
         AND NOT l.league LIKE '%Финал%'
         AND NOT l.league LIKE '%Turkish Basketball Super League%'
         AND NOT l.league LIKE '%NBA%'
+        AND NOT l.league LIKE '%Big V%'
+        AND NOT l.league LIKE '%Egyptian Basketball Super League%'
+        AND NOT l.league LIKE '%Lega A Basket%'
+        AND NOT l.league LIKE '%Liga e Par%'
+        AND NOT l.league LIKE '%Liga Ouro%'
+        AND NOT l.league LIKE '%Señal%'
+        AND NOT l.league LIKE '%LNB%'
+        AND NOT l.league LIKE '%Meridianbet KLS%'
+        AND NOT l.league LIKE '%MPBL%'
+        AND NOT l.league LIKE '%Nationale 1%'
+        AND NOT l.league LIKE '%Poland 2nd Basketball League%'
+        AND NOT l.league LIKE '%Portugal LBP%'
+        AND NOT l.league LIKE '%Portugal Proliga%'
+        AND NOT l.league LIKE '%Saku I liiga%'
+        AND NOT l.league LIKE '%Serie A2%'
+        AND NOT l.league LIKE '%Slovenian Second Basketball%'
+        AND NOT l.league LIKE '%Super League%'
+        AND NOT l.league LIKE '%United Cup%'
+        AND NOT l.league LIKE '%United League%'
     """
 
     def _fetch_quarter_rows(target: str) -> list:
