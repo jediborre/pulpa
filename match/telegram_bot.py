@@ -1238,6 +1238,8 @@ def _fetch_date_pred_outcomes(event_date: str) -> dict[str, dict]:
                 "q4_outcome": _row_value(row, f"q4_outcome__{tag}") if q4_av else None,
                 "q3_pick": _row_value(row, f"q3_pick__{tag}") if q3_av else None,
                 "q4_pick": _row_value(row, f"q4_pick__{tag}") if q4_av else None,
+                "q3_confidence": float(_row_value(row, f"q3_confidence__{tag}") or 0.0) if q3_av else 0.0,
+                "q4_confidence": float(_row_value(row, f"q4_confidence__{tag}") or 0.0) if q4_av else 0.0,
             }
 
             if q3_av or q4_av:
@@ -1271,7 +1273,8 @@ def _fetch_date_pred_outcomes(event_date: str) -> dict[str, dict]:
                         f"{q}_signal": pred[f"{q}_signal"],
                         f"{q}_pick": pred[f"{q}_pick"],
                         f"{q}_outcome": pred[f"{q}_outcome"],
-                        f"{q}_confidence": pred.get(f"{q}_confidence", 0.0),
+                        # Prefer monitor confidence if > 0; otherwise keep eval confidence
+                        f"{q}_confidence": pred.get(f"{q}_confidence") or result[mid].get(f"{q}_confidence", 0.0),
                     })
     return result
 
@@ -1279,7 +1282,7 @@ def _fetch_date_pred_outcomes(event_date: str) -> dict[str, dict]:
 def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] | None = None) -> str:
     # ── League exclusion list (same as monitor/signals) ───────────────
     _EXCLUDED_LEAGUE_PATTERNS = [
-        "WNBA", "Women", "women", "Feminina",
+        "WNBA", "Women", "women", "Feminina", "Femenina",
         "Playoff", "PLAY OFF", "U21 Espoirs Elite", "Liga Femenina",
         "LF Challenge", "Polish Basketball League",
         "SuperSport Premijer Liga", "Prvenstvo Hrvatske za d",
@@ -1430,6 +1433,20 @@ def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] 
                     if 0.0 < conf <= 0.30:
                         stats[quarter]["no_bet"] += 1
                         continue
+                    # Apply model-specific filter
+                    _pick_v = str(pred.get(f"{quarter}_pick") or "")
+                    _q_model = MODEL_CONFIG.get(quarter)
+                    if False:  # DISABLED: v6 filters (testing new trained model)
+                        if _q_model == "v6":
+                            _accept, _ = bet_monitor_mod._v6_pick_filter(league, conf, _pick_v)
+                            if not _accept:
+                                stats[quarter]["no_bet"] += 1
+                                continue
+                    if _q_model == "v2":
+                        _accept, _ = bet_monitor_mod._v2_pick_filter(league, conf, _pick_v)
+                        if not _accept:
+                            stats[quarter]["no_bet"] += 1
+                            continue
 
             if outcome == "no_bet":
                 stats[quarter]["no_bet"] += 1
@@ -2879,6 +2896,129 @@ async def _run_refresh_date_job(
     REFRESH_JOBS.pop(chat_id, None)
 
 
+async def _run_reconcile_job(
+    app: Application,
+    chat_id: int,
+    progress_message_id: int,
+) -> None:
+    """Background job: find pending BET outcomes, scrape matches, then reconcile."""
+    _back_kb = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
+    )
+    REFRESH_JOBS[chat_id] = {"mode": "reconcile", "message_id": progress_message_id}
+
+    _BET_SIGS = {"BET", "BET HOME", "BET_HOME", "BET AWAY", "BET_AWAY"}
+
+    def _find_pending_match_ids() -> list[str]:
+        conn2 = _open_conn()
+        try:
+            table_cols = [
+                row["name"]
+                for row in conn2.execute("PRAGMA table_info(eval_match_results)").fetchall()
+            ]
+            tags = sorted({
+                col.split("__", 1)[1]
+                for col in table_cols
+                if col.startswith("q3_pick__")
+            })
+            pending_ids: set[str] = set()
+            for tag in tags:
+                for quarter in ("q3", "q4"):
+                    avail_col = f'"{quarter}_available__{tag}"'
+                    sig_col   = f'"{quarter}_signal__{tag}"'
+                    out_col   = f'"{quarter}_outcome__{tag}"'
+                    try:
+                        rows2 = conn2.execute(
+                            f"SELECT match_id, {sig_col} AS sig FROM eval_match_results"
+                            f" WHERE {avail_col} = 1 AND {out_col} = 'pending'"
+                        ).fetchall()
+                        for r2 in rows2:
+                            sig_norm = str(r2["sig"] or "").upper().replace("_", " ")
+                            if sig_norm in _BET_SIGS:
+                                pending_ids.add(str(r2["match_id"]))
+                    except Exception:
+                        pass
+            return list(pending_ids)
+        finally:
+            conn2.close()
+
+    try:
+        pending_ids = await asyncio.to_thread(_find_pending_match_ids)
+    except Exception as exc:
+        await _safe_edit_message(app, chat_id, progress_message_id,
+                                 f"❌ Error buscando pendientes: {exc}", _back_kb)
+        REFRESH_JOBS.pop(chat_id, None)
+        return
+
+    if not pending_ids:
+        resolved = await asyncio.to_thread(bet_monitor_mod.reconcile_pending_results, DB_PATH)
+        await _safe_edit_message(
+            app, chat_id, progress_message_id,
+            f"✅ Sin apuestas pendientes de marcador.\nbet_monitor_log: {resolved} fila(s) actualizadas.",
+            _back_kb,
+        )
+        REFRESH_JOBS.pop(chat_id, None)
+        return
+
+    total = len(pending_ids)
+    progress: dict[str, object] = {"done": 0, "ok": 0, "fail": 0, "total": total}
+
+    await _safe_edit_message(
+        app, chat_id, progress_message_id,
+        f"⏳ Descargando {total} partido(s) pendiente(s)... (0/{total})",
+    )
+
+    def _scrape_all() -> None:
+        logger.info("[RECONCILE] Iniciando descarga de %d partidos pendientes", total)
+        conn3 = _open_conn()
+        for mid in pending_ids:
+            done_n = int(progress["done"]) + 1
+            logger.info("[RECONCILE] (%d/%d) Descargando match_id=%s ...", done_n, total, mid)
+            try:
+                fresh = scraper_mod.fetch_match_by_id(mid)
+                db_mod.save_match(conn3, mid, fresh)
+                progress["ok"] = int(progress["ok"]) + 1
+                logger.info("[RECONCILE] (%d/%d) match_id=%s OK", done_n, total, mid)
+            except Exception as exc2:
+                logger.warning("[RECONCILE] (%d/%d) match_id=%s FALLIDO: %s", done_n, total, mid, exc2)
+                progress["fail"] = int(progress["fail"]) + 1
+            progress["done"] = done_n
+        conn3.close()
+        logger.info(
+            "[RECONCILE] Descarga completa: %d OK, %d fallidos",
+            int(progress["ok"]), int(progress["fail"]),
+        )
+
+    task = asyncio.create_task(asyncio.to_thread(_scrape_all))
+    last_text = ""
+    while not task.done():
+        done_n = int(progress["done"])
+        text = f"⏳ Descargando partido(s) pendiente(s)... ({done_n}/{total})"
+        if text != last_text:
+            await _safe_edit_message(app, chat_id, progress_message_id, text)
+            last_text = text
+        await asyncio.sleep(REFRESH_DATE_STATUS_INTERVAL_SECONDS)
+
+    try:
+        await task
+    except Exception as exc:
+        await _safe_edit_message(app, chat_id, progress_message_id,
+                                 f"❌ Error durante descarga: {exc}", _back_kb)
+        REFRESH_JOBS.pop(chat_id, None)
+        return
+
+    resolved = await asyncio.to_thread(bet_monitor_mod.reconcile_pending_results, DB_PATH)
+    logger.info("[RECONCILE] Resultados actualizados en DB: %d", resolved)
+    lines = [
+        "✅ Proceso completado.",
+        f"Partidos buscados: {total}",
+        f"Descargados: {int(progress['ok'])} ✅  |  Fallidos: {int(progress['fail'])} ❌",
+        f"Resultados actualizados: {resolved}",
+    ]
+    await _safe_edit_message(app, chat_id, progress_message_id, "\n".join(lines), _back_kb)
+    REFRESH_JOBS.pop(chat_id, None)
+
+
 async def _run_refresh_7d_job(
     app: Application,
     chat_id: int,
@@ -3088,6 +3228,7 @@ def _main_menu_keyboard(chat_id: int | None = None) -> InlineKeyboardMarkup:
         ],
         [InlineKeyboardButton("📊 Señales de Hoy", callback_data="monitor:signals_today")],
         [InlineKeyboardButton("📆 Reporte del Mes", callback_data="menu:monthly_report")],
+        [InlineKeyboardButton("🔁 Resolver marcadores pendientes", callback_data="menu:reconcile")],
     ]
     if chat_id is not None and chat_id in DATE_INGEST_JOBS:
         rows.append(
@@ -6828,7 +6969,7 @@ def _build_model_stats_text() -> str:
 # ─── Monthly report ───────────────────────────────────────────────────────────
 
 _MONTHLY_EXCL_PATTERNS = [
-    "WNBA", "Women", "women", "Feminina",
+    "WNBA", "Women", "women", "Feminina", "Femenina",
     "Playoff", "PLAY OFF", "U21 Espoirs Elite", "Liga Femenina",
     "LF Challenge", "Polish Basketball League",
     "SuperSport Premijer Liga", "Prvenstvo Hrvatske za d",
@@ -6912,19 +7053,33 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
                 if 0.0 < conf <= 0.30:
                     continue
 
+                pick = str(pred.get(f"{quarter}_pick") or "")
+                model_name = q3_model if quarter == "q3" else q4_model
+
+                # Apply model-specific filter
+                _stake_factor = 1.0
+                if False:  # DISABLED: v6 filters (testing new trained model)
+                    if model_name == "v6":
+                        _accept, _stake_factor = bet_monitor_mod._v6_pick_filter(league, conf, pick)
+                        if not _accept:
+                            continue
+                if model_name == "v2":
+                    _accept, _stake_factor = bet_monitor_mod._v2_pick_filter(league, conf, pick)
+                    if not _accept:
+                        continue
+
                 # Resolve outcome from stored field (for past months this is already determined)
                 raw_outcome = str(pred.get(f"{quarter}_outcome") or "pending").lower()
+                _eff_stake = _stake * _stake_factor
                 if raw_outcome == "hit":
-                    result_str, profit = "win", _stake * (_odds - 1)
+                    result_str, profit = "win", _eff_stake * (_odds - 1)
                 elif raw_outcome in ("miss", "push"):  # push = loss
-                    result_str, profit = "loss", -_stake
+                    result_str, profit = "loss", -_eff_stake
                 else:
                     result_str, profit = "pending", 0.0
 
-                pick = str(pred.get(f"{quarter}_pick") or "")
                 ts = row.get("scheduled_utc_ts")
                 time_local = str(row.get("display_time") or "")
-                model_name = q3_model if quarter == "q3" else q4_model
 
                 bet_row = {
                     "match_id": mid,
@@ -6939,24 +7094,32 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
                     "profit": profit,
                     "scheduled_utc_ts": ts,
                     "model": model_name,
+                    "quarter": quarter,
                 }
                 if quarter == "q3":
                     rows_q3.append(bet_row)
                 else:
                     rows_q4.append(bet_row)
 
-                if date not in day_stats:
-                    day_stats[date] = {
-                        "q3": {"w": 0, "l": 0, "profit": 0.0},
-                        "q4": {"w": 0, "l": 0, "profit": 0.0},
-                    }
-                ds = day_stats[date][quarter]
-                if result_str == "win":
-                    ds["w"] += 1
-                    ds["profit"] += profit
-                elif result_str == "loss":
-                    ds["l"] += 1
-                    ds["profit"] += profit
+    # ── Build day_stats derived directly from collected rows ────────────────
+    day_stats: dict[str, dict] = {}
+    for _r in rows_q3 + rows_q4:
+        _d = _r["event_date"]
+        _q = _r["quarter"]
+        if _d not in day_stats:
+            day_stats[_d] = {
+                "q3": {"w": 0, "l": 0, "p": 0, "profit": 0.0},
+                "q4": {"w": 0, "l": 0, "p": 0, "profit": 0.0},
+            }
+        _ds = day_stats[_d][_q]
+        if _r["result"] == "win":
+            _ds["w"] += 1
+            _ds["profit"] += _r["profit"]
+        elif _r["result"] == "loss":
+            _ds["l"] += 1
+            _ds["profit"] += _r["profit"]
+        elif _r["result"] == "pending":
+            _ds["p"] += 1
 
     # ── Excel styles ─────────────────────────────────────────────────────────
     wb = Workbook()
@@ -7074,10 +7237,19 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
     # ── Resumen sheet ─────────────────────────────────────────────────────────
     ws_res = wb.create_sheet("Resumen", 0)
     res_hdrs = [
-        "Fecha", "Q3 W", "Q3 L", "Q3 ROI", "Q3 Ganancia",
-        "Q4 W", "Q4 L", "Q4 ROI", "Q4 Ganancia",
-        "Total W", "Total L", "Total Ganancia", "Bank Final",
+        "Fecha",
+        "Q3 W", "Q3 L", "Q3 ⏳", "Q3 Ef%", "Q3 ROI", "Q3 Ganancia", "Q3 Bank",
+        "Q4 W", "Q4 L", "Q4 ⏳", "Q4 Ef%", "Q4 ROI", "Q4 Ganancia", "Q4 Bank",
+        "Total W", "Total L", "Total ⏳", "Total Ef%", "Total Ganancia", "Bank Final",
     ]
+    # col positions (1-based)
+    # %  cols (format 0.0%): 5 Q3Ef, 6 Q3ROI, 12 Q4Ef, 13 Q4ROI, 19 TotEf
+    # $  cols: 7 Q3Gan, 8 Q3Bank, 14 Q4Gan, 15 Q4Bank, 20 TotGan, 21 BankFinal
+    # green/red fill on col 20 (Total Ganancia)
+    _PCT_COLS  = {5, 6, 12, 13, 19}
+    _MON_COLS  = {7, 8, 14, 15, 20, 21}
+    _GAIN_COL  = 20
+
     for c, h in enumerate(res_hdrs, 1):
         cell = ws_res.cell(1, c)
         cell.value = h
@@ -7086,9 +7258,13 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
         cell.alignment = ca
         cell.border = bdr
 
-    running_bank = _bank
-    tot_w = tot_l = 0
-    tot_profit = 0.0
+    running_bank    = _bank
+    running_bank_q3 = _bank
+    running_bank_q4 = _bank
+    tot_w = tot_l = tot_pend = 0
+    tot_q3w = tot_q3l = tot_q3pend = 0
+    tot_q4w = tot_q4l = tot_q4pend = 0
+    tot_profit = tot_q3p = tot_q4p = 0.0
 
     def _roi_val(w, l):
         played = w + l
@@ -7096,40 +7272,58 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
             return None
         return (w * _stake * (_odds - 1) - l * _stake) / (played * _stake)
 
+    def _ef_val(w, l):
+        played = w + l
+        if played == 0:
+            return None
+        return w / played
+
     for row_i, day in enumerate(sorted(day_stats.keys()), 2):
         ds = day_stats[day]
-        q3w, q3l, q3p = ds["q3"]["w"], ds["q3"]["l"], ds["q3"]["profit"]
-        q4w, q4l, q4p = ds["q4"]["w"], ds["q4"]["l"], ds["q4"]["profit"]
-        dw, dl, dp = q3w + q4w, q3l + q4l, q3p + q4p
-        tot_w += dw; tot_l += dl; tot_profit += dp
-        running_bank += dp
+        q3w, q3l, q3pend, q3p = ds["q3"]["w"], ds["q3"]["l"], ds["q3"]["p"], ds["q3"]["profit"]
+        q4w, q4l, q4pend, q4p = ds["q4"]["w"], ds["q4"]["l"], ds["q4"]["p"], ds["q4"]["profit"]
+        dw  = q3w  + q4w
+        dl  = q3l  + q4l
+        dpend = q3pend + q4pend
+        dp  = q3p  + q4p
+
+        running_bank_q3 += q3p
+        running_bank_q4 += q4p
+        running_bank    += dp
+
+        tot_q3w += q3w; tot_q3l += q3l; tot_q3pend += q3pend; tot_q3p += q3p
+        tot_q4w += q4w; tot_q4l += q4l; tot_q4pend += q4pend; tot_q4p += q4p
+        tot_w   += dw;  tot_l   += dl;  tot_pend   += dpend;  tot_profit += dp
 
         vals = [
             day,
-            q3w, q3l, _roi_val(q3w, q3l), q3p,
-            q4w, q4l, _roi_val(q4w, q4l), q4p,
-            dw, dl, dp, running_bank,
+            q3w, q3l, q3pend or None, _ef_val(q3w, q3l), _roi_val(q3w, q3l), q3p, running_bank_q3,
+            q4w, q4l, q4pend or None, _ef_val(q4w, q4l), _roi_val(q4w, q4l), q4p, running_bank_q4,
+            dw, dl, dpend or None, _ef_val(dw, dl), dp, running_bank,
         ]
         for c, v in enumerate(vals, 1):
             cell = ws_res.cell(row_i, c)
             cell.value = v
             cell.border = bdr
             cell.alignment = ca
-            if c in (4, 8) and v is not None:
+            if c in _PCT_COLS and v is not None:
                 cell.number_format = "0.0%"
-            elif c in (5, 9, 12, 13):
+            elif c in _MON_COLS:
                 cell.number_format = "$#,##0.00"
                 cell.alignment = ra
-            if c == 12:
+            if c == _GAIN_COL:
                 cell.fill = green_f if (v or 0) >= 0 else red_f
 
     # Totals row
     tot_row = len(day_stats) + 2
-    tot_roi = _roi_val(tot_w, tot_l)
     tot_vals = [
-        "TOTAL", "", "", tot_roi, "",
-        "", "", "", "",
-        tot_w, tot_l, tot_profit, _bank + tot_profit,
+        "TOTAL",
+        tot_q3w, tot_q3l, tot_q3pend or None,
+        _ef_val(tot_q3w, tot_q3l), _roi_val(tot_q3w, tot_q3l), tot_q3p, _bank + tot_q3p,
+        tot_q4w, tot_q4l, tot_q4pend or None,
+        _ef_val(tot_q4w, tot_q4l), _roi_val(tot_q4w, tot_q4l), tot_q4p, _bank + tot_q4p,
+        tot_w, tot_l, tot_pend or None,
+        _ef_val(tot_w, tot_l), tot_profit, _bank + tot_profit,
     ]
     for c, v in enumerate(tot_vals, 1):
         cell = ws_res.cell(tot_row, c)
@@ -7138,9 +7332,9 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
         cell.font = Font(bold=True)
         cell.border = bdr
         cell.alignment = ca
-        if c == 4 and v is not None:
+        if c in _PCT_COLS and v is not None:
             cell.number_format = "0.0%"
-        elif c in (12, 13):
+        elif c in _MON_COLS:
             cell.number_format = "$#,##0.00"
             cell.alignment = ra
 
@@ -7159,7 +7353,11 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
 
 
 async def _recalculate_month_evals(year_month: str, cid: int, msg, quarters: list[str]) -> None:
-    """Re-run inference for every match in the month using current MODEL_CONFIG."""
+    """Re-run inference for every match in the month using current MODEL_CONFIG.
+
+    All heavy work runs in a single background thread so the bot event loop
+    stays free to handle other commands while the recalculation is in progress.
+    """
     conn = _open_conn()
     match_ids = [
         r["match_id"]
@@ -7175,28 +7373,39 @@ async def _recalculate_month_evals(year_month: str, cid: int, msg, quarters: lis
         await msg.edit_text(f"❌ Sin partidos encontrados para {year_month}")
         return
 
-    done = errors = 0
-    for mid in match_ids:
-        try:
-            conn2 = _open_conn()
-            data = db_mod.get_match(conn2, mid)
-            conn2.close()
-            if data:
-                await asyncio.to_thread(
-                    _compute_and_store_predictions, mid, data, dict(MODEL_CONFIG)
-                )
-        except Exception as exc:
-            errors += 1
-            logger.warning("Recalc %s: %s", mid, exc)
-        done += 1
-        if done % 25 == 0 or done == total:
+    loop = asyncio.get_event_loop()
+    _config_snapshot = dict(MODEL_CONFIG)
+
+    def _run_all() -> tuple[int, int]:
+        done = errors = 0
+        for mid in match_ids:
             try:
-                await msg.edit_text(
+                conn2 = _open_conn()
+                data = db_mod.get_match(conn2, mid)
+                conn2.close()
+                if data:
+                    _compute_and_store_predictions(mid, data, _config_snapshot)
+            except Exception as exc:
+                errors += 1
+                logger.warning("Recalc %s: %s", mid, exc)
+            done += 1
+            if done % 25 == 0 or done == total:
+                _text = (
                     f"🔄 Recalculando {year_month}...\n"
                     f"{done}/{total} partidos  ({errors} errores)"
                 )
-            except Exception:
-                pass
+                asyncio.run_coroutine_threadsafe(
+                    _safe_edit(msg, _text), loop
+                )
+        return done, errors
+
+    async def _safe_edit(m, text: str) -> None:
+        try:
+            await m.edit_text(text)
+        except Exception:
+            pass
+
+    await asyncio.to_thread(_run_all)
 
 
 async def _send_monthly_report(update: Update, context: ContextTypes.DEFAULT_TYPE, year_month: str) -> None:
@@ -8324,6 +8533,29 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             [InlineKeyboardButton("⬅️ Monitor", callback_data="menu:monitor")],
         ])
         await query.edit_message_text(text=text, reply_markup=kb)
+        return
+
+    if data == "menu:reconcile":
+        await query.answer()
+        chat_id = update.effective_chat.id if update.effective_chat else None
+        if chat_id is None:
+            return
+        if chat_id in REFRESH_JOBS:
+            await query.edit_message_text(
+                "Ya hay un proceso de reconciliación en curso.",
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Menu principal", callback_data="nav:main")]]
+                ),
+            )
+            return
+        message = query.message
+        message_id = message.message_id if message else None
+        if message_id is None:
+            return
+        await query.edit_message_text("⏳ Buscando apuestas pendientes de marcador...")
+        context.application.create_task(
+            _run_reconcile_job(context.application, chat_id, message_id)
+        )
         return
 
     if data == "monitor:signals_today":

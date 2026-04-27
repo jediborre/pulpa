@@ -289,7 +289,7 @@ def _get_pending_rows(conn: sqlite3.Connection, local_date: str) -> list[dict]:
         SELECT * FROM bet_monitor_schedule
         WHERE event_date = ?
           AND status NOT IN ('done', 'discarded')
-          AND NOT (league LIKE '%WNBA%' OR league LIKE '%Women%' OR league LIKE '%women%' OR league LIKE '%Feminina%')
+          AND NOT (league LIKE '%WNBA%' OR league LIKE '%Women%' OR league LIKE '%women%' OR league LIKE '%Feminina%' OR league LIKE '%Femenina%')
           AND NOT (league LIKE '%Playoff%' OR league LIKE '%PLAY OFF%')
           AND NOT league LIKE '%U21 Espoirs Elite%'
           AND NOT league LIKE '%Liga Femenina%'
@@ -417,11 +417,106 @@ def reconcile_pending_results(db_path: str) -> int:
 
     if resolved:
         conn.commit()
-        _log(
-            f"reconcile: {resolved} resultado(s) actualizado(s)"
-        )
+        _log(f"reconcile bet_monitor_log: {resolved} resultado(s) actualizado(s)")
+
+    # ── Phase 2: reconcile eval_match_results ─────────────────────────────────
+    # Find all model-tag columns (q3_pick__TAG → TAG) so we can reconcile
+    # q3_outcome__TAG / q4_outcome__TAG = 'pending' using quarter_scores.
+    eval_resolved = 0
+    try:
+        table_cols = [
+            row[1]
+            for row in conn.execute("PRAGMA table_info(eval_match_results)").fetchall()
+        ]
+        tags = sorted({
+            col.split("__", 1)[1]
+            for col in table_cols
+            if col.startswith("q3_pick__")
+        })
+
+        _BET_SIGS = {"BET", "BET HOME", "BET_HOME", "BET AWAY", "BET_AWAY"}
+
+        for tag in tags:
+            pick_q3 = f'"q3_pick__{tag}"'
+            pick_q4 = f'"q4_pick__{tag}"'
+            sig_q3  = f'"q3_signal__{tag}"'
+            sig_q4  = f'"q4_signal__{tag}"'
+            out_q3  = f'"q3_outcome__{tag}"'
+            out_q4  = f'"q4_outcome__{tag}"'
+            avail_q3 = f'"q3_available__{tag}"'
+            avail_q4 = f'"q4_available__{tag}"'
+
+            pending_eval = conn.execute(
+                f"""
+                SELECT match_id,
+                       {pick_q3} AS pick_q3, {sig_q3} AS sig_q3,
+                       {pick_q4} AS pick_q4, {sig_q4} AS sig_q4,
+                       {out_q3}  AS out_q3,  {out_q4}  AS out_q4,
+                       {avail_q3} AS avail_q3, {avail_q4} AS avail_q4
+                FROM eval_match_results
+                WHERE ({avail_q3} = 1 AND {out_q3} = 'pending')
+                   OR ({avail_q4} = 1 AND {out_q4} = 'pending')
+                """
+            ).fetchall()
+
+            for erow in pending_eval:
+                mid = str(erow["match_id"])
+                updates: list[tuple[str, str]] = []
+
+                for quarter, out_col, pick_val, sig_val, avail_val in (
+                    ("Q3", f"q3_outcome__{tag}", erow["pick_q3"], erow["sig_q3"], erow["avail_q3"]),
+                    ("Q4", f"q4_outcome__{tag}", erow["pick_q4"], erow["sig_q4"], erow["avail_q4"]),
+                ):
+                    if not avail_val:
+                        continue
+                    sig_norm = str(sig_val or "").upper().replace("_", " ")
+                    if sig_norm not in _BET_SIGS:
+                        continue
+                    if str(erow[f"out_{quarter.lower()}"] or "") != "pending":
+                        continue
+
+                    qs = conn.execute(
+                        "SELECT home, away FROM quarter_scores"
+                        " WHERE match_id = ? AND quarter = ?",
+                        (mid, quarter),
+                    ).fetchone()
+                    if not qs:
+                        continue
+                    h, a = qs["home"], qs["away"]
+                    if h is None or a is None:
+                        continue
+                    try:
+                        h, a = int(h), int(a)
+                    except (TypeError, ValueError):
+                        continue
+
+                    pick = str(pick_val or "").lower()
+                    if h == a:
+                        outcome = "push"
+                    elif pick == "home":
+                        outcome = "hit" if h > a else "miss"
+                    else:
+                        outcome = "hit" if a > h else "miss"
+
+                    updates.append((f'"{out_col}"', outcome))
+
+                for col_quoted, outcome in updates:
+                    conn.execute(
+                        f"UPDATE eval_match_results SET {col_quoted} = ?, updated_at = datetime('now')"
+                        " WHERE match_id = ?",
+                        (outcome, mid),
+                    )
+                    eval_resolved += 1
+
+        if eval_resolved:
+            conn.commit()
+            _log(f"reconcile eval_match_results: {eval_resolved} outcome(s) actualizado(s)")
+    except Exception as exc:
+        _log(f"reconcile eval_match_results error: {exc}")
+
     conn.close()
-    return resolved
+    total = resolved + eval_resolved
+    return total
 
 
 # ── Schedule fetcher ──────────────────────────────────────────────────────────
@@ -1190,6 +1285,231 @@ def _format_bet_notification(
     )
 
 
+# ── v2 pick filter (Q3) ───────────────────────────────────────────────────────
+
+def _v2_dynamic_stake(confidence: float) -> float:
+    """Map confidence to stake factor per rule 8."""
+    if confidence < 0.45:
+        return 0.5   # small
+    if confidence < 0.75:
+        return 1.0   # normal / high (65–75 treated as normal cap)
+    if confidence < 0.80:
+        return 0.5   # small (75–80)
+    return 0.3        # micro (80%+)
+
+
+def _v2_pick_filter(league: str, confidence: float, pick: str) -> tuple[bool, float]:
+    """Apply v2 model (Q3) filtering rules.
+
+    Returns (accept, stake_factor).
+    stake_factor 1.0 = normal, 0.5 = half, 0.3 = micro, 0.0 = reject.
+    """
+    ll = league.lower()
+    pk = pick.lower()
+
+    # ── 1. Hard ban: youth phases (rule 9) ───────────────────────────────
+    for _y in ("u14", "u18", "u19", "youth", "kadetska"):
+        if _y in ll:
+            return False, 0.0
+
+    # ── 2. Phase modifier: playoff / final / knockout → stake ×0.5 ───────
+    _PHASE_KEYS = (
+        "play-in", "play in", "playoff", "play off", "semi",
+        "final", "knockout", "superfinal", "classification",
+    )
+    phase_reduced = any(pp in ll for pp in _PHASE_KEYS)
+
+    # ── 3. B1 League (rule 2) ─────────────────────────────────────────────
+    if "b1 league" in ll:
+        if confidence > 0.80:
+            return False, 0.0
+        if confidence < 0.33:
+            return False, 0.0
+        sf = 0.5 if 0.75 <= confidence <= 0.80 else _v2_dynamic_stake(confidence)
+        return (True, sf * 0.5) if phase_reduced else (True, sf)
+
+    # ── 4. B2 League (rule 3) ─────────────────────────────────────────────
+    if "b2 league" in ll:
+        if confidence > 0.90 or confidence < 0.30:
+            return False, 0.0
+        sf = _v2_dynamic_stake(confidence)
+        return (True, sf * 0.5) if phase_reduced else (True, sf)
+
+    # ── 5. Priority leagues: accept from 30% (rule 10) ───────────────────
+    _PRIORITY = (
+        "euroleague", "china cba", "germany bbl", "liga acb",
+        "poland 1st", "bulgaria nbl", "colombia lpb", "lmb apertura",
+    )
+    if any(p in ll for p in _PRIORITY):
+        if confidence < 0.30:
+            return False, 0.0
+        sf = _v2_dynamic_stake(confidence)
+        return (True, sf * 0.5) if phase_reduced else (True, sf)
+
+    # ── 6. Away underdogs in strong leagues (rule 6) ─────────────────────
+    _STRONG = ("euroleague", "b1 league", "b2 league", "china cba", "germany bbl", "bnxt")
+    if pk == "away" and 0.30 <= confidence <= 0.45 and any(s in ll for s in _STRONG):
+        return (True, 0.25) if phase_reduced else (True, 0.5)
+
+    # ── 7. Volatile leagues: higher threshold (rules 5 & 7) ──────────────
+    _VOLATILE = (
+        "puerto rico bsn", "cibacopa", "brazil nbb", "israeli national",
+        "primera feb", "indonesian bl", "new zealand nbl", "slb",
+    )
+    _HOME_PENALTY = ("brazil nbb", "puerto rico bsn", "china cba", "new zealand nbl")
+    is_volatile = any(v in ll for v in _VOLATILE)
+    min_conf = 0.55 if is_volatile else 0.30
+    if any(h in ll for h in _HOME_PENALTY) and pk == "home":
+        min_conf = max(min_conf, 0.30) + 0.05  # +5%
+
+    if confidence < min_conf:
+        return False, 0.0
+
+    # Volatile + overconfidence (≥80%): reject (rule 1 + volatile interaction)
+    if is_volatile and confidence >= 0.80:
+        return False, 0.0
+
+    # ── 8. Global overconfidence ≥80%: micro stake (rule 1) ──────────────
+    if confidence >= 0.80:
+        return (True, 0.15) if phase_reduced else (True, 0.3)
+
+    # ── Global stake dynamic (rule 8) ────────────────────────────────────
+    sf = _v2_dynamic_stake(confidence)
+    return (True, sf * 0.5) if phase_reduced else (True, sf)
+
+
+# ── v6 pick filter ────────────────────────────────────────────────────────────
+
+def _v6_pick_filter(league: str, confidence: float, pick: str) -> tuple[bool, float]:
+    """Apply v6 model filtering rules.
+
+    Returns (accept, stake_factor).
+    stake_factor: 1.0 = normal stake, 0.5 = reduced, 0.25 = minimal.
+    accept=False means reject completely (don't show / don't notify).
+    """
+    ll = league.lower()
+
+    # ── Hard ban: youth / fringe tournament phase keywords ────────────────
+    _BAN_PHASE = [
+        "u14", "u16", "u18", "u19", "youth", "superfinal",
+        "bronzekamp", "3rd place", "5-8", "9-12", "cadets", "kadetska",
+    ]
+    for bp in _BAN_PHASE:
+        if bp in ll:
+            return False, 0.0
+
+    # ── Hard ban: 100% confidence (unrealistic) ────────────────────────
+    if confidence >= 1.0:
+        return False, 0.0
+
+    # ── Hard ban: specific league/phase keywords ──────────────────────────
+    _BANNED_LEAGUES = [
+        "1st division",
+        "belgian basketball 2nd division",
+        "belize elite basketball",
+        "golden square",
+        "uruguay lub championship round",
+        "knock-out",
+        "relegation round",
+        "ketvirtfinalia",
+        "championship round",
+        "primera vuelta",
+        "segunda vuelta",
+    ]
+    for b in _BANNED_LEAGUES:
+        if b in ll:
+            return False, 0.0
+
+    # ── Phase modifier: raise threshold +5% for knockout phases ──────────
+    # Exception: Euroleague Play-in stays at normal threshold.
+    _PHASE_PLUS5 = [
+        "playoffs", "play offs", "play-in", "knockout",
+        "quarterfinal", "quarter-finals", "semifinal", "semi-finals", "final",
+    ]
+    is_euroleague = "euroleague" in ll
+    phase_extra = 0.0
+    for pp in _PHASE_PLUS5:
+        if pp in ll:
+            if is_euroleague and pp == "play-in":
+                break  # Euroleague Play-in: no penalty
+            phase_extra = 0.05
+            break
+
+    # ── Adjusted leagues: per-league rules ───────────────────────────────
+    if "b1 league" in ll:
+        # Underdogs <45% or strong favorites >78% are OK; avoid 50–70%
+        if confidence < 0.45:
+            return True, 1.0
+        if confidence > 0.78:
+            return True, 1.0
+        if 0.50 <= confidence <= 0.70:
+            return False, 0.0
+        return True, 1.0  # 45–50% or 70–78%: borderline, accept
+
+    if "b2 league" in ll:
+        # >80% → treat as 65% (still accept); stake reduced; avoid <30%
+        if confidence < 0.30 + phase_extra:
+            return False, 0.0
+        return True, 0.5
+
+    if "brazil nbb" in ll or ("nbb" in ll and "brazil" in ll):
+        # Avoid HOME picks in 55–68% range; AWAY underdogs are fine
+        if pick.lower() == "home" and 0.55 <= confidence <= 0.68:
+            return False, 0.0
+        return True, 1.0
+
+    if "primera feb" in ll:
+        if confidence < 0.60 + phase_extra:
+            return False, 0.0
+        return True, 1.0
+
+    if ("israeli national" in ll) or ("israel" in ll and "basketball" in ll):
+        # Play only 35–60%; avoid >75%
+        if confidence < 0.35 + phase_extra:
+            return False, 0.0
+        if confidence > 0.75:
+            return False, 0.0
+        return True, 1.0
+
+    if "lmb" in ll or "lmb apertura" in ll:
+        if confidence < 0.60 + phase_extra:
+            return False, 0.0
+        return True, 0.5  # Stake lower
+
+    # ── Trusted leagues: accept from 35% ─────────────────────────────────
+    _TRUSTED_35 = [
+        "china cba", "euroleague", "france pro a",
+        "serie b group", "liga acb", "puerto rico bsn", "colombia lpb",
+    ]
+    for t in _TRUSTED_35:
+        if t in ll:
+            if confidence < 0.35 + phase_extra:
+                return False, 0.0
+            return True, 1.0  # Trusted: accept full range (including 70%+)
+
+    # ── Trusted leagues: accept from 38% ─────────────────────────────────
+    _TRUSTED_38 = ["germany bbl", "bulgaria nbl"]
+    for t in _TRUSTED_38:
+        if t in ll:
+            if confidence < 0.38 + phase_extra:
+                return False, 0.0
+            return True, 1.0
+
+    # ── Global rules (all other leagues) ─────────────────────────────────
+    if confidence < 0.30 + phase_extra:
+        return False, 0.0
+
+    # 70–80%: only trusted leagues may bet this range → reject for others
+    if 0.70 <= confidence <= 0.80:
+        return False, 0.0
+
+    # 80%+: possible overconfidence; accept but reduced stake
+    if confidence > 0.80:
+        return True, 0.5
+
+    return True, 1.0
+
+
 async def _check_quarter(
     match_id: str,
     data: dict,
@@ -1326,9 +1646,23 @@ async def _check_quarter(
         if confidence <= 0.30:
             _log(f"🔕 BET {quarter_label} [{_model_config.get(target, '-')}]: {home} vs {away} → confianza {confidence*100:.0f}% ≤ 30%, ignorando")
             return signal, False, pred
+        # Apply model-specific filter rules
+        model_used = _model_config.get(target, "-")
+        if False:  # DISABLED: v6 filters (testing new trained model)
+            if model_used == "v6":
+                _v6_accept, _v6_stake = _v6_pick_filter(league, confidence, pick)
+                if not _v6_accept:
+                    _log(f"🔕 BET {quarter_label} [v6]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")
+                    return signal, False, pred
+        if model_used == "v2":
+            _v2_accept, _v6_stake = _v2_pick_filter(league, confidence, pick)
+            if not _v2_accept:
+                _log(f"🔕 BET {quarter_label} [v2]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")
+                return signal, False, pred
+        else:
+            _v6_stake = 1.0
         pick_sym = "🏠" if pick == "home" else ("✈️" if pick == "away" else "?")
         pick_name = home if pick == "home" else (away if pick == "away" else pick)
-        model_used = _model_config.get(target, "-")
         msg = _format_bet_notification(
             match_id=match_id,
             data=data,
@@ -1344,6 +1678,8 @@ async def _check_quarter(
             model=model_used,
             pred=pred,
         )
+        if _v6_stake < 1.0:
+            msg += f"\n⚠️ Stake sugerido: {int(_v6_stake * 100)}% del stake normal"
         markup = {
             "inline_keyboard": [[
                 {"text": "🔍 Ver match", "callback_data": f"notifmatch:{match_id}:{event_date}:0"},
@@ -2322,7 +2658,7 @@ def signals_text_today(
                  AND l.target  = latest.target
                  AND l.id      = latest.max_id
         LEFT JOIN bet_monitor_schedule s ON l.match_id = s.match_id
-        WHERE NOT (l.league LIKE '%WNBA%' OR l.league LIKE '%Women%' OR l.league LIKE '%women%' OR l.league LIKE '%Feminina%')
+        WHERE NOT (l.league LIKE '%WNBA%' OR l.league LIKE '%Women%' OR l.league LIKE '%women%' OR l.league LIKE '%Feminina%' OR l.league LIKE '%Femenina%')
           AND NOT (l.league LIKE '%Playoff%' OR l.league LIKE '%PLAY OFF%')
           AND NOT l.league LIKE '%U21 Espoirs Elite%'
           AND NOT l.league LIKE '%Liga Femenina%'
@@ -2382,7 +2718,7 @@ def signals_text_today(
                scheduled_utc_ts, status
         FROM bet_monitor_schedule
         WHERE event_date = ?
-          AND NOT (league LIKE '%WNBA%' OR league LIKE '%Women%' OR league LIKE '%women%' OR league LIKE '%Feminina%')
+          AND NOT (league LIKE '%WNBA%' OR league LIKE '%Women%' OR league LIKE '%women%' OR league LIKE '%Feminina%' OR league LIKE '%Femenina%')
           AND NOT league LIKE '%Playoff%'
           AND NOT league LIKE '%U21 Espoirs Elite%'
           AND NOT league LIKE '%Liga Femenina%'
@@ -2542,6 +2878,22 @@ def signals_text_today(
     for row in rows:
         mid = str(row["match_id"])
         tgt = str(row["target"] or "").lower()
+        # Apply v6 filter: suppress BET signals rejected by the filter
+        _row_model  = str(row["model"]      or "") if "model"      in row.keys() else ""
+        _row_signal = str(row["signal"]     or "") if "signal"     in row.keys() else ""
+        _row_league = str(row["league"]     or "") if "league"     in row.keys() else ""
+        _row_conf   = float(row["confidence"] or 0.0) if "confidence" in row.keys() else 0.0
+        _row_pick   = str(row["pick"]       or "") if "pick"       in row.keys() else ""
+        if _is_bet_signal(_row_signal.upper()):
+            if False:  # DISABLED: v6 filters (testing new trained model)
+                if _row_model == "v6":
+                    _accept, _ = _v6_pick_filter(_row_league, _row_conf, _row_pick)
+                    if not _accept:
+                        continue
+            if _row_model == "v2":
+                _accept, _ = _v2_pick_filter(_row_league, _row_conf, _row_pick)
+                if not _accept:
+                    continue
         if mid not in match_signals:
             match_signals[mid] = {}
             match_meta[mid] = {
@@ -3081,7 +3433,7 @@ def signals_excel_today(
                  AND l.id      = latest.max_id
         LEFT JOIN bet_monitor_schedule s ON l.match_id = s.match_id
         WHERE l.confidence > 0.30
-          AND NOT (l.league LIKE '%WNBA%' OR l.league LIKE '%Women%' OR l.league LIKE '%women%' OR l.league LIKE '%Feminina%')
+          AND NOT (l.league LIKE '%WNBA%' OR l.league LIKE '%Women%' OR l.league LIKE '%women%' OR l.league LIKE '%Feminina%' OR l.league LIKE '%Femenina%')
           AND NOT (l.league LIKE '%Playoff%' OR l.league LIKE '%PLAY OFF%')
           AND NOT l.league LIKE '%U21 Espoirs Elite%'
           AND NOT l.league LIKE '%Liga Femenina%'
@@ -3150,7 +3502,7 @@ def signals_excel_today(
                  AND l.id      = latest.max_id
         LEFT JOIN bet_monitor_schedule s ON l.match_id = s.match_id
         WHERE l.confidence > 0.30
-          AND NOT (l.league LIKE '%WNBA%' OR l.league LIKE '%Women%' OR l.league LIKE '%women%' OR l.league LIKE '%Feminina%')
+          AND NOT (l.league LIKE '%WNBA%' OR l.league LIKE '%Women%' OR l.league LIKE '%women%' OR l.league LIKE '%Feminina%' OR l.league LIKE '%Femenina%')
           AND NOT (l.league LIKE '%Playoff%' OR l.league LIKE '%PLAY OFF%')
           AND NOT l.league LIKE '%U21 Espoirs Elite%'
           AND NOT l.league LIKE '%Liga Femenina%'
@@ -3485,7 +3837,7 @@ def signals_excel_monthly(
     _BET_SIGNALS_SQL = "('BET', 'BET_HOME', 'BET_AWAY')"
     _LEAGUE_FILTER_SQL = """
         AND NOT (l.league LIKE '%WNBA%' OR l.league LIKE '%Women%'
-                 OR l.league LIKE '%women%' OR l.league LIKE '%Feminina%')
+                 OR l.league LIKE '%women%' OR l.league LIKE '%Feminina%' OR l.league LIKE '%Femenina%')
         AND NOT (l.league LIKE '%Playoff%' OR l.league LIKE '%PLAY OFF%')
         AND NOT l.league LIKE '%U21 Espoirs Elite%'
         AND NOT l.league LIKE '%Liga Femenina%'
