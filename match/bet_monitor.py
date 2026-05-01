@@ -1192,7 +1192,7 @@ def _league_bet_history(db_path: str, league: str, target: str, model: str, pick
     rows.extend(eval_extra)
 
     if not rows:
-        return ""
+        return "📊 Historial liga\nSin registros previos para esta liga"
 
     total = len(rows)
     wins_total = sum(1 for r in rows if r["result"] == "win")
@@ -1353,8 +1353,7 @@ def _format_bet_notification(
         # Historical league stats
         if db_path and pick:
             _hist = _league_bet_history(db_path, league, quarter_label, model, pick, confidence)
-            if _hist:
-                _footer_parts.append(_hist)
+            _footer_parts.append(_hist)
 
         pick_line = "\n".join(_footer_parts)
     else:
