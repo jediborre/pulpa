@@ -1114,13 +1114,23 @@ def _bold_num(value) -> str:
 
 
 def _league_bet_history(db_path: str, league: str, target: str, model: str, pick: str, confidence: float) -> str:
-    """Return a compact historical stats block for the league/pick/model/confidence."""
+    """Return a compact historical stats block for the league/pick/model/confidence.
+
+    Pulls from two sources:
+    - bet_monitor_log: live-monitored bets (result = 'win'/'loss'/'push')
+    - eval_match_results: batch-evaluated historical data (outcome = 'hit'/'miss'/'push')
+    Results are deduplicated by match_id; bet_monitor_log takes priority.
+    """
     try:
         conn = _open_db(db_path)
         league_l = league.lower()
-        rows = conn.execute(
+        target_l = target.lower()   # e.g. "q4"
+        model_l  = model.lower()    # e.g. "v6"
+
+        # ── Source 1: live bet_monitor_log ────────────────────────────────────
+        live_rows = conn.execute(
             """
-            SELECT pick, confidence, result
+            SELECT match_id, pick, confidence, result
             FROM bet_monitor_log
             WHERE LOWER(league) = ?
               AND LOWER(target) = ?
@@ -1129,11 +1139,57 @@ def _league_bet_history(db_path: str, league: str, target: str, model: str, pick
               AND result IN ('win','loss','push')
             ORDER BY id
             """,
-            (league_l, target.lower(), model.lower()),
+            (league_l, target_l, model_l),
         ).fetchall()
+        seen_match_ids = {str(r["match_id"]) for r in live_rows}
+
+        # ── Source 2: eval_match_results (batch evaluation / post-training) ──
+        # Columns follow the pattern q{N}_{field}__{model}, e.g. q4_pick__v6
+        qt = target_l  # "q3" or "q4"
+        pick_col   = f"{qt}_pick__{model_l}"
+        signal_col = f"{qt}_signal__{model_l}"
+        outcome_col = f"{qt}_outcome__{model_l}"
+        conf_col   = f"{qt}_confidence__{model_l}"
+        eval_extra: list[dict] = []
+        try:
+            eval_rows = conn.execute(
+                f"""
+                SELECT e.match_id,
+                       e."{pick_col}"    AS pick,
+                       e."{conf_col}"    AS confidence,
+                       e."{outcome_col}" AS outcome
+                FROM eval_match_results e
+                INNER JOIN matches m ON e.match_id = m.match_id
+                WHERE LOWER(m.league) = ?
+                  AND e."{signal_col}" = 'BET'
+                  AND e."{outcome_col}" IN ('hit','miss','push')
+                ORDER BY e.event_date
+                """,
+                (league_l,),
+            ).fetchall()
+            for er in eval_rows:
+                mid = str(er["match_id"])
+                if mid in seen_match_ids:
+                    continue  # already counted from bet_monitor_log
+                outcome_map = {"hit": "win", "miss": "loss", "push": "push"}
+                result = outcome_map.get(str(er["outcome"] or "").lower())
+                if result is None:
+                    continue
+                eval_extra.append({
+                    "pick": er["pick"],
+                    "confidence": er["confidence"],
+                    "result": result,
+                })
+        except Exception:
+            pass  # column may not exist for this model version
+
         conn.close()
     except Exception:
         return ""
+
+    # Merge: live first, then eval extras (as plain dicts for uniform access)
+    rows = [{"pick": r["pick"], "confidence": r["confidence"], "result": r["result"]} for r in live_rows]
+    rows.extend(eval_extra)
 
     if not rows:
         return ""
