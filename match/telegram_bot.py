@@ -16,7 +16,15 @@ import unicodedata
 from pathlib import Path
 
 from dotenv import load_dotenv
-from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, MenuButtonCommands, ReplyKeyboardMarkup, Update
+from telegram import (
+    BotCommand,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    MenuButtonCommands,
+    Message,
+    ReplyKeyboardMarkup,
+    Update,
+)
 from telegram.error import BadRequest, NetworkError, TimedOut
 from telegram.ext import (
     Application,
@@ -82,8 +90,10 @@ TRAIN_STATUS: dict[str, object] = {
     "progress_done": 0,
     "progress_total": 0,
 }
-MENU_BUTTON_TEXT = "Menu"
-STATS_BUTTON_TEXT = "📊 Stats"
+MENU_BUTTON_TEXT    = "Menu"
+STATS_BUTTON_TEXT   = "📊 Stats"
+MONTHLY_BUTTON_TEXT = "📆 Mes"
+ID_BUTTON_TEXT      = "🔍 ID"
 UTC_OFFSET_HOURS = -6
 DATE_INGEST_PROGRESS_EVERY = 10
 DATE_INGEST_STATUS_INTERVAL_SECONDS = 4
@@ -153,6 +163,7 @@ def _get_subscriber_pref(chat_id: int | None) -> tuple[str, list[str]]:
 MODEL_OUTPUTS_V4_DIR = BASE_DIR / "training" / "model_outputs_v4"
 MODEL_OUTPUTS_V2_DIR = BASE_DIR / "training" / "model_outputs_v2"
 MODEL_OUTPUTS_V6_DIR = BASE_DIR / "training" / "model_outputs_v6"
+MODEL_OUTPUTS_V6_1_DIR = BASE_DIR / "training" / "model_outputs_v6_1"
 MODEL_OUTPUTS_V9_DIR = BASE_DIR / "training" / "model_outputs_v9"
 MODEL_OUTPUTS_V12_DIR = BASE_DIR / "training" / "v12" / "model_outputs"
 V12_INFERENCE_SCRIPT = BASE_DIR / "training" / "v12" / "infer_match_v12.py"
@@ -170,7 +181,40 @@ FOLLOW_STALE_CYCLES_LIMIT = 8
 # MONITOR_MODEL_CONFIG → used by the bet_monitor daemon for automated bet evaluation
 MODEL_CONFIG: dict[str, str] = {"q3": "v4", "q4": "v4"}
 MONITOR_MODEL_CONFIG: dict[str, str] = {"q3": "v4", "q4": "v4"}
-AVAILABLE_MODELS: list[str] = ["v2", "v4", "v6", "v9", "v12", "v13", "v15", "v16", "v17"]
+AVAILABLE_MODELS: list[str] = [
+    "v2",
+    "v4",
+    "v6",
+    "v6_1",
+    "v9",
+    "v12",
+    "v13",
+    "v15",
+    "v16",
+    "v17",
+]
+
+
+def _model_version_callback_token(version: str) -> str:
+    """Token corto para callback_data (límite 64 B de Telegram; evita ':' dentro del slug)."""
+    try:
+        return str(AVAILABLE_MODELS.index(version))
+    except ValueError:
+        return version
+
+
+def _model_version_from_callback_token(tok: str) -> str | None:
+    """Índice numérico o slug legacy (p. ej. v6_1) → versión en AVAILABLE_MODELS."""
+    if not tok:
+        return None
+    if tok.isdigit():
+        i = int(tok)
+        if 0 <= i < len(AVAILABLE_MODELS):
+            return AVAILABLE_MODELS[i]
+        return None
+    if tok in AVAILABLE_MODELS:
+        return tok
+    return None
 
 
 def _log_raw_inference_result(match_id: str, source: str, infer_result: object) -> None:
@@ -1127,6 +1171,10 @@ def _fetch_matches_for_date(event_date: str) -> list[dict]:
             m.league,
             m.home_score,
             m.away_score,
+            m.event_slug,
+            m.custom_id,
+            m.home_slug,
+            m.away_slug,
             q3.home AS q3_home,
             q3.away AS q3_away,
             q4.home AS q4_home,
@@ -1436,12 +1484,11 @@ def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] 
                     # Apply model-specific filter
                     _pick_v = str(pred.get(f"{quarter}_pick") or "")
                     _q_model = MODEL_CONFIG.get(quarter)
-                    if False:  # DISABLED: v6 filters (testing new trained model)
-                        if _q_model == "v6":
-                            _accept, _ = bet_monitor_mod._v6_pick_filter(league, conf, _pick_v)
-                            if not _accept:
-                                stats[quarter]["no_bet"] += 1
-                                continue
+                    if _q_model == "v6":
+                        _accept, _ = bet_monitor_mod._v6_pick_filter(league, conf, _pick_v)
+                        if not _accept:
+                            stats[quarter]["no_bet"] += 1
+                            continue
                     if _q_model == "v2":
                         _accept, _ = bet_monitor_mod._v2_pick_filter(league, conf, _pick_v)
                         if not _accept:
@@ -3762,7 +3809,10 @@ async def _refresh_live_detail(
 
 def _menu_reply_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
-        [[MENU_BUTTON_TEXT, STATS_BUTTON_TEXT]],
+        [
+            [MENU_BUTTON_TEXT, STATS_BUTTON_TEXT],
+            [MONTHLY_BUTTON_TEXT, ID_BUTTON_TEXT],
+        ],
         resize_keyboard=True,
         is_persistent=True,
     )
@@ -3806,8 +3856,8 @@ def _monitor_keyboard(running: bool, chat_id: int | None = None) -> InlineKeyboa
     rows.append([InlineKeyboardButton("📊 Señales de hoy", callback_data="monitor:signals_today")])
     rows.append([InlineKeyboardButton("⚙️ Config simulación", callback_data="monitor:betcfg")])
     rows.append([InlineKeyboardButton("📜 Bitácora reciente", callback_data="monitor:log")])
-    q3_v = MONITOR_MODEL_CONFIG["q3"]
-    q4_v = MONITOR_MODEL_CONFIG["q4"]
+    q3_v = MONITOR_MODEL_CONFIG.get("q3", "v4")
+    q4_v = MONITOR_MODEL_CONFIG.get("q4", "v4")
     rows.append([InlineKeyboardButton(
         f"🎯 Monitor modelos: Q3={q3_v}  Q4={q4_v}",
         callback_data="monitor:models",
@@ -3858,35 +3908,35 @@ def _monitor_quarters_keyboard(chat_id: int | None = None) -> InlineKeyboardMark
 
 def _monitor_model_keyboard(chat_id: int | None = None) -> InlineKeyboardMarkup:
     """Model selector that returns to the monitor menu."""
-    q3_v = MONITOR_MODEL_CONFIG["q3"]
-    q4_v = MONITOR_MODEL_CONFIG["q4"]
+    q3_v = MONITOR_MODEL_CONFIG.get("q3", "v4")
+    q4_v = MONITOR_MODEL_CONFIG.get("q4", "v4")
     rows: list[list[InlineKeyboardButton]] = []
     half = len(AVAILABLE_MODELS) // 2
     rows.append([
         InlineKeyboardButton(
             f"Q3:{'✅' if q3_v == v else ''}{v}",
-            callback_data=f"monmodel:set:q3:{v}",
+            callback_data=f"monmodel:set:q3:{_model_version_callback_token(v)}",
         )
         for v in AVAILABLE_MODELS[:half]
     ])
     rows.append([
         InlineKeyboardButton(
             f"Q3:{'✅' if q3_v == v else ''}{v}",
-            callback_data=f"monmodel:set:q3:{v}",
+            callback_data=f"monmodel:set:q3:{_model_version_callback_token(v)}",
         )
         for v in AVAILABLE_MODELS[half:]
     ])
     rows.append([
         InlineKeyboardButton(
             f"Q4:{'✅' if q4_v == v else ''}{v}",
-            callback_data=f"monmodel:set:q4:{v}",
+            callback_data=f"monmodel:set:q4:{_model_version_callback_token(v)}",
         )
         for v in AVAILABLE_MODELS[:half]
     ])
     rows.append([
         InlineKeyboardButton(
             f"Q4:{'✅' if q4_v == v else ''}{v}",
-            callback_data=f"monmodel:set:q4:{v}",
+            callback_data=f"monmodel:set:q4:{_model_version_callback_token(v)}",
         )
         for v in AVAILABLE_MODELS[half:]
     ])
@@ -3913,6 +3963,9 @@ async def _monitor_notify_cb(
         targets = list(_MONITOR_SUBSCRIBERS.items())
     else:
         targets = [(cid, "all") for cid in ALLOWED_CHAT_IDS]
+    _MAX_RETRIES = 3
+    _RETRY_DELAY = 2.0  # seconds between retries
+
     async with httpx.AsyncClient() as client:
         for cid, pref in targets:
             # Normalize pref: may be a dict or legacy string
@@ -3922,27 +3975,51 @@ async def _monitor_notify_cb(
             else:
                 signal_type = str(pref)
                 sub_quarters = ["q3", "q4"]
-            
+
             # Filter by signal type: "bet_only" subscribers skip NO_BET messages
             if signal_type == "bet_only" and notify_type == "no_bet":
                 continue
-            
-            # Filter by quarter: skip if subscriber doesn't have this quarter enabled
+
+            # Filter by quarter: skip if subscriber does not have this quarter enabled
             if quarter and quarter.lower() not in sub_quarters:
                 continue
-            
-            try:
-                payload: dict = {"chat_id": cid, "text": msg}
-                if reply_markup:
-                    payload["reply_markup"] = reply_markup
-                await client.post(url, json=payload, timeout=10.0)
-            except Exception as exc:
-                logger.warning("[MONITOR_NOTIFY] %s: %s", cid, exc)
 
+            payload: dict = {"chat_id": cid, "text": msg}
+            if reply_markup:
+                payload["reply_markup"] = reply_markup
+
+            sent = False
+            last_exc = None
+            for attempt in range(1, _MAX_RETRIES + 1):
+                try:
+                    resp = await client.post(url, json=payload, timeout=10.0)
+                    resp.raise_for_status()
+                    sent = True
+                    break
+                except Exception as exc:
+                    last_exc = exc
+                    if attempt < _MAX_RETRIES:
+                        logger.warning(
+                            "[MONITOR_NOTIFY] chat_id=%s intento %d/%d fallido: %s -- reintentando en %.0fs",
+                            cid, attempt, _MAX_RETRIES, exc, _RETRY_DELAY,
+                        )
+                        import asyncio as _aio
+                        await _aio.sleep(_RETRY_DELAY)
+
+            if sent:
+                logger.info(
+                    "[MONITOR_NOTIFY] Enviado a chat_id=%s tipo=%s",
+                    cid, notify_type,
+                )
+            else:
+                logger.error(
+                    "[MONITOR_NOTIFY] FALLO al enviar a chat_id=%s tipo=%s tras %d intentos: %s",
+                    cid, notify_type, _MAX_RETRIES, last_exc,
+                )
 
 def _model_submenu_keyboard() -> InlineKeyboardMarkup:
-    q3_v = MODEL_CONFIG["q3"]
-    q4_v = MODEL_CONFIG["q4"]
+    q3_v = MODEL_CONFIG.get("q3", "v4")
+    q4_v = MODEL_CONFIG.get("q4", "v4")
     rows: list[list[InlineKeyboardButton]] = []
     half = len(AVAILABLE_MODELS) // 2
 
@@ -3950,14 +4027,14 @@ def _model_submenu_keyboard() -> InlineKeyboardMarkup:
     rows.append([
         InlineKeyboardButton(
             f"Q3:{'✅' if q3_v == v else ''}{v}",
-            callback_data=f"model:set:q3:{v}",
+            callback_data=f"model:set:q3:{_model_version_callback_token(v)}",
         )
         for v in AVAILABLE_MODELS[:half]
     ])
     rows.append([
         InlineKeyboardButton(
             f"Q3:{'✅' if q3_v == v else ''}{v}",
-            callback_data=f"model:set:q3:{v}",
+            callback_data=f"model:set:q3:{_model_version_callback_token(v)}",
         )
         for v in AVAILABLE_MODELS[half:]
     ])
@@ -3966,14 +4043,14 @@ def _model_submenu_keyboard() -> InlineKeyboardMarkup:
     rows.append([
         InlineKeyboardButton(
             f"Q4:{'✅' if q4_v == v else ''}{v}",
-            callback_data=f"model:set:q4:{v}",
+            callback_data=f"model:set:q4:{_model_version_callback_token(v)}",
         )
         for v in AVAILABLE_MODELS[:half]
     ])
     rows.append([
         InlineKeyboardButton(
             f"Q4:{'✅' if q4_v == v else ''}{v}",
-            callback_data=f"model:set:q4:{v}",
+            callback_data=f"model:set:q4:{_model_version_callback_token(v)}",
         )
         for v in AVAILABLE_MODELS[half:]
     ])
@@ -3984,36 +4061,48 @@ def _model_submenu_keyboard() -> InlineKeyboardMarkup:
 
 def _match_model_submenu_keyboard(match_id: str, token: str, page: int) -> InlineKeyboardMarkup:
     """Model selector anchored to a specific match detail (for back-navigation)."""
-    q3_v = MODEL_CONFIG["q3"]
-    q4_v = MODEL_CONFIG["q4"]
+    q3_v = MODEL_CONFIG.get("q3", "v4")
+    q4_v = MODEL_CONFIG.get("q4", "v4")
     rows: list[list[InlineKeyboardButton]] = []
     half = len(AVAILABLE_MODELS) // 2
 
     rows.append([
         InlineKeyboardButton(
             f"Q3:{'✅' if q3_v == v else ''}{v}",
-            callback_data=f"matchmodel:set:q3:{v}:{match_id}:{token}:{page}",
+            callback_data=(
+                f"matchmodel:set:q3:{_model_version_callback_token(v)}:"
+                f"{match_id}:{token}:{page}"
+            ),
         )
         for v in AVAILABLE_MODELS[:half]
     ])
     rows.append([
         InlineKeyboardButton(
             f"Q3:{'✅' if q3_v == v else ''}{v}",
-            callback_data=f"matchmodel:set:q3:{v}:{match_id}:{token}:{page}",
+            callback_data=(
+                f"matchmodel:set:q3:{_model_version_callback_token(v)}:"
+                f"{match_id}:{token}:{page}"
+            ),
         )
         for v in AVAILABLE_MODELS[half:]
     ])
     rows.append([
         InlineKeyboardButton(
             f"Q4:{'✅' if q4_v == v else ''}{v}",
-            callback_data=f"matchmodel:set:q4:{v}:{match_id}:{token}:{page}",
+            callback_data=(
+                f"matchmodel:set:q4:{_model_version_callback_token(v)}:"
+                f"{match_id}:{token}:{page}"
+            ),
         )
         for v in AVAILABLE_MODELS[:half]
     ])
     rows.append([
         InlineKeyboardButton(
             f"Q4:{'✅' if q4_v == v else ''}{v}",
-            callback_data=f"matchmodel:set:q4:{v}:{match_id}:{token}:{page}",
+            callback_data=(
+                f"matchmodel:set:q4:{_model_version_callback_token(v)}:"
+                f"{match_id}:{token}:{page}"
+            ),
         )
         for v in AVAILABLE_MODELS[half:]
     ])
@@ -4027,36 +4116,44 @@ def _match_model_submenu_keyboard(match_id: str, token: str, page: int) -> Inlin
 
 def _date_model_submenu_keyboard(event_date: str) -> InlineKeyboardMarkup:
     """Model selector anchored to the date view."""
-    q3_v = MODEL_CONFIG["q3"]
-    q4_v = MODEL_CONFIG["q4"]
+    q3_v = MODEL_CONFIG.get("q3", "v4")
+    q4_v = MODEL_CONFIG.get("q4", "v4")
     rows: list[list[InlineKeyboardButton]] = []
     half = len(AVAILABLE_MODELS) // 2
 
     rows.append([
         InlineKeyboardButton(
             f"Q3:{'✅' if q3_v == v else ''}{v}",
-            callback_data=f"datemodel:set:q3:{v}:{event_date}",
+            callback_data=(
+                f"datemodel:set:q3:{_model_version_callback_token(v)}:{event_date}"
+            ),
         )
         for v in AVAILABLE_MODELS[:half]
     ])
     rows.append([
         InlineKeyboardButton(
             f"Q3:{'✅' if q3_v == v else ''}{v}",
-            callback_data=f"datemodel:set:q3:{v}:{event_date}",
+            callback_data=(
+                f"datemodel:set:q3:{_model_version_callback_token(v)}:{event_date}"
+            ),
         )
         for v in AVAILABLE_MODELS[half:]
     ])
     rows.append([
         InlineKeyboardButton(
             f"Q4:{'✅' if q4_v == v else ''}{v}",
-            callback_data=f"datemodel:set:q4:{v}:{event_date}",
+            callback_data=(
+                f"datemodel:set:q4:{_model_version_callback_token(v)}:{event_date}"
+            ),
         )
         for v in AVAILABLE_MODELS[:half]
     ])
     rows.append([
         InlineKeyboardButton(
             f"Q4:{'✅' if q4_v == v else ''}{v}",
-            callback_data=f"datemodel:set:q4:{v}:{event_date}",
+            callback_data=(
+                f"datemodel:set:q4:{_model_version_callback_token(v)}:{event_date}"
+            ),
         )
         for v in AVAILABLE_MODELS[half:]
     ])
@@ -5903,7 +6000,25 @@ async def _on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     if isinstance(err, (TimedOut, NetworkError)):
         logger.warning("[telegram] network timeout error: %s", type(err).__name__)
         return
-    logger.exception("[telegram] unhandled exception while processing update")
+    # Improved error logging with full traceback and update context
+    update_info = "unknown"
+    try:
+        if hasattr(update, "callback_query") and getattr(update, "callback_query", None):
+            cb = update.callback_query  # type: ignore[union-attr]
+            update_info = f"callback_data={getattr(cb, 'data', '?')!r}"
+        elif hasattr(update, "message") and getattr(update, "message", None):
+            msg = update.message  # type: ignore[union-attr]
+            update_info = f"message_text={getattr(msg, 'text', '?')!r}"
+    except Exception:
+        pass
+    
+    logger.error(
+        "[telegram] unhandled exception [%s] %s: %s",
+        type(err).__name__,
+        update_info,
+        str(err),
+        exc_info=True
+    )
 
 
 async def _replace_callback_message(
@@ -5917,6 +6032,18 @@ async def _replace_callback_message(
         return
 
     message = query.message
+    # Callbacks sobre mensajes "inaccesibles" (p. ej. antiguos): no se puede editar el texto.
+    if message is not None and not isinstance(message, Message):
+        chat_id = update.effective_chat.id if update.effective_chat else None
+        if chat_id is not None:
+            await query.get_bot().send_message(
+                chat_id=chat_id,
+                text=text,
+                reply_markup=reply_markup,
+                parse_mode=parse_mode,
+            )
+        return
+
     if message and getattr(message, "photo", None):
         chat_id = update.effective_chat.id if update.effective_chat else None
         if chat_id is None:
@@ -5945,6 +6072,15 @@ async def _replace_callback_message(
             pass  # same content, ignore silently
         elif "message to edit not found" in _exc_text or "chat not found" in _exc_text:
             pass  # message already gone, ignore
+        elif "inaccessible message" in _exc_text or "cannot edit" in _exc_text:
+            chat_id = update.effective_chat.id if update.effective_chat else None
+            if chat_id is not None:
+                await query.get_bot().send_message(
+                    chat_id=chat_id,
+                    text=text,
+                    reply_markup=reply_markup,
+                    parse_mode=parse_mode,
+                )
         else:
             raise
 
@@ -6691,14 +6827,15 @@ def _build_model_stats_text() -> str:
             out.append(" | ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)))
         return out
 
-    active_q3 = MODEL_CONFIG["q3"]
-    active_q4 = MODEL_CONFIG["q4"]
+    active_q3 = MODEL_CONFIG.get("q3", "v4")
+    active_q4 = MODEL_CONFIG.get("q4", "v4")
 
     # All version dirs in order; only include those present on disk
     all_version_dirs = [
         ("v2", MODEL_OUTPUTS_V2_DIR),
         ("v4", MODEL_OUTPUTS_V4_DIR),
         ("v6", MODEL_OUTPUTS_V6_DIR),
+        ("v6_1", MODEL_OUTPUTS_V6_1_DIR),
         ("v9", MODEL_OUTPUTS_V9_DIR),
         ("v13", MODEL_OUTPUTS_V13_DIR),
         ("v15", MODEL_OUTPUTS_V15_DIR),
@@ -6730,6 +6867,8 @@ def _build_model_stats_text() -> str:
             parsed_rows: list[dict[str, str]] = []
             with csv_path.open("r", encoding="utf-8", newline="") as f:
                 for row in csv.DictReader(f):
+                    if row.get("split") and row.get("split") != "test":
+                        continue
                     parsed_rows.append(row)
             if not parsed_rows:
                 metrics_sections.append(f"{target.upper()}: sin filas")
@@ -7058,11 +7197,10 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
 
                 # Apply model-specific filter
                 _stake_factor = 1.0
-                if False:  # DISABLED: v6 filters (testing new trained model)
-                    if model_name == "v6":
-                        _accept, _stake_factor = bet_monitor_mod._v6_pick_filter(league, conf, pick)
-                        if not _accept:
-                            continue
+                if model_name == "v6":
+                    _accept, _stake_factor = bet_monitor_mod._v6_pick_filter(league, conf, pick)
+                    if not _accept:
+                        continue
                 if model_name == "v2":
                     _accept, _stake_factor = bet_monitor_mod._v2_pick_filter(league, conf, pick)
                     if not _accept:
@@ -7095,6 +7233,10 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
                     "scheduled_utc_ts": ts,
                     "model": model_name,
                     "quarter": quarter,
+                    "event_slug": str(row.get("event_slug") or ""),
+                    "custom_id": str(row.get("custom_id") or ""),
+                    "home_slug": str(row.get("home_slug") or ""),
+                    "away_slug": str(row.get("away_slug") or ""),
                 }
                 if quarter == "q3":
                     rows_q3.append(bet_row)
@@ -7184,7 +7326,17 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
             bank_after  = current_bank + profit
             current_bank = bank_after
 
-            sofascore_url = _sofascore_match_url(r["match_id"])
+            _ev_slug  = r.get("event_slug") or ""
+            _cust_id  = r.get("custom_id") or ""
+            _h_slug   = r.get("home_slug") or _normalize_sofascore_slug(r.get("home", ""))
+            _a_slug   = r.get("away_slug") or _normalize_sofascore_slug(r.get("away", ""))
+            _fake_match_data = {"match": {
+                "event_slug": _ev_slug,
+                "custom_id":  _cust_id,
+                "home_slug":  _h_slug,
+                "away_slug":  _a_slug,
+            }}
+            sofascore_url = _sofascore_match_url(r["match_id"], _fake_match_data)
             rn = i + 1
             ws.cell(rn, 1).value = i
             mc = ws.cell(rn, 2)
@@ -7227,6 +7379,16 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
             mw = max((len(str(c.value)) for c in ws[cl] if c.value), default=8)
             ws.column_dimensions[cl].width = min(mw + 2, 50)
 
+    def _sort_key(r: dict):
+        # Use local time string "HH:MM" for within-day ordering.
+        # scheduled_utc_ts is not available in the match_lookup dict, but
+        # display_time (stored as time_local) is a reliable "HH:MM" string
+        # that sorts lexicographically == chronologically.
+        return (r["event_date"], r.get("time_local") or "99:99", r["match_id"])
+
+    rows_q3.sort(key=_sort_key)
+    rows_q4.sort(key=_sort_key)
+
     if rows_q3:
         ws_q3 = wb.create_sheet(f"Q3 ({q3_model})", 0)
         _add_bet_sheet(ws_q3, rows_q3)
@@ -7236,19 +7398,20 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
 
     # ── Resumen sheet ─────────────────────────────────────────────────────────
     ws_res = wb.create_sheet("Resumen", 0)
-    res_hdrs = [
-        "Fecha",
-        "Q3 W", "Q3 L", "Q3 ⏳", "Q3 Ef%", "Q3 ROI", "Q3 Ganancia", "Q3 Bank",
-        "Q4 W", "Q4 L", "Q4 ⏳", "Q4 Ef%", "Q4 ROI", "Q4 Ganancia", "Q4 Bank",
-        "Total W", "Total L", "Total ⏳", "Total Ef%", "Total Ganancia", "Bank Final",
-    ]
-    # col positions (1-based)
-    # %  cols (format 0.0%): 5 Q3Ef, 6 Q3ROI, 12 Q4Ef, 13 Q4ROI, 19 TotEf
-    # $  cols: 7 Q3Gan, 8 Q3Bank, 14 Q4Gan, 15 Q4Bank, 20 TotGan, 21 BankFinal
-    # green/red fill on col 20 (Total Ganancia)
-    _PCT_COLS  = {5, 6, 12, 13, 19}
-    _MON_COLS  = {7, 8, 14, 15, 20, 21}
-    _GAIN_COL  = 20
+    _show_q3 = bool(rows_q3)
+    _show_q4 = bool(rows_q4)
+    _show_both = _show_q3 and _show_q4
+    res_hdrs = ["Fecha"]
+    if _show_q3:
+        res_hdrs += ["Q3 W", "Q3 L", "Q3 ⏳", "Q3 Ef%", "Q3 ROI", "Q3 Ganancia", "Q3 Bank"]
+    if _show_q4:
+        res_hdrs += ["Q4 W", "Q4 L", "Q4 ⏳", "Q4 Ef%", "Q4 ROI", "Q4 Ganancia", "Q4 Bank"]
+    if _show_both:
+        res_hdrs += ["Total W", "Total L", "Total ⏳", "Total Ef%", "Total Ganancia", "Bank Final"]
+    # Derive format sets dynamically from header names
+    _PCT_COLS  = {i for i, h in enumerate(res_hdrs, 1) if "Ef%" in h or "ROI" in h}
+    _MON_COLS  = {i for i, h in enumerate(res_hdrs, 1) if "Ganancia" in h or "Bank" in h}
+    _GAIN_COLS = {i for i, h in enumerate(res_hdrs, 1) if "Ganancia" in h}
 
     for c, h in enumerate(res_hdrs, 1):
         cell = ws_res.cell(1, c)
@@ -7295,12 +7458,13 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
         tot_q4w += q4w; tot_q4l += q4l; tot_q4pend += q4pend; tot_q4p += q4p
         tot_w   += dw;  tot_l   += dl;  tot_pend   += dpend;  tot_profit += dp
 
-        vals = [
-            day,
-            q3w, q3l, q3pend or None, _ef_val(q3w, q3l), _roi_val(q3w, q3l), q3p, running_bank_q3,
-            q4w, q4l, q4pend or None, _ef_val(q4w, q4l), _roi_val(q4w, q4l), q4p, running_bank_q4,
-            dw, dl, dpend or None, _ef_val(dw, dl), dp, running_bank,
-        ]
+        vals = [day]
+        if _show_q3:
+            vals += [q3w, q3l, q3pend or None, _ef_val(q3w, q3l), _roi_val(q3w, q3l), q3p, running_bank_q3]
+        if _show_q4:
+            vals += [q4w, q4l, q4pend or None, _ef_val(q4w, q4l), _roi_val(q4w, q4l), q4p, running_bank_q4]
+        if _show_both:
+            vals += [dw, dl, dpend or None, _ef_val(dw, dl), dp, running_bank]
         for c, v in enumerate(vals, 1):
             cell = ws_res.cell(row_i, c)
             cell.value = v
@@ -7311,20 +7475,21 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
             elif c in _MON_COLS:
                 cell.number_format = "$#,##0.00"
                 cell.alignment = ra
-            if c == _GAIN_COL:
+            if c in _GAIN_COLS:
                 cell.fill = green_f if (v or 0) >= 0 else red_f
 
     # Totals row
     tot_row = len(day_stats) + 2
-    tot_vals = [
-        "TOTAL",
-        tot_q3w, tot_q3l, tot_q3pend or None,
-        _ef_val(tot_q3w, tot_q3l), _roi_val(tot_q3w, tot_q3l), tot_q3p, _bank + tot_q3p,
-        tot_q4w, tot_q4l, tot_q4pend or None,
-        _ef_val(tot_q4w, tot_q4l), _roi_val(tot_q4w, tot_q4l), tot_q4p, _bank + tot_q4p,
-        tot_w, tot_l, tot_pend or None,
-        _ef_val(tot_w, tot_l), tot_profit, _bank + tot_profit,
-    ]
+    tot_vals = ["TOTAL"]
+    if _show_q3:
+        tot_vals += [tot_q3w, tot_q3l, tot_q3pend or None,
+                     _ef_val(tot_q3w, tot_q3l), _roi_val(tot_q3w, tot_q3l), tot_q3p, _bank + tot_q3p]
+    if _show_q4:
+        tot_vals += [tot_q4w, tot_q4l, tot_q4pend or None,
+                     _ef_val(tot_q4w, tot_q4l), _roi_val(tot_q4w, tot_q4l), tot_q4p, _bank + tot_q4p]
+    if _show_both:
+        tot_vals += [tot_w, tot_l, tot_pend or None,
+                     _ef_val(tot_w, tot_l), tot_profit, _bank + tot_profit]
     for c, v in enumerate(tot_vals, 1):
         cell = ws_res.cell(tot_row, c)
         cell.value = v
@@ -7891,6 +8056,12 @@ async def _post_init(app: Application) -> None:
             MONITOR_MODEL_CONFIG[quarter] = mv
     conn.close()
 
+    logger.info(
+        "[telegram] selector: %d modelos -> %s",
+        len(AVAILABLE_MODELS),
+        ", ".join(AVAILABLE_MODELS),
+    )
+
     # Restore persisted subscribers
     _load_subscribers()
 
@@ -8409,9 +8580,10 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     if data == "monitor:models":
-        q3_v = MODEL_CONFIG["q3"]
-        q4_v = MODEL_CONFIG["q4"]
-        await query.edit_message_text(
+        q3_v = MODEL_CONFIG.get("q3", "v4")
+        q4_v = MODEL_CONFIG.get("q4", "v4")
+        await _replace_callback_message(
+            update,
             text=(
                 f"Modelos del monitor\n"
                 f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
@@ -8422,20 +8594,22 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     if data.startswith("monmodel:set:"):
-        # Format: monmodel:set:q3:v4  or  monmodel:set:q4:v9
+        # Format: monmodel:set:q3:<idx|slug>  (slug legacy p. ej. v6_1)
         parts = data.split(":")
         if len(parts) == 4:
-            _, _, quarter, version = parts
-            if quarter in ("q3", "q4") and version in AVAILABLE_MODELS:
+            _, _, quarter, ver_tok = parts
+            version = _model_version_from_callback_token(ver_tok)
+            if quarter in ("q3", "q4") and version:
                 MONITOR_MODEL_CONFIG[quarter] = version
                 conn = _open_conn()
                 db_mod.set_setting(conn, f"monitor_model_{quarter}", version)
                 conn.close()
                 if bet_monitor_mod:
                     bet_monitor_mod.set_model_config({quarter: version})
-        q3_v = MONITOR_MODEL_CONFIG["q3"]
-        q4_v = MONITOR_MODEL_CONFIG["q4"]
-        await query.edit_message_text(
+        q3_v = MONITOR_MODEL_CONFIG.get("q3", "v4")
+        q4_v = MONITOR_MODEL_CONFIG.get("q4", "v4")
+        await _replace_callback_message(
+            update,
             text=(
                 f"Modelos del monitor\n"
                 f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
@@ -8630,9 +8804,10 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     if data == "menu:models":
-        q3_v = MODEL_CONFIG["q3"]
-        q4_v = MODEL_CONFIG["q4"]
-        await query.edit_message_text(
+        q3_v = MODEL_CONFIG.get("q3", "v4")
+        q4_v = MODEL_CONFIG.get("q4", "v4")
+        await _replace_callback_message(
+            update,
             text=(
                 f"Selector de modelos\n"
                 f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
@@ -8643,18 +8818,20 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     if data.startswith("model:set:"):
-        # Format: model:set:q3:v4  or  model:set:q4:v9
+        # Format: model:set:q3:<idx|slug>
         parts = data.split(":")
         if len(parts) == 4:
-            _, _, quarter, version = parts
-            if quarter in ("q3", "q4") and version in AVAILABLE_MODELS:
+            _, _, quarter, ver_tok = parts
+            version = _model_version_from_callback_token(ver_tok)
+            if quarter in ("q3", "q4") and version:
                 MODEL_CONFIG[quarter] = version
                 conn = _open_conn()
                 db_mod.set_setting(conn, f"bot_model_{quarter}", version)
                 conn.close()
-        q3_v = MODEL_CONFIG["q3"]
-        q4_v = MODEL_CONFIG["q4"]
-        await query.edit_message_text(
+        q3_v = MODEL_CONFIG.get("q3", "v4")
+        q4_v = MODEL_CONFIG.get("q4", "v4")
+        await _replace_callback_message(
+            update,
             text=(
                 f"Selector de modelos\n"
                 f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
@@ -8744,8 +8921,8 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         except (ValueError, TypeError):
             await _render_main_menu(update, context)
             return
-        q3_v = MODEL_CONFIG["q3"]
-        q4_v = MODEL_CONFIG["q4"]
+        q3_v = MODEL_CONFIG.get("q3", "v4")
+        q4_v = MODEL_CONFIG.get("q4", "v4")
         submenu_text = (
             f"Selector de modelos (match {match_id})\n"
             f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
@@ -8783,19 +8960,24 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     if data.startswith("matchmodel:set:"):
-        # Format: matchmodel:set:{quarter}:{version}:{match_id}:{token}:{page}
+        # Format: matchmodel:set:{quarter}:{idx|slug}:{match_id}:{token}:{page}
+        rest = data[len("matchmodel:set:") :]
         try:
-            parts = data.split(":", maxsplit=6)
-            _, _, quarter, version, match_id, token, page_text = parts
+            quarter, ver_tok, match_id, token, page_text = rest.split(":", 4)
             page = int(page_text)
         except (ValueError, TypeError):
             await _render_main_menu(update, context)
             return
+        version = _model_version_from_callback_token(ver_tok)
+        if not version:
+            await _render_main_menu(update, context)
+            return
         if quarter in ("q3", "q4") and version in AVAILABLE_MODELS:
             MODEL_CONFIG[quarter] = version
-        q3_v = MODEL_CONFIG["q3"]
-        q4_v = MODEL_CONFIG["q4"]
-        await query.edit_message_text(
+        q3_v = MODEL_CONFIG.get("q3", "v4")
+        q4_v = MODEL_CONFIG.get("q4", "v4")
+        await _replace_callback_message(
+            update,
             text=(
                 f"Selector de modelos (match {match_id})\n"
                 f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
@@ -8836,9 +9018,10 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if data.startswith("datemodel:open:"):
         # Format: datemodel:open:{event_date}
         event_date = data[len("datemodel:open:"):]
-        q3_v = MODEL_CONFIG["q3"]
-        q4_v = MODEL_CONFIG["q4"]
-        await query.edit_message_text(
+        q3_v = MODEL_CONFIG.get("q3", "v4")
+        q4_v = MODEL_CONFIG.get("q4", "v4")
+        await _replace_callback_message(
+            update,
             text=(
                 f"Selector de modelos (fecha {event_date})\n"
                 f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
@@ -8849,18 +9032,23 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     if data.startswith("datemodel:set:"):
-        # Format: datemodel:set:{quarter}:{version}:{event_date}
+        # Format: datemodel:set:{quarter}:{idx|slug}:{event_date...} (fecha puede contener ':')
+        rest = data[len("datemodel:set:") :]
         try:
-            parts = data.split(":", maxsplit=4)
-            _, _, quarter, version, event_date = parts
+            quarter, ver_tok, event_date = rest.split(":", 2)
         except (ValueError, TypeError):
+            await _render_main_menu(update, context)
+            return
+        version = _model_version_from_callback_token(ver_tok)
+        if not version:
             await _render_main_menu(update, context)
             return
         if quarter in ("q3", "q4") and version in AVAILABLE_MODELS:
             MODEL_CONFIG[quarter] = version
-        q3_v = MODEL_CONFIG["q3"]
-        q4_v = MODEL_CONFIG["q4"]
-        await query.edit_message_text(
+        q3_v = MODEL_CONFIG.get("q3", "v4")
+        q4_v = MODEL_CONFIG.get("q4", "v4")
+        await _replace_callback_message(
+            update,
             text=(
                 f"Selector de modelos (fecha {event_date})\n"
                 f"Activo: Q3={q3_v}  Q4={q4_v}\n\n"
@@ -9503,6 +9691,44 @@ async def _handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await _send_stats_report(update, context)
         return
 
+    if raw.lower() == MONTHLY_BUTTON_TEXT.lower():
+        from datetime import datetime as _dt_now
+        _ym = _dt_now.utcnow().strftime("%Y-%m")
+        await _send_monthly_report(update, context, _ym)
+        return
+
+    if raw.lower() == ID_BUTTON_TEXT.lower():
+        context.user_data[AWAITING_MATCH_ID_KEY] = True
+        await update.message.reply_text(
+            "Ingresa el Match ID (número):",
+            reply_markup=_menu_reply_keyboard(),
+        )
+        return
+
+    # Auto-detect: a bare numeric string that looks like a match ID
+    if re.fullmatch(r"\d{6,}", raw) and not context.user_data.get(AWAITING_FETCH_DATE_KEY):
+        context.user_data[AWAITING_MATCH_ID_KEY] = False
+        data = await _get_match_detail_async(raw, update=update)
+        if not data:
+            await update.message.reply_text(
+                f"No se encontró el match {raw}.",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("Buscar otro ID", callback_data="menu:id")],
+                    [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
+                ]),
+            )
+            return
+        wait_msg = await update.message.reply_text("Espere...", reply_markup=_menu_reply_keyboard())
+        await _send_detail_message(
+            update, context.application, raw, data,
+            _get_or_compute_predictions(raw, data), None, 0,
+        )
+        try:
+            await wait_msg.delete()
+        except Exception:
+            pass
+        return
+
     if context.user_data.get(AWAITING_FETCH_DATE_KEY):
         parts = [p for p in raw.replace(",", " ").split() if p]
         if not parts:
@@ -9829,3 +10055,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

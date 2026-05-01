@@ -347,7 +347,7 @@ def _update_row(conn: sqlite3.Connection, match_id: str, **kwargs) -> None:
     if not kwargs:
         return
     kwargs["_mid"] = match_id
-    kwargs["_ts"] = datetime.utcnow().isoformat(timespec="seconds")
+    kwargs["_ts"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     sets = ", ".join(f"{k} = :{k}" for k in kwargs if not k.startswith("_"))
     sets += ", updated_at = :_ts"
     conn.execute(
@@ -358,7 +358,7 @@ def _update_row(conn: sqlite3.Connection, match_id: str, **kwargs) -> None:
 
 
 def _insert_log(conn: sqlite3.Connection, **kwargs) -> None:
-    kwargs.setdefault("notified_at", datetime.utcnow().isoformat(timespec="seconds"))
+    kwargs.setdefault("notified_at", datetime.now(timezone.utc).isoformat(timespec="seconds"))
     cols = ", ".join(kwargs.keys())
     ph = ", ".join(f":{k}" for k in kwargs)
     conn.execute(f"INSERT INTO bet_monitor_log ({cols}) VALUES ({ph})", kwargs)
@@ -738,7 +738,7 @@ async def _final_fetch_and_save(
         _update_row(
             conn_sched, match_id,
             final_fetched=1,
-            final_fetch_at=datetime.utcnow().isoformat(timespec="seconds"),
+            final_fetch_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         )
         _log(f"{home} vs {away}: resultado final guardado (gp={gp_total})")
     except Exception as exc:
@@ -1113,6 +1113,76 @@ def _bold_num(value) -> str:
     return str(value).translate(trans)
 
 
+def _league_bet_history(db_path: str, league: str, target: str, model: str, pick: str, confidence: float) -> str:
+    """Return a compact historical stats block for the league/pick/model/confidence."""
+    try:
+        conn = _open_db(db_path)
+        league_l = league.lower()
+        rows = conn.execute(
+            """
+            SELECT pick, confidence, result
+            FROM bet_monitor_log
+            WHERE LOWER(league) = ?
+              AND LOWER(target) = ?
+              AND LOWER(model)  = ?
+              AND signal IN ('BET','BET_HOME','BET_AWAY')
+              AND result IN ('win','loss','push')
+            ORDER BY id
+            """,
+            (league_l, target.lower(), model.lower()),
+        ).fetchall()
+        conn.close()
+    except Exception:
+        return ""
+
+    if not rows:
+        return ""
+
+    total = len(rows)
+    wins_total = sum(1 for r in rows if r["result"] == "win")
+
+    # Confidence buckets: (label, lo_inclusive, hi_exclusive)
+    _BUCKETS = [
+        ("0-35%",  0.00, 0.36),
+        ("36-40%", 0.36, 0.41),
+        ("41-45%", 0.41, 0.46),
+        ("46-50%", 0.46, 0.51),
+        ("51-55%", 0.51, 0.56),
+        ("56-60%", 0.56, 0.61),
+        ("61-65%", 0.61, 0.66),
+        ("66-70%", 0.66, 0.71),
+        ("71-75%", 0.71, 0.76),
+        ("76-80%", 0.76, 0.81),
+        ("81%+",   0.81, 1.01),
+    ]
+
+    def _bucket_lines(lbl: str, direction: str) -> list[str]:
+        dir_rows = [r for r in rows if str(r["pick"] or "").lower() == direction.lower()]
+        lines = []
+        for bucket_lbl, lo, hi in _BUCKETS:
+            b = [r for r in dir_rows if lo <= float(r["confidence"] or 0) < hi]
+            if not b:
+                continue
+            w = sum(1 for r in b if r["result"] == "win")
+            lines.append(f"{lbl}: {bucket_lbl}  {w}/{len(b)} ({w/len(b)*100:.0f}%)")
+        return lines
+
+    opp_pick = "away" if pick == "home" else "home"
+    pick_lbl = "🏠 home" if pick == "home" else "✈️ away"
+    opp_lbl  = "✈️ away" if pick == "home" else "🏠 home"
+
+    lines = ["📊 Historial liga"]
+    lines.append(f"Liga total: {wins_total}/{total} ({wins_total/total*100:.0f}%)")
+    pick_lines = _bucket_lines(pick_lbl, pick)
+    if pick_lines:
+        lines.extend(pick_lines)
+    opp_lines = _bucket_lines(opp_lbl, opp_pick)
+    if opp_lines:
+        lines.extend(opp_lines)
+
+    return "\n".join(lines)
+
+
 def _format_bet_notification(
     match_id: str,
     data: dict,
@@ -1128,16 +1198,18 @@ def _format_bet_notification(
     model: str,
     is_bet: bool = True,
     pred: dict | None = None,
+    db_path: str | None = None,
+    pick: str | None = None,
 ) -> str:
     """Build a match-detail-style BET/NO BET notification message."""
     m_info = data.get("match") or {}
     status_type = str(m_info.get("status_type") or "")
     quarters = (data.get("score") or {}).get("quarters", {})
-    # Only show prior quarters (don't show the quarter being bet or future ones)
+    # Show all completed/in-progress quarters up to and including the current one.
+    # Including Q4 in Q4 alerts: shows partial Q4 score and lets Q3 auto-mark
+    # as final when Q4 data exists (fixes ⏳ on Q3 for short-quarter leagues).
     if quarter_label == "Q3":
         q_order = ["Q1", "Q2"]
-    elif quarter_label == "Q4":
-        q_order = ["Q1", "Q2", "Q3"]
     else:
         q_order = ["Q1", "Q2", "Q3", "Q4"]
     q_end_minute = {"Q1": 12, "Q2": 24, "Q3": 36, "Q4": 48}
@@ -1221,6 +1293,13 @@ def _format_bet_notification(
             )
 
         _footer_parts.append(f"Confianza: {confidence * 100:.1f}%")
+
+        # Historical league stats
+        if db_path and pick:
+            _hist = _league_bet_history(db_path, league, quarter_label, model, pick, confidence)
+            if _hist:
+                _footer_parts.append(_hist)
+
         pick_line = "\n".join(_footer_parts)
     else:
         header = f"🔴 NO APOSTAR {quarter_label} [{model}]"
@@ -1407,7 +1486,11 @@ def _v6_pick_filter(league: str, confidence: float, pick: str) -> tuple[bool, fl
         "1st division",
         "belgian basketball 2nd division",
         "belize elite basketball",
+        "brazil nbb",
+        "germany bbl",
         "golden square",
+        "slb",
+        "israeli national",
         "uruguay lub championship round",
         "knock-out",
         "relegation round",
@@ -1452,22 +1535,8 @@ def _v6_pick_filter(league: str, confidence: float, pick: str) -> tuple[bool, fl
             return False, 0.0
         return True, 0.5
 
-    if "brazil nbb" in ll or ("nbb" in ll and "brazil" in ll):
-        # Avoid HOME picks in 55–68% range; AWAY underdogs are fine
-        if pick.lower() == "home" and 0.55 <= confidence <= 0.68:
-            return False, 0.0
-        return True, 1.0
-
     if "primera feb" in ll:
         if confidence < 0.60 + phase_extra:
-            return False, 0.0
-        return True, 1.0
-
-    if ("israeli national" in ll) or ("israel" in ll and "basketball" in ll):
-        # Play only 35–60%; avoid >75%
-        if confidence < 0.35 + phase_extra:
-            return False, 0.0
-        if confidence > 0.75:
             return False, 0.0
         return True, 1.0
 
@@ -1476,10 +1545,22 @@ def _v6_pick_filter(league: str, confidence: float, pick: str) -> tuple[bool, fl
             return False, 0.0
         return True, 0.5  # Stake lower
 
+    if "colombia lpb" in ll:
+        min_conf = 0.50 + phase_extra if pick == "home" else 0.35 + phase_extra
+        if confidence < min_conf:
+            return False, 0.0
+        return True, 1.0
+
+    if "korean basketball league" in ll:
+        min_conf = 0.50 + phase_extra if pick == "home" else 0.35 + phase_extra
+        if confidence < min_conf:
+            return False, 0.0
+        return True, 1.0
+
     # ── Trusted leagues: accept from 35% ─────────────────────────────────
     _TRUSTED_35 = [
-        "china cba", "euroleague", "france pro a",
-        "serie b group", "liga acb", "puerto rico bsn", "colombia lpb",
+        "betsafe-lkl", "china cba", "euroleague", "france pro a",
+        "nbl men", "serie b group", "liga acb", "puerto rico bsn",
     ]
     for t in _TRUSTED_35:
         if t in ll:
@@ -1488,10 +1569,18 @@ def _v6_pick_filter(league: str, confidence: float, pick: str) -> tuple[bool, fl
             return True, 1.0  # Trusted: accept full range (including 70%+)
 
     # ── Trusted leagues: accept from 38% ─────────────────────────────────
-    _TRUSTED_38 = ["germany bbl", "bulgaria nbl"]
+    _TRUSTED_38 = ["bulgaria nbl"]
     for t in _TRUSTED_38:
         if t in ll:
             if confidence < 0.38 + phase_extra:
+                return False, 0.0
+            return True, 1.0
+
+    # ── Leagues requiring strictly >40% confidence ────────────────────────
+    _MIN40 = ["segunda feb", "1. a skl"]
+    for t in _MIN40:
+        if t in ll:
+            if confidence <= 0.40 + phase_extra:
                 return False, 0.0
             return True, 1.0
 
@@ -1648,12 +1737,11 @@ async def _check_quarter(
             return signal, False, pred
         # Apply model-specific filter rules
         model_used = _model_config.get(target, "-")
-        if False:  # DISABLED: v6 filters (testing new trained model)
-            if model_used == "v6":
-                _v6_accept, _v6_stake = _v6_pick_filter(league, confidence, pick)
-                if not _v6_accept:
-                    _log(f"🔕 BET {quarter_label} [v6]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")
-                    return signal, False, pred
+        if model_used == "v6":
+            _v6_accept, _v6_stake = _v6_pick_filter(league, confidence, pick)
+            if not _v6_accept:
+                _log(f"🔕 BET {quarter_label} [v6]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")                
+                return signal, False, pred
         if model_used == "v2":
             _v2_accept, _v6_stake = _v2_pick_filter(league, confidence, pick)
             if not _v2_accept:
@@ -1677,6 +1765,8 @@ async def _check_quarter(
             confidence=confidence,
             model=model_used,
             pred=pred,
+            db_path=db_path,
+            pick=pick,
         )
         if _v6_stake < 1.0:
             msg += f"\n⚠️ Stake sugerido: {int(_v6_stake * 100)}% del stake normal"
@@ -1859,7 +1949,7 @@ async def _resolve_bet_result(
             {"text": "📱 Sofascore", "url": _sf_url},
         ],
     ]}
-    await _notify(msg, reply_markup=_result_markup, notify_type="result")
+    await _notify(msg, reply_markup=_result_markup, notify_type="result", quarter=target)
     _log(f"Resultado {quarter_label} {home} vs {away}: {outcome} ({q_home}-{q_away})")
 
     # Update the log row
@@ -2072,7 +2162,7 @@ async def _watch_match(
                         _update_row(
                             conn, match_id,
                             final_fetched=1,
-                            final_fetch_at=datetime.utcnow().isoformat(timespec="seconds"),
+                            final_fetch_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
                         )
                         _log(f"{home} vs {away}: resultado final guardado al detectar fin (gp={gp_total})")
                     except Exception as _exc:
@@ -2165,28 +2255,21 @@ async def _watch_match(
 
                 q4_cut, q4_mgp, q4_need_q3, q4_wake_before = _q4_timing()
                 gp4 = _count_gp_up_to(data, q4_cut)
+                # Wake at minute 27 — well into Q3 — instead of the old
+                # minute 32 window.  For 10-min quarter leagues Q3 ends at
+                # minute ~30, so waking at 32 was already inside Q4.
+                # Polling every POLL_NEAR_SECS from minute 27 lets us detect
+                # Q3 completion as soon as the score appears and fire Q4
+                # inference before Q4 gets underway.
+                Q4_EARLIEST_MINUTE = 27
 
                 if minute > q4_cut + 6:
                     _update_row(conn, match_id, q4_checked=1, q4_signal="window_missed")
                     q4_done = True
                     _log(f"{home} vs {away}: ventana Q4 pasada (min {minute}, cutoff={q4_cut})")
 
-                elif minute >= q4_cut - q4_wake_before:
-                    # Hard guard: minute must be >= 27 (Q3 well underway)
-                    # before running Q4 inference. Prevents false BET signals
-                    # fired while the game is still in Q2 (minute ~19-24).
-                    Q4_EARLIEST_MINUTE = 27
-                    if minute < Q4_EARLIEST_MINUTE:
-                        mins_wait = Q4_EARLIEST_MINUTE - minute
-                        sleep_secs = max(30.0, min(mins_wait * secs_per_gmin, IDLE_POLL_SECS))
-                        _log(
-                            f"{home} vs {away}: Q4 bloqueado - minuto {minute} "
-                            f"(minimo requerido {Q4_EARLIEST_MINUTE}), esperando {sleep_secs:.0f}s"
-                        )
-                        if await _sleep(sleep_secs):
-                            break
-                        continue
-
+                elif minute >= Q4_EARLIEST_MINUTE:
+                    # Q3 is well underway — poll until Q3 score exists then fire.
                     score_ok = (_has_scores(data, "Q1", "Q2", "Q3") if q4_need_q3
                                 else _has_scores(data, "Q1", "Q2"))
                     if score_ok and gp4 >= q4_mgp:
@@ -2216,7 +2299,7 @@ async def _watch_match(
                     else:
                         need_q3_str = f" Q3={_has_scores(data,'Q3')}" if q4_need_q3 else ""
                         _log(
-                            f"{home} vs {away}: Q4 ventana abierta pero datos insuficientes "
+                            f"{home} vs {away}: Q4 esperando fin Q3 "
                             f"(min={minute} gp={gp4}/{q4_mgp}{need_q3_str})"
                         )
                         if await _sleep(POLL_NEAR_SECS):
@@ -2224,11 +2307,12 @@ async def _watch_match(
                         continue
 
                 else:
-                    mins_to_wake = (q4_cut - q4_wake_before) - minute
+                    mins_to_wake = Q4_EARLIEST_MINUTE - minute
                     sleep_secs = max(30.0, min(mins_to_wake * secs_per_gmin, IDLE_POLL_SECS))
                     _log(
                         f"{home} vs {away}: Q4 en ~{mins_to_wake:.0f} game-min "
-                        f"(cutoff={q4_cut}), durmiendo {sleep_secs:.0f}s"
+                        f"(min actual={minute}, esperando min {Q4_EARLIEST_MINUTE}), "
+                        f"durmiendo {sleep_secs:.0f}s"
                     )
                     if await _sleep(sleep_secs):
                         break
@@ -2256,7 +2340,7 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
     """Main monitor coroutine.  Run as asyncio.create_task(run_monitor(...))."""
     MONITOR_STATUS.update({
         "running": True,
-        "started_at": datetime.utcnow().isoformat(timespec="seconds"),
+        "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "stop_requested": False,
         "checked_q3": 0,
         "checked_q4": 0,
@@ -2885,11 +2969,10 @@ def signals_text_today(
         _row_conf   = float(row["confidence"] or 0.0) if "confidence" in row.keys() else 0.0
         _row_pick   = str(row["pick"]       or "") if "pick"       in row.keys() else ""
         if _is_bet_signal(_row_signal.upper()):
-            if False:  # DISABLED: v6 filters (testing new trained model)
-                if _row_model == "v6":
-                    _accept, _ = _v6_pick_filter(_row_league, _row_conf, _row_pick)
-                    if not _accept:
-                        continue
+            if _row_model == "v6":
+                _accept, _ = _v6_pick_filter(_row_league, _row_conf, _row_pick)
+                if not _accept:
+                    continue
             if _row_model == "v2":
                 _accept, _ = _v2_pick_filter(_row_league, _row_conf, _row_pick)
                 if not _accept:
@@ -3412,7 +3495,8 @@ def signals_excel_today(
     from openpyxl import Workbook
     from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
     from openpyxl.utils import get_column_letter
-    
+    import scraper as scraper_mod
+
     conn = _open_db(db_path)
 
     # Get all BET signals for today, grouped by target
@@ -3586,6 +3670,24 @@ def signals_excel_today(
         _odds = 1.4
     
     conn.close()
+
+    # Apply v6 filter to rows
+    def _apply_v6_filter_rows(rows):
+        out = []
+        for row in rows:
+            if str(row.get("model") or "") == "v6":
+                _accept, _ = _v6_pick_filter(
+                    str(row.get("league") or ""),
+                    float(row.get("confidence") or 0),
+                    str(row.get("pick") or ""),
+                )
+                if not _accept:
+                    continue
+            out.append(row)
+        return out
+
+    rows_q3 = _apply_v6_filter_rows(rows_q3)
+    rows_q4 = _apply_v6_filter_rows(rows_q4)
 
     # Fetch match_data for all match_ids to get event_slug and custom_id for SofaScore URLs
     all_rows = (rows_q3 or []) + (rows_q4 or [])
