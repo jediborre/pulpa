@@ -87,3 +87,20 @@ match/training/v*/reports/
 *.swp
 .DS_Store
 Thumbs.db
+
+# ============================================================
+# API cache JSON (datos regenerables)
+# ============================================================
+api_cache/*.json
+
+# ============================================================
+# Archivos temporales de texto generados en raiz
+# ============================================================
+_git_status.txt
+search_results.txt
+model_config_report.txt
+
+# ============================================================
+# Herramientas AI / editor locales
+# ============================================================
+match/.qwen/
