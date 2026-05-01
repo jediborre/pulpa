@@ -1,2 +1,0 @@
-target,model,samples_total,samples_train,samples_test,accuracy,f1,precision,recall,log_loss,brier,roc_auc
-q3,lstm_hybrid,4620,3696,924,0.672078,0.710602,0.660746,0.768595,1.19132,0.248871,0.722826

@@ -1,5 +1,0 @@
-target,model,samples_total,samples_train,samples_test,accuracy,log_loss,brier
-q3,logreg,2489,1991,498,0.726908,0.528175,0.178012
-q3,rf,2489,1991,498,0.686747,0.612715,0.211891
-q3,gb,2489,1991,498,0.700803,0.550698,0.185339
-q3,ensemble_avg_prob,2489,1991,498,0.728916,0.544597,0.182535
