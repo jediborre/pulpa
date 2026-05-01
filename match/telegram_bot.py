@@ -57,7 +57,12 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-DB_PATH = os.getenv("MATCH_DB_PATH", str(BASE_DIR / "matches.db")).strip()
+_raw_db_path = os.getenv("MATCH_DB_PATH", "").strip()
+if _raw_db_path:
+    _db_p = Path(_raw_db_path)
+    DB_PATH = str(_db_p if _db_p.is_absolute() else BASE_DIR / _db_p)
+else:
+    DB_PATH = str(BASE_DIR / "matches.db")
 ALLOWED_CHAT_IDS_RAW = os.getenv("TELEGRAM_ALLOWED_CHAT_IDS", "").strip()
 
 logging.basicConfig(
@@ -8412,8 +8417,44 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     if data == "menu:monthly_report":
+        # Show month picker: current month + last 5 months
         from datetime import datetime as _dt_now
-        _ym = _dt_now.utcnow().strftime("%Y-%m")
+        _now = _dt_now.utcnow()
+        _month_buttons = []
+        _MONTH_ES = {
+            1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
+            5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
+            9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
+        }
+        for _i in range(6):
+            # go back _i months from current
+            _m = _now.month - _i
+            _y = _now.year
+            while _m <= 0:
+                _m += 12
+                _y -= 1
+            _ym_opt = f"{_y:04d}-{_m:02d}"
+            _label = f"{'📅 ' if _i == 0 else ''}{_MONTH_ES[_m]} {_y}"
+            _month_buttons.append([InlineKeyboardButton(_label, callback_data=f"monthly_pick:{_ym_opt}")])
+        _month_buttons.append([InlineKeyboardButton("⬅️ Cancelar", callback_data="nav:main")])
+        _kb_pick = InlineKeyboardMarkup(_month_buttons)
+        _cid_pick = update.effective_chat.id if update.effective_chat else None
+        _q_pick = update.callback_query
+        if _q_pick:
+            try:
+                await _q_pick.answer()
+            except Exception:
+                pass
+            try:
+                await _q_pick.edit_message_text("📆 Selecciona el mes del reporte:", reply_markup=_kb_pick)
+            except Exception:
+                await context.bot.send_message(chat_id=_cid_pick, text="📆 Selecciona el mes del reporte:", reply_markup=_kb_pick)
+        else:
+            await context.bot.send_message(chat_id=_cid_pick, text="📆 Selecciona el mes del reporte:", reply_markup=_kb_pick)
+        return
+
+    if data.startswith("monthly_pick:"):
+        _ym = data.split(":", 1)[1]
         await _send_monthly_report(update, context, _ym)
         return
 
@@ -9693,8 +9734,27 @@ async def _handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     if raw.lower() == MONTHLY_BUTTON_TEXT.lower():
         from datetime import datetime as _dt_now
-        _ym = _dt_now.utcnow().strftime("%Y-%m")
-        await _send_monthly_report(update, context, _ym)
+        _now = _dt_now.utcnow()
+        _MONTH_ES = {
+            1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril",
+            5: "Mayo", 6: "Junio", 7: "Julio", 8: "Agosto",
+            9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre",
+        }
+        _month_buttons = []
+        for _i in range(6):
+            _m = _now.month - _i
+            _y = _now.year
+            while _m <= 0:
+                _m += 12
+                _y -= 1
+            _ym_opt = f"{_y:04d}-{_m:02d}"
+            _label = f"{'📅 ' if _i == 0 else ''}{_MONTH_ES[_m]} {_y}"
+            _month_buttons.append([InlineKeyboardButton(_label, callback_data=f"monthly_pick:{_ym_opt}")])
+        _month_buttons.append([InlineKeyboardButton("⬅️ Cancelar", callback_data="nav:main")])
+        await update.message.reply_text(
+            "📆 Selecciona el mes del reporte:",
+            reply_markup=InlineKeyboardMarkup(_month_buttons),
+        )
         return
 
     if raw.lower() == ID_BUTTON_TEXT.lower():

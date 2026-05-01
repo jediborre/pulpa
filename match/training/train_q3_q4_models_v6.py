@@ -17,8 +17,10 @@ from pathlib import Path
 
 import joblib
 import numpy as np
+from tqdm import tqdm
 import xgboost as xgb
 from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.isotonic import IsotonicRegression
 from sklearn.neural_network import MLPClassifier
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.metrics import (
@@ -464,7 +466,7 @@ def _build_samples(db_path: Path) -> list[MatchSample]:
     team_history: dict[str, list[int]] = defaultdict(list)
     samples: list[MatchSample] = []
 
-    for row in rows:
+    for row in tqdm(rows, desc="[v6] Procesando partidos", unit="partido"):
         match_id = str(row["match_id"])
         dt = datetime.strptime(
             f"{row['date']} {row['time']}",
@@ -669,6 +671,205 @@ def _metric_row(
     return metric
 
 
+def _safe_auc(y_true: list[int], probs: list[float]) -> float | None:
+    try:
+        return float(roc_auc_score(y_true, probs))
+    except ValueError:
+        return None
+
+
+def _split_label_v6(index: int, n_train: int) -> str:
+    return "train" if index < n_train else "test"
+
+
+def _new_support_record(key: str) -> dict:
+    return {
+        "key": key,
+        "total_rows": 0,
+        "train_rows": 0,
+        "test_rows": 0,
+        "positive_rows": 0,
+        "first_date": None,
+        "last_date": None,
+        "train_first_date": None,
+        "train_last_date": None,
+        "test_first_date": None,
+        "test_last_date": None,
+    }
+
+
+def _update_date_range(record: dict, prefix: str, date_value: str) -> None:
+    first_key = f"{prefix}_first_date" if prefix else "first_date"
+    last_key = f"{prefix}_last_date" if prefix else "last_date"
+    if record[first_key] is None or date_value < record[first_key]:
+        record[first_key] = date_value
+    if record[last_key] is None or date_value > record[last_key]:
+        record[last_key] = date_value
+
+
+def _support_by_key(rows: list[dict], key_name: str, target_col: str) -> dict[str, dict]:
+    support: dict[str, dict] = {}
+    for row in rows:
+        key = str(row.get(key_name, ""))
+        record = support.setdefault(key, _new_support_record(key))
+        split = row["support_split"]
+        date_value = str(row["datetime"])[:10]
+        record["total_rows"] += 1
+        record[f"{split}_rows"] += 1
+        record["positive_rows"] += int(row[target_col])
+        _update_date_range(record, "", date_value)
+        _update_date_range(record, split, date_value)
+    for record in support.values():
+        record["target_positive_rate"] = round(
+            _safe_rate(record["positive_rows"], record["total_rows"]), 6
+        )
+        for k, v in list(record.items()):
+            if v is None:
+                record[k] = ""
+    return support
+
+
+def _support_rows(
+    target_name: str, support: dict[str, dict], key_name: str
+) -> list[dict]:
+    rows = []
+    for key, record in sorted(
+        support.items(), key=lambda item: (-int(item[1]["total_rows"]), item[0])
+    ):
+        row = {"target": target_name, key_name: key}
+        for field, value in record.items():
+            if field != "key":
+                row[field] = value
+        rows.append(row)
+    return rows
+
+
+def _add_support_columns(
+    rows: list[dict], support: dict[str, dict], row_key: str, prefix: str
+) -> None:
+    for row in rows:
+        record = support[str(row.get(row_key, ""))]
+        row[f"{prefix}_total_rows"] = record["total_rows"]
+        row[f"{prefix}_train_rows"] = record["train_rows"]
+        row[f"{prefix}_test_rows"] = record["test_rows"]
+        row[f"{prefix}_target_positive_rate"] = record["target_positive_rate"]
+        row[f"{prefix}_first_date"] = record["first_date"]
+        row[f"{prefix}_last_date"] = record["last_date"]
+
+
+def _dataset_rows_with_support(
+    samples: list[MatchSample], target_name: str
+) -> tuple[list[dict], dict[str, list[dict]]]:
+    if target_name == "q3":
+        target_rows = [s for s in samples if s.target_q3 is not None]
+        feature_attr = "features_q3"
+        target_attr = "target_q3"
+        target_col = "target_q3_home_win"
+    else:
+        target_rows = [s for s in samples if s.target_q4 is not None]
+        feature_attr = "features_q4"
+        target_attr = "target_q4"
+        target_col = "target_q4_home_win"
+
+    target_rows = sorted(target_rows, key=lambda item: item.dt)
+    n_total = len(target_rows)
+    n_train = int(n_total * 0.8)
+
+    rows = []
+    for idx, sample in enumerate(target_rows):
+        row = {
+            "match_id": sample.match_id,
+            "datetime": sample.dt.isoformat(),
+            "support_split": _split_label_v6(idx, n_train),
+        }
+        row.update(getattr(sample, feature_attr))
+        row[target_col] = getattr(sample, target_attr)
+        rows.append(row)
+
+    league_support = _support_by_key(rows, "league", target_col)
+    league_bucket_support = _support_by_key(rows, "league_bucket", target_col)
+    home_bucket_support = _support_by_key(rows, "home_team_bucket", target_col)
+    away_bucket_support = _support_by_key(rows, "away_team_bucket", target_col)
+
+    _add_support_columns(rows, league_support, "league", "support_league")
+    _add_support_columns(rows, league_bucket_support, "league_bucket", "support_league_bucket")
+    for row in rows:
+        hs = home_bucket_support[str(row.get("home_team_bucket", ""))]
+        as_ = away_bucket_support[str(row.get("away_team_bucket", ""))]
+        row["support_home_team_bucket_total_rows"] = hs["total_rows"]
+        row["support_home_team_bucket_first_date"] = hs["first_date"]
+        row["support_home_team_bucket_last_date"] = hs["last_date"]
+        row["support_away_team_bucket_total_rows"] = as_["total_rows"]
+        row["support_away_team_bucket_first_date"] = as_["first_date"]
+        row["support_away_team_bucket_last_date"] = as_["last_date"]
+
+    support_exports = {
+        "league": _support_rows(target_name, league_support, "league"),
+        "league_bucket": _support_rows(target_name, league_bucket_support, "league_bucket"),
+        "home_team_bucket": _support_rows(target_name, home_bucket_support, "home_team_bucket"),
+        "away_team_bucket": _support_rows(target_name, away_bucket_support, "away_team_bucket"),
+    }
+    return rows, support_exports
+
+
+def _calibration_diagnostics(
+    target: str,
+    model_name: str,
+    model,
+    x_train,
+    y_train: list[int],
+    x_test,
+    y_test: list[int],
+) -> dict:
+    """Post-hoc isotonic calibration: fitted on training outputs, evaluated on test."""
+    raw_train_probs = model.predict_proba(x_train)[:, 1]
+    raw_test_probs = model.predict_proba(x_test)[:, 1]
+    try:
+        iso = IsotonicRegression(out_of_bounds="clip")
+        iso.fit(raw_train_probs, y_train)
+        calibrated_test_probs = iso.predict(raw_test_probs)
+    except Exception:
+        calibrated_test_probs = raw_test_probs
+
+    raw_ll = round(float(log_loss(y_test, raw_test_probs, labels=[0, 1])), 6)
+    cal_ll = round(float(log_loss(y_test, calibrated_test_probs, labels=[0, 1])), 6)
+    raw_brier = round(float(brier_score_loss(y_test, raw_test_probs)), 6)
+    cal_brier = round(float(brier_score_loss(y_test, calibrated_test_probs)), 6)
+    raw_auc = _safe_auc(list(y_test), list(raw_test_probs))
+    cal_auc = _safe_auc(list(y_test), list(calibrated_test_probs))
+    return {
+        "target": target,
+        "model": model_name,
+        "calibration_method": "isotonic_fitted_on_train",
+        "raw_test_log_loss": raw_ll,
+        "calibrated_test_log_loss": cal_ll,
+        "log_loss_delta_cal_minus_raw": round(cal_ll - raw_ll, 6),
+        "raw_test_brier": raw_brier,
+        "calibrated_test_brier": cal_brier,
+        "raw_test_auc": None if raw_auc is None else round(raw_auc, 6),
+        "calibrated_test_auc": None if cal_auc is None else round(cal_auc, 6),
+    }
+
+
+def _training_period_rows(
+    target_name: str, target_rows: list[MatchSample], n_train: int
+) -> list[dict]:
+    train_set = target_rows[:n_train]
+    test_set = target_rows[n_train:]
+    rows = []
+    for split_name, split_set in [("train", train_set), ("test", test_set)]:
+        if split_set:
+            dates = [s.dt.date().isoformat() for s in split_set]
+            rows.append({
+                "target": target_name,
+                "split": split_name,
+                "n_rows": len(split_set),
+                "first_date": min(dates),
+                "last_date": max(dates),
+            })
+    return rows
+
+
 def _train_target(samples: list[MatchSample], target_name: str) -> dict:
     if target_name == "q3":
         target_rows = [s for s in samples if s.target_q3 is not None]
@@ -722,8 +923,10 @@ def _train_target(samples: list[MatchSample], target_name: str) -> dict:
 
     metrics_rows = []
     proba_map = {}
+    calibration_rows = []
+    feature_importance_rows = []
 
-    for model_name, model in models.items():
+    for model_name, model in tqdm(models.items(), desc=f"[v6] Entrenando {target_name.upper()}", unit="modelo"):
         model.fit(x_train, y_train)
         probs = model.predict_proba(x_test)[:, 1]
         proba_map[model_name] = list(probs)
@@ -739,6 +942,32 @@ def _train_target(samples: list[MatchSample], target_name: str) -> dict:
                 probs=list(probs),
             )
         )
+
+        calibration_rows.append(
+            _calibration_diagnostics(
+                target=target_name,
+                model_name=model_name,
+                model=model,
+                x_train=x_train,
+                y_train=y_train,
+                x_test=x_test,
+                y_test=y_test,
+            )
+        )
+
+        if model_name == "xgb":
+            importances = getattr(model, "feature_importances_", None)
+            if importances is not None:
+                for feature, importance in sorted(
+                    zip(vec.feature_names_, importances),
+                    key=lambda item: float(item[1]),
+                    reverse=True,
+                ):
+                    feature_importance_rows.append({
+                        "target": target_name,
+                        "feature": feature,
+                        "importance": float(importance),
+                    })
 
         artifact = {
             "version": "v6",
@@ -792,6 +1021,9 @@ def _train_target(samples: list[MatchSample], target_name: str) -> dict:
         "metrics": metrics_rows,
         "consensus": consensus,
         "n_rows": n_total,
+        "calibration": calibration_rows,
+        "feature_importance": feature_importance_rows,
+        "period": _training_period_rows(target_name, target_rows, n_train),
     }
 
 
@@ -800,35 +1032,37 @@ def main() -> None:
 
     samples = _build_samples(DB_PATH)
 
-    q3_rows = []
-    q4_rows = []
-    for sample in samples:
-        if sample.target_q3 is not None:
-            row = {
-                "match_id": sample.match_id,
-                "datetime": sample.dt.isoformat(),
-            }
-            row.update(sample.features_q3)
-            row["target_q3_home_win"] = sample.target_q3
-            q3_rows.append(row)
-
-        if sample.target_q4 is not None:
-            row = {
-                "match_id": sample.match_id,
-                "datetime": sample.dt.isoformat(),
-            }
-            row.update(sample.features_q4)
-            row["target_q4_home_win"] = sample.target_q4
-            q4_rows.append(row)
+    q3_rows, q3_support = _dataset_rows_with_support(samples, "q3")
+    q4_rows, q4_support = _dataset_rows_with_support(samples, "q4")
 
     _write_csv(OUT_DIR / "q3_dataset.csv", q3_rows)
     _write_csv(OUT_DIR / "q4_dataset.csv", q4_rows)
+    _write_csv(OUT_DIR / "league_support_q3.csv", q3_support["league"])
+    _write_csv(OUT_DIR / "league_support_q4.csv", q4_support["league"])
+    _write_csv(OUT_DIR / "league_bucket_support_q3.csv", q3_support["league_bucket"])
+    _write_csv(OUT_DIR / "league_bucket_support_q4.csv", q4_support["league_bucket"])
+    _write_csv(OUT_DIR / "home_team_bucket_support_q3.csv", q3_support["home_team_bucket"])
+    _write_csv(OUT_DIR / "home_team_bucket_support_q4.csv", q4_support["home_team_bucket"])
+    _write_csv(OUT_DIR / "away_team_bucket_support_q3.csv", q3_support["away_team_bucket"])
+    _write_csv(OUT_DIR / "away_team_bucket_support_q4.csv", q4_support["away_team_bucket"])
 
     q3_result = _train_target(samples, "q3")
     q4_result = _train_target(samples, "q4")
 
     _write_csv(OUT_DIR / "q3_metrics.csv", q3_result["metrics"])
     _write_csv(OUT_DIR / "q4_metrics.csv", q4_result["metrics"])
+    _write_csv(
+        OUT_DIR / "calibration_diagnostics.csv",
+        q3_result["calibration"] + q4_result["calibration"],
+    )
+    _write_csv(
+        OUT_DIR / "xgb_feature_importance.csv",
+        q3_result["feature_importance"] + q4_result["feature_importance"],
+    )
+    _write_csv(
+        OUT_DIR / "training_period.csv",
+        q3_result["period"] + q4_result["period"],
+    )
 
     with (OUT_DIR / "q3_consensus.json").open("w", encoding="utf-8") as f:
         json.dump(q3_result["consensus"], f, indent=2, ensure_ascii=False)

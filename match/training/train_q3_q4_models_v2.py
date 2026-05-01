@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 
 import joblib
+from tqdm import tqdm
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LogisticRegression
@@ -210,7 +211,7 @@ def _build_samples(db_path: Path) -> list[MatchSample]:
     team_history: dict[str, list[int]] = defaultdict(list)
     samples: list[MatchSample] = []
 
-    for row in rows:
+    for row in tqdm(rows, desc="[v2] Procesando partidos", unit="partido"):
         match_id = str(row["match_id"])
         dt = datetime.strptime(
             f"{row['date']} {row['time']}",
@@ -399,7 +400,7 @@ def _train_target(samples: list[MatchSample], target_name: str) -> dict:
     metrics_rows = []
     proba_map = {}
 
-    for model_name, model in models.items():
+    for model_name, model in tqdm(models.items(), desc=f"[v2] Entrenando {target_name.upper()}", unit="modelo"):
         model.fit(x_train, y_train)
         probs = model.predict_proba(x_test)[:, 1]
         proba_map[model_name] = list(probs)
