@@ -32,12 +32,6 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
-import warnings
-from sklearn.model_selection import TimeSeriesSplit
-from sklearn.inspection import permutation_importance as sklearn_perm_importance
-from sklearn.exceptions import ConvergenceWarning
-from scipy import stats as scipy_stats
-from scipy.stats import ConstantInputWarning
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -644,276 +638,6 @@ def _write_csv(path: Path, rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
-def _make_models(fast: bool = False) -> dict:
-    n_est = 100 if fast else 300
-    max_it = 100 if fast else 300
-    mlp_it = 200 if fast else 500
-    return {
-        "xgb": xgb.XGBClassifier(
-            n_estimators=n_est,
-            learning_rate=0.05,
-            max_depth=4,
-            random_state=42,
-            n_jobs=-1,
-        ),
-        "hist_gb": HistGradientBoostingClassifier(
-            max_iter=max_it,
-            learning_rate=0.05,
-            max_depth=5,
-            random_state=42,
-        ),
-        "mlp": MLPClassifier(
-            hidden_layer_sizes=(64, 32),
-            activation="relu",
-            solver="adam",
-            max_iter=mlp_it,
-            n_iter_no_change=20,
-            early_stopping=True,
-            validation_fraction=0.1,
-            random_state=42,
-        ),
-    }
-
-
-def _timeseries_cv_metrics(
-    target_name: str,
-    x_all: np.ndarray,
-    y: list[int],
-    n_splits: int = 5,
-) -> list[dict]:
-    tss = TimeSeriesSplit(n_splits=n_splits)
-    rows = []
-    for fold_idx, (train_idx, test_idx) in enumerate(
-        tqdm(list(tss.split(x_all)), desc=f"[v6] CV {target_name.upper()}", unit="fold")
-    ):
-        x_tr = x_all[train_idx]
-        x_te = x_all[test_idx]
-        y_tr = [y[i] for i in train_idx]
-        y_te = [y[i] for i in test_idx]
-        if len(set(y_te)) < 2:
-            continue
-        fold_models = _make_models(fast=True)
-        fold_proba: dict[str, list[float]] = {}
-        for model_name, model in fold_models.items():
-            model.fit(x_tr, y_tr)
-            probs = list(model.predict_proba(x_te)[:, 1])
-            fold_proba[model_name] = probs
-            preds = [1 if p >= 0.5 else 0 for p in probs]
-            row: dict = {
-                "target": target_name,
-                "model": model_name,
-                "fold": fold_idx,
-                "n_train": len(train_idx),
-                "n_test": len(test_idx),
-                "accuracy": round(float(accuracy_score(y_te, preds)), 6),
-                "f1": round(float(f1_score(y_te, preds, zero_division=0)), 6),
-                "log_loss": round(float(log_loss(y_te, probs, labels=[0, 1])), 6),
-                "brier": round(float(brier_score_loss(y_te, probs)), 6),
-            }
-            auc = _safe_auc(y_te, probs)
-            row["roc_auc"] = None if auc is None else round(auc, 6)
-            rows.append(row)
-        ens = [
-            sum(fold_proba[nm][i] for nm in fold_models) / len(fold_models)
-            for i in range(len(y_te))
-        ]
-        preds_ens = [1 if p >= 0.5 else 0 for p in ens]
-        ens_row: dict = {
-            "target": target_name,
-            "model": "ensemble_avg_prob",
-            "fold": fold_idx,
-            "n_train": len(train_idx),
-            "n_test": len(test_idx),
-            "accuracy": round(float(accuracy_score(y_te, preds_ens)), 6),
-            "f1": round(float(f1_score(y_te, preds_ens, zero_division=0)), 6),
-            "log_loss": round(float(log_loss(y_te, ens, labels=[0, 1])), 6),
-            "brier": round(float(brier_score_loss(y_te, ens)), 6),
-        }
-        auc = _safe_auc(y_te, ens)
-        ens_row["roc_auc"] = None if auc is None else round(auc, 6)
-        rows.append(ens_row)
-    return rows
-
-
-def _multi_split_metrics(
-    target_name: str,
-    x_all: np.ndarray,
-    y: list[int],
-    ratios: tuple = (0.60, 0.70, 0.75, 0.80),
-) -> list[dict]:
-    rows = []
-    n_total = len(y)
-    for ratio in tqdm(ratios, desc=f"[v6] MultiSplit {target_name.upper()}", unit="split"):
-        n_train = int(n_total * ratio)
-        x_tr, x_te = x_all[:n_train], x_all[n_train:]
-        y_tr, y_te = y[:n_train], y[n_train:]
-        if len(set(y_te)) < 2 or n_train < 100:
-            continue
-        split_models = _make_models(fast=False)
-        split_proba: dict[str, list[float]] = {}
-        for model_name, model in split_models.items():
-            model.fit(x_tr, y_tr)
-            probs = list(model.predict_proba(x_te)[:, 1])
-            split_proba[model_name] = probs
-            preds = [1 if p >= 0.5 else 0 for p in probs]
-            row: dict = {
-                "target": target_name,
-                "train_ratio": ratio,
-                "n_train": n_train,
-                "n_test": len(y_te),
-                "model": model_name,
-                "accuracy": round(float(accuracy_score(y_te, preds)), 6),
-                "f1": round(float(f1_score(y_te, preds, zero_division=0)), 6),
-                "log_loss": round(float(log_loss(y_te, probs, labels=[0, 1])), 6),
-                "brier": round(float(brier_score_loss(y_te, probs)), 6),
-            }
-            auc = _safe_auc(y_te, probs)
-            row["roc_auc"] = None if auc is None else round(auc, 6)
-            rows.append(row)
-        ens = [
-            sum(split_proba[nm][i] for nm in split_models) / len(split_models)
-            for i in range(len(y_te))
-        ]
-        preds_ens = [1 if p >= 0.5 else 0 for p in ens]
-        ens_row: dict = {
-            "target": target_name,
-            "train_ratio": ratio,
-            "n_train": n_train,
-            "n_test": len(y_te),
-            "model": "ensemble_avg_prob",
-            "accuracy": round(float(accuracy_score(y_te, preds_ens)), 6),
-            "f1": round(float(f1_score(y_te, preds_ens, zero_division=0)), 6),
-            "log_loss": round(float(log_loss(y_te, ens, labels=[0, 1])), 6),
-            "brier": round(float(brier_score_loss(y_te, ens)), 6),
-        }
-        auc = _safe_auc(y_te, ens)
-        ens_row["roc_auc"] = None if auc is None else round(auc, 6)
-        rows.append(ens_row)
-    return rows
-
-
-def _permutation_importance_rows(
-    target_name: str,
-    model_name: str,
-    model,
-    x_test: np.ndarray,
-    y_test: list[int],
-    feature_names: list[str],
-    n_repeats: int = 10,
-) -> list[dict]:
-    result = sklearn_perm_importance(
-        model,
-        x_test,
-        np.array(y_test),
-        n_repeats=n_repeats,
-        random_state=42,
-        scoring="roc_auc",
-        n_jobs=-1,
-    )
-    rows = []
-    for i, (mean_imp, std_imp) in enumerate(
-        zip(result.importances_mean, result.importances_std)
-    ):
-        rows.append({
-            "target": target_name,
-            "model": model_name,
-            "feature": feature_names[i],
-            "perm_importance_mean": round(float(mean_imp), 6),
-            "perm_importance_std": round(float(std_imp), 6),
-        })
-    rows.sort(key=lambda r: -r["perm_importance_mean"])
-    return rows
-
-
-def _feature_correlation_rows(
-    target_name: str,
-    x_all: np.ndarray,
-    y: list[int],
-    feature_names: list[str],
-) -> list[dict]:
-    y_arr = np.array(y)
-    rows = []
-    for i, fname in enumerate(feature_names):
-        col = x_all[:, i]
-        if np.std(col) == 0.0:
-            corr, pval = 0.0, 1.0
-        else:
-            try:
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", ConstantInputWarning)
-                    corr, pval = scipy_stats.pointbiserialr(y_arr, col)
-            except Exception:
-                corr, pval = 0.0, 1.0
-        rows.append({
-            "target": target_name,
-            "feature": fname,
-            "pointbiserial_corr": round(float(corr), 6),
-            "pvalue": round(float(pval), 6),
-            "abs_corr": round(abs(float(corr)), 6),
-            "significant_p05": int(float(pval) < 0.05),
-        })
-    rows.sort(key=lambda r: -r["abs_corr"])
-    return rows
-
-
-def _print_cv_summary(cv_rows: list[dict], target_name: str) -> None:
-    by_model: dict[str, dict[str, list[float]]] = {}
-    for row in cv_rows:
-        if row["target"] != target_name:
-            continue
-        m = row["model"]
-        if m not in by_model:
-            by_model[m] = {"accuracy": [], "roc_auc": [], "log_loss": [], "brier": []}
-        for metric in ("accuracy", "roc_auc", "log_loss", "brier"):
-            val = row.get(metric)
-            if val is not None:
-                by_model[m][metric].append(float(val))
-
-    print(f"\n{'=' * 72}")
-    print(f"  CV Summary (TimeSeriesSplit, 5 folds) — {target_name.upper()}")
-    print(f"{'=' * 72}")
-    print(f"  {'Model':<22} {'AUC':>14} {'Accuracy':>14} {'LogLoss':>12} {'Brier':>10}")
-    print(f"  {'-' * 70}")
-    for mn in ("xgb", "hist_gb", "mlp", "ensemble_avg_prob"):
-        if mn not in by_model:
-            continue
-        d = by_model[mn]
-
-        def fmt(key: str) -> str:
-            vals = d.get(key, [])
-            if not vals:
-                return "       N/A"
-            mean = sum(vals) / len(vals)
-            std = (sum((v - mean) ** 2 for v in vals) / len(vals)) ** 0.5
-            return f"{mean:.3f}±{std:.3f}"
-
-        print(f"  {mn:<22} {fmt('roc_auc'):>14} {fmt('accuracy'):>14} {fmt('log_loss'):>12} {fmt('brier'):>10}")
-    print()
-
-
-def _print_multi_split_summary(multi_rows: list[dict], target_name: str) -> None:
-    print(f"\n{'=' * 72}")
-    print(f"  Multi-Split — {target_name.upper()} | model: ensemble_avg_prob")
-    print(f"{'=' * 72}")
-    print(f"  {'ratio':>6} {'n_train':>9} {'n_test':>8} {'AUC':>8} {'Acc':>8} {'LogLoss':>10} {'Brier':>8}")
-    print(f"  {'-' * 65}")
-    for row in multi_rows:
-        if row["target"] != target_name or row["model"] != "ensemble_avg_prob":
-            continue
-        auc = row.get("roc_auc")
-        auc_s = f"{auc:.4f}" if auc is not None else "   N/A"
-        print(
-            f"  {row['train_ratio']:>6.2f}"
-            f" {row['n_train']:>9}"
-            f" {row['n_test']:>8}"
-            f" {auc_s:>8}"
-            f" {row['accuracy']:>8.4f}"
-            f" {row['log_loss']:>10.4f}"
-            f" {row['brier']:>8.4f}"
-        )
-    print()
-
-
 def _metric_row(
     target: str,
     model_name: str,
@@ -1174,22 +898,33 @@ def _train_target(samples: list[MatchSample], target_name: str) -> dict:
     y_train = y[:n_train]
     y_test = y[n_train:]
 
-    models = _make_models()
-
-    print(f"\n[v6] TimeSeriesSplit CV ({target_name.upper()}) ...")
-    cv_rows = _timeseries_cv_metrics(target_name, x_all, y)
-
-    print(f"[v6] Multi-split metrics ({target_name.upper()}) ...")
-    multi_rows = _multi_split_metrics(target_name, x_all, y)
-
-    print(f"[v6] Feature-target correlation ({target_name.upper()}) ...")
-    correlation_rows = _feature_correlation_rows(target_name, x_all, y, list(vec.feature_names_))
+    models = {
+        "xgb": xgb.XGBClassifier(
+            n_estimators=300,
+            learning_rate=0.05,
+            max_depth=4,
+            random_state=42,
+            n_jobs=-1,
+        ),
+        "hist_gb": HistGradientBoostingClassifier(
+            max_iter=300,
+            learning_rate=0.05,
+            max_depth=5,
+            random_state=42,
+        ),
+        "mlp": MLPClassifier(
+            hidden_layer_sizes=(64, 32),
+            activation='relu',
+            solver='adam',
+            max_iter=500,
+            random_state=42,
+        ),
+    }
 
     metrics_rows = []
     proba_map = {}
     calibration_rows = []
     feature_importance_rows = []
-    perm_importance_rows = []
 
     for model_name, model in tqdm(models.items(), desc=f"[v6] Entrenando {target_name.upper()}", unit="modelo"):
         model.fit(x_train, y_train)
@@ -1220,7 +955,7 @@ def _train_target(samples: list[MatchSample], target_name: str) -> dict:
             )
         )
 
-        if model_name in ("xgb", "hist_gb"):
+        if model_name == "xgb":
             importances = getattr(model, "feature_importances_", None)
             if importances is not None:
                 for feature, importance in sorted(
@@ -1230,16 +965,9 @@ def _train_target(samples: list[MatchSample], target_name: str) -> dict:
                 ):
                     feature_importance_rows.append({
                         "target": target_name,
-                        "model": model_name,
                         "feature": feature,
                         "importance": float(importance),
                     })
-
-            perm_importance_rows.extend(
-                _permutation_importance_rows(
-                    target_name, model_name, model, x_test, y_test, list(vec.feature_names_)
-                )
-            )
 
         artifact = {
             "version": "v6",
@@ -1296,10 +1024,6 @@ def _train_target(samples: list[MatchSample], target_name: str) -> dict:
         "calibration": calibration_rows,
         "feature_importance": feature_importance_rows,
         "period": _training_period_rows(target_name, target_rows, n_train),
-        "cv_metrics": cv_rows,
-        "multi_split": multi_rows,
-        "feature_correlation": correlation_rows,
-        "permutation_importance": perm_importance_rows,
     }
 
 
@@ -1325,11 +1049,6 @@ def main() -> None:
     q3_result = _train_target(samples, "q3")
     q4_result = _train_target(samples, "q4")
 
-    _print_cv_summary(q3_result["cv_metrics"], "q3")
-    _print_multi_split_summary(q3_result["multi_split"], "q3")
-    _print_cv_summary(q4_result["cv_metrics"], "q4")
-    _print_multi_split_summary(q4_result["multi_split"], "q4")
-
     _write_csv(OUT_DIR / "q3_metrics.csv", q3_result["metrics"])
     _write_csv(OUT_DIR / "q4_metrics.csv", q4_result["metrics"])
     _write_csv(
@@ -1337,28 +1056,12 @@ def main() -> None:
         q3_result["calibration"] + q4_result["calibration"],
     )
     _write_csv(
-        OUT_DIR / "tree_feature_importance.csv",
+        OUT_DIR / "xgb_feature_importance.csv",
         q3_result["feature_importance"] + q4_result["feature_importance"],
     )
     _write_csv(
         OUT_DIR / "training_period.csv",
         q3_result["period"] + q4_result["period"],
-    )
-    _write_csv(
-        OUT_DIR / "cv_metrics.csv",
-        q3_result["cv_metrics"] + q4_result["cv_metrics"],
-    )
-    _write_csv(
-        OUT_DIR / "multi_split_metrics.csv",
-        q3_result["multi_split"] + q4_result["multi_split"],
-    )
-    _write_csv(
-        OUT_DIR / "feature_target_correlation.csv",
-        q3_result["feature_correlation"] + q4_result["feature_correlation"],
-    )
-    _write_csv(
-        OUT_DIR / "permutation_importance.csv",
-        q3_result["permutation_importance"] + q4_result["permutation_importance"],
     )
 
     with (OUT_DIR / "q3_consensus.json").open("w", encoding="utf-8") as f:
