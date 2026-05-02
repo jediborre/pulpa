@@ -53,6 +53,8 @@ MIN_GP_Q3 = 16               # graph_points with minute ≤ 24 required for Q3 c
 MIN_GP_Q4 = 26               # graph_points with minute ≤ 36 required for Q4 check
 MAX_FETCH_ERRORS = 4         # consecutive errors before discarding a match
 SCHEDULE_REFRESH_HOURS = 8   # re-fetch schedule this often
+PENDING_RECHECK_SECS = 15 * 60  # periodically backfill pending outcomes
+PENDING_RECHECK_MAX_MATCHES = 40  # cap scrape workload per cycle
 NO_GRAPH_REAL_SECS = 55 * 60 # discard if no graph_points 55 real-min after start
 MAX_CONCURRENT_FETCHES = 6   # max simultaneous Playwright fetches across all watchers
 FINAL_FETCH_EXTRA_SECS = 300 # extra real-seconds after estimated end before final save
@@ -517,6 +519,107 @@ def reconcile_pending_results(db_path: str) -> int:
     conn.close()
     total = resolved + eval_resolved
     return total
+
+
+def _find_pending_result_match_ids(conn: sqlite3.Connection) -> list[str]:
+    """Collect match_ids that still have pending outcomes to be reconciled."""
+    pending_ids: set[str] = set()
+
+    # 1) Pending rows in bet_monitor_log with real bet signals.
+    log_rows = conn.execute(
+        """
+        SELECT DISTINCT match_id
+        FROM bet_monitor_log
+        WHERE result = 'pending'
+          AND signal IN ('BET', 'BET_HOME', 'BET_AWAY')
+        """
+    ).fetchall()
+    for row in log_rows:
+        pending_ids.add(str(row["match_id"]))
+
+    # 2) Pending outcomes in eval_match_results across discovered model tags.
+    try:
+        table_cols = [
+            row[1]
+            for row in conn.execute("PRAGMA table_info(eval_match_results)").fetchall()
+        ]
+        tags = sorted({
+            col.split("__", 1)[1]
+            for col in table_cols
+            if col.startswith("q3_pick__")
+        })
+
+        _BET_SIGS = {"BET", "BET HOME", "BET_HOME", "BET AWAY", "BET_AWAY"}
+        for tag in tags:
+            for quarter in ("q3", "q4"):
+                avail_col = f'"{quarter}_available__{tag}"'
+                sig_col = f'"{quarter}_signal__{tag}"'
+                out_col = f'"{quarter}_outcome__{tag}"'
+                rows = conn.execute(
+                    f"SELECT match_id, {sig_col} AS sig FROM eval_match_results "
+                    f"WHERE {avail_col} = 1 AND {out_col} = 'pending'"
+                ).fetchall()
+                for row in rows:
+                    sig_norm = str(row["sig"] or "").upper().replace("_", " ")
+                    if sig_norm in _BET_SIGS:
+                        pending_ids.add(str(row["match_id"]))
+    except Exception:
+        # Table/columns may not exist in early setups.
+        pass
+
+    return sorted(pending_ids)
+
+
+async def _recheck_pending_outcomes_once(db_path: str) -> dict[str, int]:
+    """Scrape pending matches and reconcile outcomes in one background cycle."""
+    conn = _open_db(db_path)
+    try:
+        pending_ids = _find_pending_result_match_ids(conn)
+    finally:
+        conn.close()
+
+    if not pending_ids:
+        resolved = await asyncio.to_thread(reconcile_pending_results, db_path)
+        return {
+            "checked": 0,
+            "scraped_ok": 0,
+            "scraped_fail": 0,
+            "resolved": int(resolved),
+        }
+
+    ids_to_scrape = pending_ids[:PENDING_RECHECK_MAX_MATCHES]
+
+    def _scrape_pending_ids() -> tuple[int, int]:
+        import db as db_mod
+        import scraper as scraper_mod
+
+        ok = 0
+        fail = 0
+        save_conn = db_mod.get_conn(db_path)
+        db_mod.init_db(save_conn)
+        try:
+            for mid in ids_to_scrape:
+                try:
+                    fresh = scraper_mod.fetch_match_by_id(mid)
+                    if fresh:
+                        db_mod.save_match(save_conn, mid, fresh)
+                        ok += 1
+                    else:
+                        fail += 1
+                except Exception:
+                    fail += 1
+        finally:
+            save_conn.close()
+        return ok, fail
+
+    scraped_ok, scraped_fail = await asyncio.to_thread(_scrape_pending_ids)
+    resolved = await asyncio.to_thread(reconcile_pending_results, db_path)
+    return {
+        "checked": len(ids_to_scrape),
+        "scraped_ok": int(scraped_ok),
+        "scraped_fail": int(scraped_fail),
+        "resolved": int(resolved),
+    }
 
 
 # ── Schedule fetcher ──────────────────────────────────────────────────────────
@@ -2411,6 +2514,7 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
 
     active_tasks: dict[str, asyncio.Task] = {}
     last_refresh_wall: float = 0.0
+    last_pending_recheck_wall: float = 0.0
     last_date: str = ""
 
     # ── Resume: launch watchers for rows already in DB before fetching schedule
@@ -2502,6 +2606,23 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
             # Clean up done tasks
             for k in [k for k, t in active_tasks.items() if t.done()]:
                 del active_tasks[k]
+
+            # Periodically backfill unfinished outcomes created while monitor was off.
+            if now_wall - last_pending_recheck_wall >= PENDING_RECHECK_SECS:
+                try:
+                    summary = await _recheck_pending_outcomes_once(db_path)
+                    if summary["checked"] > 0 or summary["resolved"] > 0:
+                        _log(
+                            "recheck pendientes: "
+                            f"scan={summary['checked']} "
+                            f"ok={summary['scraped_ok']} "
+                            f"fail={summary['scraped_fail']} "
+                            f"resolved={summary['resolved']}"
+                        )
+                except Exception as exc:
+                    logger.warning("[MONITOR] pending recheck error: %s", exc)
+                finally:
+                    last_pending_recheck_wall = now_wall
 
             await asyncio.sleep(60)
 

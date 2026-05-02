@@ -1425,24 +1425,21 @@ def _get_missing_dates_cli(
 
     existing = {row["event_date"] for row in existing_rows}
 
-    # Recent: last recent_days up to yesterday
-    recent_candidates = [
-        (today - timedelta(days=i)).isoformat()
-        for i in range(1, recent_days + 1)
-    ]
-    recent_missing = [d for d in recent_candidates if d not in existing]
-
-    # Historical: from min_date up to recent_cutoff - 1 day (older than recent window)
+    # Build missing dates as real gaps in the full [min_date, yesterday] range.
+    # This catches holes like: 2026-01-01 present, 2026-01-02 missing, 2026-01-03 present.
+    recent_missing: list[str] = []
     historical_missing: list[str] = []
     if min_date_str:
         try:
             min_date = datetime.strptime(min_date_str, "%Y-%m-%d").date()
-            hist_end = recent_cutoff - timedelta(days=1)
-            cursor = hist_end
+            cursor = yesterday
             while cursor >= min_date:
                 d = cursor.isoformat()
                 if d not in existing:
-                    historical_missing.append(d)
+                    if cursor >= recent_cutoff:
+                        recent_missing.append(d)
+                    else:
+                        historical_missing.append(d)
                 cursor -= timedelta(days=1)
         except ValueError:
             pass
@@ -1467,6 +1464,17 @@ def _select_fetch_date_interactive(db_path: str) -> tuple[str, int | None] | Non
 
     options: list[str] = []
 
+    if min_date:
+        print("\nFechas anteriores (o igual) a la minima en base:")
+        try:
+            min_dt = datetime.strptime(min_date, "%Y-%m-%d").date()
+            for i in range(10):
+                d = (min_dt - timedelta(days=i)).isoformat()
+                options.append(d)
+                print(f"  {len(options)}) {d}")
+        except ValueError:
+            pass
+
     if recent:
         print("\nFechas recientes sin datos (ultimos 30 dias):")
         for d in recent[:10]:
@@ -1482,7 +1490,7 @@ def _select_fetch_date_interactive(db_path: str) -> tuple[str, int | None] | Non
             print(f"  ... y {len(historical) - 10} mas")
 
     if not recent and not historical:
-        print("No se detectaron fechas faltantes en la base.")
+        print("\nNo se detectaron huecos de fechas faltantes.")
 
     print("  m) Ingresar fecha manualmente")
     print("  0) Cancelar")
@@ -1634,6 +1642,16 @@ def _ingest_date_with_progress(
 def cmd_fetch_date(args: argparse.Namespace) -> None:
     event_date = args.date
     limit = args.limit
+    _ingest_date_with_progress(args.db, event_date, limit)
+
+
+def cmd_fetch_date_menu(args: argparse.Namespace) -> None:
+    """Run the same interactive missing-date flow used by menu option 15."""
+    result = _select_fetch_date_interactive(args.db)
+    if result is None:
+        print("[fetch-date-menu] cancelado")
+        return
+    event_date, limit = result
     _ingest_date_with_progress(args.db, event_date, limit)
 
 
@@ -1972,6 +1990,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Max matches to ingest (default: no limit)",
     )
     p_fetch.set_defaults(func=cmd_fetch_date)
+
+    # fetch-date-menu
+    p_fetch_menu = sub.add_parser(
+        "fetch-date-menu",
+        help=(
+            "Interactive missing-date selector (same flow as menu option 15)"
+        ),
+    )
+    p_fetch_menu.set_defaults(func=cmd_fetch_date_menu)
 
     return parser
 

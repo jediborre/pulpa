@@ -88,10 +88,9 @@ goto MENU
 :: ─────────────────────────────────────────────────
 :FETCH_DATE
 cls
-echo [+] Traer fecha nueva (cli.py - menu interactivo)...
-echo     Escribe 15 cuando aparezca el menu del CLI.
+echo [+] Traer fecha nueva (selector directo de fechas faltantes)...
 echo.
-call .venv\Scripts\activate && python match\cli.py menu
+call .venv\Scripts\activate && python match\cli.py fetch-date-menu
 pause
 goto MENU
 

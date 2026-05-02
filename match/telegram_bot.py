@@ -54,7 +54,12 @@ class CustomHTTPXRequest(HTTPXRequest):
 
 
 BASE_DIR = Path(__file__).resolve().parent
-load_dotenv(BASE_DIR / ".env")
+PROJECT_ROOT = BASE_DIR.parent
+
+# Load env vars from project root first (menu.bat runs from root),
+# then allow a local match/.env to override if present.
+load_dotenv(PROJECT_ROOT / ".env")
+load_dotenv(BASE_DIR / ".env", override=True)
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 _raw_db_path = os.getenv("MATCH_DB_PATH", "").strip()
