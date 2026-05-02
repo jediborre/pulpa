@@ -5,6 +5,7 @@ import json
 import sqlite3
 import joblib
 import pandas as pd
+from datetime import timezone, timedelta
 from openpyxl.formatting.rule import CellIsRule, FormulaRule
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 
@@ -208,7 +209,8 @@ def _simulate(model_name, test_rows, p_home_list, excluded_flags=None, excluded_
             'modelo': model_name,
             'partida_test': i + 1,
             'match_id': match_id,
-            'fecha_hora': s.dt.isoformat(),
+            'fecha': (s.dt.astimezone(timezone(timedelta(hours=-6))).strftime('%Y-%m-%d')) if s.dt else '',
+            'hora': (s.dt.astimezone(timezone(timedelta(hours=-6))).strftime('%H:%M:%S')) if s.dt else '',
             'liga': str(s.features_q4.get('league', '')),
             'equipo_local': home_team_name,
             'equipo_visitante': away_team_name,
@@ -582,7 +584,7 @@ def main():
     # Asegurar que las columnas estén en el orden correcto
     col_order = [
         'resultado_apuesta', 'apuesta', 'monto_apostado', 'ganancia', 'bank_final',
-        'modelo', 'partida_test', 'match_id', 'fecha_hora', 'liga', 'equipo_local', 
+        'modelo', 'partida_test', 'match_id', 'fecha', 'hora', 'liga', 'equipo_local', 
         'equipo_visitante', 'resultado_q4_home_gana', 'prob_local', 'prob_visitante',
         'lado_predicho', 'confianza_prob', 'confianza_score_0_100', 'nivel_confianza',
         'apuestas_odds', 'probabilidad_empate', 'edge', 'kelly_fraction_raw', 
