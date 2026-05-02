@@ -1615,6 +1615,83 @@ def _v2_pick_filter(league: str, confidence: float, pick: str) -> tuple[bool, fl
     return (True, sf * 0.5) if phase_reduced else (True, sf)
 
 
+# ── v6.2 pick filter ────────────────────────────────────────────────────────────
+
+def _load_v62_exclusion_rules() -> list[tuple[str, str, str]]:
+    import json
+    from pathlib import Path
+    try:
+        p = Path('match/training/v6_2_league_name_exclusions.json')
+        if not p.exists():
+            return []
+        cfg = json.loads(p.read_text(encoding='utf-8'))
+        pats = []
+        for cat in cfg.get('categories', []):
+            for p_str in cat.get('patterns', []):
+                p_str = str(p_str).strip()
+                if p_str:
+                    pats.append((cat.get('name', 'uncategorized'), p_str, p_str.lower()))
+        return pats
+    except Exception:
+        return []
+
+_V62_EXCLUSIONS = None
+
+def _v6_2_pick_filter(league: str, confidence: float, pick: str) -> tuple[bool, float]:
+    """Apply v6.2 model filtering rules.
+    Returns (accept, stake_factor).
+    stake_factor: 1.0, 0.75, 0.50, 0.25 based on kelly.
+    """
+    global _V62_EXCLUSIONS
+    if _V62_EXCLUSIONS is None:
+        _V62_EXCLUSIONS = _load_v62_exclusion_rules()
+        
+    ll = league.lower()
+    for cname, raw, low in _V62_EXCLUSIONS:
+        if low in ll:
+            return False, 0.0
+
+    min_conf_prob = 0.58
+    if confidence < min_conf_prob:
+        return False, 0.0
+
+    odds = 1.4
+    break_even = 1.0 / odds
+    edge = confidence - break_even
+    if edge <= 0:
+        return False, 0.0
+
+    b = odds - 1.0
+    q = 1.0 - confidence
+    k_raw = ((b * confidence) - q) / b if b > 0 else 0.0
+    
+    if k_raw <= 0:
+        return False, 0.0
+        
+    kelly_mult = 0.25
+    kelly_cap = 0.05
+    k_used = min(k_raw * kelly_mult, kelly_cap)
+
+    k_strength = max(0.0, min(k_used / kelly_cap, 1.0))
+    
+    if confidence >= 0.97 and edge >= 0.24 and k_strength >= 0.995:
+        stake_val = 100.0
+    elif confidence >= 0.90 and edge >= 0.18 and k_strength >= 0.85:
+        stake_val = 75.0
+    elif confidence >= 0.80 and edge >= 0.09 and k_strength >= 0.55:
+        stake_val = 50.0
+    elif k_strength < 0.15:
+        stake_val = 0.0
+    else:
+        stake_val = 25.0
+
+    if stake_val < 25.0:
+        return False, 0.0
+
+    stake_factor = stake_val / 100.0
+    return True, stake_factor
+
+
 # ── v6 pick filter ────────────────────────────────────────────────────────────
 
 def _v6_pick_filter(league: str, confidence: float, pick: str) -> tuple[bool, float]:
@@ -1895,18 +1972,23 @@ async def _check_quarter(
             return signal, False, pred
         # Apply model-specific filter rules
         model_used = _model_config.get(target, "-")
+        _v6_stake = 1.0
         if model_used == "v6":
             _v6_accept, _v6_stake = _v6_pick_filter(league, confidence, pick)
             if not _v6_accept:
                 _log(f"🔕 BET {quarter_label} [v6]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")                
                 return signal, False, pred
-        if model_used == "v2":
+        elif model_used == "v6_2":
+            _v6_2_accept, _v6_stake = _v6_2_pick_filter(league, confidence, pick)
+            if not _v6_2_accept:
+                _log(f"🔕 BET {quarter_label} [v6_2]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")                
+                return signal, False, pred
+        elif model_used == "v2":
             _v2_accept, _v6_stake = _v2_pick_filter(league, confidence, pick)
             if not _v2_accept:
                 _log(f"🔕 BET {quarter_label} [v2]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")
                 return signal, False, pred
-        else:
-            _v6_stake = 1.0
+
         pick_sym = "🏠" if pick == "home" else ("✈️" if pick == "away" else "?")
         pick_name = home if pick == "home" else (away if pick == "away" else pick)
         msg = _format_bet_notification(
@@ -1926,7 +2008,9 @@ async def _check_quarter(
             db_path=db_path,
             pick=pick,
         )
-        if _v6_stake < 1.0:
+        if model_used == "v6_2":
+            msg += f"\n💰 Stake sugerido (Kelly): ${int(_v6_stake * 100)}"
+        elif _v6_stake < 1.0:
             msg += f"\n⚠️ Stake sugerido: {int(_v6_stake * 100)}% del stake normal"
         markup = {
             "inline_keyboard": [[
@@ -3149,6 +3233,10 @@ def signals_text_today(
                 _accept, _ = _v6_pick_filter(_row_league, _row_conf, _row_pick)
                 if not _accept:
                     continue
+            if _row_model == "v6_2":
+                _accept, _ = _v6_2_pick_filter(_row_league, _row_conf, _row_pick)
+                if not _accept:
+                    continue
             if _row_model == "v2":
                 _accept, _ = _v2_pick_filter(_row_league, _row_conf, _row_pick)
                 if not _accept:
@@ -3847,12 +3935,20 @@ def signals_excel_today(
     
     conn.close()
 
-    # Apply v6 filter to rows
+    # Apply v6/v6_2 filter to rows
     def _apply_v6_filter_rows(rows):
         out = []
         for row in rows:
             if str(row.get("model") or "") == "v6":
                 _accept, _ = _v6_pick_filter(
+                    str(row.get("league") or ""),
+                    float(row.get("confidence") or 0),
+                    str(row.get("pick") or ""),
+                )
+                if not _accept:
+                    continue
+            elif str(row.get("model") or "") == "v6_2":
+                _accept, _ = _v6_2_pick_filter(
                     str(row.get("league") or ""),
                     float(row.get("confidence") or 0),
                     str(row.get("pick") or ""),

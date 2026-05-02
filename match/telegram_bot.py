@@ -174,6 +174,7 @@ MODEL_OUTPUTS_V4_DIR = BASE_DIR / "training" / "model_outputs_v4"
 MODEL_OUTPUTS_V2_DIR = BASE_DIR / "training" / "model_outputs_v2"
 MODEL_OUTPUTS_V6_DIR = BASE_DIR / "training" / "model_outputs_v6"
 MODEL_OUTPUTS_V6_1_DIR = BASE_DIR / "training" / "model_outputs_v6_1"
+MODEL_OUTPUTS_V6_2_DIR = BASE_DIR / "training" / "model_outputs_v6_2"
 MODEL_OUTPUTS_V9_DIR = BASE_DIR / "training" / "model_outputs_v9"
 MODEL_OUTPUTS_V12_DIR = BASE_DIR / "training" / "v12" / "model_outputs"
 V12_INFERENCE_SCRIPT = BASE_DIR / "training" / "v12" / "infer_match_v12.py"
@@ -196,6 +197,7 @@ AVAILABLE_MODELS: list[str] = [
     "v4",
     "v6",
     "v6_1",
+    "v6_2",
     "v9",
     "v12",
     "v13",
@@ -1496,6 +1498,11 @@ def _pred_stats_text(pred_map: dict, total_matches: int, match_rows: list[dict] 
                     _q_model = MODEL_CONFIG.get(quarter)
                     if _q_model == "v6":
                         _accept, _ = bet_monitor_mod._v6_pick_filter(league, conf, _pick_v)
+                        if not _accept:
+                            stats[quarter]["no_bet"] += 1
+                            continue
+                    if _q_model == "v6_2":
+                        _accept, _ = bet_monitor_mod._v6_2_pick_filter(league, conf, _pick_v)
                         if not _accept:
                             stats[quarter]["no_bet"] += 1
                             continue
@@ -6846,6 +6853,7 @@ def _build_model_stats_text() -> str:
         ("v4", MODEL_OUTPUTS_V4_DIR),
         ("v6", MODEL_OUTPUTS_V6_DIR),
         ("v6_1", MODEL_OUTPUTS_V6_1_DIR),
+        ("v6_2", MODEL_OUTPUTS_V6_2_DIR),
         ("v9", MODEL_OUTPUTS_V9_DIR),
         ("v13", MODEL_OUTPUTS_V13_DIR),
         ("v15", MODEL_OUTPUTS_V15_DIR),
@@ -7209,6 +7217,10 @@ def _build_monthly_excel_bytes(year_month: str, quarters: list[str] | None = Non
                 _stake_factor = 1.0
                 if model_name == "v6":
                     _accept, _stake_factor = bet_monitor_mod._v6_pick_filter(league, conf, pick)
+                    if not _accept:
+                        continue
+                if model_name == "v6_2":
+                    _accept, _stake_factor = bet_monitor_mod._v6_2_pick_filter(league, conf, pick)
                     if not _accept:
                         continue
                 if model_name == "v2":

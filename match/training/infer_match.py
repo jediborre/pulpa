@@ -36,6 +36,7 @@ MODEL_DIR_V3 = ROOT / "training" / "model_outputs_v3"
 MODEL_DIR_V4 = ROOT / "training" / "model_outputs_v4"
 MODEL_DIR_V6 = ROOT / "training" / "model_outputs_v6"
 MODEL_DIR_V6_1 = ROOT / "training" / "model_outputs_v6_1"
+MODEL_DIR_V6_2 = ROOT / "training" / "model_outputs_v6_2"
 MODEL_DIR_V9 = ROOT / "training" / "model_outputs_v9"
 MODEL_DIR_V10 = ROOT / "training" / "model_outputs_v10"
 GATE_CONFIG = ROOT / "training" / "model_outputs_v2" / "gate_config.json"
@@ -831,7 +832,7 @@ def _build_features(
     match_date = m.get("date", "")
     match_time = m.get("time", "")
 
-    window = 12 if version in ("v2", "v4", "v6", "v6_1") else 10
+    window = 12 if version in ("v2", "v4", "v6", "v6_1", "v6_2") else 10
     home_prior_wr = _team_prior_wr(
         conn,
         home_team,
@@ -857,7 +858,7 @@ def _build_features(
         "q2_diff": (q2h or 0) - (q2a or 0),
     }
 
-    if version in ("v2", "v4", "v6", "v6_1"):
+    if version in ("v2", "v4", "v6", "v6_1", "v6_2"):
         if version == "v6_1":
             top_leagues, top_teams = _get_top_buckets(conn, top_leagues=50, top_teams=300)
         else:
@@ -883,7 +884,7 @@ def _build_features(
             "ht_away": ht_away,
             "ht_diff": ht_home - ht_away,
         })
-        if version in ("v2", "v4", "v6", "v6_1"):
+        if version in ("v2", "v4", "v6", "v6_1", "v6_2"):
             feat["ht_total"] = ht_home + ht_away
         feat.update(_graph_stats_upto(gp, 24))
         q3_pbp_stats = (
@@ -892,7 +893,7 @@ def _build_features(
             else _pbp_stats_upto(pbp, ["Q1", "Q2"])
         )
         feat.update(q3_pbp_stats)
-        if version in ("v4", "v6", "v6_1"):
+        if version in ("v4", "v6", "v6_1", "v6_2"):
             feat.update(
                 _score_pressure_features(
                     score_home=ht_home,
@@ -951,7 +952,7 @@ def _build_features(
         "score_3q_away": ht_away + (q3a or 0),
         "score_3q_diff": (ht_home + (q3h or 0)) - (ht_away + (q3a or 0)),
     })
-    if version in ("v2", "v4", "v6", "v6_1"):
+    if version in ("v2", "v4", "v6", "v6_1", "v6_2"):
         feat["q3_total"] = (q3h or 0) + (q3a or 0)
     feat.update(_graph_stats_upto(gp, 36))
     q4_pbp_stats = (
@@ -960,7 +961,7 @@ def _build_features(
         else _pbp_stats_upto(pbp, ["Q1", "Q2", "Q3"])
     )
     feat.update(q4_pbp_stats)
-    if version in ("v4", "v6", "v6_1"):
+    if version in ("v4", "v6", "v6_1", "v6_2"):
         feat.update(
             _score_pressure_features(
                 score_home=ht_home + (q3h or 0),
@@ -1027,6 +1028,8 @@ def _predict_prob(
         model_dir = MODEL_DIR_V4
     elif version == "v6_1":
         model_dir = MODEL_DIR_V6_1
+    elif version == "v6_2":
+        model_dir = MODEL_DIR_V6_2
     elif version == "v6":
         model_dir = MODEL_DIR_V6
     elif version == "v2":
@@ -1047,6 +1050,31 @@ def _predict_prob(
         if version == "v6_1" and artifact.get("matrix") == "dense":
             x = x.toarray() if hasattr(x, "toarray") else x
         return float(model.predict_proba(x)[0][1])
+
+    if model_name == "champion" and version == "v6_2":
+        champ_path = MODEL_DIR_V6_2 / f"{target}_champion.joblib"
+        if not champ_path.exists():
+            raise FileNotFoundError(f"Champion metadata not found: {champ_path}")
+        meta = joblib.load(champ_path)
+        vec = meta["vectorizer"]
+        models = meta["models"]
+        
+        league = str(features.get("league", ""))
+        keep_leagues = set(meta.get("league_filter", {}).get("kept_leagues", []))
+        other_token = meta.get("league_filter", {}).get("other_token", "LEAGUE_OTHER_SIGNAL_WEAK")
+        
+        features_copy = dict(features)
+        if league not in keep_leagues:
+            features_copy["league"] = other_token
+            features_copy["league_bucket"] = other_token
+            
+        x = vec.transform([features_copy])
+        if target == "q3":
+            return float(models["xgb"].predict_proba(x)[0][1])
+        else:
+            p_xgb = float(models["xgb"].predict_proba(x)[0][1])
+            p_hgb = float(models["hist_gb"].predict_proba(x)[0][1])
+            return 0.6 * p_xgb + 0.4 * p_hgb
 
     if model_name == "champion" and version == "v6_1":
         champ_path = MODEL_DIR_V6_1 / f"{target}_champion.joblib"
@@ -1547,7 +1575,7 @@ def run_inference(
     def forced_version_for_target(target: str) -> str | None:
         if isinstance(force_version, dict):
             return force_version.get(target) or None
-        if force_version in ("v1", "v2", "v4", "v6", "v6_1", "v9"):
+        if force_version in ("v1", "v2", "v4", "v6", "v6_1", "v6_2", "v9"):
             return force_version
         if force_version == "hybrid":
             return "v2" if target == "q3" else "v4"
@@ -1737,7 +1765,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--force-version",
-        choices=["auto", "v1", "v2", "v4", "v6", "v6_1", "v9", "hybrid"],
+        choices=["auto", "v1", "v2", "v4", "v6", "v6_1", "v6_2", "v9", "hybrid"],
         default="auto",
         help="Override selected version (hybrid => q3=v2, q4=v4)",
     )
