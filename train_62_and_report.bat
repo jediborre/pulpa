@@ -4,7 +4,7 @@ REM Location: c:\Users\borre\OneDrive\OLD\Escritorio\pulpa\train_and_report.bat
 
 setlocal enabledelayedexpansion
 
-set WORKSPACE=c:\Users\borre\OneDrive\OLD\Escritorio\pulpa
+set WORKSPACE=C:\Users\App\Desktop\pulpa
 set VENV=%WORKSPACE%\.venv\Scripts
 set PYTHON=%VENV%\python.exe
 set LOG=%WORKSPACE%\train_and_report.log
