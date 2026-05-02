@@ -1,0 +1,104 @@
+{
+  "version": "v6.2",
+  "exclusive_to": "train_q3_q4_models_v6_2.py",
+  "match_mode": "contains_case_insensitive",
+  "categories": [
+    {
+      "name": "juveniles_formativas",
+      "patterns": [
+        "U14",
+        "U15",
+        "U16",
+        "U17",
+        "U18",
+        "U19",
+        "U20",
+        "U21",
+        "Youth",
+        "Kadetska",
+        "Espoirs"
+      ]
+    },
+    {
+      "name": "femenil_alta_varianza",
+      "patterns": [
+        "Women",
+        "Women,",
+        "Women's",
+        "Femenina",
+        "Femenino",
+        "Liga Femenina",
+        "LFB",
+        "LF2",
+        "WNBL",
+        "WNBA"
+      ]
+    },
+    {
+      "name": "torneos_cortos_eliminatorias",
+      "patterns": [
+        "Playoffs",
+        "Playoff",
+        "Play-in",
+        "Play-In",
+        "Knockout",
+        "Knock-out",
+        "Cup",
+        "Cup,",
+        "Copa",
+        "Final",
+        "Finals",
+        "Semi-Finals",
+        "Semifinal",
+        "Quarterfinal",
+        "Qualification",
+        "Qualifiers",
+        "Superfinal",
+        "Challenge Cup",
+        "Placement",
+        "Relegation Round",
+        "Promotion Round",
+        "Championship Round",
+        "Ćwierćfinały",
+        "Финал"
+      ]
+    },
+    {
+      "name": "ligas_bajo_edge_historico",
+      "patterns": [
+        "Rwanda",
+        "Egypt",
+        "Indonesia",
+        "MPBL",
+        "Big V",
+        "Azerbaijan",
+        "Qatar",
+        "Emir Cup",
+        "MOS Cup",
+        "Africa League"
+      ]
+    },
+    {
+      "name": "ligas_inconsistentes",
+      "patterns": [
+        "Superliga",
+        "Puerto Rico BSN",
+        "Germany BBL",
+        "Argentina Liga Nacional"
+      ]
+    },
+    {
+      "name": "ligas_descartadas_manual",
+      "patterns": [
+        "Swedish Basketball Superettan",
+        "Superleague",
+        "Israeli Basketball Super League",
+        "1 Liga Kobiet",
+        "Saku I liiga",
+        "Champions League Asia-East",
+        "Golden Square",
+        "The League"
+      ]
+    }
+  ]
+}
