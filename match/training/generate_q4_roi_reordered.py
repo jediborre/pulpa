@@ -1,13 +1,12 @@
 """Generate Q4 ROI reports with reordered columns (betting metrics before league)."""
 
 from pathlib import Path
-import csv
 import json
+import sqlite3
 import joblib
 import pandas as pd
-from openpyxl import Workbook
+from openpyxl.formatting.rule import CellIsRule, FormulaRule
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
 
 import train_q3_q4_models_v6 as v6
 
@@ -29,6 +28,8 @@ KELLY_CAP = 0.05
 MIN_CONF_PROB = 0.58
 STAKE_STEP = 25.0
 MIN_STAKE = 25.0
+MAX_STAKE = 100.0
+STAKE_BUCKETS = (25.0, 50.0, 75.0, 100.0)
 
 
 def _kelly_fraction(p, odds):
@@ -43,6 +44,35 @@ def _round_down_step(x, step):
     return (x // step) * step
 
 
+def _stake_from_signal(p_pick, edge, k_used, kelly_cap=0.05):
+    """Map signal quality to fixed stake buckets: 25/50/75/100.
+
+    100 is intentionally rare: only when confidence, edge and Kelly usage are
+    all in exceptional territory.
+    """
+    if k_used is None or k_used <= 0:
+        return 0.0
+
+    denom = kelly_cap if kelly_cap and kelly_cap > 0 else 0.05
+    k_strength = max(0.0, min(k_used / denom, 1.0))
+    p_pick = float(p_pick or 0.0)
+    edge = float(edge or 0.0)
+
+    # Exceptional tier.
+    if p_pick >= 0.97 and edge >= 0.24 and k_strength >= 0.995:
+        return STAKE_BUCKETS[3]
+    # Strong tier.
+    if p_pick >= 0.90 and edge >= 0.18 and k_strength >= 0.85:
+        return STAKE_BUCKETS[2]
+    # Medium tier.
+    if p_pick >= 0.80 and edge >= 0.09 and k_strength >= 0.55:
+        return STAKE_BUCKETS[1]
+    # Weak but valid edge.
+    if k_strength < 0.15:
+        return 0.0
+    return STAKE_BUCKETS[0]
+
+
 def _prepare_rows():
     samples = v6._build_samples(v6.DB_PATH)
     rows = [s for s in samples if s.target_q4 is not None]
@@ -51,6 +81,26 @@ def _prepare_rows():
     n_train = int(n_total * 0.8)
     test_rows = rows[n_train:]
     return rows, test_rows, n_total, n_train
+
+
+def _load_match_teams_map():
+    """Load home/away team names for display in reports."""
+    conn = sqlite3.connect(v6.DB_PATH)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            "SELECT match_id, home_team, away_team FROM matches"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    out = {}
+    for r in rows:
+        out[str(r["match_id"])] = {
+            "home_team": str(r["home_team"] or ""),
+            "away_team": str(r["away_team"] or ""),
+        }
+    return out
 
 
 def _predict_v6_probs(test_rows):
@@ -126,7 +176,7 @@ def _predict_v62_probs(test_rows):
 
 def _simulate(model_name, test_rows, p_home_list, excluded_flags=None, excluded_reasons=None,
               mode='kelly_non_compound', kelly_mult=1.0, kelly_cap=1.0, min_conf_prob=0.5,
-              stake_step=1.0, min_stake=1.0):
+              stake_step=1.0, min_stake=1.0, max_stake=100.0, teams_map=None):
     excluded_flags = excluded_flags or [False] * len(test_rows)
     excluded_reasons = excluded_reasons or [None] * len(test_rows)
 
@@ -140,12 +190,16 @@ def _simulate(model_name, test_rows, p_home_list, excluded_flags=None, excluded_
     for i, s in enumerate(test_rows):
         y = int(s.target_q4)
         p_home = p_home_list[i]
+        match_id = str(s.match_id)
+        teams = (teams_map or {}).get(match_id, {})
+        home_team_name = teams.get('home_team', '')
+        away_team_name = teams.get('away_team', '')
 
         # REORDERED COLUMN SEQUENCE: betting metrics first, then league/team info
         rec = {
             # Betting decision & outcome (PRIORITY)
-            'resultado_apuesta': None,
-            'apuesta': None,
+            'resultado_apuesta': 'SIN_APUESTA',
+            'apuesta': 'sin_apuesta',
             'monto_apostado': 0.0,
             'ganancia': 0.0,
             'bank_final': BANK_START,
@@ -153,11 +207,11 @@ def _simulate(model_name, test_rows, p_home_list, excluded_flags=None, excluded_
             # League and match identification (SECONDARY)
             'modelo': model_name,
             'partida_test': i + 1,
-            'match_id': s.match_id,
+            'match_id': match_id,
             'fecha_hora': s.dt.isoformat(),
             'liga': str(s.features_q4.get('league', '')),
-            'equipo_local': str(s.features_q4.get('home_team', '')),
-            'equipo_visitante': str(s.features_q4.get('away_team', '')),
+            'equipo_local': home_team_name,
+            'equipo_visitante': away_team_name,
             
             # Match result
             'resultado_q4_home_gana': y,
@@ -188,6 +242,9 @@ def _simulate(model_name, test_rows, p_home_list, excluded_flags=None, excluded_
 
         if excluded_flags[i]:
             rec['razon_sin_apuesta'] = excluded_reasons[i]
+            rec['monto_apostado'] = None
+            rec['ganancia'] = None
+            rec['bank_final'] = None
             no_bet += 1
             details.append(rec)
             continue
@@ -230,9 +287,10 @@ def _simulate(model_name, test_rows, p_home_list, excluded_flags=None, excluded_
         k_used = min(k_raw * kelly_mult, kelly_cap)
         rec['kelly_fraction_used'] = k_used
 
-        base_bank = BANK_START if mode == 'kelly_non_compound' else bank
-        stake_raw = base_bank * k_used
-        stake = _round_down_step(stake_raw, stake_step)
+        stake = _stake_from_signal(p_pick, rec['edge'], k_used, kelly_cap)
+        if max_stake > 0:
+            stake = min(stake, max_stake)
+        stake = _round_down_step(stake, stake_step)
         if stake < min_stake:
             rec['razon_sin_apuesta'] = 'stake_below_25'
             no_bet += 1
@@ -249,7 +307,7 @@ def _simulate(model_name, test_rows, p_home_list, excluded_flags=None, excluded_
         bank += pnl
 
         # UPDATE PRIORITY COLUMNS with actual values
-        rec['apuesta'] = 'SI' if is_win else 'NO'
+        rec['apuesta'] = 'home' if pick_home else 'away'
         rec['resultado_apuesta'] = 'GANADA' if is_win else 'PERDIDA'
         rec['monto_apostado'] = stake
         rec['ganancia'] = pnl
@@ -277,7 +335,7 @@ def _simulate(model_name, test_rows, p_home_list, excluded_flags=None, excluded_
         'perdidas': losses,
         'empates_contados_como_perdida': 0,
         'sin_apuesta': no_bet,
-        'tasa_ganancia': (wins / bets) if bets else 0.0,
+        'efectividad': (wins / bets) if bets else 0.0,
         'banco_inicio': BANK_START,
         'banco_final': bank,
         'ganancia': bank - BANK_START,
@@ -288,6 +346,38 @@ def _simulate(model_name, test_rows, p_home_list, excluded_flags=None, excluded_
         'max_drawdown': max_dd,
     }
     return details, summary
+
+
+def _build_effectiveness_by_league(v6_df, v62_df):
+    cols = [
+        'modelo', 'liga', 'matches_apostados', 'ganados', 'perdidos',
+        'efectividad', 'ganancia'
+    ]
+
+    all_df = pd.concat([v6_df, v62_df], ignore_index=True)
+    if all_df.empty:
+        return pd.DataFrame(columns=cols)
+
+    bets_df = all_df[all_df['resultado_apuesta'].isin(['GANADA', 'PERDIDA'])].copy()
+    if bets_df.empty:
+        return pd.DataFrame(columns=cols)
+
+    grouped = (
+        bets_df
+        .groupby(['modelo', 'liga'], as_index=False)
+        .agg(
+            matches_apostados=('resultado_apuesta', 'count'),
+            ganados=('resultado_apuesta', lambda s: int((s == 'GANADA').sum())),
+            perdidos=('resultado_apuesta', lambda s: int((s == 'PERDIDA').sum())),
+            ganancia=('ganancia', 'sum')
+        )
+    )
+    grouped['efectividad'] = grouped.apply(
+        lambda r: (r['ganados'] / r['matches_apostados']) if r['matches_apostados'] else 0.0,
+        axis=1
+    )
+    grouped = grouped[cols].sort_values(['modelo', 'ganancia'], ascending=[True, False])
+    return grouped
 
 
 def _apply_excel_formatting(ws, header_row=1):
@@ -313,8 +403,148 @@ def _apply_excel_formatting(ws, header_row=1):
         for col in range(1, ws.max_column + 1):
             cell = ws.cell(row=row, column=col)
             cell.border = thin_border
-            if col in [5, 6]:  # ganancia, roi columns
+            if cell.column_letter in {'C', 'D', 'E', 'M', 'N', 'Q', 'R', 'U', 'V', 'W', 'X', 'AA', 'AB', 'AC', 'AD'}:
                 cell.number_format = '0.00'
+
+    # Header-driven number formats for summary/effectiveness sheets.
+    header_map = {}
+    for col in range(1, ws.max_column + 1):
+        header_val = ws.cell(row=header_row, column=col).value
+        if header_val:
+            header_map[str(header_val)] = col
+
+    percent_headers = {'efectividad', 'roi_bank', 'yield_sobre_apostado', 'max_drawdown'}
+    for h in percent_headers:
+        if h in header_map:
+            c = header_map[h]
+            for row in range(header_row + 1, ws.max_row + 1):
+                ws.cell(row=row, column=c).number_format = '0.00%'
+
+    # Semaforo for result text and key numeric values.
+    green_fill = PatternFill(start_color='C6EFCE', end_color='C6EFCE', fill_type='solid')
+    red_fill = PatternFill(start_color='FFC7CE', end_color='FFC7CE', fill_type='solid')
+    yellow_fill = PatternFill(start_color='FFEB9C', end_color='FFEB9C', fill_type='solid')
+
+    if ws.max_row > header_row:
+        start_row = header_row + 1
+        end_row = ws.max_row
+        data_range = f"{start_row}:{end_row}"
+
+        if ws.title in {'v6_matches', 'v6_2_matches'}:
+            # Semaforo de nivel_confianza (S)
+            ws.conditional_formatting.add(
+                f"S{start_row}:S{end_row}",
+                FormulaRule(formula=[f'$S{start_row}="muy_alta"'], fill=green_fill)
+            )
+            ws.conditional_formatting.add(
+                f"S{start_row}:S{end_row}",
+                FormulaRule(formula=[f'$S{start_row}="alta"'], fill=green_fill)
+            )
+            ws.conditional_formatting.add(
+                f"S{start_row}:S{end_row}",
+                FormulaRule(formula=[f'$S{start_row}="media"'], fill=yellow_fill)
+            )
+            ws.conditional_formatting.add(
+                f"S{start_row}:S{end_row}",
+                FormulaRule(formula=[f'$S{start_row}="baja"'], fill=red_fill)
+            )
+
+            # Si razon_sin_apuesta empieza con excluded_league_name, marcar en rojo
+            # liga/equipos (J:L) y campos financieros clave (C:E).
+            for col in ['J', 'K', 'L', 'C', 'D', 'E']:
+                ws.conditional_formatting.add(
+                    f"{col}{start_row}:{col}{end_row}",
+                    FormulaRule(formula=[f'LEFT($Z{start_row},20)="excluded_league_name"'], fill=red_fill)
+                )
+
+            ws.conditional_formatting.add(
+                f"A{start_row}:A{end_row}",
+                FormulaRule(formula=[f'$A{start_row}="GANADA"'], fill=green_fill)
+            )
+            ws.conditional_formatting.add(
+                f"A{start_row}:A{end_row}",
+                FormulaRule(formula=[f'$A{start_row}="PERDIDA"'], fill=red_fill)
+            )
+            ws.conditional_formatting.add(
+                f"A{start_row}:A{end_row}",
+                FormulaRule(formula=[f'$A{start_row}="SIN_APUESTA"'], fill=yellow_fill)
+            )
+
+            for col in ['D', 'E', 'AD']:
+                ws.conditional_formatting.add(
+                    f"{col}{start_row}:{col}{end_row}",
+                    CellIsRule(operator='greaterThan', formula=['0'], fill=green_fill)
+                )
+                ws.conditional_formatting.add(
+                    f"{col}{start_row}:{col}{end_row}",
+                    CellIsRule(operator='lessThan', formula=['0'], fill=red_fill)
+                )
+                ws.conditional_formatting.add(
+                    f"{col}{start_row}:{col}{end_row}",
+                    CellIsRule(operator='equal', formula=['0'], fill=yellow_fill)
+                )
+
+            ws.conditional_formatting.add(
+                f"E{start_row}:E{end_row}",
+                CellIsRule(operator='greaterThan', formula=[str(BANK_START)], fill=green_fill)
+            )
+            ws.conditional_formatting.add(
+                f"E{start_row}:E{end_row}",
+                CellIsRule(operator='lessThan', formula=[str(BANK_START)], fill=red_fill)
+            )
+            ws.conditional_formatting.add(
+                f"E{start_row}:E{end_row}",
+                CellIsRule(operator='equal', formula=[str(BANK_START)], fill=yellow_fill)
+            )
+
+            # Si la apuesta fue PERDIDA, resaltar ambos bancos en rojo.
+            for col in ['E', 'AB']:
+                ws.conditional_formatting.add(
+                    f"{col}{start_row}:{col}{end_row}",
+                    FormulaRule(formula=[f'$A{start_row}="PERDIDA"'], fill=red_fill)
+                )
+
+        if ws.title == 'summary':
+            for col in ['J', 'K']:
+                ws.conditional_formatting.add(
+                    f"{col}{start_row}:{col}{end_row}",
+                    CellIsRule(operator='greaterThan', formula=['0'], fill=green_fill)
+                )
+                ws.conditional_formatting.add(
+                    f"{col}{start_row}:{col}{end_row}",
+                    CellIsRule(operator='lessThan', formula=['0'], fill=red_fill)
+                )
+                ws.conditional_formatting.add(
+                    f"{col}{start_row}:{col}{end_row}",
+                    CellIsRule(operator='equal', formula=['0'], fill=yellow_fill)
+                )
+
+        if ws.title == 'efectividad_liga':
+            # F: efectividad, G: ganancia
+            ws.conditional_formatting.add(
+                f"F{start_row}:F{end_row}",
+                CellIsRule(operator='greaterThanOrEqual', formula=['0.7'], fill=green_fill)
+            )
+            ws.conditional_formatting.add(
+                f"F{start_row}:F{end_row}",
+                CellIsRule(operator='between', formula=['0.55', '0.6999'], fill=yellow_fill)
+            )
+            ws.conditional_formatting.add(
+                f"F{start_row}:F{end_row}",
+                CellIsRule(operator='lessThan', formula=['0.55'], fill=red_fill)
+            )
+            ws.conditional_formatting.add(
+                f"G{start_row}:G{end_row}",
+                CellIsRule(operator='greaterThan', formula=['0'], fill=green_fill)
+            )
+            ws.conditional_formatting.add(
+                f"G{start_row}:G{end_row}",
+                CellIsRule(operator='lessThan', formula=['0'], fill=red_fill)
+            )
+            ws.conditional_formatting.add(
+                f"G{start_row}:G{end_row}",
+                CellIsRule(operator='equal', formula=['0'], fill=yellow_fill)
+            )
 
     ws.freeze_panes = f'A{header_row + 1}'
 
@@ -328,17 +558,22 @@ def main():
 
     print("[Q4_ROI] predicciones v6.2...")
     p_v62, excl_flags, excl_reasons = _predict_v62_probs(test_rows)
+    teams_map = _load_match_teams_map()
 
     print("[Q4_ROI] simulación match-by-match...")
     v6_details, v6_summary = _simulate('v6', test_rows, p_v6, None, None, 
-                                       MODE, KELLY_MULT, KELLY_CAP, MIN_CONF_PROB, STAKE_STEP, MIN_STAKE)
+                                                                             MODE, KELLY_MULT, KELLY_CAP, MIN_CONF_PROB, STAKE_STEP, MIN_STAKE, MAX_STAKE, teams_map)
     v62_details, v62_summary = _simulate('v6.2', test_rows, p_v62, excl_flags, excl_reasons, 
-                                         MODE, KELLY_MULT, KELLY_CAP, MIN_CONF_PROB, STAKE_STEP, MIN_STAKE)
+                                                                                 MODE, KELLY_MULT, KELLY_CAP, MIN_CONF_PROB, STAKE_STEP, MIN_STAKE, MAX_STAKE, teams_map)
 
     print("[Q4_ROI] escribiendo match-by-match Excel...")
-    # Eliminar archivo si existe para evitar permission denied
+    out_mm_path = OUT_MM
     if OUT_MM.exists():
-        OUT_MM.unlink()
+        try:
+            OUT_MM.unlink()
+        except PermissionError:
+            out_mm_path = OUT_MM.with_name(f"{OUT_MM.stem}_updated{OUT_MM.suffix}")
+            print(f"[Q4_ROI] archivo bloqueado; usando salida alternativa: {out_mm_path}")
     
     v6_df = pd.DataFrame(v6_details)
     v62_df = pd.DataFrame(v62_details)
@@ -356,9 +591,19 @@ def main():
     ]
     v6_df = v6_df[[c for c in col_order if c in v6_df.columns]]
     v62_df = v62_df[[c for c in col_order if c in v62_df.columns]]
+    eff_league_df = _build_effectiveness_by_league(v6_df, v62_df)
 
-    with pd.ExcelWriter(OUT_MM, engine='openpyxl') as writer:
+    summary_order = [
+        'modelo', 'partidos_test', 'apuestas', 'ganadas', 'perdidas',
+        'empates_contados_como_perdida', 'sin_apuesta', 'efectividad',
+        'banco_inicio', 'banco_final', 'ganancia', 'roi_bank',
+        'total_apostado', 'apuesta_promedio', 'yield_sobre_apostado', 'max_drawdown'
+    ]
+    summary_df = summary_df[[c for c in summary_order if c in summary_df.columns]]
+
+    with pd.ExcelWriter(out_mm_path, engine='openpyxl') as writer:
         summary_df.to_excel(writer, sheet_name='summary', index=False)
+        eff_league_df.to_excel(writer, sheet_name='efectividad_liga', index=False)
         v6_df.to_excel(writer, sheet_name='v6_matches', index=False)
         v62_df.to_excel(writer, sheet_name='v6_2_matches', index=False)
 
@@ -368,7 +613,7 @@ def main():
             _apply_excel_formatting(ws)
 
     print("[Q4_ROI] OK")
-    print(f"[Q4_ROI] output={OUT_MM}")
+    print(f"[Q4_ROI] output={out_mm_path}")
 
 
 if __name__ == "__main__":

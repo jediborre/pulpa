@@ -32,6 +32,9 @@ echo   6) Entrenar modelo V2
 echo   7) Entrenar modelo V6
 echo   8) Entrenar V2 + V6  (en orden)
 echo   9) Instalar / actualizar dependencias
+echo   10) V6.2: Solo entrenar
+echo   11) V6.2: Solo reporte Q4 ROI
+echo   12) V6.2: Entrenar + reporte
 echo   0) Salir
 echo.
 set /p OPT="  Selecciona: "
@@ -46,6 +49,9 @@ if "%OPT%"=="6" goto TRAIN_V2
 if "%OPT%"=="7" goto TRAIN_V6
 if "%OPT%"=="8" goto TRAIN_ALL
 if "%OPT%"=="9" goto INSTALAR
+if "%OPT%"=="10" goto TRAIN_REPORT_ONLY
+if "%OPT%"=="11" goto REPORT_ONLY
+if "%OPT%"=="12" goto TRAIN_AND_REPORT
 
 echo [ERROR] Opcion invalida.
 timeout /t 2 /nobreak >nul
@@ -143,6 +149,32 @@ if errorlevel 1 (
 ) else (
     echo [OK] V6 completado.
 )
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:TRAIN_REPORT
+cls
+:TRAIN_REPORT_ONLY
+cls
+echo [+] V6.2: Solo entrenar...
+call train_and_report.bat train
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:REPORT_ONLY
+cls
+echo [+] V6.2: Solo generar reporte Q4 ROI...
+call train_and_report.bat report
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:TRAIN_AND_REPORT
+cls
+echo [+] V6.2: Entrenar + reporte...
+call train_and_report.bat both
 pause
 goto MENU
 

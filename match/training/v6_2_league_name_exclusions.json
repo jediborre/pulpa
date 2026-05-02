@@ -58,7 +58,9 @@
         "Placement",
         "Relegation Round",
         "Promotion Round",
-        "Championship Round"
+        "Championship Round",
+        "Ćwierćfinały",
+        "Финал"
       ]
     },
     {
@@ -83,6 +85,19 @@
         "Puerto Rico BSN",
         "Germany BBL",
         "Argentina Liga Nacional"
+      ]
+    },
+    {
+      "name": "ligas_descartadas_manual",
+      "patterns": [
+        "Swedish Basketball Superettan",
+        "Superleague",
+        "Israeli Basketball Super League",
+        "1 Liga Kobiet",
+        "Saku I liiga",
+        "Champions League Asia-East",
+        "Golden Square",
+        "The League"
       ]
     }
   ]
