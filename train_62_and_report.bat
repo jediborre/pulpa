@@ -85,7 +85,7 @@ if "%RUN_REPORT%"=="1" (
     REM Generate Q4 ROI reports with reordered columns
     echo [REPORT] Generating Q4 ROI reports with betting metrics first...
     echo Generating Q4 ROI reports... >> %LOG%
-    %PYTHON% match\training\generate_q4_roi_reordered.py >> %LOG% 2>&1
+    %PYTHON% match\training\report_v62_q4_roi.py >> %LOG% 2>&1
     if errorlevel 1 (
         echo ERROR: Q4 ROI generation failed
         echo Q4 ROI generation failed >> %LOG%

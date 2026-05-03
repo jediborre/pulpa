@@ -1087,6 +1087,10 @@ def _predict_prob(
         return single(selected)
 
     if model_name == "ensemble_avg_prob":
+        if version == "v6_2":
+            # V6.2 uses champion metadata (xgb for Q3, xgb+hist_gb for Q4)
+            # and does not ship legacy logreg/rf/gb artifacts.
+            return _predict_prob(version, target, "champion", features)
         if version == "v6_1":
             ens_path = MODEL_DIR_V6_1 / f"{target}_ensemble.joblib"
             if not ens_path.exists():
@@ -1519,6 +1523,7 @@ def run_inference(
     fetch_missing: bool,
     force_version: str,
     refresh: bool = False,
+    target_only: str | None = None,
 ) -> dict:
     if not COMPARE_JSON.exists():
         raise FileNotFoundError(
@@ -1581,7 +1586,20 @@ def run_inference(
             return "v2" if target == "q3" else "v4"
         return None
 
-    for target in ("q3", "q4"):
+    if target_only is None:
+        targets = ("q3", "q4")
+    else:
+        tgt = str(target_only).lower().strip()
+        if tgt not in ("q3", "q4"):
+            conn.close()
+            return {
+                "ok": False,
+                "reason": f"invalid_target_only:{target_only}",
+                "match_id": match_id,
+            }
+        targets = (tgt,)
+
+    for target in targets:
         ok_target, reason = _required_ok(match_data, target)
         if not ok_target:
             out["predictions"][target] = {
@@ -1611,7 +1629,7 @@ def run_inference(
         forced = forced_version_for_target(target)
         if forced is not None:
             version = forced
-        if version == "v6_1":
+        if version in ("v6_1", "v6_2"):
             model_name = "champion"
 
         use_v3_live = (
@@ -1652,7 +1670,7 @@ def run_inference(
         else:
             features = _build_features(conn, _data, version, target)
             prob_home = _predict_prob(version, target, model_name, features)
-            snapshot_used = None
+            snapshot_used = (24 if target == "q3" else 36) if _CLIP_DATA_TO_CUTOFF else None
 
         pick_threshold = 0.5
         if version == "v6_1":

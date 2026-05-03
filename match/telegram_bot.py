@@ -8688,12 +8688,16 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         bank  = db_mod.get_setting(conn, "sig_bank",    "1000")
         bet   = db_mod.get_setting(conn, "sig_bet_size", "100")
         odds  = db_mod.get_setting(conn, "sig_odds",     "1.4")
+        filt_raw = str(db_mod.get_setting(conn, "monitor_notify_filtered_bet", "1") or "1").strip().lower()
+        filt_on = filt_raw in ("1", "true", "yes", "on")
         conn.close()
+        filt_txt = "ON" if filt_on else "OFF"
         text = (
             f"⚙️ Config simulación de banco\n\n"
             f"🏦 Bank inicial: {bank}\n"
             f"💵 Apuesta: {bet}\n"
-            f"📈 Momio (odds): {odds}\n\n"
+            f"📈 Momio (odds): {odds}\n"
+            f"🟡 Avisar BET filtrada: {filt_txt}\n\n"
             "Ajusta con los botones:"
         )
         kb = InlineKeyboardMarkup([
@@ -8710,6 +8714,7 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 InlineKeyboardButton("Odds +0.1", callback_data="betcfg:odds:+0.1"),
                 InlineKeyboardButton("Odds +0.5", callback_data="betcfg:odds:+0.5"),
             ],
+            [InlineKeyboardButton(f"🟡 BET filtrada: {'ON' if filt_on else 'OFF'}", callback_data="betcfg:filtnotif:toggle")],
             [InlineKeyboardButton("⬅️ Monitor", callback_data="menu:monitor")],
         ])
         await query.edit_message_text(text=text, reply_markup=kb)
@@ -8723,7 +8728,11 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             conn = _open_conn()
             key_map = {"bank": "sig_bank", "bet": "sig_bet_size", "odds": "sig_odds"}
             defaults = {"bank": 1000.0, "bet": 100.0, "odds": 1.4}
-            if field in key_map:
+            if field == "filtnotif" and delta_s == "toggle":
+                cur_raw = str(db_mod.get_setting(conn, "monitor_notify_filtered_bet", "1") or "1").strip().lower()
+                cur_on = cur_raw in ("1", "true", "yes", "on")
+                db_mod.set_setting(conn, "monitor_notify_filtered_bet", "0" if cur_on else "1")
+            elif field in key_map:
                 db_key = key_map[field]
                 cur = float(db_mod.get_setting(conn, db_key) or str(defaults[field]))
                 try:
@@ -8740,12 +8749,16 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             bank = db_mod.get_setting(conn, "sig_bank",     "1000")
             bet  = db_mod.get_setting(conn, "sig_bet_size",  "100")
             odds = db_mod.get_setting(conn, "sig_odds",       "1.4")
+            filt_raw = str(db_mod.get_setting(conn, "monitor_notify_filtered_bet", "1") or "1").strip().lower()
+            filt_on = filt_raw in ("1", "true", "yes", "on")
             conn.close()
+        filt_txt = "ON" if filt_on else "OFF"
         text = (
             f"⚙️ Config simulación de banco\n\n"
             f"🏦 Bank inicial: {bank}\n"
             f"💵 Apuesta: {bet}\n"
-            f"📈 Momio (odds): {odds}\n\n"
+            f"📈 Momio (odds): {odds}\n"
+            f"🟡 Avisar BET filtrada: {filt_txt}\n\n"
             "Ajusta con los botones:"
         )
         kb = InlineKeyboardMarkup([
@@ -8762,6 +8775,7 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 InlineKeyboardButton("Odds +0.1", callback_data="betcfg:odds:+0.1"),
                 InlineKeyboardButton("Odds +0.5", callback_data="betcfg:odds:+0.5"),
             ],
+            [InlineKeyboardButton(f"🟡 BET filtrada: {'ON' if filt_on else 'OFF'}", callback_data="betcfg:filtnotif:toggle")],
             [InlineKeyboardButton("⬅️ Monitor", callback_data="menu:monitor")],
         ])
         await query.edit_message_text(text=text, reply_markup=kb)

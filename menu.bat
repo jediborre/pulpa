@@ -157,7 +157,7 @@ cls
 :TRAIN_REPORT_ONLY
 cls
 echo [+] V6.2: Solo entrenar...
-call train_and_report.bat train
+call train_62_and_report.bat train
 pause
 goto MENU
 
@@ -165,7 +165,7 @@ goto MENU
 :REPORT_ONLY
 cls
 echo [+] V6.2: Solo generar reporte Q4 ROI...
-call train_and_report.bat report
+call train_62_and_report.bat report
 pause
 goto MENU
 
@@ -173,7 +173,7 @@ goto MENU
 :TRAIN_AND_REPORT
 cls
 echo [+] V6.2: Entrenar + reporte...
-call train_and_report.bat both
+call train_62_and_report.bat both
 pause
 goto MENU
 

@@ -26,6 +26,7 @@ import importlib
 import json
 import logging
 import os
+import re
 import sqlite3
 import sys
 import time
@@ -48,6 +49,7 @@ WAKE_BEFORE_MINUTES = 4      # start polling this many game-minutes before cutof
 POLL_NEAR_SECS = 100         # poll interval when within WAKE_BEFORE window
 IDLE_POLL_SECS = 300         # poll interval when far from next window
 NO_BET_CONFIRM_TICKS = 2     # extra ticks before sending uncertain NO BET notification
+UNAVAILABLE_LOG_EVERY = 1    # log cadence for transient UNAVAILABLE retry ticks
 SECS_PER_GAME_MIN = 170      # initial estimate: ~2.8 real-min per game-minute
 MIN_GP_Q3 = 16               # graph_points with minute ≤ 24 required for Q3 check
 MIN_GP_Q4 = 26               # graph_points with minute ≤ 36 required for Q4 check
@@ -147,9 +149,17 @@ def _get_fetch_sem() -> asyncio.Semaphore:
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
+def _decorate_quarter_tokens(msg: str) -> str:
+    """Decorate Q3/Q4 tokens for easier terminal scanning."""
+    out = str(msg or "")
+    out = re.sub(r"\bQ3\b(?!\s*🔵)", "Q3 🔵", out)
+    out = re.sub(r"\bQ4\b(?!\s*🟠)", "Q4 🟠", out)
+    return out
+
 def _log(msg: str, level: str = "info") -> None:
-    MONITOR_STATUS["last_event"] = msg
-    getattr(logger, level)("[MONITOR] %s", msg)
+    dec_msg = _decorate_quarter_tokens(msg)
+    MONITOR_STATUS["last_event"] = dec_msg
+    getattr(logger, level)("[MONITOR] %s", dec_msg)
 
 
 async def _notify(
@@ -158,7 +168,7 @@ async def _notify(
     notify_type: str = "bet",
     quarter: str | None = None,
 ) -> None:
-    """notify_type: 'bet' | 'no_bet' | 'result'"""
+    """notify_type: 'bet' | 'no_bet' | 'result' | 'filtered_bet'"""
     if _notify_cb:
         try:
             await _notify_cb(msg, reply_markup, notify_type, quarter)
@@ -166,6 +176,46 @@ async def _notify(
             logger.error("[MONITOR] notify error: %s", exc)
     else:
         logger.info("[MONITOR][NOTIFY] %s", msg)
+
+
+def _should_notify_filtered_bets(db_path: str) -> bool:
+    """Read persisted toggle for informational notifications on filtered BETs."""
+    try:
+        conn = _open_db(db_path)
+        row = conn.execute(
+            "SELECT value FROM settings WHERE key='monitor_notify_filtered_bet'"
+        ).fetchone()
+        conn.close()
+        if row is None:
+            return True
+        val = str(row[0] if not isinstance(row, sqlite3.Row) else row["value"]).strip().lower()
+        return val in {"1", "true", "yes", "on"}
+    except Exception:
+        return True
+
+
+def _format_filtered_bet_notification(
+    *,
+    quarter_label: str,
+    model_used: str,
+    home: str,
+    away: str,
+    league: str,
+    confidence: float,
+    p_pick: float | None,
+    reason: str,
+) -> str:
+    p_pick_txt = "-"
+    if p_pick is not None:
+        p_pick_txt = f"{p_pick * 100:.1f}%"
+    return (
+        f"🟡 BET FILTRADA {quarter_label} [{model_used}]\n\n"
+        f"{home} vs {away}\n"
+        f"Liga: {league}\n"
+        f"Confianza: {confidence * 100:.1f}%\n"
+        f"p_pick: {p_pick_txt}\n"
+        f"Motivo filtro: {reason}"
+    )
 
 
 # ── DB ────────────────────────────────────────────────────────────────────────
@@ -723,7 +773,9 @@ def _count_gp_up_to(data: dict, max_min: int) -> int:
 def _has_scores(data: dict, *quarters: str) -> bool:
     qs = (data.get("score", {}) or {}).get("quarters", {}) or {}
     return all(
-        isinstance(qs.get(q), dict) and qs[q].get("home") is not None
+        isinstance(qs.get(q), dict)
+        and qs[q].get("home") is not None
+        and qs[q].get("away") is not None
         for q in quarters
     )
 
@@ -1112,6 +1164,7 @@ def _run_inference_sync(match_id: str, target: str) -> dict:
         metric="f1",
         fetch_missing=False,
         force_version=version,
+        target_only=target,
     )
 
 
@@ -1637,9 +1690,15 @@ def _load_v62_exclusion_rules() -> list[tuple[str, str, str]]:
 
 _V62_EXCLUSIONS = None
 
-def _v6_2_pick_filter(league: str, confidence: float, pick: str) -> tuple[bool, float]:
+def _v6_2_pick_filter_explain(
+    league: str,
+    confidence: float,
+    pick: str,
+    p_pick: float | None = None,
+) -> tuple[bool, float, str]:
     """Apply v6.2 model filtering rules.
-    Returns (accept, stake_factor).
+
+    Returns (accept, stake_factor, reason).
     stake_factor: 1.0, 0.75, 0.50, 0.25 based on kelly.
     """
     global _V62_EXCLUSIONS
@@ -1649,24 +1708,32 @@ def _v6_2_pick_filter(league: str, confidence: float, pick: str) -> tuple[bool, 
     ll = league.lower()
     for cname, raw, low in _V62_EXCLUSIONS:
         if low in ll:
-            return False, 0.0
+            return False, 0.0, f"league_excluded:{raw}"
+
+    # Report_v62 uses p_pick probability, not confidence score.
+    # If p_pick is not provided, derive it from confidence score in [0,1]:
+    # p_pick = 0.5 + confidence/2.
+    if p_pick is None:
+        c = max(0.0, min(float(confidence or 0.0), 1.0))
+        p_pick = 0.5 + (c / 2.0)
+    p_pick = max(0.0, min(float(p_pick), 1.0))
 
     min_conf_prob = 0.58
-    if confidence < min_conf_prob:
-        return False, 0.0
+    if p_pick < min_conf_prob:
+        return False, 0.0, f"p_pick_below_min:{p_pick:.3f}<{min_conf_prob:.3f}"
 
     odds = 1.4
     break_even = 1.0 / odds
-    edge = confidence - break_even
+    edge = p_pick - break_even
     if edge <= 0:
-        return False, 0.0
+        return False, 0.0, f"negative_edge:p_pick={p_pick:.3f}<=be={break_even:.3f}@odds={odds:.2f}"
 
     b = odds - 1.0
-    q = 1.0 - confidence
-    k_raw = ((b * confidence) - q) / b if b > 0 else 0.0
+    q = 1.0 - p_pick
+    k_raw = ((b * p_pick) - q) / b if b > 0 else 0.0
     
     if k_raw <= 0:
-        return False, 0.0
+        return False, 0.0, f"kelly_non_positive:k_raw={k_raw:.5f}"
         
     kelly_mult = 0.25
     kelly_cap = 0.05
@@ -1674,11 +1741,11 @@ def _v6_2_pick_filter(league: str, confidence: float, pick: str) -> tuple[bool, 
 
     k_strength = max(0.0, min(k_used / kelly_cap, 1.0))
     
-    if confidence >= 0.97 and edge >= 0.24 and k_strength >= 0.995:
+    if p_pick >= 0.97 and edge >= 0.24 and k_strength >= 0.995:
         stake_val = 100.0
-    elif confidence >= 0.90 and edge >= 0.18 and k_strength >= 0.85:
+    elif p_pick >= 0.90 and edge >= 0.18 and k_strength >= 0.85:
         stake_val = 75.0
-    elif confidence >= 0.80 and edge >= 0.09 and k_strength >= 0.55:
+    elif p_pick >= 0.80 and edge >= 0.09 and k_strength >= 0.55:
         stake_val = 50.0
     elif k_strength < 0.15:
         stake_val = 0.0
@@ -1686,10 +1753,26 @@ def _v6_2_pick_filter(league: str, confidence: float, pick: str) -> tuple[bool, 
         stake_val = 25.0
 
     if stake_val < 25.0:
-        return False, 0.0
+        return False, 0.0, f"stake_below_min:stake={stake_val:.0f}"
 
     stake_factor = stake_val / 100.0
-    return True, stake_factor
+    return True, stake_factor, f"accepted:stake={stake_val:.0f}"
+
+
+def _v6_2_pick_filter(
+    league: str,
+    confidence: float,
+    pick: str,
+    p_pick: float | None = None,
+) -> tuple[bool, float]:
+    """Compatibility wrapper for existing callers."""
+    accept, stake_factor, _reason = _v6_2_pick_filter_explain(
+        league=league,
+        confidence=confidence,
+        pick=pick,
+        p_pick=p_pick,
+    )
+    return accept, stake_factor
 
 
 # ── v6 pick filter ────────────────────────────────────────────────────────────
@@ -1925,9 +2008,11 @@ async def _check_quarter(
         if _failed_gates:
             _extra_lines += f"  Gates failed: {', '.join(g['name'] + '(' + g['reason'] + ')' for g in _failed_gates)}\n"
 
+    _quarter_dbg = _decorate_quarter_tokens(quarter_label)
+
     print(
         f"\n{'='*60}\n"
-        f"[MONITOR DEBUG] {home} vs {away} — {quarter_label} | match_id={match_id}\n"
+        f"[MONITOR DEBUG] {home} vs {away} — {_quarter_dbg} | match_id={match_id}\n"
         f"  Model    : {_model_used}  |  Q3={_model_config.get('q3', '-')}  Q4={_model_config.get('q4', '-')}\n"
         f"  Signal   : {signal if available else 'UNAVAILABLE'}\n"
         f"  Confidence: {confidence*100:.1f}%\n"
@@ -1969,7 +2054,32 @@ async def _check_quarter(
     if _is_bet_signal(signal):
         if confidence <= 0.30:
             _log(f"🔕 BET {quarter_label} [{_model_config.get(target, '-')}]: {home} vs {away} → confianza {confidence*100:.0f}% ≤ 30%, ignorando")
+            if _should_notify_filtered_bets(db_path):
+                await _notify(
+                    _format_filtered_bet_notification(
+                        quarter_label=quarter_label,
+                        model_used=_model_config.get(target, "-"),
+                        home=home,
+                        away=away,
+                        league=league,
+                        confidence=confidence,
+                        p_pick=None,
+                        reason="confidence_below_min:<=30%",
+                    ),
+                    notify_type="filtered_bet",
+                    quarter=target,
+                )
             return signal, False, pred
+        try:
+            p_home = float(pred.get("p_home_win") or 0.0)
+        except (TypeError, ValueError):
+            p_home = 0.0
+        if pick == "home":
+            p_pick = p_home
+        elif pick == "away":
+            p_pick = 1.0 - p_home
+        else:
+            p_pick = 0.5 + (max(0.0, min(confidence, 1.0)) / 2.0)
         # Apply model-specific filter rules
         model_used = _model_config.get(target, "-")
         _v6_stake = 1.0
@@ -1977,16 +2087,66 @@ async def _check_quarter(
             _v6_accept, _v6_stake = _v6_pick_filter(league, confidence, pick)
             if not _v6_accept:
                 _log(f"🔕 BET {quarter_label} [v6]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")                
+                if _should_notify_filtered_bets(db_path):
+                    await _notify(
+                        _format_filtered_bet_notification(
+                            quarter_label=quarter_label,
+                            model_used=model_used,
+                            home=home,
+                            away=away,
+                            league=league,
+                            confidence=confidence,
+                            p_pick=p_pick,
+                            reason="v6_filter_reject",
+                        ),
+                        notify_type="filtered_bet",
+                        quarter=target,
+                    )
                 return signal, False, pred
         elif model_used == "v6_2":
-            _v6_2_accept, _v6_stake = _v6_2_pick_filter(league, confidence, pick)
+            _v6_2_accept, _v6_stake, _v6_2_reason = _v6_2_pick_filter_explain(
+                league, confidence, pick, p_pick=p_pick
+            )
             if not _v6_2_accept:
-                _log(f"🔕 BET {quarter_label} [v6_2]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")                
+                _log(
+                    f"🔕 BET {quarter_label} [v6_2]: {home} vs {away} → filtrado "
+                    f"(conf={confidence*100:.0f}%, p_pick={p_pick*100:.1f}%, liga='{league}', reason={_v6_2_reason})"
+                )
+                if _should_notify_filtered_bets(db_path):
+                    await _notify(
+                        _format_filtered_bet_notification(
+                            quarter_label=quarter_label,
+                            model_used=model_used,
+                            home=home,
+                            away=away,
+                            league=league,
+                            confidence=confidence,
+                            p_pick=p_pick,
+                            reason=_v6_2_reason,
+                        ),
+                        notify_type="filtered_bet",
+                        quarter=target,
+                    )
                 return signal, False, pred
         elif model_used == "v2":
             _v2_accept, _v6_stake = _v2_pick_filter(league, confidence, pick)
             if not _v2_accept:
                 _log(f"🔕 BET {quarter_label} [v2]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")
+                if _should_notify_filtered_bets(db_path):
+                    await _notify(
+                        _format_filtered_bet_notification(
+                            quarter_label=quarter_label,
+                            model_used=model_used,
+                            home=home,
+                            away=away,
+                            league=league,
+                            confidence=confidence,
+                            p_pick=p_pick,
+                            reason="v2_filter_reject",
+                        ),
+                        notify_type="filtered_bet",
+                        quarter=target,
+                    )
                 return signal, False, pred
 
         pick_sym = "🏠" if pick == "home" else ("✈️" if pick == "away" else "?")
@@ -2249,6 +2409,8 @@ async def _watch_match(
     q4_done = bool(row.get("q4_checked"))
     q3_no_bet_ticks = 0   # confirmation ticks for uncertain Q3 NO BET
     q4_no_bet_ticks = 0   # confirmation ticks for uncertain Q4 NO BET
+    q3_unavailable_ticks = 0  # retries while Q3 inference is temporarily unavailable
+    q4_unavailable_ticks = 0  # retries while Q4 inference is temporarily unavailable
     errors = 0
     secs_per_gmin = float(SECS_PER_GAME_MIN)
     last_gmin: int | None = None
@@ -2450,14 +2612,27 @@ async def _watch_match(
                             home, away, league, event_date, minute,
                             suppress_no_bet_notify=not _is_last_q3,
                         )
-                        if notified or _is_last_q3 or sig in ("UNAVAILABLE", "ERROR"):
+                        if notified or _is_last_q3 or sig == "ERROR":
                             _update_row(
                                 conn, match_id,
                                 q3_checked=1, q3_signal=sig, q3_notified=int(notified),
                                 q3_model=_model_config.get("q3", "-"),
                             )
                             q3_done = True
+                        elif sig == "UNAVAILABLE":
+                            q3_unavailable_ticks += 1
+                            if q3_unavailable_ticks % UNAVAILABLE_LOG_EVERY == 0:
+                                _log(
+                                    f"{home} vs {away}: Q3 UNAVAILABLE "
+                                    f"(tick {q3_unavailable_ticks}), "
+                                    f"re-evaluando en {POLL_NEAR_SECS}s"
+                                )
+                            q3_no_bet_ticks = 0
+                            if await _sleep(POLL_NEAR_SECS):
+                                break
+                            continue
                         else:
+                            q3_unavailable_ticks = 0
                             q3_no_bet_ticks += 1
                             _log(
                                 f"{home} vs {away}: Q3 NO BET incierto "
@@ -2521,14 +2696,27 @@ async def _watch_match(
                             home, away, league, event_date, minute,
                             suppress_no_bet_notify=not _is_last_q4,
                         )
-                        if notified or _is_last_q4 or sig in ("UNAVAILABLE", "ERROR"):
+                        if notified or _is_last_q4 or sig == "ERROR":
                             _update_row(
                                 conn, match_id,
                                 q4_checked=1, q4_signal=sig, q4_notified=int(notified),
                                 q4_model=_model_config.get("q4", "-"),
                             )
                             q4_done = True
+                        elif sig == "UNAVAILABLE":
+                            q4_unavailable_ticks += 1
+                            if q4_unavailable_ticks % UNAVAILABLE_LOG_EVERY == 0:
+                                _log(
+                                    f"{home} vs {away}: Q4 UNAVAILABLE "
+                                    f"(tick {q4_unavailable_ticks}), "
+                                    f"re-evaluando en {POLL_NEAR_SECS}s"
+                                )
+                            q4_no_bet_ticks = 0
+                            if await _sleep(POLL_NEAR_SECS):
+                                break
+                            continue
                         else:
+                            q4_unavailable_ticks = 0
                             q4_no_bet_ticks += 1
                             _log(
                                 f"{home} vs {away}: Q4 NO BET incierto "
