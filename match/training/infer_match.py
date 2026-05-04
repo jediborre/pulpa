@@ -695,52 +695,155 @@ def _parse_live_clock(desc: str) -> str | None:
     return m.group(1)
 
 
+def _status_desc_quarter(desc: str) -> str | None:
+    txt = str(desc or "").upper()
+    m = re.search(r"\b(Q[1-4]|OT)\b", txt)
+    if not m:
+        return None
+    return m.group(1)
+
+
+def _infer_minute_from_pbp(match_data: dict) -> int | None:
+    """Best-effort minute estimate from latest PBP event clock."""
+    pbp = match_data.get("play_by_play", {}) or {}
+    best_global_min: float | None = None
+
+    for quarter_label, plays in pbp.items():
+        q_idx = _quarter_index(str(quarter_label))
+        if q_idx is None:
+            continue
+        q_start = (q_idx - 1) * 12.0
+        for play in plays or []:
+            rem_sec = _clock_to_seconds(str(play.get("time", "") or ""))
+            if rem_sec is None:
+                continue
+            global_min = q_start + (12.0 - rem_sec / 60.0)
+            if best_global_min is None or global_min > best_global_min:
+                best_global_min = global_min
+
+    if best_global_min is None:
+        return None
+    return int(best_global_min)
+
+
+def _infer_clock_from_pbp(match_data: dict, preferred_quarter: str | None) -> str:
+    """Best-effort live clock from the newest event in the current/latest quarter."""
+    pbp = match_data.get("play_by_play", {}) or {}
+    quarter_order = ["Q4", "Q3", "Q2", "Q1", "OT"]
+    candidates: list[str] = []
+    if preferred_quarter:
+        candidates.append(preferred_quarter)
+    candidates.extend(quarter_order)
+
+    seen: set[str] = set()
+    for q in candidates:
+        if q in seen:
+            continue
+        seen.add(q)
+        plays = pbp.get(q) or []
+        for ev in reversed(plays):
+            t = str(ev.get("time", "") or "")
+            if _clock_to_seconds(t) is not None:
+                return t
+    return ""
+
+
 def _infer_state(
     match_data: dict,
     event_snapshot: dict | None,
 ) -> dict:
     score = match_data.get("score", {})
+    match_meta = match_data.get("match", {}) or {}
     quarters = score.get("quarters", {})
     graph_points = match_data.get("graph_points", [])
 
-    status_type = ""
-    status_description = ""
+    status_type = str(match_meta.get("status_type", "") or "")
+    status_description = str(match_meta.get("status_description", "") or "")
     home_score = score.get("home", 0)
     away_score = score.get("away", 0)
     if event_snapshot:
-        status_type = str(event_snapshot.get("status_type", "") or "")
+        status_type = str(event_snapshot.get("status_type", status_type) or status_type)
         status_description = str(
-            event_snapshot.get("status_description", "") or ""
+            event_snapshot.get("status_description", status_description)
+            or status_description
         )
         home_score = int(event_snapshot.get("home_score", home_score) or 0)
         away_score = int(event_snapshot.get("away_score", away_score) or 0)
 
+    minute_est: int | None = None
+    if graph_points:
+        try:
+            minute_est = int(graph_points[-1].get("minute", 0) or 0)
+        except (TypeError, ValueError):
+            minute_est = None
+    if minute_est is None:
+        minute_est = _infer_minute_from_pbp(match_data)
+
     state = "unknown"
-    if status_type == "finished":
+    status_type_lc = status_type.lower()
+    if status_type_lc == "finished":
         state = "finished"
-    elif status_type in ("inprogress", "inProgress"):
+    elif status_type_lc in ("inprogress", "in_progress"):
         state = "live"
-    elif status_type in ("notstarted", "notStarted"):
+    elif status_type_lc in ("notstarted", "not_started"):
         state = "not_started"
-    elif "Q" in status_description or "OT" in status_description:
+    elif "Q" in status_description.upper() or "OT" in status_description.upper():
         state = "live"
     elif "Q4" in quarters and len(quarters) >= 4:
         state = "finished"
+    elif minute_est is not None:
+        state = "live" if minute_est > 0 else "not_started"
 
-    clock_text = _parse_live_clock(status_description)
-    minute_est = None
-    if graph_points:
-        minute_est = int(graph_points[-1].get("minute", 0))
+    clock_text = str(event_snapshot.get("clock", "") if event_snapshot else "")
+    if not clock_text:
+        parsed = _parse_live_clock(status_description)
+        if parsed:
+            clock_text = parsed
+    if not clock_text and state == "live":
+        preferred_q = _status_desc_quarter(status_description)
+        clock_text = _infer_clock_from_pbp(match_data, preferred_q)
 
     return {
         "state": state,
         "status_type": status_type,
         "status_description": status_description,
         "clock": clock_text,
-        "minute_estimate": minute_est,
+        "minute_estimate": int(minute_est or 0),
         "home_score": home_score,
         "away_score": away_score,
     }
+
+
+def _normalize_output_for_debug(out: dict) -> dict:
+    """Normalize optional fields to avoid noisy null values in debug JSON."""
+    match_obj = out.get("match") or {}
+    if match_obj.get("status_description") is None:
+        match_obj["status_description"] = ""
+    if match_obj.get("clock") is None:
+        match_obj["clock"] = ""
+    try:
+        match_obj["minute_estimate"] = int(match_obj.get("minute_estimate") or 0)
+    except (TypeError, ValueError):
+        match_obj["minute_estimate"] = 0
+    out["match"] = match_obj
+
+    preds = out.get("predictions") or {}
+    for target, p in preds.items():
+        if not isinstance(p, dict):
+            continue
+        if p.get("available"):
+            p["volatility_index"] = float(p.get("volatility_index") or 0.0)
+            p["volatility_swings"] = int(p.get("volatility_swings") or 0)
+            p["volatility_lead_changes"] = int(p.get("volatility_lead_changes") or 0)
+            if p.get("actual_winner") is None:
+                p["actual_winner"] = "pending"
+            if p.get("result") is None:
+                p["result"] = "pending"
+            if p.get("gate_reason") is None:
+                p["gate_reason"] = ""
+        preds[target] = p
+    out["predictions"] = preds
+    return out
 
 
 def _clip_match_data_for_target(match_data: dict, target: str) -> dict:
@@ -1756,6 +1859,7 @@ def run_inference(
             out["predictions"][target]["result"] = "miss"
         out["predictions"][target]["actual_winner"] = actual
 
+    out = _normalize_output_for_debug(out)
     conn.close()
     return out
 

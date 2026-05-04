@@ -32,7 +32,7 @@ import sys
 import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, TextIO
 
 BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
@@ -49,18 +49,26 @@ WAKE_BEFORE_MINUTES = 4      # start polling this many game-minutes before cutof
 POLL_NEAR_SECS = 100         # poll interval when within WAKE_BEFORE window
 IDLE_POLL_SECS = 300         # poll interval when far from next window
 NO_BET_CONFIRM_TICKS = 2     # extra ticks before sending uncertain NO BET notification
+Q4_WAITING_MAX_TICKS = 6     # max re-eval ticks waiting for valid Q3 progression
+Q4_STALE_MAX_TICKS = 4       # max ticks with frozen graph_points before aborting Q4
 UNAVAILABLE_LOG_EVERY = 1    # log cadence for transient UNAVAILABLE retry ticks
 SECS_PER_GAME_MIN = 170      # initial estimate: ~2.8 real-min per game-minute
 MIN_GP_Q3 = 16               # graph_points with minute ≤ 24 required for Q3 check
 MIN_GP_Q4 = 26               # graph_points with minute ≤ 36 required for Q4 check
+SKIP_Q3 = True               # temporarily disable Q3 monitoring to reduce CPU load
 MAX_FETCH_ERRORS = 4         # consecutive errors before discarding a match
 SCHEDULE_REFRESH_HOURS = 8   # re-fetch schedule this often
 PENDING_RECHECK_SECS = 15 * 60  # periodically backfill pending outcomes
 PENDING_RECHECK_MAX_MATCHES = 40  # cap scrape workload per cycle
+PENDING_SCHEDULE_RECHECK_SECS = 15 * 60  # periodically revisit pending schedule rows
+PENDING_SCHEDULE_MAX_MATCHES = 20  # cap pending-schedule scrape workload
+PENDING_SCHEDULE_MIN_AGE_SECS = 45 * 60  # only recheck matches older than this
+PENDING_RECHECK_MAX_FETCHES_IN_FLIGHT = 2  # skip periodic rechecks only if fetch load is high
 NO_GRAPH_REAL_SECS = 55 * 60 # discard if no graph_points 55 real-min after start
 MAX_CONCURRENT_FETCHES = 6   # max simultaneous Playwright fetches across all watchers
 FINAL_FETCH_EXTRA_SECS = 300 # extra real-seconds after estimated end before final save
 FINAL_FETCH_MIN_GP = 8       # require at least this many graph_points to attempt save
+MONITOR_LOG_DIR = BASE_DIR / "logs"  # daily monitor logs written here
 
 # ── Global state (read by telegram_bot.py) ────────────────────────────────────
 MONITOR_STATUS: dict = {
@@ -83,6 +91,8 @@ _model_config: dict[str, str] = {"q3": "v4", "q4": "v4"}
 
 # Persistent engine cache: loaded once, reused across inference calls
 _ENGINE_CACHE: dict[str, object] = {}
+_daily_log_handler: logging.Handler | None = None
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def _is_bet_signal(signal: str) -> bool:
@@ -147,14 +157,156 @@ def _get_fetch_sem() -> asyncio.Semaphore:
     return _fetch_sem
 
 
+def _fetches_in_flight() -> int:
+    """Best-effort count of active monitor fetches using semaphore usage."""
+    sem = _fetch_sem
+    if sem is None:
+        return 0
+    cur_value = getattr(sem, "_value", MAX_CONCURRENT_FETCHES)
+    try:
+        in_flight = MAX_CONCURRENT_FETCHES - int(cur_value)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, in_flight)
+
+
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 def _decorate_quarter_tokens(msg: str) -> str:
-    """Decorate Q3/Q4 tokens for easier terminal scanning."""
+    """Decorate Q3/Q4 tokens and match IDs for easier terminal scanning."""
     out = str(msg or "")
     out = re.sub(r"\bQ3\b(?!\s*🔵)", "Q3 🔵", out)
     out = re.sub(r"\bQ4\b(?!\s*🟠)", "Q4 🟠", out)
+
+    # Highlight common match-id patterns in terminal logs.
+    out = re.sub(
+        r"(match_id\s*=\s*)(\d{6,12})",
+        lambda m: f"{m.group(1)}{_color_text(m.group(2), '95')}",
+        out,
+        flags=re.IGNORECASE,
+    )
+    out = re.sub(
+        r"\((\d{6,12})\)",
+        lambda m: f"({_color_text(m.group(1), '95')})",
+        out,
+    )
     return out
+
+
+def _monitor_local_now() -> datetime:
+    """Monitor local time using configured UTC offset."""
+    return datetime.now(timezone.utc) + timedelta(hours=UTC_OFFSET_HOURS)
+
+
+def _monitor_local_today_str() -> str:
+    return _monitor_local_now().date().isoformat()
+
+
+def _monitor_local_tomorrow_str() -> str:
+    return (_monitor_local_now().date() + timedelta(days=1)).isoformat()
+
+
+def _supports_ansi_color() -> bool:
+    if os.getenv("NO_COLOR"):
+        return False
+    try:
+        return bool(sys.stdout.isatty())
+    except Exception:
+        return False
+
+
+def _color_text(text: str, code: str = "93") -> str:
+    """Wrap text with ANSI color if terminal supports it."""
+    if not _supports_ansi_color():
+        return text
+    return f"\x1b[{code}m{text}\x1b[0m"
+
+
+def _format_wait_eta(seconds: float) -> str:
+    total_min = max(0, int(round(seconds / 60.0)))
+    days, rem_min = divmod(total_min, 24 * 60)
+    hours, mins = divmod(rem_min, 60)
+    parts: list[str] = []
+    if days > 0:
+        parts.append(f"{days}d")
+    if hours > 0 or days > 0:
+        parts.append(f"{hours}h")
+    parts.append(f"{mins}m")
+    return " ".join(parts)
+
+
+def _format_sched_local_label(scheduled_ts: int | None) -> str:
+    """Return local scheduled time label for logs."""
+    if not scheduled_ts:
+        return "????-??-?? ??:??"
+    try:
+        dt_local = datetime.fromtimestamp(int(scheduled_ts), tz=timezone.utc) + timedelta(hours=UTC_OFFSET_HOURS)
+    except (TypeError, ValueError, OSError, OverflowError):
+        return "????-??-?? ??:??"
+    return dt_local.strftime('%Y-%m-%d %H:%M')
+
+
+class _DailyMonitorFileHandler(logging.Handler):
+    """Write monitor logs to logs/monitor-YYYY-MM-DD.log and rotate daily."""
+
+    def __init__(self, log_dir: Path):
+        super().__init__()
+        self.log_dir = log_dir
+        self.current_date = ""
+        self._fh: TextIO | None = None
+
+    def _target_path(self, date_str: str) -> Path:
+        return self.log_dir / f"monitor-{date_str}.log"
+
+    def _ensure_file_for_date(self, date_str: str) -> None:
+        if self._fh is not None and self.current_date == date_str:
+            return
+        if self._fh is not None:
+            try:
+                self._fh.close()
+            except Exception:
+                pass
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        path = self._target_path(date_str)
+        self._fh = path.open("a", encoding="utf-8")
+        self.current_date = date_str
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            date_str = _monitor_local_now().date().isoformat()
+            self._ensure_file_for_date(date_str)
+            if self._fh is None:
+                return
+            msg = self.format(record)
+            msg = _ANSI_RE.sub("", msg)
+            self._fh.write(msg + "\n")
+            self._fh.flush()
+        except Exception:
+            self.handleError(record)
+
+    def close(self) -> None:
+        try:
+            if self._fh is not None:
+                self._fh.close()
+                self._fh = None
+        finally:
+            super().close()
+
+
+def _ensure_daily_file_logging() -> None:
+    global _daily_log_handler
+    if _daily_log_handler is not None:
+        return
+    handler = _DailyMonitorFileHandler(MONITOR_LOG_DIR)
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s [%(levelname)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+    logger.addHandler(handler)
+    _daily_log_handler = handler
 
 def _log(msg: str, level: str = "info") -> None:
     dec_msg = _decorate_quarter_tokens(msg)
@@ -196,22 +348,45 @@ def _should_notify_filtered_bets(db_path: str) -> bool:
 
 def _format_filtered_bet_notification(
     *,
+    match_id: str,
+    data: dict,
     quarter_label: str,
     model_used: str,
     home: str,
     away: str,
     league: str,
+    event_date: str,
+    current_minute: int | None,
+    pick: str,
     confidence: float,
     p_pick: float | None,
     reason: str,
 ) -> str:
+    pick_sym = "🏠" if pick == "home" else ("✈️" if pick == "away" else "❔")
+    pick_name = home if pick == "home" else (away if pick == "away" else "Sin pick")
+
+    qs = ((data.get("score") or {}).get("quarters") or {})
+    q3 = qs.get("Q3") if isinstance(qs.get("Q3"), dict) else None
+    if q3 is None:
+        q3_txt = "-"
+    else:
+        q3h = int(q3.get("home", 0) or 0)
+        q3a = int(q3.get("away", 0) or 0)
+        q3_txt = f"{q3h} - {q3a}"
+
     p_pick_txt = "-"
     if p_pick is not None:
         p_pick_txt = f"{p_pick * 100:.1f}%"
+
+    min_txt = "-" if current_minute is None else str(current_minute)
     return (
         f"🟡 BET FILTRADA {quarter_label} [{model_used}]\n\n"
+        f"Match ID: {match_id} | Min: {min_txt}\n"
         f"{home} vs {away}\n"
+        f"Fecha: {event_date} UTC{UTC_OFFSET_HOURS:+d}\n"
         f"Liga: {league}\n"
+        f"Q3 actual: {q3_txt}\n\n"
+        f"Pick sugerido: {pick_sym} {pick_name}\n"
         f"Confianza: {confidence * 100:.1f}%\n"
         f"p_pick: {p_pick_txt}\n"
         f"Motivo filtro: {reason}"
@@ -333,6 +508,54 @@ def _upsert_schedule_row(conn: sqlite3.Connection, row: dict) -> None:
         """,
         row,
     )
+
+
+def _log_daily_summary(conn: sqlite3.Connection, local_date: str) -> None:
+    """Log a breakdown of today's matches: total in DB / pending / done / filtered by league,
+    then list the next 30 matches (by scheduled_utc_ts) after the current moment."""
+    total = conn.execute(
+        "SELECT COUNT(*) FROM bet_monitor_schedule WHERE event_date = ?", (local_date,)
+    ).fetchone()[0]
+    if total == 0:
+        return
+    done_count = conn.execute(
+        "SELECT COUNT(*) FROM bet_monitor_schedule WHERE event_date = ? AND status IN ('done', 'discarded')",
+        (local_date,),
+    ).fetchone()[0]
+    # active = not done/discarded
+    active = conn.execute(
+        "SELECT COUNT(*) FROM bet_monitor_schedule WHERE event_date = ? AND status NOT IN ('done', 'discarded')",
+        (local_date,),
+    ).fetchone()[0]
+    pending = len(_get_pending_rows(conn, local_date))
+    filtered_by_league = active - pending
+    _log(
+        f"Resumen {local_date}: total={total}  "
+        f"pendientes={pending}  "
+        f"filtrados_liga={filtered_by_league}  "
+        f"terminados/descartados={done_count}"
+    )
+    # List next 30 matches of the day after current time (any status, any league)
+    now_ts = int(time.time())
+    upcoming = conn.execute(
+        """
+        SELECT home_team, away_team, match_id, scheduled_utc_ts, league, status
+        FROM bet_monitor_schedule
+        WHERE event_date = ?
+          AND scheduled_utc_ts > ?
+        ORDER BY scheduled_utc_ts ASC
+        LIMIT 30
+        """,
+        (local_date, now_ts),
+    ).fetchall()
+    if upcoming:
+        _log(f"Próximos {len(upcoming)} partidos del día ({local_date}) después de ahora:")
+        for r in upcoming:
+            sched_label = _format_sched_local_label(int(r["scheduled_utc_ts"] or 0))
+            _log(
+                f"  {sched_label}  {r['home_team']} vs {r['away_team']} ({r['match_id']})"
+                f"  [{r['league']}]  status={r['status']}"
+            )
 
 
 def _get_pending_rows(conn: sqlite3.Connection, local_date: str) -> list[dict]:
@@ -631,6 +854,7 @@ async def _recheck_pending_outcomes_once(db_path: str) -> dict[str, int]:
     if not pending_ids:
         resolved = await asyncio.to_thread(reconcile_pending_results, db_path)
         return {
+            "found": 0,
             "checked": 0,
             "scraped_ok": 0,
             "scraped_fail": 0,
@@ -665,11 +889,101 @@ async def _recheck_pending_outcomes_once(db_path: str) -> dict[str, int]:
     scraped_ok, scraped_fail = await asyncio.to_thread(_scrape_pending_ids)
     resolved = await asyncio.to_thread(reconcile_pending_results, db_path)
     return {
+        "found": len(pending_ids),
         "checked": len(ids_to_scrape),
         "scraped_ok": int(scraped_ok),
         "scraped_fail": int(scraped_fail),
         "resolved": int(resolved),
     }
+
+
+async def _recheck_pending_finished_schedule_once(db_path: str) -> dict[str, int]:
+    """Scrape overdue pending schedule rows and finalize those already FT."""
+
+    def _sync_job() -> dict[str, int]:
+        import db as db_mod
+        import scraper as scraper_mod
+
+        sched_conn = _open_db(db_path)
+        now_ts = int(time.time())
+        max_sched_ts = now_ts - PENDING_SCHEDULE_MIN_AGE_SECS
+        rows = sched_conn.execute(
+            """
+            SELECT match_id, home_team, away_team, scheduled_utc_ts
+            FROM bet_monitor_schedule
+            WHERE status = 'pending'
+              AND final_fetched = 0
+              AND scheduled_utc_ts > 0
+              AND scheduled_utc_ts <= ?
+            ORDER BY scheduled_utc_ts ASC
+            LIMIT ?
+            """,
+            (max_sched_ts, PENDING_SCHEDULE_MAX_MATCHES),
+        ).fetchall()
+
+        if not rows:
+            sched_conn.close()
+            return {
+                "found": 0,
+                "checked": 0,
+                "scraped_ok": 0,
+                "scraped_fail": 0,
+                "finished_saved": 0,
+            }
+
+        save_conn = db_mod.get_conn(db_path)
+        db_mod.init_db(save_conn)
+        checked = 0
+        scraped_ok = 0
+        scraped_fail = 0
+        finished_saved = 0
+
+        try:
+            for row in rows:
+                mid = str(row["match_id"])
+                checked += 1
+                try:
+                    fresh = scraper_mod.fetch_match_by_id(mid)
+                except Exception:
+                    scraped_fail += 1
+                    continue
+
+                if not fresh:
+                    scraped_fail += 1
+                    continue
+
+                scraped_ok += 1
+                st = str((fresh.get("match", {}) or {}).get("status_type", "") or "").lower()
+                if st != "finished":
+                    continue
+
+                try:
+                    db_mod.save_match(save_conn, mid, fresh)
+                    _update_row(
+                        sched_conn,
+                        mid,
+                        status="done",
+                        final_fetched=1,
+                        final_fetch_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                        skip_reason="backfill_finished",
+                    )
+                    finished_saved += 1
+                except Exception:
+                    # Save/update error for this row should not stop whole batch
+                    continue
+        finally:
+            save_conn.close()
+            sched_conn.close()
+
+        return {
+            "found": len(rows),
+            "checked": checked,
+            "scraped_ok": scraped_ok,
+            "scraped_fail": scraped_fail,
+            "finished_saved": finished_saved,
+        }
+
+    return await asyncio.to_thread(_sync_job)
 
 
 # ── Schedule fetcher ──────────────────────────────────────────────────────────
@@ -778,6 +1092,22 @@ def _has_scores(data: dict, *quarters: str) -> bool:
         and qs[q].get("away") is not None
         for q in quarters
     )
+
+
+def _q3_has_real_progress_for_q4(data: dict) -> bool:
+    """True when Q3 is truly usable for Q4, not just placeholder 0-0."""
+    if not _has_scores(data, "Q1", "Q2", "Q3"):
+        return False
+    qs = (data.get("score", {}) or {}).get("quarters", {}) or {}
+    q3 = qs.get("Q3") or {}
+    try:
+        q3_total = int(q3.get("home", 0) or 0) + int(q3.get("away", 0) or 0)
+    except (TypeError, ValueError):
+        q3_total = 0
+    if q3_total > 0:
+        return True
+    # If Q4 already has a score row, Q3 is implicitly complete.
+    return _has_scores(data, "Q4")
 
 
 def _is_two_half(data: dict) -> bool:
@@ -2052,24 +2382,43 @@ async def _check_quarter(
 
     notified = False
     if _is_bet_signal(signal):
+        def _filtered_markup() -> dict:
+            return {
+                "inline_keyboard": [[
+                    {"text": "🔍 Ver match", "callback_data": f"notifmatch:{match_id}:{event_date}:0"},
+                    {"text": "📱 Sofascore", "url": (
+                        f"https://www.sofascore.com/{data.get('match', {}).get('event_slug') or ''}/{data.get('match', {}).get('custom_id') or ''}#id:{match_id}"
+                        if (data.get("match", {}).get("event_slug") and data.get("match", {}).get("custom_id"))
+                        else f"https://www.sofascore.com/basketball/event/{match_id}"
+                    )},
+                ]]
+            }
+
         if confidence <= 0.30:
             _log(f"🔕 BET {quarter_label} [{_model_config.get(target, '-')}]: {home} vs {away} → confianza {confidence*100:.0f}% ≤ 30%, ignorando")
-            if _should_notify_filtered_bets(db_path):
+            if _should_notify_filtered_bets(db_path) and not suppress_no_bet_notify:
                 await _notify(
                     _format_filtered_bet_notification(
+                        match_id=match_id,
+                        data=data,
                         quarter_label=quarter_label,
                         model_used=_model_config.get(target, "-"),
                         home=home,
                         away=away,
                         league=league,
+                        event_date=event_date,
+                        current_minute=current_minute,
+                        pick=pick,
                         confidence=confidence,
                         p_pick=None,
                         reason="confidence_below_min:<=30%",
                     ),
+                    reply_markup=_filtered_markup(),
                     notify_type="filtered_bet",
                     quarter=target,
                 )
-            return signal, False, pred
+                notified = True
+            return signal, notified, pred
         try:
             p_home = float(pred.get("p_home_win") or 0.0)
         except (TypeError, ValueError):
@@ -2087,22 +2436,29 @@ async def _check_quarter(
             _v6_accept, _v6_stake = _v6_pick_filter(league, confidence, pick)
             if not _v6_accept:
                 _log(f"🔕 BET {quarter_label} [v6]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")                
-                if _should_notify_filtered_bets(db_path):
+                if _should_notify_filtered_bets(db_path) and not suppress_no_bet_notify:
                     await _notify(
                         _format_filtered_bet_notification(
+                            match_id=match_id,
+                            data=data,
                             quarter_label=quarter_label,
                             model_used=model_used,
                             home=home,
                             away=away,
                             league=league,
+                            event_date=event_date,
+                            current_minute=current_minute,
+                            pick=pick,
                             confidence=confidence,
                             p_pick=p_pick,
                             reason="v6_filter_reject",
                         ),
+                        reply_markup=_filtered_markup(),
                         notify_type="filtered_bet",
                         quarter=target,
                     )
-                return signal, False, pred
+                    notified = True
+                return signal, notified, pred
         elif model_used == "v6_2":
             _v6_2_accept, _v6_stake, _v6_2_reason = _v6_2_pick_filter_explain(
                 league, confidence, pick, p_pick=p_pick
@@ -2112,42 +2468,56 @@ async def _check_quarter(
                     f"🔕 BET {quarter_label} [v6_2]: {home} vs {away} → filtrado "
                     f"(conf={confidence*100:.0f}%, p_pick={p_pick*100:.1f}%, liga='{league}', reason={_v6_2_reason})"
                 )
-                if _should_notify_filtered_bets(db_path):
+                if _should_notify_filtered_bets(db_path) and not suppress_no_bet_notify:
                     await _notify(
                         _format_filtered_bet_notification(
+                            match_id=match_id,
+                            data=data,
                             quarter_label=quarter_label,
                             model_used=model_used,
                             home=home,
                             away=away,
                             league=league,
+                            event_date=event_date,
+                            current_minute=current_minute,
+                            pick=pick,
                             confidence=confidence,
                             p_pick=p_pick,
                             reason=_v6_2_reason,
                         ),
+                        reply_markup=_filtered_markup(),
                         notify_type="filtered_bet",
                         quarter=target,
                     )
-                return signal, False, pred
+                    notified = True
+                return signal, notified, pred
         elif model_used == "v2":
             _v2_accept, _v6_stake = _v2_pick_filter(league, confidence, pick)
             if not _v2_accept:
                 _log(f"🔕 BET {quarter_label} [v2]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")
-                if _should_notify_filtered_bets(db_path):
+                if _should_notify_filtered_bets(db_path) and not suppress_no_bet_notify:
                     await _notify(
                         _format_filtered_bet_notification(
+                            match_id=match_id,
+                            data=data,
                             quarter_label=quarter_label,
                             model_used=model_used,
                             home=home,
                             away=away,
                             league=league,
+                            event_date=event_date,
+                            current_minute=current_minute,
+                            pick=pick,
                             confidence=confidence,
                             p_pick=p_pick,
                             reason="v2_filter_reject",
                         ),
+                        reply_markup=_filtered_markup(),
                         notify_type="filtered_bet",
                         quarter=target,
                     )
-                return signal, False, pred
+                    notified = True
+                return signal, notified, pred
 
         pick_sym = "🏠" if pick == "home" else ("✈️" if pick == "away" else "?")
         pick_name = home if pick == "home" else (away if pick == "away" else pick)
@@ -2399,18 +2769,24 @@ async def _watch_match(
     league = str(row.get("league") or "")
     event_date = str(row.get("event_date") or "")
     scheduled_ts = int(row.get("scheduled_utc_ts") or 0)
+    sched_label = _format_sched_local_label(scheduled_ts)
 
-    _log(f"Vigilando: {home} vs {away} ({match_id})")
+    _log(f"Vigilando: {home} vs {away} ({match_id}) | {sched_label}")
     MONITOR_STATUS["active_matches"] = list(
         set(MONITOR_STATUS.get("active_matches", []) + [match_id])
     )
 
-    q3_done = bool(row.get("q3_checked"))
+    q3_done = bool(row.get("q3_checked")) or SKIP_Q3
     q4_done = bool(row.get("q4_checked"))
+    if SKIP_Q3 and not bool(row.get("q3_checked")):
+        _log(f"{home} vs {away}: [SKIP_Q3] Q3 deshabilitado — directo a Q4")
     q3_no_bet_ticks = 0   # confirmation ticks for uncertain Q3 NO BET
     q4_no_bet_ticks = 0   # confirmation ticks for uncertain Q4 NO BET
+    q4_waiting_score_ticks = 0  # ticks while waiting for Q3 score to appear
     q3_unavailable_ticks = 0  # retries while Q3 inference is temporarily unavailable
     q4_unavailable_ticks = 0  # retries while Q4 inference is temporarily unavailable
+    q4_stale_ticks = 0  # ticks where graph_points stop moving while waiting Q4
+    q4_last_gp_total = -1
     errors = 0
     secs_per_gmin = float(SECS_PER_GAME_MIN)
     last_gmin: int | None = None
@@ -2432,7 +2808,12 @@ async def _watch_match(
         if scheduled_ts > 0:
             wait = scheduled_ts - time.time() - 120
             if wait > 120:
-                _log(f"{home} vs {away}: inicio en {wait / 60:.0f} min, esperando")
+                eta = _format_wait_eta(wait)
+                eta_color = _color_text(eta, "96")
+                _log(
+                    f"{home} vs {away}: inicio en {eta_color} "
+                    f"({wait / 60:.0f} min), esperando"
+                )
                 if await _sleep(wait):
                     return
 
@@ -2511,8 +2892,15 @@ async def _watch_match(
                 now_wall = time.monotonic()
                 if last_gmin is not None and minute > last_gmin:
                     rate = (now_wall - last_gmin_wall) / (minute - last_gmin)
+                    old_rate = secs_per_gmin
                     secs_per_gmin = 0.7 * secs_per_gmin + 0.3 * rate
                     secs_per_gmin = max(60.0, min(360.0, secs_per_gmin))
+                    if abs(secs_per_gmin - old_rate) > 15:
+                        logger.debug(
+                            "[MONITOR] %s vs %s: ritmo actualizado %.0fs/gmin → %.0fs/gmin "
+                            "(crudo=%.0fs, min=%d)",
+                            home, away, old_rate, secs_per_gmin, rate, minute,
+                        )
                 last_gmin = minute
                 last_gmin_wall = now_wall
 
@@ -2536,19 +2924,11 @@ async def _watch_match(
                     q3_done = True
 
                 if not q4_done:
-                    q4_cut, q4_mgp, q4_need_q3, _q4wb = _q4_timing()
-                    gp4 = _count_gp_up_to(data, q4_cut)
-                    score_ok = _has_scores(data, "Q1", "Q2", "Q3") if q4_need_q3 else _has_scores(data, "Q1", "Q2")
-                    if score_ok and gp4 >= q4_mgp:
-                        sig, notified, _ = await _check_quarter(
-                            match_id, data, "q4", db_path, conn,
-                            home, away, league, event_date, minute,
-                        )
-                    else:
-                        sig, notified = "no_data", False
+                    # Game already finished — Q4 window is closed, never notify
+                    _log(f"{home} vs {away}: Q4 no notificado (partido ya terminado)")
                     _update_row(
                         conn, match_id,
-                        q4_checked=1, q4_signal=sig, q4_notified=int(notified),
+                        q4_checked=1, q4_signal="too_late",
                         q4_model=_model_config.get("q4", "-"),
                     )
                     q4_done = True
@@ -2680,16 +3060,31 @@ async def _watch_match(
                 # inference before Q4 gets underway.
                 Q4_EARLIEST_MINUTE = 27
 
-                if minute > q4_cut + 6:
+                Q4_LAST_MINUTE = 38  # don't bet if Q4 is in its final 2 minutes
+                if minute > q4_cut + 6 or minute >= Q4_LAST_MINUTE:
                     _update_row(conn, match_id, q4_checked=1, q4_signal="window_missed")
                     q4_done = True
                     _log(f"{home} vs {away}: ventana Q4 pasada (min {minute}, cutoff={q4_cut})")
 
                 elif minute >= Q4_EARLIEST_MINUTE:
                     # Q3 is well underway — poll until Q3 score exists then fire.
-                    score_ok = (_has_scores(data, "Q1", "Q2", "Q3") if q4_need_q3
+                    score_ok = (_q3_has_real_progress_for_q4(data) if q4_need_q3
                                 else _has_scores(data, "Q1", "Q2"))
+                    # Budget: real seconds left before Q4_LAST_MINUTE cutoff
+                    mins_left = Q4_LAST_MINUTE - minute
+                    budget_secs = max(30.0, mins_left * secs_per_gmin)
+                    # Adaptive poll: tighter as deadline approaches
+                    if mins_left <= 2:
+                        poll_secs = 30.0
+                    elif mins_left <= 4:
+                        poll_secs = 50.0
+                    else:
+                        poll_secs = POLL_NEAR_SECS
+
                     if score_ok and gp4 >= q4_mgp:
+                        q4_waiting_score_ticks = 0
+                        q4_stale_ticks = 0
+                        q4_last_gp_total = len(data.get("graph_points") or [])
                         _is_last_q4 = q4_no_bet_ticks >= NO_BET_CONFIRM_TICKS
                         sig, notified, _ = await _check_quarter(
                             match_id, data, "q4", db_path, conn,
@@ -2705,49 +3100,95 @@ async def _watch_match(
                             q4_done = True
                         elif sig == "UNAVAILABLE":
                             q4_unavailable_ticks += 1
-                            if q4_unavailable_ticks % UNAVAILABLE_LOG_EVERY == 0:
-                                _log(
-                                    f"{home} vs {away}: Q4 UNAVAILABLE "
-                                    f"(tick {q4_unavailable_ticks}), "
-                                    f"re-evaluando en {POLL_NEAR_SECS}s"
-                                )
+                            _log(
+                                f"🟡 {home} vs {away}: Q4 UNAVAILABLE "
+                                f"(tick {q4_unavailable_ticks}, presupuesto~{budget_secs:.0f}s), "
+                                f"re-evaluando en {poll_secs:.0f}s"
+                            )
                             q4_no_bet_ticks = 0
-                            if await _sleep(POLL_NEAR_SECS):
+                            if await _sleep(poll_secs):
                                 break
                             continue
                         else:
                             q4_unavailable_ticks = 0
                             q4_no_bet_ticks += 1
                             _log(
-                                f"{home} vs {away}: Q4 NO BET incierto "
-                                f"(tick {q4_no_bet_ticks}/{NO_BET_CONFIRM_TICKS}), "
-                                f"re-evaluando en {POLL_NEAR_SECS}s"
+                                f"🟡 {home} vs {away}: Q4 NO BET incierto "
+                                f"(tick {q4_no_bet_ticks}/{NO_BET_CONFIRM_TICKS}, "
+                                f"min={minute}, presupuesto~{budget_secs:.0f}s), "
+                                f"re-evaluando en {poll_secs:.0f}s"
                             )
-                            if await _sleep(POLL_NEAR_SECS):
+                            if await _sleep(poll_secs):
                                 break
                             continue
                     else:
+                        q4_waiting_score_ticks += 1
+                        gp_total_now = len(data.get("graph_points") or [])
+                        if gp_total_now <= q4_last_gp_total:
+                            q4_stale_ticks += 1
+                        else:
+                            q4_stale_ticks = 0
+                            q4_last_gp_total = gp_total_now
+
+                        if (
+                            q4_waiting_score_ticks >= Q4_WAITING_MAX_TICKS
+                            or q4_stale_ticks >= Q4_STALE_MAX_TICKS
+                        ):
+                            q4_abort_reason = (
+                                "graph_stale_timeout"
+                                if q4_stale_ticks >= Q4_STALE_MAX_TICKS
+                                else "q3_placeholder_timeout"
+                            )
+                            _update_row(
+                                conn, match_id,
+                                q4_checked=1,
+                                q4_signal=q4_abort_reason,
+                                q4_model=_model_config.get("q4", "-"),
+                            )
+                            q4_done = True
+                            _log(
+                                f"🟡 {home} vs {away}: Q4 abortado ({q4_abort_reason}) "
+                                f"(tick={q4_waiting_score_ticks}, stale={q4_stale_ticks}, "
+                                f"min={minute}, gp={gp4}/{q4_mgp})"
+                            )
+                            continue
+
                         need_q3_str = f" Q3={_has_scores(data,'Q3')}" if q4_need_q3 else ""
-                        _log(
-                            f"{home} vs {away}: Q4 esperando fin Q3 "
-                            f"(min={minute} gp={gp4}/{q4_mgp}{need_q3_str})"
+                        q3_prog_str = (
+                            f" Q3_prog={_q3_has_real_progress_for_q4(data)}"
+                            if q4_need_q3 else ""
                         )
-                        if await _sleep(POLL_NEAR_SECS):
+                        _log(
+                            f"🟡 {home} vs {away}: Q4 esperando fin Q3 "
+                            f"(min={minute} gp={gp4}/{q4_mgp}{need_q3_str}{q3_prog_str} "
+                            f"tick={q4_waiting_score_ticks} stale={q4_stale_ticks} "
+                            f"presupuesto~{budget_secs:.0f}s), "
+                            f"re-eval en {poll_secs:.0f}s"
+                        )
+                        if await _sleep(poll_secs):
                             break
                         continue
 
                 else:
+                    # Tiered sleep before Q4_EARLIEST_MINUTE — adapts to calibrated pace
                     mins_to_wake = Q4_EARLIEST_MINUTE - minute
-                    sleep_secs = max(30.0, min(mins_to_wake * secs_per_gmin, IDLE_POLL_SECS))
+                    if mins_to_wake > 10:
+                        # Far away: sleep at most 3 min so we can recalibrate pace
+                        sleep_secs = min(mins_to_wake * secs_per_gmin * 0.5, 180.0)
+                    elif mins_to_wake > 5:
+                        sleep_secs = min(mins_to_wake * secs_per_gmin * 0.6, 120.0)
+                    elif mins_to_wake > 2:
+                        sleep_secs = min(mins_to_wake * secs_per_gmin * 0.7, 60.0)
+                    else:
+                        sleep_secs = max(20.0, mins_to_wake * secs_per_gmin * 0.8)
+                    sleep_secs = max(20.0, sleep_secs)
                     _log(
-                        f"{home} vs {away}: Q4 en ~{mins_to_wake:.0f} game-min "
-                        f"(min actual={minute}, esperando min {Q4_EARLIEST_MINUTE}), "
-                        f"durmiendo {sleep_secs:.0f}s"
+                        f"🟡 {home} vs {away}: Q4 en ~{mins_to_wake:.0f} game-min "
+                        f"(min={minute}, ritmo={secs_per_gmin:.0f}s/gmin, "
+                        f"esperando min {Q4_EARLIEST_MINUTE}), durmiendo {sleep_secs:.0f}s"
                     )
                     if await _sleep(sleep_secs):
                         break
-                    continue
-
                     continue
 
     except asyncio.CancelledError:
@@ -2768,6 +3209,29 @@ async def _watch_match(
 
 async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
     """Main monitor coroutine.  Run as asyncio.create_task(run_monitor(...))."""
+    _ensure_daily_file_logging()
+
+    async def _refresh_schedule_dates(today_str: str, tomorrow_str: str) -> None:
+        for d in (today_str, tomorrow_str):
+            try:
+                rows = await asyncio.to_thread(
+                    _fetch_all_events_for_date_sync, d
+                )
+                conn = _open_db(db_path)
+                for row in rows:
+                    rdata = {k: v for k, v in row.items() if k != "status_type"}
+                    _upsert_schedule_row(conn, rdata)
+                conn.commit()
+                conn.close()
+                count = len(rows)
+                if d == today_str:
+                    MONITOR_STATUS["today_total"] = count
+                else:
+                    MONITOR_STATUS["tomorrow_total"] = count
+                _log(f"Itinerario {d}: {count} partidos")
+            except Exception as exc:
+                logger.error("[MONITOR] schedule error %s: %s", d, exc)
+
     MONITOR_STATUS.update({
         "running": True,
         "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -2782,17 +3246,28 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
 
     init_tables(db_path)
     reconcile_pending_results(db_path)
+    _log(f"Log diario habilitado en: {MONITOR_LOG_DIR}")
     _log("Monitor iniciado")
 
     active_tasks: dict[str, asyncio.Task] = {}
     last_refresh_wall: float = 0.0
     last_pending_recheck_wall: float = 0.0
+    last_pending_schedule_recheck_wall: float = 0.0
     last_date: str = ""
+
+    _today_str = _monitor_local_today_str()
+    _tomorrow_str = _monitor_local_tomorrow_str()
+    await _refresh_schedule_dates(_today_str, _tomorrow_str)
+    last_refresh_wall = time.monotonic()
+    last_date = _today_str
+
+    # ── Startup summary: log today's match counts by status/filter
+    _summary_conn = _open_db(db_path)
+    _log_daily_summary(_summary_conn, _today_str)
+    _summary_conn.close()
 
     # ── Resume: launch watchers for rows already in DB before fetching schedule
     _resume_conn = _open_db(db_path)
-    _today_str = datetime.now().date().isoformat()
-    _tomorrow_str = (datetime.now().date() + timedelta(days=1)).isoformat()
     _existing = _get_pending_rows(_resume_conn, _today_str) + _get_pending_rows(_resume_conn, _tomorrow_str)
     _resume_conn.close()
     if _existing:
@@ -2807,12 +3282,15 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
                 name=f"watch_{_mid}",
             )
             active_tasks[_mid] = _task
-            _log(f"Retomado: {_row.get('home_team')} vs {_row.get('away_team')} ({_mid})")
+            _log(
+                f"Retomado: {_row.get('home_team')} vs {_row.get('away_team')} ({_mid}) | "
+                f"{_format_sched_local_label(_sched_ts)}"
+            )
 
     try:
         while not stop_event.is_set():
-            today_str = datetime.now().date().isoformat()
-            tomorrow_str = (datetime.now().date() + timedelta(days=1)).isoformat()
+            today_str = _monitor_local_today_str()
+            tomorrow_str = _monitor_local_tomorrow_str()
             now_wall = time.monotonic()
 
             # Refresh schedule if stale or new day
@@ -2820,26 +3298,7 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
                 today_str != last_date
                 or now_wall - last_refresh_wall > SCHEDULE_REFRESH_HOURS * 3600
             ):
-                for d in (today_str, tomorrow_str):
-                    try:
-                        rows = await asyncio.to_thread(
-                            _fetch_all_events_for_date_sync, d
-                        )
-                        conn = _open_db(db_path)
-                        for row in rows:
-                            rdata = {k: v for k, v in row.items() if k != "status_type"}
-                            _upsert_schedule_row(conn, rdata)
-                        conn.commit()
-                        conn.close()
-                        count = len(rows)
-                        if d == today_str:
-                            MONITOR_STATUS["today_total"] = count
-                        else:
-                            MONITOR_STATUS["tomorrow_total"] = count
-                        _log(f"Itinerario {d}: {count} partidos")
-                    except Exception as exc:
-                        logger.error("[MONITOR] schedule error %s: %s", d, exc)
-
+                await _refresh_schedule_dates(today_str, tomorrow_str)
                 last_refresh_wall = now_wall
                 last_date = today_str
 
@@ -2872,7 +3331,8 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
                 active_tasks[mid] = task
                 _log(
                     f"Tarea lanzada: {row.get('home_team')} vs "
-                    f"{row.get('away_team')} ({mid})"
+                    f"{row.get('away_team')} ({mid}) | "
+                    f"{_format_sched_local_label(sched_ts)}"
                 )
 
             # Clean up done tasks
@@ -2881,20 +3341,56 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
 
             # Periodically backfill unfinished outcomes created while monitor was off.
             if now_wall - last_pending_recheck_wall >= PENDING_RECHECK_SECS:
-                try:
-                    summary = await _recheck_pending_outcomes_once(db_path)
-                    if summary["checked"] > 0 or summary["resolved"] > 0:
-                        _log(
-                            "recheck pendientes: "
-                            f"scan={summary['checked']} "
-                            f"ok={summary['scraped_ok']} "
-                            f"fail={summary['scraped_fail']} "
-                            f"resolved={summary['resolved']}"
-                        )
-                except Exception as exc:
-                    logger.warning("[MONITOR] pending recheck error: %s", exc)
-                finally:
-                    last_pending_recheck_wall = now_wall
+                fetches_in_flight = _fetches_in_flight()
+                if fetches_in_flight > PENDING_RECHECK_MAX_FETCHES_IN_FLIGHT:
+                    _log(
+                        "recheck pendientes omitido por carga: "
+                        f"fetches={fetches_in_flight}/>{PENDING_RECHECK_MAX_FETCHES_IN_FLIGHT}"
+                    )
+                else:
+                    try:
+                        summary = await _recheck_pending_outcomes_once(db_path)
+                        if summary["found"] > 0 or summary["resolved"] > 0:
+                            _log(
+                                "recheck pendientes: "
+                                f"found={summary['found']} "
+                                f"scan={summary['checked']} "
+                                f"ok={summary['scraped_ok']} "
+                                f"fail={summary['scraped_fail']} "
+                                f"resolved={summary['resolved']}"
+                            )
+                    except Exception as exc:
+                        logger.warning("[MONITOR] pending recheck error: %s", exc)
+                last_pending_recheck_wall = now_wall
+
+            # Periodically revisit pending schedule rows and persist FT matches.
+            if now_wall - last_pending_schedule_recheck_wall >= PENDING_SCHEDULE_RECHECK_SECS:
+                fetches_in_flight = _fetches_in_flight()
+                if fetches_in_flight > PENDING_RECHECK_MAX_FETCHES_IN_FLIGHT:
+                    _log(
+                        "recheck schedule FT omitido por carga: "
+                        f"fetches={fetches_in_flight}/>{PENDING_RECHECK_MAX_FETCHES_IN_FLIGHT}"
+                    )
+                else:
+                    try:
+                        sched_summary = await _recheck_pending_finished_schedule_once(db_path)
+                        if (
+                            sched_summary["found"] > 0
+                            or
+                            sched_summary["checked"] > 0
+                            or sched_summary["finished_saved"] > 0
+                        ):
+                            _log(
+                                "recheck schedule FT: "
+                                f"found={sched_summary['found']} "
+                                f"scan={sched_summary['checked']} "
+                                f"ok={sched_summary['scraped_ok']} "
+                                f"fail={sched_summary['scraped_fail']} "
+                                f"saved={sched_summary['finished_saved']}"
+                            )
+                    except Exception as exc:
+                        logger.warning("[MONITOR] pending schedule recheck error: %s", exc)
+                last_pending_schedule_recheck_wall = now_wall
 
             await asyncio.sleep(60)
 
@@ -2983,7 +3479,7 @@ def schedule_text(db_path: str, local_date: str) -> str:
         home_s = str(row["home_team"] or "?")[:11]
         away_s = str(row["away_team"] or "?")[:11]
         return (
-            f"{hora} {home_s} vs {away_s} {status_short} "
+            f"{hora} {status_short} {home_s} vs {away_s} | "
             f"Q3:{q3s}{n3} Q4:{q4s}{n4}"
         )
 
@@ -3086,7 +3582,10 @@ def schedule_keyboard(db_path: str, local_date: str):
             return "✗"
         return "⏳"
 
-    bet_rows = [r for r in rows if _is_bet_signal(str(r["q3_signal"] or "")) or _is_bet_signal(str(r["q4_signal"] or ""))]
+    bet_rows = [
+        r for r in rows
+        if _is_bet_signal(str(r["q3_signal"] or "")) or _is_bet_signal(str(r["q4_signal"] or ""))
+    ]
     other_rows = [r for r in rows if r not in bet_rows]
 
     buttons = []
@@ -3103,10 +3602,14 @@ def schedule_keyboard(db_path: str, local_date: str):
         q4s = str(r["q4_signal"] or "-")[:6]
         q3m = str(r["q3_model"] or "")
         q4m = str(r["q4_model"] or "")
-        model_txt = f"[{q3m}/{q4m}]" if (q3m or q4m) else ""
-        label = f"{emoji} {hora} {home_s} vs {away_s} Q3:{q3s} Q4:{q4s} {model_txt}"[:64]
-        cd = f"match:{r['match_id']}:{r['event_date']}:0"
-        buttons.append([InlineKeyboardButton(label, callback_data=cd)])
+        qmodels = f"{q3m}/{q4m}" if (q3m or q4m) else "-"
+        label = (
+            f"{emoji} {hora} {home_s} vs {away_s} "
+            f"Q3:{q3s} Q4:{q4s} [{qmodels}]"
+        )
+        buttons.append([
+            InlineKeyboardButton(label, callback_data=f"monitor:match:{r['match_id']}")
+        ])
 
     buttons.extend(nav)
     header = f"Itinerario {local_date} — {len(rows)} partidos ({len(bet_rows)} apuestas):"
@@ -3116,7 +3619,6 @@ def schedule_keyboard(db_path: str, local_date: str):
 def log_keyboard(db_path: str, limit: int = 20):
     """Return (header_text, InlineKeyboardMarkup) — one button per log row."""
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-
     conn = _open_db(db_path)
     rows = conn.execute(
         "SELECT * FROM bet_monitor_log ORDER BY created_at DESC LIMIT ?",
