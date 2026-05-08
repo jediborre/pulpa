@@ -30,6 +30,7 @@ import re
 import sqlite3
 import sys
 import time
+import math
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Awaitable, Callable, TextIO
@@ -40,7 +41,7 @@ if str(BASE_DIR) not in sys.path:
 
 logger = logging.getLogger(__name__)
 
-# ── Timing constants ──────────────────────────────────────────────────────────
+# ── Timing constants ────
 UTC_OFFSET_HOURS = -6        # must match telegram_bot.py
 
 Q3_MINUTE = 24               # game-minute where Q3 data is required
@@ -69,8 +70,12 @@ MAX_CONCURRENT_FETCHES = 6   # max simultaneous Playwright fetches across all wa
 FINAL_FETCH_EXTRA_SECS = 300 # extra real-seconds after estimated end before final save
 FINAL_FETCH_MIN_GP = 8       # require at least this many graph_points to attempt save
 MONITOR_LOG_DIR = BASE_DIR / "logs"  # daily monitor logs written here
+Q4_TOO_LATE_BET_MINUTE = 33  # discard Q4 bet if minute >= this AND pick is ahead
+Q4_TOO_LATE_HARD_MINUTE = 36 # always discard Q4 bet if minute >= this (hard cutoff)
+Q4_TOO_LATE_SCORE_MARGIN = 5 # q4 margin threshold for score-aware late discard
+Q4_REEVAL_FAST_SECS = 45     # fast re-evaluation tick for uncertain Q4 signals
 
-# ── Global state (read by telegram_bot.py) ────────────────────────────────────
+# ─ Global state (read by telegram_bot.py) ──────────────────
 MONITOR_STATUS: dict = {
     "running": False,
     "started_at": None,
@@ -95,8 +100,35 @@ _daily_log_handler: logging.Handler | None = None
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 
 
+def _sanitize_fetch_error_message(msg: str, match_id: str) -> str:
+    """Remove match-id-specific noise from scraper error messages."""
+    out = str(msg or "")
+    out = out.replace(str(match_id), "<id>")
+    return out[:200]
+
+
+def _compact_fetch_error_reason(msg: str) -> str:
+    """Map a verbose scraper error to a short Spanish label."""
+    m = msg.lower()
+    if "404" in m or "not found" in m:
+        return "Incidentes HTTP 404"
+    if "503" in m or "service unavailable" in m:
+        return "Incidentes HTTP 503"
+    if "429" in m or "rate" in m or "too many" in m:
+        return "Rate limit"
+    if "timeout" in m or "timed out" in m:
+        return "Timeout"
+    if "playwright" in m or "browser" in m:
+        return "Error navegador"
+    if "connection" in m or "network" in m:
+        return "Error conexión"
+    if "unavailable" in m:
+        return "No disponible"
+    return msg[:60] if msg else "Error desconocido"
+
+
 def _is_bet_signal(signal: str) -> bool:
-    """True for BET, BET_HOME, BET_AWAY — but not NO_BET."""
+    """True for BET, BET_HOME, BET_AWAY ÔÇö but not NO_BET."""
     s = str(signal).upper()
     return "BET" in s and "NO_BET" not in s and "NO BET" not in s
 
@@ -105,7 +137,7 @@ def _q3_timing() -> tuple[int, int, int]:
     """Return (cutoff_minute, min_gp, wake_before) for Q3.
 
     V13/V15/V16/V17 were trained with graph_points up to minute 22, so they
-    can fire inference at minute ~22 — near halftime for 10-min quarter
+    can fire inference at minute ~22 ÔÇö near halftime for 10-min quarter
     leagues (Q2 ends at minute 20) and 2 min pre-Q3 for 12-min leagues.
     A wake_before of 6 means polling starts at minute 16.
     Older models need data up to minute 24 and wake at minute 20.
@@ -146,7 +178,7 @@ def set_model_config(config: dict[str, str]) -> None:
     _model_config = {**_model_config, **config}
 
 
-# Lazy semaphore — created inside the monitor thread's event loop
+# Lazy semaphore ÔÇö created inside the monitor thread's event loop
 _fetch_sem: asyncio.Semaphore | None = None
 
 
@@ -170,7 +202,7 @@ def _fetches_in_flight() -> int:
     return max(0, in_flight)
 
 
-# ── Internal helpers ──────────────────────────────────────────────────────────
+# Internal helpers
 
 def _decorate_quarter_tokens(msg: str) -> str:
     """Decorate Q3/Q4 tokens and match IDs for easier terminal scanning."""
@@ -291,6 +323,49 @@ class _DailyMonitorFileHandler(logging.Handler):
                 self._fh = None
         finally:
             super().close()
+
+
+_console_log_handler: logging.Handler | None = None
+
+_LEVEL_COLORS = {
+    "DEBUG": "36",
+    "INFO": "32",
+    "WARNING": "33",
+    "ERROR": "31",
+    "CRITICAL": "35",
+}
+
+
+def _color_level_name(level: str) -> str:
+    code = _LEVEL_COLORS.get(level, "0")
+    return _color_text(level, code)
+
+
+class _MonitorConsoleFormatter(logging.Formatter):
+    def format(self, rec: logging.LogRecord) -> str:
+        rec = logging.makeLogRecord(rec.__dict__)
+        rec.levelname = _color_level_name(rec.levelname)
+        return super().format(rec)
+
+
+
+
+def _ensure_monitor_console_logging() -> None:
+    global _console_log_handler
+    if _console_log_handler is not None:
+        return
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(
+        _MonitorConsoleFormatter(
+            "%(asctime)s [%(levelname)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
+    logger.propagate = False
+    _console_log_handler = handler
 
 
 def _ensure_daily_file_logging() -> None:
@@ -468,6 +543,8 @@ def init_tables(db_path: str) -> None:
         ("bet_monitor_schedule", "final_fetch_at", "TEXT"),
         ("bet_monitor_log",      "model",           "TEXT"),
         ("bet_monitor_log",      "result_checked",  "INTEGER DEFAULT 0"),
+        ("bet_monitor_log",      "simulated",       "INTEGER DEFAULT 0"),
+        ("bet_monitor_log",      "filter_reason",   "TEXT"),
     ]:
         try:
             conn.execute(
@@ -2382,6 +2459,45 @@ async def _check_quarter(
 
     notified = False
     if _is_bet_signal(signal):
+        if target == "q4":
+            # Guardrail: late Q4 bets are discarded only if they are clearly
+            # advantaged already (score-aware), or if it's de plano too late.
+            q4_pick_margin: int | None = None
+            qs = ((data.get("score") or {}).get("quarters") or {})
+            q4_sc = qs.get("Q4") if isinstance(qs.get("Q4"), dict) else None
+            if q4_sc is not None:
+                try:
+                    q4_h = int(q4_sc.get("home", 0) or 0)
+                    q4_a = int(q4_sc.get("away", 0) or 0)
+                    if pick == "home":
+                        q4_pick_margin = q4_h - q4_a
+                    elif pick == "away":
+                        q4_pick_margin = q4_a - q4_h
+                except (TypeError, ValueError):
+                    q4_pick_margin = None
+
+            if current_minute is not None:
+                hard_late = current_minute >= Q4_TOO_LATE_HARD_MINUTE
+                score_late = (
+                    current_minute >= Q4_TOO_LATE_BET_MINUTE
+                    and q4_pick_margin is not None
+                    and q4_pick_margin >= Q4_TOO_LATE_SCORE_MARGIN
+                )
+                if hard_late or score_late:
+                    margin_txt = "-" if q4_pick_margin is None else str(q4_pick_margin)
+                    _log(
+                        f"⚪ BET {quarter_label} [{_model_config.get(target, '-')}] "
+                        f"descartada por tardia (min={current_minute}, margen_q4_pick={margin_txt})"
+                    )
+                    return "TOO_LATE_BET", True, pred
+            # Double-check Q3 progression right before notifying a Q4 bet.
+            if not _q3_has_real_progress_for_q4(data):
+                _log(
+                    f"⚪ BET {quarter_label} [{_model_config.get(target, '-')}] "
+                    f"descartada: Q3 sin datos validos"
+                )
+                return "Q3_NOT_VALIDATED", False, pred
+
         def _filtered_markup() -> dict:
             return {
                 "inline_keyboard": [[
@@ -2418,6 +2534,20 @@ async def _check_quarter(
                     quarter=target,
                 )
                 notified = True
+                # Log and monitor simulated bet
+                _log_simulated_bet(
+                    db_path, match_id, event_date, home, away, league, target,
+                    _model_config.get(target, "-"), signal, pick, confidence,
+                    current_minute, "confidence_below_min:<=30%"
+                )
+                pick_name = home if pick == "home" else away
+                asyncio.ensure_future(
+                    _resolve_simulated_bet_result(
+                        match_id, target, pick, pick_name,
+                        home, away, league, event_date, db_path, _model_config.get(target, "-"),
+                        "confidence_below_min:<=30%",
+                    )
+                )
             return signal, notified, pred
         try:
             p_home = float(pred.get("p_home_win") or 0.0)
@@ -2458,6 +2588,20 @@ async def _check_quarter(
                         quarter=target,
                     )
                     notified = True
+                    # Log and monitor simulated bet
+                    _log_simulated_bet(
+                        db_path, match_id, event_date, home, away, league, target,
+                        model_used, signal, pick, confidence,
+                        current_minute, "v6_filter_reject"
+                    )
+                    pick_name = home if pick == "home" else away
+                    asyncio.ensure_future(
+                        _resolve_simulated_bet_result(
+                            match_id, target, pick, pick_name,
+                            home, away, league, event_date, db_path, model_used,
+                            "v6_filter_reject",
+                        )
+                    )
                 return signal, notified, pred
         elif model_used == "v6_2":
             _v6_2_accept, _v6_stake, _v6_2_reason = _v6_2_pick_filter_explain(
@@ -2490,6 +2634,20 @@ async def _check_quarter(
                         quarter=target,
                     )
                     notified = True
+                    # Log and monitor simulated bet
+                    _log_simulated_bet(
+                        db_path, match_id, event_date, home, away, league, target,
+                        model_used, signal, pick, confidence,
+                        current_minute, _v6_2_reason
+                    )
+                    pick_name = home if pick == "home" else away
+                    asyncio.ensure_future(
+                        _resolve_simulated_bet_result(
+                            match_id, target, pick, pick_name,
+                            home, away, league, event_date, db_path, model_used,
+                            _v6_2_reason,
+                        )
+                    )
                 return signal, notified, pred
         elif model_used == "v2":
             _v2_accept, _v6_stake = _v2_pick_filter(league, confidence, pick)
@@ -2517,6 +2675,20 @@ async def _check_quarter(
                         quarter=target,
                     )
                     notified = True
+                    # Log and monitor simulated bet
+                    _log_simulated_bet(
+                        db_path, match_id, event_date, home, away, league, target,
+                        model_used, signal, pick, confidence,
+                        current_minute, "v2_filter_reject"
+                    )
+                    pick_name_sim = home if pick == "home" else away
+                    asyncio.ensure_future(
+                        _resolve_simulated_bet_result(
+                            match_id, target, pick, pick_name_sim,
+                            home, away, league, event_date, db_path, model_used,
+                            "v2_filter_reject",
+                        )
+                    )
                 return signal, notified, pred
 
         pick_sym = "🏠" if pick == "home" else ("✈️" if pick == "away" else "?")
@@ -2746,6 +2918,191 @@ async def _resolve_bet_result(
         logger.warning("[MONITOR] result update error %s: %s", match_id, exc)
 
 
+def _log_simulated_bet(
+    db_path: str,
+    match_id: str,
+    event_date: str,
+    home: str,
+    away: str,
+    league: str,
+    target: str,
+    model: str,
+    signal: str,
+    pick: str,
+    confidence: float,
+    scraped_minute: int | None,
+    filter_reason: str,
+) -> None:
+    """Register a filtered bet in bet_monitor_log with simulated=1."""
+    try:
+        conn = _open_db(db_path)
+        _insert_log(
+            conn,
+            match_id=match_id,
+            event_date=event_date,
+            home_team=home,
+            away_team=away,
+            league=league,
+            target=target,
+            model=model,
+            signal=signal,
+            recommendation=signal,
+            pick=pick,
+            confidence=confidence,
+            scraped_minute=scraped_minute,
+            result="pending",
+            simulated=1,
+            filter_reason=filter_reason,
+        )
+        conn.close()
+    except Exception as exc:
+        logger.warning("[MONITOR] simulated bet log error %s: %s", match_id, exc)
+
+
+async def _resolve_simulated_bet_result(
+    match_id: str,
+    target: str,
+    pick: str,
+    pick_name: str,
+    home: str,
+    away: str,
+    league: str,
+    event_date: str,
+    db_path: str,
+    model_used: str = "-",
+    filter_reason: str = "-",
+) -> None:
+    """Wait for filtered match to finish then notify win/loss for the simulated bet.
+    
+    Similar to _resolve_bet_result but for simulated/filtered bets.
+    """
+    import scraper as scraper_mod
+
+    quarter_label = target.upper()
+    q_key = {"q3": "Q3", "q4": "Q4"}.get(target, target.upper())
+    _log(f"🟡 Simulando resultado {quarter_label}: {home} vs {away} [filtrado]")
+
+    MAX_WAIT_SECS = 4 * 3600   # give up after 4 h
+    POLL_SECS = 120
+    waited = 0
+
+    data: dict | None = None
+    while waited < MAX_WAIT_SECS:
+        await asyncio.sleep(POLL_SECS)
+        waited += POLL_SECS
+        try:
+            async with _get_fetch_sem():
+                data = await asyncio.to_thread(scraper_mod.fetch_match_by_id, match_id)
+        except Exception as exc:
+            logger.warning("[MONITOR] simulated-result-poll %s: %s", match_id, str(exc).split("\n")[0][:160])
+            continue
+        if not data:
+            continue
+        st = str((data.get("match", {}) or {}).get("status_type", "") or "").lower()
+        if st == "finished":
+            break
+    else:
+        _log(f"🟡 Simulación resultado {quarter_label} {home} vs {away}: timeout sin finalizar")
+        return
+
+    # Read the actual quarter score
+    qs = ((data or {}).get("score", {}) or {}).get("quarters", {}) or {}
+    qd = qs.get(q_key)
+    if not isinstance(qd, dict):
+        _log(f"🟡 Simulación resultado {quarter_label}: sin data de cuarto {q_key}")
+        return
+
+    q_home = qd.get("home")
+    q_away = qd.get("away")
+    if q_home is None or q_away is None:
+        _log(f"🟡 Simulación resultado {quarter_label}: scores nulos para {q_key}")
+        return
+
+    try:
+        q_home = int(q_home)
+        q_away = int(q_away)
+    except (TypeError, ValueError):
+        return
+
+    if q_home == q_away:
+        outcome = "❌ EMPATE 🤝"
+        result_key = "push"
+    elif pick == "home":
+        outcome = " ✅" if q_home > q_away else " ❌"
+        result_key = "win" if q_home > q_away else "loss"
+    else:
+        outcome = " ✅" if q_away > q_home else " ❌"
+        result_key = "win" if q_away > q_home else "loss"
+
+    # Format the new message with model and time info
+    pick_emoji = "🏠" if pick == "home" else ("✈️" if pick == "away" else "")
+    
+    # Extract event time from match data
+    event_time_str = event_date
+    _match_info = (data.get("match") or {}) if data else {}
+    start_ts = _match_info.get("startTimestamp", 0)
+    if start_ts:
+        try:
+            dt_utc = datetime.fromtimestamp(start_ts, tz=timezone.utc)
+            dt_local = dt_utc + timedelta(hours=UTC_OFFSET_HOURS)
+            # Map month numbers to Spanish names
+            months_es = {
+                1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+                7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+            }
+            days_es = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+            day_name = days_es[dt_local.weekday()]
+            month_name = months_es[dt_local.month].lower()
+            event_time_str = f"{day_name} {dt_local.day} {month_name} {dt_local.year}, {dt_local.hour:02d}:{dt_local.minute:02d}"
+        except Exception:
+            pass
+
+    msg = (
+        f"🟡 {'✅' if result_key == 'win' else '❌ si se hubiera apostado'} "
+        f"{q_key} [{model_used}] — {outcome} {pick_emoji} {pick_name}\n"
+        f"{home} vs {away} {q_key}: {q_home}-{q_away}\n"
+        f"Liga: {league}\n"
+        f"Razón filtro: {filter_reason}\n"
+        f"{event_time_str}"
+    )
+    _m = (data.get("match") or {}) if data else {}
+    _ev_slug = _m.get("event_slug") or ""
+    _custom_id = _m.get("custom_id") or ""
+    if _ev_slug and _custom_id:
+        _sf_url = f"https://www.sofascore.com/{_ev_slug}/{_custom_id}#id:{match_id}"
+    else:
+        _sf_url = f"https://www.sofascore.com/basketball/event/{match_id}"
+    _result_markup = {"inline_keyboard": [
+        [
+            {"text": "🔍 Ver Match", "callback_data": f"match:{match_id}:_:0"},
+            {"text": "📱 Sofascore", "url": _sf_url},
+        ],
+    ]}
+    await _notify(msg, reply_markup=_result_markup, notify_type="result", quarter=target)
+    _log(f"🧪 Resultado simulado {quarter_label} {home} vs {away}: {outcome} ({q_home}-{q_away})")
+
+    # Update the log row
+    try:
+        conn = _open_db(db_path)
+        row_id = conn.execute(
+            """
+            SELECT id FROM bet_monitor_log
+            WHERE match_id = ? AND target = ? AND result = 'pending' AND simulated = 1
+            ORDER BY id DESC LIMIT 1
+            """,
+            (match_id, target),
+        ).fetchone()
+        if row_id:
+            conn.execute(
+                "UPDATE bet_monitor_log SET result = ?, result_checked = 1 WHERE id = ?",
+                (result_key, row_id["id"]),
+            )
+            conn.commit()
+        conn.close()
+    except Exception as exc:
+        logger.warning("[MONITOR] simulated result update error %s: %s", match_id, exc)
+
+
 # ── Match watcher coroutine ───────────────────────────────────────────────────
 
 async def _watch_match(
@@ -2779,7 +3136,8 @@ async def _watch_match(
     q3_done = bool(row.get("q3_checked")) or SKIP_Q3
     q4_done = bool(row.get("q4_checked"))
     if SKIP_Q3 and not bool(row.get("q3_checked")):
-        _log(f"{home} vs {away}: [SKIP_Q3] Q3 deshabilitado — directo a Q4")
+        pass
+        # _log(f"{home} vs {away}: [SKIP_Q3] Q3 deshabilitado — directo a Q4")
     q3_no_bet_ticks = 0   # confirmation ticks for uncertain Q3 NO BET
     q4_no_bet_ticks = 0   # confirmation ticks for uncertain Q4 NO BET
     q4_waiting_score_ticks = 0  # ticks while waiting for Q3 score to appear
@@ -2788,6 +3146,7 @@ async def _watch_match(
     q4_stale_ticks = 0  # ticks where graph_points stop moving while waiting Q4
     q4_last_gp_total = -1
     errors = 0
+    fetch_error_reasons: dict[str, int] = {}
     secs_per_gmin = float(SECS_PER_GAME_MIN)
     last_gmin: int | None = None
     last_gmin_wall: float = 0.0
@@ -2844,12 +3203,21 @@ async def _watch_match(
                         scraper_mod.fetch_match_by_id, match_id
                     )
                 errors = 0
+                fetch_error_reasons.clear()
             except Exception as exc:
                 errors += 1
                 # Truncate Playwright call-log to first meaningful line
                 exc_short = str(exc).split("\n")[0][:160]
+                exc_short = _sanitize_fetch_error_message(exc_short, match_id)
+                compact_reason = _compact_fetch_error_reason(exc_short)
+                fetch_error_reasons[compact_reason] = fetch_error_reasons.get(compact_reason, 0) + 1
                 logger.warning(
-                    "[MONITOR] %s fetch error #%d: %s", match_id, errors, exc_short
+                    "[MONITOR] %s vs %s (%s) fetch error #%d: %s",
+                    home,
+                    away,
+                    match_id,
+                    errors,
+                    compact_reason,
                 )
                 if errors >= MAX_FETCH_ERRORS:
                     _update_row(
@@ -2859,7 +3227,17 @@ async def _watch_match(
                     MONITOR_STATUS["discarded"] = (
                         MONITOR_STATUS.get("discarded", 0) + 1
                     )
-                    _log(f"{home} vs {away}: descartado ({errors} errores)")
+                    reasons_txt = ", ".join(
+                        f"{reason} x{count}"
+                        for reason, count in sorted(
+                            fetch_error_reasons.items(),
+                            key=lambda kv: (-kv[1], kv[0]),
+                        )
+                    )
+                    if reasons_txt:
+                        _log(f"{home} vs {away}: descartado ({errors} errores: {reasons_txt})")
+                    else:
+                        _log(f"{home} vs {away}: descartado ({errors} errores)")
                     break
                 if await _sleep(POLL_NEAR_SECS):
                     break
@@ -3034,9 +3412,10 @@ async def _watch_match(
                 else:
                     # Still before Q3 window — smart sleep
                     mins_to_wake = (q3_cut - q3_wake_before) - minute
+                    mins_to_wake_label = max(1, int(math.ceil(float(mins_to_wake))))
                     sleep_secs = max(30.0, min(mins_to_wake * secs_per_gmin, IDLE_POLL_SECS))
                     _log(
-                        f"{home} vs {away}: Q3 en ~{mins_to_wake:.0f} game-min, "
+                        f"{home} vs {away}: Q3 faltan ~{mins_to_wake_label} game-min, "
                         f"durmiendo {sleep_secs:.0f}s"
                     )
                     if await _sleep(sleep_secs):
@@ -3075,11 +3454,11 @@ async def _watch_match(
                     budget_secs = max(30.0, mins_left * secs_per_gmin)
                     # Adaptive poll: tighter as deadline approaches
                     if mins_left <= 2:
-                        poll_secs = 30.0
+                        poll_secs = 20.0
                     elif mins_left <= 4:
-                        poll_secs = 50.0
+                        poll_secs = 30.0
                     else:
-                        poll_secs = POLL_NEAR_SECS
+                        poll_secs = min(float(POLL_NEAR_SECS), float(Q4_REEVAL_FAST_SECS))
 
                     if score_ok and gp4 >= q4_mgp:
                         q4_waiting_score_ticks = 0
@@ -3172,18 +3551,22 @@ async def _watch_match(
                 else:
                     # Tiered sleep before Q4_EARLIEST_MINUTE — adapts to calibrated pace
                     mins_to_wake = Q4_EARLIEST_MINUTE - minute
-                    if mins_to_wake > 10:
+                    mins_to_wake_label = max(1, int(math.ceil(float(mins_to_wake))))
+                    if mins_to_wake <= 1:
+                        # Very close to Q4 gate: wake quickly to account for fetch/inference latency.
+                        sleep_secs = min(45.0, max(20.0, mins_to_wake * secs_per_gmin * 0.35))
+                    elif mins_to_wake <= 2:
+                        sleep_secs = min(60.0, max(25.0, mins_to_wake * secs_per_gmin * 0.45))
+                    elif mins_to_wake <= 5:
+                        sleep_secs = min(90.0, max(30.0, mins_to_wake * secs_per_gmin * 0.55))
+                    elif mins_to_wake > 10:
                         # Far away: sleep at most 3 min so we can recalibrate pace
                         sleep_secs = min(mins_to_wake * secs_per_gmin * 0.5, 180.0)
-                    elif mins_to_wake > 5:
-                        sleep_secs = min(mins_to_wake * secs_per_gmin * 0.6, 120.0)
-                    elif mins_to_wake > 2:
-                        sleep_secs = min(mins_to_wake * secs_per_gmin * 0.7, 60.0)
                     else:
-                        sleep_secs = max(20.0, mins_to_wake * secs_per_gmin * 0.8)
+                        sleep_secs = min(mins_to_wake * secs_per_gmin * 0.6, 120.0)
                     sleep_secs = max(20.0, sleep_secs)
                     _log(
-                        f"🟡 {home} vs {away}: Q4 en ~{mins_to_wake:.0f} game-min "
+                        f"🟡 {home} vs {away}: Q4 faltan ~{mins_to_wake_label} game-min "
                         f"(min={minute}, ritmo={secs_per_gmin:.0f}s/gmin, "
                         f"esperando min {Q4_EARLIEST_MINUTE}), durmiendo {sleep_secs:.0f}s"
                     )
@@ -3209,6 +3592,7 @@ async def _watch_match(
 
 async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
     """Main monitor coroutine.  Run as asyncio.create_task(run_monitor(...))."""
+    _ensure_monitor_console_logging()
     _ensure_daily_file_logging()
 
     async def _refresh_schedule_dates(today_str: str, tomorrow_str: str) -> None:
@@ -3678,9 +4062,10 @@ def signals_text_today(
     # Latest log entry per (match_id, target) for today, ordered by schedule time
     rows = conn.execute(
         """
-        SELECT l.match_id, l.target, l.signal, l.pick, l.confidence,
-               l.recommendation, l.result, l.created_at,
-               l.home_team, l.away_team, l.league, l.model,
+         SELECT l.match_id, l.target, l.signal, l.pick, l.confidence,
+             l.recommendation, l.result, l.created_at,
+             l.home_team, l.away_team, l.league, l.model,
+             l.simulated, l.filter_reason,
                s.scheduled_utc_ts
         FROM bet_monitor_log l
         INNER JOIN (
@@ -3739,8 +4124,72 @@ def signals_text_today(
           AND NOT l.league LIKE '%Super League%'
           AND NOT l.league LIKE '%United Cup%'
           AND NOT l.league LIKE '%United League%'
-          AND (l.signal NOT IN ('BET', 'BET_HOME', 'BET_AWAY') OR l.confidence > 0.30)
+          AND (
+                l.simulated = 1
+                OR l.signal NOT IN ('BET', 'BET_HOME', 'BET_AWAY')
+                OR l.confidence > 0.30
+              )
         ORDER BY COALESCE(s.scheduled_utc_ts, 0) ASC, l.created_at ASC
+        """,
+        (local_date,),
+    ).fetchall()
+
+    late_rows = conn.execute(
+        """
+        SELECT match_id, home_team, away_team, league, scheduled_utc_ts,
+               q4_signal AS signal, q4_pick AS pick, q4_confidence AS confidence,
+               q4_model AS model, q4_notified AS notified, q4_checked AS checked
+        FROM bet_monitor_schedule
+        WHERE event_date = ?
+          AND q4_signal IN ('TOO_LATE_BET', 'Q3_NOT_VALIDATED')
+          AND NOT (league LIKE '%WNBA%' OR league LIKE '%Women%' OR league LIKE '%women%' OR league LIKE '%Feminina%' OR league LIKE '%Femenina%')
+          AND NOT (league LIKE '%Playoff%' OR league LIKE '%PLAY OFF%')
+          AND NOT league LIKE '%U21 Espoirs Elite%'
+          AND NOT league LIKE '%Liga Femenina%'
+          AND NOT league LIKE '%LF Challenge%'
+          AND NOT league LIKE '%Polish Basketball League%'
+          AND NOT league LIKE '%SuperSport Premijer Liga%'
+          AND NOT league LIKE '%Prvenstvo Hrvatske za d%'
+          AND NOT league LIKE '%ABA Liga%'
+          AND NOT league LIKE '%Argentina Liga Nacional%'
+          AND NOT league LIKE '%Basketligaen%'
+          AND NOT league LIKE '%lite 2%'
+          AND NOT league LIKE '%EYBL%'
+          AND NOT league LIKE '%I B MCKL%'
+          AND NOT league LIKE '%Liga 1 Masculin%'
+          AND NOT league LIKE '%Liga Nationala%'
+          AND NOT league LIKE '%NBL1%'
+          AND NOT league LIKE '%PBA Commissioner%'
+          AND NOT league LIKE '%Rapid League%'
+          AND NOT league LIKE '%Stoiximan GBL%'
+          AND NOT league LIKE '%Playout%'
+          AND NOT league LIKE '%Superleague%'
+          AND NOT league LIKE '%Superliga%'
+          AND NOT league LIKE '%Swedish Basketball Superettan%'
+          AND NOT league LIKE '%Swiss Cup%'
+          AND NOT league LIKE '%Финал%'
+          AND NOT league LIKE '%Turkish Basketball Super League%'
+          AND NOT league LIKE '%NBA%'
+          AND NOT league LIKE '%Big V%'
+          AND NOT league LIKE '%Egyptian Basketball Super League%'
+          AND NOT league LIKE '%Lega A Basket%'
+          AND NOT league LIKE '%Liga e Par%'
+          AND NOT league LIKE '%Liga Ouro%'
+          AND NOT league LIKE '%Señal%'
+          AND NOT league LIKE '%LNB%'
+          AND NOT league LIKE '%Meridianbet KLS%'
+          AND NOT league LIKE '%MPBL%'
+          AND NOT league LIKE '%Nationale 1%'
+          AND NOT league LIKE '%Poland 2nd Basketball League%'
+          AND NOT league LIKE '%Portugal LBP%'
+          AND NOT league LIKE '%Portugal Proliga%'
+          AND NOT league LIKE '%Saku I liiga%'
+          AND NOT league LIKE '%Serie A2%'
+          AND NOT league LIKE '%Slovenian Second Basketball%'
+          AND NOT league LIKE '%Super League%'
+          AND NOT league LIKE '%United Cup%'
+          AND NOT league LIKE '%United League%'
+        ORDER BY scheduled_utc_ts ASC
         """,
         (local_date,),
     ).fetchall()
@@ -3874,6 +4323,7 @@ def signals_text_today(
         s: dict,
         show_no_bet: bool = True,
         mid: str = "",
+        source_kind: str = "real",
     ) -> str | None:
         sig    = str(s.get("signal") or "-").upper()
         pick   = str(s.get("pick") or "")
@@ -3884,9 +4334,15 @@ def signals_text_today(
         res_sym   = {"win": "✅", "loss": "❌", "push": "➖", "pending": "⏳"}.get(result, "⏳")
         model_txt = f" [{model}]" if model else ""
         pick_sym  = _pick_sym(pick)
+        if source_kind == "filtered":
+            signal_emoji = "🟡"
+        elif source_kind == "late":
+            signal_emoji = "⚪"
+        else:
+            signal_emoji = "🟢" if _is_bet_signal(sig) else ("🔴" if "NO" in sig.upper() else "⚪")
         if _is_bet_signal(sig):
             return (
-                f"  🟢 {tgt.upper()}{model_txt}"
+                f"  {signal_emoji} {tgt.upper()}{model_txt}"
                 f" → {pick_sym}{conf_txt} {res_sym}"
             ).rstrip()
         # NO_BET line
@@ -3904,7 +4360,7 @@ def signals_text_today(
             real_txt = " (=)"
         else:
             real_txt = ""
-        return f"  🔴 {tgt.upper()}{model_txt}{tendency}{real_txt}"
+        return f"  {signal_emoji} {tgt.upper()}{model_txt}{tendency}{real_txt}"
 
     # Group signals by match_id, preserving insertion order
     match_signals: dict[str, dict] = {}
@@ -3939,7 +4395,34 @@ def signals_text_today(
                 "league": str(row["league"] or "?"),
                 "ts":     row["scheduled_utc_ts"],
             }
-        match_signals[mid][tgt] = dict(row)
+        row_dict = dict(row)
+        row_dict["_kind"] = "filtered" if int(row_dict.get("simulated") or 0) == 1 else "real"
+        match_signals[mid][tgt] = row_dict
+
+    # Late Q4 entries are sourced from the schedule table, not the log.
+    for row in late_rows:
+        mid = str(row["match_id"])
+        if mid not in match_signals:
+            match_signals[mid] = {}
+            match_meta[mid] = {
+                "home":   str(row["home_team"] or "?"),
+                "away":   str(row["away_team"] or "?"),
+                "league": str(row["league"] or "?"),
+                "ts":     row["scheduled_utc_ts"],
+            }
+        match_signals[mid]["q4"] = {
+            "match_id": mid,
+            "target": "q4",
+            "signal": row["signal"],
+            "pick": row["pick"],
+            "confidence": row["confidence"],
+            "result": "pending",
+            "model": row["model"],
+            "home_team": row["home_team"],
+            "away_team": row["away_team"],
+            "league": row["league"],
+            "_kind": "late",
+        }
 
     # Scheduled matches that have no signals at all yet
     signaled_ids = set(match_signals.keys())
@@ -3956,26 +4439,43 @@ def signals_text_today(
 
     show_no_bet = pref == "all"
 
-    bet_mids = [
+    real_bet_mids = [
         m for m in match_signals
         if any(
             _is_bet_signal(str(match_signals[m].get(t, {}).get("signal", "")))
+            and str(match_signals[m].get(t, {}).get("_kind", "real")) == "real"
             for t in ("q3", "q4")
         )
     ]
-    nobet_mids = [m for m in match_signals if m not in bet_mids]
+    filtered_bet_mids = [
+        m for m in match_signals
+        if any(
+            _is_bet_signal(str(match_signals[m].get(t, {}).get("signal", "")))
+            and str(match_signals[m].get(t, {}).get("_kind", "real")) == "filtered"
+            for t in ("q3", "q4")
+        )
+    ]
+    late_bet_mids = [
+        m for m in match_signals
+        if any(str(match_signals[m].get(t, {}).get("_kind", "")) == "late" for t in ("q3", "q4"))
+    ]
+    nobet_mids = [m for m in match_signals if m not in real_bet_mids and m not in filtered_bet_mids and m not in late_bet_mids]
 
-    def _render_match(mid: str, force_show_no_bet: bool) -> list[str]:
+    def _render_match(mid: str, force_show_no_bet: bool, source_kind: str = "real") -> list[str]:
         meta = match_meta[mid]
         hora = _hora(meta["ts"])
         lines_m = [f"{hora}  {meta['home']} vs {meta['away']} ({meta['league']})"]
         for tgt in ("q3", "q4"):
             if tgt in match_signals[mid]:
+                row_kind = str(match_signals[mid][tgt].get("_kind", "real"))
+                if source_kind in ("real", "filtered", "late") and row_kind != source_kind:
+                    continue
                 line = _sig_line(
                     tgt,
                     match_signals[mid][tgt],
                     show_no_bet=force_show_no_bet,
                     mid=mid,
+                    source_kind=source_kind if source_kind != "real" else str(match_signals[mid][tgt].get("_kind", "real")),
                 )
                 if line is not None:
                     lines_m.append(line)
@@ -4007,10 +4507,11 @@ def signals_text_today(
         _odds = 1.4
     cfg_conn.close()
 
-    def _calc_stats(mids: list, target: str = None) -> dict:
+    def _calc_stats(mids: list, target: str = None, kind: str = "real") -> dict:
         """Count wins/losses/push/pending for BET signals in mids.
-        
+
         If target is provided (e.g., "q3" or "q4"), filter to that quarter only.
+        kind can be 'real' or 'filtered'.
         """
         w = l = p = pending = 0
         for mid in mids:
@@ -4020,6 +4521,8 @@ def signals_text_today(
                 if not s:
                     continue
                 if not _is_bet_signal(str(s.get("signal") or "")):
+                    continue
+                if str(s.get("_kind", "real")) != kind:
                     continue
                 r = str(s.get("result") or "pending")
                 if r == "win":
@@ -4072,118 +4575,56 @@ def signals_text_today(
             f"Bank ${bank:.0f}→${bank_end:.0f}"
         )
 
-    def _format_table_stats(st_q3: dict, st_q4: dict, model_q3: str, model_q4: str,
-                            bank: float, bet: float, odds: float,
-                            active_quarters: list[str] | None = None) -> str:
-        """Format Q3 and Q4 stats side-by-side in a table.
-        active_quarters: list of lowercase quarter names to show (e.g. ['q3','q4']).
-        Columns for inactive quarters are omitted.
-        """
-        if active_quarters is None:
-            active_quarters = ["q3", "q4"]
-        show_q3 = "q3" in active_quarters
-        show_q4 = "q4" in active_quarters
-        lines = []
-
+    def _format_two_bank_stats(real_st: dict, filt_st: dict, bank: float, bet: float, odds: float) -> str:
         def _col(text: str) -> str:
-            return text.ljust(16)
+            return text.ljust(18)
 
-        # Header
-        header = ""
-        if show_q3:
-            header += _col(f"Q3 [{model_q3}]") + " "
-        if show_q4:
-            header += _col(f"Q4 [{model_q4}]")
-        lines.append(f"  {header.rstrip()}")
+        def _pack(st: dict) -> tuple[int, int, int, int, float, float, float]:
+            played = st["w"] + st["l"]
+            profit = st["w"] * bet * (odds - 1) - st["l"] * bet
+            roi = (profit / (played * bet) * 100) if played > 0 else 0.0
+            hit = (st["w"] / played * 100) if played > 0 else 0.0
+            return st["w"], st["l"], st["pending"], played, profit, roi, hit
 
-        # Wins & hit rate
-        played_q3 = st_q3["w"] + st_q3["l"]
-        hit_q3 = (st_q3["w"] / played_q3 * 100) if played_q3 > 0 else 0.0
-        played_q4 = st_q4["w"] + st_q4["l"]
-        hit_q4 = (st_q4["w"] / played_q4 * 100) if played_q4 > 0 else 0.0
-        wins_row = ""
-        if show_q3:
-            wins_row += _col(f"{st_q3['w']}✅{hit_q3:.0f}%") + " "
-        if show_q4:
-            wins_row += _col(f"{st_q4['w']}✅{hit_q4:.0f}%")
-        lines.append(f"  {wins_row.rstrip()}")
-
-        # Losses
-        loss_row = ""
-        if show_q3:
-            loss_row += _col(f"{st_q3['l']}❌") + " "
-        if show_q4:
-            loss_row += _col(f"{st_q4['l']}❌")
-        lines.append(f"  {loss_row.rstrip()}")
-
-        # Pending
-        has_pending = (show_q3 and st_q3["pending"]) or (show_q4 and st_q4["pending"])
-        if has_pending:
-            pend_row = ""
-            if show_q3:
-                pend_row += _col(f"+{st_q3['pending']}⏳" if st_q3["pending"] else "") + " "
-            if show_q4:
-                pend_row += _col(f"+{st_q4['pending']}⏳" if st_q4["pending"] else "")
-            lines.append(f"  {pend_row.rstrip()}")
-
-        # ROI
-        profit_q3 = st_q3["w"] * bet * (odds - 1) - st_q3["l"] * bet
-        roi_q3 = (profit_q3 / (played_q3 * bet) * 100) if played_q3 > 0 else 0.0
-        sign_q3 = "+" if profit_q3 >= 0 else ""
-        profit_q4 = st_q4["w"] * bet * (odds - 1) - st_q4["l"] * bet
-        roi_q4 = (profit_q4 / (played_q4 * bet) * 100) if played_q4 > 0 else 0.0
-        sign_q4 = "+" if profit_q4 >= 0 else ""
-        roi_row = ""
-        if show_q3:
-            roi_row += _col(f"ROI {sign_q3}{roi_q3:.1f}%") + " "
-        if show_q4:
-            roi_row += _col(f"ROI {sign_q4}{roi_q4:.1f}%")
-        lines.append(f"  {roi_row.rstrip()}")
-
-        # Bank
-        bank_row = ""
-        if show_q3:
-            bank_row += _col(f"${bank:.0f}→${bank + profit_q3:.0f}") + " "
-        if show_q4:
-            bank_row += _col(f"${bank:.0f}→${bank + profit_q4:.0f}")
-        lines.append(f"  {bank_row.rstrip()}")
-
+        rw, rl, rp, rplayed, rprofit, rroi, rhit = _pack(real_st)
+        fw, fl, fp, fplayed, fprofit, froi, fhit = _pack(filt_st)
+        lines = [f"  {_col('Reales')} {_col('Filtradas')}"]
+        lines.append(f"  {_col(f'{rw}✅{rhit:.0f}%')} {_col(f'{fw}✅{fhit:.0f}%')}")
+        lines.append(f"  {_col(f'{rl}❌')} {_col(f'{fl}❌')}")
+        if rp or fp:
+            lines.append(f"  {_col(f'+{rp}⏳' if rp else '')} {_col(f'+{fp}⏳' if fp else '')}")
+        lines.append(f"  {_col(f'ROI {rroi:+.1f}%')} {_col(f'ROI {froi:+.1f}%')}")
+        lines.append(f"  {_col(f'Bank ${bank:.0f}→${bank + rprofit:.0f}')} {_col(f'Bank ${bank:.0f}→${bank + fprofit:.0f}')}")
         return "\n".join(lines)
 
-    bet_st_q3 = _calc_stats(bet_mids, "q3")
-    bet_st_q4 = _calc_stats(bet_mids, "q4")
+    real_st_q3 = _calc_stats(real_bet_mids, "q3", kind="real")
+    real_st_q4 = _calc_stats(real_bet_mids, "q4", kind="real")
+    filt_st_q3 = _calc_stats(filtered_bet_mids, "q3", kind="filtered")
+    filt_st_q4 = _calc_stats(filtered_bet_mids, "q4", kind="filtered")
     nobet_st  = _calc_nobet_stats(nobet_mids) if show_no_bet else None
-    # Also compute nobet lines inside bet matches
-    nobet_in_bet = _calc_nobet_stats(bet_mids) if show_no_bet else None
 
-    # Build stats section early with separate Q3 and Q4 simulations
+    real_st = {
+        "w": real_st_q3["w"] + real_st_q4["w"],
+        "l": real_st_q3["l"] + real_st_q4["l"],
+        "pending": real_st_q3["pending"] + real_st_q4["pending"],
+    }
+    filt_st = {
+        "w": filt_st_q3["w"] + filt_st_q4["w"],
+        "l": filt_st_q3["l"] + filt_st_q4["l"],
+        "pending": filt_st_q3["pending"] + filt_st_q4["pending"],
+    }
+
     stat_lines = []
-    
-    # Read active models from in-memory config (set_model_config keeps this current)
-    q3_model = _model_config.get("q3", "v4")
-    q4_model = _model_config.get("q4", "v4")
-    
-    # Build table with Q3 and Q4 side by side
-    played_q3 = bet_st_q3["w"] + bet_st_q3["l"]
-    played_q4 = bet_st_q4["w"] + bet_st_q4["l"]
-    has_bets = played_q3 > 0 or played_q4 > 0 or bet_st_q3["pending"] or bet_st_q4["pending"]
-    
-    if has_bets:
-        table_txt = _format_table_stats(bet_st_q3, bet_st_q4, q3_model, q4_model, _bank0, _bet_sz, _odds,
-                                        active_quarters=quarters_lower)
-        stat_lines.append(table_txt)
+    if real_st["w"] or real_st["l"] or real_st["pending"] or filt_st["w"] or filt_st["l"] or filt_st["pending"]:
+        stat_lines.append(_format_two_bank_stats(real_st, filt_st, _bank0, _bet_sz, _odds))
     if show_no_bet:
-        # Merge nobet_mids + nobet quarters inside bet matches
-        nb_all = {
-            "w": (nobet_st["w"] if nobet_st else 0)
-                 + (nobet_in_bet["w"] if nobet_in_bet else 0),
-            "l": (nobet_st["l"] if nobet_st else 0)
-                 + (nobet_in_bet["l"] if nobet_in_bet else 0),
-            "pending": (nobet_st["pending"] if nobet_st else 0)
-                       + (nobet_in_bet["pending"] if nobet_in_bet else 0),
-        }
         nb_line = _roi_line(
-            nb_all, "📉 No apostado",
+            {
+                "w": (nobet_st["w"] if nobet_st else 0),
+                "l": (nobet_st["l"] if nobet_st else 0),
+                "pending": (nobet_st["pending"] if nobet_st else 0),
+            },
+            "📉 No apostado",
             _bank0, _bet_sz, _odds,
         )
         if nb_line:
@@ -4203,16 +4644,25 @@ def signals_text_today(
         lines.append("")
 
     # Then add signal sections
-    if bet_mids:
-        lines.append("— 🟢 Apuestas —")
-        for mid in bet_mids:
-            # In bet_only mode, suppress NO_BET lines within the match
-            lines.extend(_render_match(mid, force_show_no_bet=show_no_bet))
+    if real_bet_mids:
+        lines.append("— 🟢 Apuestas reales —")
+        for mid in real_bet_mids:
+            lines.extend(_render_match(mid, force_show_no_bet=show_no_bet, source_kind="real"))
+
+    if filtered_bet_mids:
+        lines.append("— 🟡 Filtradas —")
+        for mid in filtered_bet_mids:
+            lines.extend(_render_match(mid, force_show_no_bet=False, source_kind="filtered"))
+
+    if late_bet_mids:
+        lines.append("— ⚪ Tardías —")
+        for mid in late_bet_mids:
+            lines.extend(_render_match(mid, force_show_no_bet=False, source_kind="late"))
 
     if show_no_bet and nobet_mids:
         lines.append("— 🔴 Sin apuesta —")
         for mid in nobet_mids:
-            lines.extend(_render_match(mid, force_show_no_bet=True))
+            lines.extend(_render_match(mid, force_show_no_bet=True, source_kind="real"))
 
     if pending_sched:
         _active_sched = [r for r in pending_sched if str(r.get("status") or "pending") != "discarded"]
@@ -4602,7 +5052,74 @@ def signals_excel_today(
         """,
         (local_date,),
     ).fetchall()
-    
+
+    # Simulated (filtered by v6/v6_2) bets for today
+    rows_q3_sim = conn.execute(
+        """
+        SELECT l.match_id, l.target, l.signal, l.pick, l.confidence,
+               l.result, l.created_at,
+               l.home_team, l.away_team, l.league, l.model,
+               l.filter_reason,
+               s.scheduled_utc_ts
+        FROM bet_monitor_log l
+        INNER JOIN (
+            SELECT match_id, target, MAX(id) AS max_id
+            FROM bet_monitor_log
+            WHERE event_date = ? AND simulated = 1 AND target = 'q3'
+            GROUP BY match_id, target
+        ) latest ON l.match_id = latest.match_id
+                 AND l.target  = latest.target
+                 AND l.id      = latest.max_id
+        LEFT JOIN bet_monitor_schedule s ON l.match_id = s.match_id
+        ORDER BY COALESCE(s.scheduled_utc_ts, 0) ASC, l.created_at ASC
+        """,
+        (local_date,),
+    ).fetchall()
+
+    rows_q4_sim = conn.execute(
+        """
+        SELECT l.match_id, l.target, l.signal, l.pick, l.confidence,
+               l.result, l.created_at,
+               l.home_team, l.away_team, l.league, l.model,
+               l.filter_reason,
+               s.scheduled_utc_ts
+        FROM bet_monitor_log l
+        INNER JOIN (
+            SELECT match_id, target, MAX(id) AS max_id
+            FROM bet_monitor_log
+            WHERE event_date = ? AND simulated = 1 AND target = 'q4'
+            GROUP BY match_id, target
+        ) latest ON l.match_id = latest.match_id
+                 AND l.target  = latest.target
+                 AND l.id      = latest.max_id
+        LEFT JOIN bet_monitor_schedule s ON l.match_id = s.match_id
+        ORDER BY COALESCE(s.scheduled_utc_ts, 0) ASC, l.created_at ASC
+        """,
+        (local_date,),
+    ).fetchall()
+
+    # Late / discarded Q4 bets (set in bet_monitor_schedule.q4_signal)
+    rows_late = conn.execute(
+        """
+        SELECT s.match_id, s.q4_signal,
+               s.scheduled_utc_ts,
+               l.home_team, l.away_team, l.league, l.model,
+               l.pick, l.confidence
+        FROM bet_monitor_schedule s
+        LEFT JOIN (
+            SELECT match_id, home_team, away_team, league, model, pick, confidence,
+                   MAX(id) AS max_id
+            FROM bet_monitor_log
+            WHERE event_date = ?
+            GROUP BY match_id
+        ) l ON s.match_id = l.match_id
+        WHERE s.q4_signal IN ('TOO_LATE_BET', 'Q3_NOT_VALIDATED')
+          AND s.event_date = ?
+        ORDER BY COALESCE(s.scheduled_utc_ts, 0) ASC
+        """,
+        (local_date, local_date),
+    ).fetchall()
+
     # Read config
     try:
         _bank0  = float(conn.execute(
@@ -4650,9 +5167,10 @@ def signals_excel_today(
 
     rows_q3 = _apply_v6_filter_rows(rows_q3)
     rows_q4 = _apply_v6_filter_rows(rows_q4)
+    # Simulated rows are already filtered (they failed v6/v6_2); no extra filter needed
 
     # Fetch match_data for all match_ids to get event_slug and custom_id for SofaScore URLs
-    all_rows = (rows_q3 or []) + (rows_q4 or [])
+    all_rows = (rows_q3 or []) + (rows_q4 or []) + (rows_q3_sim or []) + (rows_q4_sim or []) + (rows_late or [])
     unique_match_ids = list(set(str(row["match_id"]) for row in all_rows))
     
     match_data_map: dict[str, dict | None] = {}
@@ -4711,16 +5229,19 @@ def signals_excel_today(
     green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
     red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
     gray_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
-    
-    def _add_sheet(ws, rows, target_quarter):
+    yellow_header_fill = PatternFill(start_color="FFC000", end_color="FFC000", fill_type="solid")
+    silver_header_fill = PatternFill(start_color="808080", end_color="808080", fill_type="solid")
+
+    def _add_sheet(ws, rows, target_quarter, header_fill_override=None):
         """Add a sheet with match data."""
+        _hfill = header_fill_override if header_fill_override is not None else header_fill
         # Headers
         headers = ["Nro", "Match ID", "Fecha", "Hora (UTC-6)", "Home", "Away", "Liga",
                    "Pick", "Modelo", "Confianza", "Resultado", "Q Result", "Bank Antes", "Ganancia", "Bank Despues"]
         for col, header in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col)
             cell.value = header
-            cell.fill = header_fill
+            cell.fill = _hfill
             cell.font = header_font
             cell.alignment = center_align
             cell.border = border
@@ -4852,18 +5373,106 @@ def signals_excel_today(
             adjusted_width = min(max_length + 2, 50)
             ws.column_dimensions[col_letter].width = adjusted_width
     
+    def _add_sheet_late(ws, rows):
+        """Add a simplified sheet for late/discarded Q4 signals (no bank tracking)."""
+        late_reason_map = {
+            "TOO_LATE_BET": "Tarde (minuto > corte)",
+            "Q3_NOT_VALIDATED": "Q3 no validado",
+        }
+        headers = ["Nro", "Match ID", "Hora (UTC-6)", "Home", "Away", "Liga", "Modelo", "Pick", "Confianza", "Motivo"]
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col)
+            cell.value = header
+            cell.fill = silver_header_fill
+            cell.font = header_font
+            cell.alignment = center_align
+            cell.border = border
+
+        for i, row in enumerate(rows, 1):
+            mid = str(row["match_id"])
+            home = str(row["home_team"] or "?")
+            away = str(row["away_team"] or "?")
+            league = str(row["league"] or "")
+            model = str(row["model"] or "")
+            pick = str(row["pick"] or "")
+            confidence = row["confidence"]
+            ts = row["scheduled_utc_ts"]
+            q4_signal = str(row["q4_signal"] or "")
+            motivo = late_reason_map.get(q4_signal, q4_signal)
+
+            if ts:
+                try:
+                    dt = datetime.fromtimestamp(int(ts), tz=timezone.utc)
+                    dt_local = dt + timedelta(hours=UTC_OFFSET_HOURS)
+                    time_str = dt_local.strftime("%H:%M")
+                except Exception:
+                    time_str = ""
+            else:
+                time_str = ""
+
+            pick_sym = "🏠" if pick == "home" else ("✈️" if pick == "away" else "")
+            sofascore_url = _sofascore_match_url(mid, match_data=match_data_map.get(mid), home_team=home, away_team=away)
+            row_num = i + 1
+
+            ws.cell(row=row_num, column=1).value = i
+            match_cell = ws.cell(row=row_num, column=2)
+            match_cell.value = mid
+            match_cell.hyperlink = sofascore_url
+            match_cell.font = Font(color="0563C1", underline="single")
+            ws.cell(row=row_num, column=3).value = time_str
+            ws.cell(row=row_num, column=4).value = home
+            ws.cell(row=row_num, column=5).value = away
+            ws.cell(row=row_num, column=6).value = league
+            ws.cell(row=row_num, column=7).value = model
+            ws.cell(row=row_num, column=8).value = f"{pick_sym} {pick}".strip()
+            ws.cell(row=row_num, column=9).value = confidence
+            ws.cell(row=row_num, column=10).value = motivo
+
+            for col in range(1, 11):
+                cell = ws.cell(row=row_num, column=col)
+                cell.border = border
+                if col in (1, 3, 8, 9, 10):
+                    cell.alignment = center_align
+                elif col in (4, 5):
+                    cell.alignment = left_align
+                if col == 9 and confidence is not None:
+                    cell.number_format = '0.0%'
+
+        from openpyxl.utils import get_column_letter as _gcl
+        for col_num in range(1, 11):
+            col_letter = _gcl(col_num)
+            max_length = max(
+                (len(str(c.value)) for c in ws[f'{col_letter}:{col_letter}'] if c.value),
+                default=8,
+            )
+            ws.column_dimensions[col_letter].width = min(max_length + 2, 50)
+
     # Add Q3 sheet
     if rows_q3:
         ws_q3 = wb.create_sheet("Q3", 0)
         _add_sheet(ws_q3, rows_q3, "Q3")
-    
+
     # Add Q4 sheet
     if rows_q4:
         ws_q4 = wb.create_sheet("Q4", 1 if rows_q3 else 0)
         _add_sheet(ws_q4, rows_q4, "Q4")
-    
-    # If no sheets, add empty summary
-    if not rows_q3 and not rows_q4:
+
+    # Add Filtradas (simulated) sheets
+    rows_sim_all = list(rows_q3_sim or []) + list(rows_q4_sim or [])
+    rows_sim_all.sort(key=lambda r: (r["scheduled_utc_ts"] or 0, r["created_at"] or ""))
+    if rows_sim_all:
+        sheet_idx = sum(1 for r in [rows_q3, rows_q4] if r)
+        ws_sim = wb.create_sheet("🟡 Filtradas", sheet_idx)
+        _add_sheet(ws_sim, rows_sim_all, "ALL", header_fill_override=yellow_header_fill)
+
+    # Add Tardías sheet
+    if rows_late:
+        sheet_idx = sum(1 for r in [rows_q3, rows_q4, rows_sim_all] if r)
+        ws_late = wb.create_sheet("⚪ Tardías", sheet_idx)
+        _add_sheet_late(ws_late, rows_late)
+
+    # If no sheets at all, add empty summary
+    if not rows_q3 and not rows_q4 and not rows_sim_all and not rows_late:
         ws = wb.create_sheet("Info", 0)
         ws.cell(row=1, column=1).value = "Sin apuestas para hoy"
     
