@@ -41,6 +41,8 @@ echo   15) V6.3: Solo reporte raw monitor
 echo   16) V6.3: Solo reporte m30
 echo   17) V6.3: Reporte m27 + m30 (sin raw)
 echo   18) V6.3: Solo m27 (rebuild caches)
+echo   19) V6.3: m27 probe (sin post-filtros live)
+echo   20) V6.3: m30 probe (sin post-filtros live)
 echo   0) Salir
 echo.
 set /p OPT="  Selecciona: "
@@ -64,6 +66,8 @@ if "%OPT%"=="15" goto REPORT_V63_RAW_ONLY
 if "%OPT%"=="16" goto REPORT_V63_M30_ONLY
 if "%OPT%"=="17" goto REPORT_V63_M27_M30
 if "%OPT%"=="18" goto REPORT_V63_M27_REBUILD
+if "%OPT%"=="19" goto REPORT_V63_M27_PROBE
+if "%OPT%"=="20" goto REPORT_V63_M30_PROBE
 
 echo [ERROR] Opcion invalida.
 timeout /t 2 /nobreak >nul
@@ -240,6 +244,24 @@ cls
 echo [+] V6.3: Solo m27 con rebuild de caches...
 call .venv\Scripts\activate
 python match\training\report_v63_q4_roi.py --only-m27 --rebuild-pred-cache --rebuild-splits-cache
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:REPORT_V63_M27_PROBE
+cls
+echo [+] V6.3: m27 probe sin post-filtros live...
+call .venv\Scripts\activate
+python match\training\report_v63_q4_roi.py --no-v62 --no-raw --no-m27 --no-m30 --with-m27-probe
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:REPORT_V63_M30_PROBE
+cls
+echo [+] V6.3: m30 probe sin post-filtros live...
+call .venv\Scripts\activate
+python match\training\report_v63_q4_roi.py --no-v62 --no-raw --no-m27 --no-m30 --with-m30-probe
 pause
 goto MENU
 

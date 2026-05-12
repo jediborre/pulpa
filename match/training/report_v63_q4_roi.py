@@ -566,6 +566,20 @@ def _predict_v63_probs(test_rows, snapshot_minutes=V63_MONITOR_SNAPSHOTS, apply_
 
 
 def _predict_v63_probs_for_snapshot(test_rows, snapshot_minute: int, apply_filters=True):
+    return _predict_v63_probs_for_snapshot_mode(
+        test_rows,
+        snapshot_minute,
+        apply_filters=apply_filters,
+        use_live_filters=True,
+    )
+
+
+def _predict_v63_probs_for_snapshot_mode(
+    test_rows,
+    snapshot_minute: int,
+    apply_filters=True,
+    use_live_filters=True,
+):
     rules = _load_league_name_rules() if apply_filters else []
 
     conn = v6.db_mod.get_conn(str(v6.DB_PATH))
@@ -580,8 +594,14 @@ def _predict_v63_probs_for_snapshot(test_rows, snapshot_minute: int, apply_filte
     model_probs_accepted = []
     model_probs_rejected = []
     
+    mode_suffix = "" if use_live_filters else " probe"
     try:
-        for i, s in enumerate(tqdm(test_rows, desc=f"[v6.3] predicciones m{snapshot_minute}")):
+        for i, s in enumerate(
+            tqdm(
+                test_rows,
+                desc=f"[v6.3] predicciones m{snapshot_minute}{mode_suffix}",
+            )
+        ):
             base_rec = dict(s.features_q4)
             lg = str(base_rec.get("league", ""))
             lg_lc = lg.lower()
@@ -617,40 +637,49 @@ def _predict_v63_probs_for_snapshot(test_rows, snapshot_minute: int, apply_filte
                 excluded_reasons[i] = f"artifact_missing:{exc}"
                 continue
 
-            confidence = abs(p_home - 0.5) * 2.0
-            bet_signal = infer_live._bet_signal("q4", confidence, int(snapshot_minute))
-            gate = infer_live._decision_gate(
-                match_data=live_like,
-                target="q4",
-                snapshot_minute=int(snapshot_minute),
-                confidence=confidence,
-                model_signal=bet_signal["signal"],
-            )
-            eligible, eligible_reason, _margin = _v63_window_eligibility(
-                live_like,
-                int(snapshot_minute),
-                p_home,
-                gate,
-            )
-            if not eligible:
-                excluded_reasons[i] = eligible_reason
-                gate_reasons_count[eligible_reason] += 1
-                model_probs_rejected.append(p_home)
-                continue
+            if use_live_filters:
+                confidence = abs(p_home - 0.5) * 2.0
+                bet_signal = infer_live._bet_signal(
+                    "q4",
+                    confidence,
+                    int(snapshot_minute),
+                )
+                gate = infer_live._decision_gate(
+                    match_data=live_like,
+                    target="q4",
+                    snapshot_minute=int(snapshot_minute),
+                    confidence=confidence,
+                    model_signal=bet_signal["signal"],
+                )
+                eligible, eligible_reason, _margin = _v63_window_eligibility(
+                    live_like,
+                    int(snapshot_minute),
+                    p_home,
+                    gate,
+                )
+                if not eligible:
+                    excluded_reasons[i] = eligible_reason
+                    gate_reasons_count[eligible_reason] += 1
+                    model_probs_rejected.append(p_home)
+                    continue
 
             cand = _v63_bet_candidate(p_home)
             if cand.get("accept"):
                 probs[i] = p_home
                 model_probs_accepted.append(p_home)
             else:
-                excluded_reasons[i] = str(cand.get("reason", "no_signal_in_snapshot"))
+                fallback_reason = "no_signal_in_snapshot"
+                if not use_live_filters:
+                    fallback_reason = "model_probe_rejected"
+                excluded_reasons[i] = str(cand.get("reason", fallback_reason))
                 gate_reasons_count[str(cand.get("reason"))] += 1
                 model_probs_rejected.append(p_home)
     finally:
         conn.close()
 
     # DEBUG OUTPUT
-    print(f"\n[DEBUG] m{snapshot_minute} gate rejection reasons:")
+    label = "gate rejection reasons" if use_live_filters else "probe rejection reasons"
+    print(f"\n[DEBUG] m{snapshot_minute} {label}:")
     for reason, count in sorted(gate_reasons_count.items(), key=lambda x: -x[1]):
         print(f"  {reason}: {count}")
     if model_probs_accepted:
@@ -1239,6 +1268,26 @@ def main():
         action="store_true",
         help="Excluir v6.3 minuto 30",
     )
+    parser.add_argument(
+        "--with-m27-probe",
+        action="store_true",
+        help="Incluir v6.3 minuto 27 sin post-filtros live (mantiene odds y Kelly)",
+    )
+    parser.add_argument(
+        "--no-m27-probe",
+        action="store_true",
+        help="Excluir v6.3 minuto 27 sin post-filtros live",
+    )
+    parser.add_argument(
+        "--with-m30-probe",
+        action="store_true",
+        help="Incluir v6.3 minuto 30 sin post-filtros live (mantiene odds y Kelly)",
+    )
+    parser.add_argument(
+        "--no-m30-probe",
+        action="store_true",
+        help="Excluir v6.3 minuto 30 sin post-filtros live",
+    )
     args = parser.parse_args()
 
     if args.only_m27:
@@ -1246,6 +1295,8 @@ def main():
         run_v63_raw = False
         run_v63_m27 = True
         run_v63_m30 = False
+        run_v63_m27_probe = False
+        run_v63_m30_probe = False
     else:
         if args.no_v62:
             include_v62 = False
@@ -1258,12 +1309,25 @@ def main():
             raise ValueError("No puedes usar --with-m27 y --no-m27 al mismo tiempo")
         if args.with_m30 and args.no_m30:
             raise ValueError("No puedes usar --with-m30 y --no-m30 al mismo tiempo")
+        if args.with_m27_probe and args.no_m27_probe:
+            raise ValueError("No puedes usar --with-m27-probe y --no-m27-probe al mismo tiempo")
+        if args.with_m30_probe and args.no_m30_probe:
+            raise ValueError("No puedes usar --with-m30-probe y --no-m30-probe al mismo tiempo")
 
         run_v63_raw = True if args.with_raw else (False if args.no_raw else _ask_yes_no("¿Incluir v6.3 raw monitor (m27/m30)?", default_yes=False))
         run_v63_m27 = True if args.with_m27 else (False if args.no_m27 else _ask_yes_no("¿Incluir v6.3 m27?", default_yes=True))
         run_v63_m30 = True if args.with_m30 else (False if args.no_m30 else _ask_yes_no("¿Incluir v6.3 m30?", default_yes=False))
+        run_v63_m27_probe = True if args.with_m27_probe else (False if args.no_m27_probe else _ask_yes_no("¿Incluir v6.3 m27 probe sin post-filtros live?", default_yes=False))
+        run_v63_m30_probe = True if args.with_m30_probe else (False if args.no_m30_probe else _ask_yes_no("¿Incluir v6.3 m30 probe sin post-filtros live?", default_yes=False))
 
-    if not any([include_v62, run_v63_raw, run_v63_m27, run_v63_m30]):
+    if not any([
+        include_v62,
+        run_v63_raw,
+        run_v63_m27,
+        run_v63_m30,
+        run_v63_m27_probe,
+        run_v63_m30_probe,
+    ]):
         raise ValueError("Debes incluir al menos un bloque (v6.2 o alguna variante v6.3)")
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1287,6 +1351,8 @@ def main():
         "run_v63_raw": bool(run_v63_raw),
         "run_v63_m27": bool(run_v63_m27),
         "run_v63_m30": bool(run_v63_m30),
+        "run_v63_m27_probe": bool(run_v63_m27_probe),
+        "run_v63_m30_probe": bool(run_v63_m30_probe),
         "filters_disabled": bool(V63_DISABLE_FILTERS),
         "monitor_snapshots": tuple(int(x) for x in V63_MONITOR_SNAPSHOTS),
         "test_fp": _rows_fingerprint(test_rows),
@@ -1318,6 +1384,16 @@ def main():
             excl63_30_flags = pred_cache["excl63_30_flags"]
             excl63_30_reasons = pred_cache["excl63_30_reasons"]
             snap63_30 = pred_cache["snap63_30"]
+        if run_v63_m27_probe:
+            p_v63_27_probe = pred_cache["p_v63_27_probe"]
+            excl63_27_probe_flags = pred_cache["excl63_27_probe_flags"]
+            excl63_27_probe_reasons = pred_cache["excl63_27_probe_reasons"]
+            snap63_27_probe = pred_cache["snap63_27_probe"]
+        if run_v63_m30_probe:
+            p_v63_30_probe = pred_cache["p_v63_30_probe"]
+            excl63_30_probe_flags = pred_cache["excl63_30_probe_flags"]
+            excl63_30_probe_reasons = pred_cache["excl63_30_probe_reasons"]
+            snap63_30_probe = pred_cache["snap63_30_probe"]
     else:
         if include_v62:
             print("[Q4_ROI_62_63] predicciones v6.2...")
@@ -1354,6 +1430,30 @@ def main():
                 apply_filters=(not V63_DISABLE_FILTERS),
             )
 
+        if run_v63_m27_probe:
+            print(
+                f"[Q4_ROI_62_63] predicciones v6.3 m27 probe sin post-filtros live "
+                f"(filters={'off' if V63_DISABLE_FILTERS else 'on'})..."
+            )
+            p_v63_27_probe, excl63_27_probe_flags, excl63_27_probe_reasons, snap63_27_probe = _predict_v63_probs_for_snapshot_mode(
+                test_rows,
+                27,
+                apply_filters=(not V63_DISABLE_FILTERS),
+                use_live_filters=False,
+            )
+
+        if run_v63_m30_probe:
+            print(
+                f"[Q4_ROI_62_63] predicciones v6.3 m30 probe sin post-filtros live "
+                f"(filters={'off' if V63_DISABLE_FILTERS else 'on'})..."
+            )
+            p_v63_30_probe, excl63_30_probe_flags, excl63_30_probe_reasons, snap63_30_probe = _predict_v63_probs_for_snapshot_mode(
+                test_rows,
+                30,
+                apply_filters=(not V63_DISABLE_FILTERS),
+                use_live_filters=False,
+            )
+
         pred_payload = {}
         if run_v63_raw:
             pred_payload.update({
@@ -1375,6 +1475,20 @@ def main():
                 "excl63_30_flags": excl63_30_flags,
                 "excl63_30_reasons": excl63_30_reasons,
                 "snap63_30": snap63_30,
+            })
+        if run_v63_m27_probe:
+            pred_payload.update({
+                "p_v63_27_probe": p_v63_27_probe,
+                "excl63_27_probe_flags": excl63_27_probe_flags,
+                "excl63_27_probe_reasons": excl63_27_probe_reasons,
+                "snap63_27_probe": snap63_27_probe,
+            })
+        if run_v63_m30_probe:
+            pred_payload.update({
+                "p_v63_30_probe": p_v63_30_probe,
+                "excl63_30_probe_flags": excl63_30_probe_flags,
+                "excl63_30_probe_reasons": excl63_30_probe_reasons,
+                "snap63_30_probe": snap63_30_probe,
             })
         if include_v62:
             pred_payload.update({
@@ -1419,10 +1533,24 @@ def main():
                 v63_blacklist_flags,
                 v63_blacklist_reasons,
             )
+        if run_v63_m27_probe:
+            excl63_27_probe_flags, excl63_27_probe_reasons = _merge_exclusions(
+                excl63_27_probe_flags,
+                excl63_27_probe_reasons,
+                v63_blacklist_flags,
+                v63_blacklist_reasons,
+            )
         if run_v63_m30:
             excl63_30_flags, excl63_30_reasons = _merge_exclusions(
                 excl63_30_flags,
                 excl63_30_reasons,
+                v63_blacklist_flags,
+                v63_blacklist_reasons,
+            )
+        if run_v63_m30_probe:
+            excl63_30_probe_flags, excl63_30_probe_reasons = _merge_exclusions(
+                excl63_30_probe_flags,
+                excl63_30_probe_reasons,
                 v63_blacklist_flags,
                 v63_blacklist_reasons,
             )
@@ -1511,6 +1639,46 @@ def main():
             q3_min27_scores_map,
             snap63_30,
         )
+    if run_v63_m27_probe:
+        v63_m27_probe_details, v63_m27_probe_summary = _simulate(
+            "v6.3_m27_probe",
+            test_rows,
+            p_v63_27_probe,
+            27,
+            excl63_27_probe_flags,
+            excl63_27_probe_reasons,
+            MODE,
+            KELLY_MULT,
+            KELLY_CAP,
+            MIN_CONF_PROB,
+            STAKE_STEP,
+            MIN_STAKE,
+            MAX_STAKE,
+            teams_map,
+            q4_scores_map,
+            q3_min27_scores_map,
+            snap63_27_probe,
+        )
+    if run_v63_m30_probe:
+        v63_m30_probe_details, v63_m30_probe_summary = _simulate(
+            "v6.3_m30_probe",
+            test_rows,
+            p_v63_30_probe,
+            30,
+            excl63_30_probe_flags,
+            excl63_30_probe_reasons,
+            MODE,
+            KELLY_MULT,
+            KELLY_CAP,
+            MIN_CONF_PROB,
+            STAKE_STEP,
+            MIN_STAKE,
+            MAX_STAKE,
+            teams_map,
+            q4_scores_map,
+            q3_min27_scores_map,
+            snap63_30_probe,
+        )
 
     if run_v63_raw:
         v63_raw_df = pd.DataFrame(v63_raw_details)
@@ -1518,6 +1686,10 @@ def main():
         v63_m27_df = pd.DataFrame(v63_m27_details)
     if run_v63_m30:
         v63_m30_df = pd.DataFrame(v63_m30_details)
+    if run_v63_m27_probe:
+        v63_m27_probe_df = pd.DataFrame(v63_m27_probe_details)
+    if run_v63_m30_probe:
+        v63_m30_probe_df = pd.DataFrame(v63_m30_probe_details)
 
     col_order = [
         "fecha", "liga", "resultado_apuesta", "apuesta", "monto_apostado", "ganancia", "bank_final",
@@ -1534,6 +1706,10 @@ def main():
         v63_m27_df = v63_m27_df[[c for c in col_order if c in v63_m27_df.columns]]
     if run_v63_m30:
         v63_m30_df = v63_m30_df[[c for c in col_order if c in v63_m30_df.columns]]
+    if run_v63_m27_probe:
+        v63_m27_probe_df = v63_m27_probe_df[[c for c in col_order if c in v63_m27_probe_df.columns]]
+    if run_v63_m30_probe:
+        v63_m30_probe_df = v63_m30_probe_df[[c for c in col_order if c in v63_m30_probe_df.columns]]
 
     v63_compare_df = None
     if run_v63_m27 and run_v63_m30:
@@ -1559,6 +1735,14 @@ def main():
         summaries.append(v63_m30_summary)
         league_dfs.append(v63_m30_df)
         sheets_extra.append(("v6_3_m30_matches", v63_m30_df))
+    if run_v63_m27_probe:
+        summaries.append(v63_m27_probe_summary)
+        league_dfs.append(v63_m27_probe_df)
+        sheets_extra.append(("v6_3_m27_probe_matches", v63_m27_probe_df))
+    if run_v63_m30_probe:
+        summaries.append(v63_m30_probe_summary)
+        league_dfs.append(v63_m30_probe_df)
+        sheets_extra.append(("v6_3_m30_probe_matches", v63_m30_probe_df))
     if v63_compare_df is not None:
         sheets_extra.append(("v6_3_m27_vs_m30", v63_compare_df))
 
