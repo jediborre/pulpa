@@ -24,14 +24,19 @@ from sklearn.linear_model import LogisticRegression
 
 import train_q3_q4_models_v6 as v6
 import infer_match as infer_live
+import train_q4_m27_v1 as m27_v1_train
+import m27_v1_league_policy as m27_v1_policy
 from v6_3_league_blacklist import get_blacklist as _get_v63_blacklist
 
 ROOT = Path(__file__).parent.parent.parent  # c:\Users\App\Desktop\pulpa
 BASE_V62 = ROOT / "match" / "training" / "model_outputs_v6_2"
 BASE_V63 = ROOT / "match" / "training" / "model_outputs_v6_3"
+BASE_M27_V1 = ROOT / "match" / "training" / "model_outputs_m27_v1"
 OUT_MM = BASE_V63 / "Q4_ROI_match_by_match_v6_2_vs_v6_3.xlsx"
 PRED_CACHE_PATH = BASE_V63 / "q4_roi_pred_cache.joblib"
 SPLITS_CACHE_PATH = BASE_V63 / "q4_roi_splits_cache.joblib"
+M27_V1_CHAMPION_PATH = BASE_M27_V1 / "q4_m27_v1_champion.joblib"
+_V63_BL = _get_v63_blacklist()
 
 ODDS = 1.4
 BANK_START = 1000.0
@@ -696,6 +701,134 @@ def _predict_v63_probs_for_snapshot_mode(
     return probs, excluded_flags, excluded_reasons, selected_snapshots
 
 
+def _predict_m27_v1_probs_for_snapshot_mode(
+    test_rows,
+    snapshot_minute: int,
+    apply_filters=True,
+    use_live_filters=True,
+):
+    if int(snapshot_minute) != int(m27_v1_train.SNAPSHOT_MINUTE):
+        raise ValueError(
+            "m27_v1 solo soporta snapshot_minute=27 en este reporte"
+        )
+
+    rules = _load_league_name_rules() if apply_filters else []
+    artifact = joblib.load(M27_V1_CHAMPION_PATH)
+    vectorizer = artifact["vectorizer"]
+    models = artifact["models"]
+
+    conn = v6.db_mod.get_conn(str(v6.DB_PATH))
+    v6.db_mod.init_db(conn)
+    probs = [None] * len(test_rows)
+    excluded_flags = [False] * len(test_rows)
+    excluded_reasons = [None] * len(test_rows)
+    selected_snapshots = [int(snapshot_minute)] * len(test_rows)
+
+    gate_reasons_count = defaultdict(int)
+    model_probs_accepted = []
+    model_probs_rejected = []
+
+    mode_suffix = "" if use_live_filters else " probe"
+    try:
+        for i, s in enumerate(
+            tqdm(
+                test_rows,
+                desc=f"[m27_v1] predicciones m{snapshot_minute}{mode_suffix}",
+            )
+        ):
+            base_rec = dict(s.features_q4)
+            lg = str(base_rec.get("league", ""))
+            lg_lc = lg.lower()
+            hit = None
+            for cname, raw, low in rules:
+                if low in lg_lc:
+                    hit = (cname, raw)
+                    break
+            if apply_filters and hit is not None:
+                excluded_flags[i] = True
+                excluded_reasons[i] = f"excluded_league_name:{hit[0]}:{hit[1]}"
+                continue
+
+            mid = str(s.match_id)
+            match_data = v6.db_mod.get_match(conn, mid)
+            if not match_data:
+                excluded_flags[i] = True
+                excluded_reasons[i] = "missing_match_data"
+                continue
+
+            live_like = _build_live_like_q4_snapshot(
+                match_data,
+                int(snapshot_minute),
+            )
+            feature_dict = m27_v1_train._build_m27_v1_features(s, live_like)
+            x_row = vectorizer.transform([feature_dict])
+            p_xgb = float(models["xgb"].predict_proba(x_row)[0, 1])
+            p_hist = float(models["hist_gb"].predict_proba(x_row)[0, 1])
+            p_home = (p_xgb + p_hist) / 2.0
+
+            if use_live_filters:
+                confidence = abs(p_home - 0.5) * 2.0
+                bet_signal = infer_live._bet_signal(
+                    "q4",
+                    confidence,
+                    int(snapshot_minute),
+                )
+                gate = infer_live._decision_gate(
+                    match_data=live_like,
+                    target="q4",
+                    snapshot_minute=int(snapshot_minute),
+                    confidence=confidence,
+                    model_signal=bet_signal["signal"],
+                )
+                eligible, eligible_reason, _margin = _v63_window_eligibility(
+                    live_like,
+                    int(snapshot_minute),
+                    p_home,
+                    gate,
+                )
+                if not eligible:
+                    excluded_reasons[i] = eligible_reason
+                    gate_reasons_count[eligible_reason] += 1
+                    model_probs_rejected.append(p_home)
+                    continue
+
+            cand = _v63_bet_candidate(p_home)
+            if cand.get("accept"):
+                probs[i] = p_home
+                model_probs_accepted.append(p_home)
+            else:
+                fallback_reason = "no_signal_in_snapshot"
+                if not use_live_filters:
+                    fallback_reason = "model_probe_rejected"
+                reason = str(cand.get("reason", fallback_reason))
+                excluded_reasons[i] = reason
+                gate_reasons_count[reason] += 1
+                model_probs_rejected.append(p_home)
+    finally:
+        conn.close()
+
+    label = "gate rejection reasons" if use_live_filters else "probe rejection reasons"
+    print(f"\n[DEBUG] m27_v1 m{snapshot_minute} {label}:")
+    for reason, count in sorted(gate_reasons_count.items(), key=lambda x: -x[1]):
+        print(f"  {reason}: {count}")
+    if model_probs_accepted:
+        print(
+            f"[DEBUG] m27_v1 probs ACCEPTED (n={len(model_probs_accepted)}): "
+            f"mean={np.mean(model_probs_accepted):.3f} "
+            f"min={np.min(model_probs_accepted):.3f} "
+            f"max={np.max(model_probs_accepted):.3f}"
+        )
+    if model_probs_rejected:
+        print(
+            f"[DEBUG] m27_v1 probs REJECTED (n={len(model_probs_rejected)}): "
+            f"mean={np.mean(model_probs_rejected):.3f} "
+            f"min={np.min(model_probs_rejected):.3f} "
+            f"max={np.max(model_probs_rejected):.3f}"
+        )
+
+    return probs, excluded_flags, excluded_reasons, selected_snapshots
+
+
 def _calibrate_probs(val_probs, y_val, test_probs, method):
     """Calibrate raw probabilities using validation set and apply to test."""
     x_val = []
@@ -759,6 +892,108 @@ def _merge_exclusions(primary_flags, primary_reasons, extra_flags, extra_reasons
             out_flags.append(False)
             out_reasons.append(None)
     return out_flags, out_reasons
+
+
+def _build_m27_v1_policy_flags(rows):
+    flags = []
+    reasons = []
+    for s in rows:
+        league = str(s.features_q4.get("league", ""))
+        if m27_v1_policy.is_blacklisted(league):
+            flags.append(True)
+            reasons.append(
+                f"m27_v1_league_blacklist:{m27_v1_policy.normalize_league_name(league)}"
+            )
+        else:
+            flags.append(False)
+            reasons.append(None)
+    return flags, reasons
+
+
+def _annotate_m27_v1_policy(model_df: pd.DataFrame) -> pd.DataFrame:
+    if model_df.empty or "liga" not in model_df.columns:
+        return model_df
+    out = model_df.copy()
+    out["m27_v1_league_tier"] = out["liga"].map(m27_v1_policy.get_tier)
+    out["m27_v1_policy_action"] = out["liga"].map(m27_v1_policy.get_action)
+    return out
+
+
+def _build_m27_v1_policy_sheet(model_df: pd.DataFrame) -> pd.DataFrame:
+    cols = [
+        "liga",
+        "tier",
+        "accion",
+        "matches_totales",
+        "matches_apostados",
+        "ganados",
+        "perdidos",
+        "efectividad",
+        "ganancia",
+        "yield_sobre_apostado",
+    ]
+    if model_df.empty:
+        return pd.DataFrame(columns=cols)
+
+    all_matches = (
+        model_df
+        .groupby("liga", as_index=False)
+        .agg(matches_totales=("match_id", "count"))
+    )
+    bets_df = model_df[
+        model_df["resultado_apuesta"].isin(["GANADA", "PERDIDA"])
+    ].copy()
+    if bets_df.empty:
+        out = all_matches.copy()
+        out["tier"] = out["liga"].map(m27_v1_policy.get_tier)
+        out["accion"] = out["liga"].map(m27_v1_policy.get_action)
+        for col in cols:
+            if col not in out.columns:
+                out[col] = 0.0 if col in {"ganancia", "efectividad", "yield_sobre_apostado"} else ""
+        return out[cols]
+
+    grouped = (
+        bets_df
+        .groupby("liga", as_index=False)
+        .agg(
+            matches_apostados=("resultado_apuesta", "count"),
+            ganados=("resultado_apuesta", lambda s: int((s == "GANADA").sum())),
+            perdidos=("resultado_apuesta", lambda s: int((s == "PERDIDA").sum())),
+            ganancia=("ganancia", "sum"),
+            total_apostado=("monto_apostado", "sum"),
+        )
+    )
+    out = all_matches.merge(grouped, on="liga", how="left").fillna(
+        {
+            "matches_apostados": 0,
+            "ganados": 0,
+            "perdidos": 0,
+            "ganancia": 0.0,
+            "total_apostado": 0.0,
+        }
+    )
+    out["matches_apostados"] = out["matches_apostados"].astype(int)
+    out["ganados"] = out["ganados"].astype(int)
+    out["perdidos"] = out["perdidos"].astype(int)
+    out["efectividad"] = out.apply(
+        lambda r: (r["ganados"] / r["matches_apostados"])
+        if r["matches_apostados"]
+        else 0.0,
+        axis=1,
+    )
+    out["yield_sobre_apostado"] = out.apply(
+        lambda r: (r["ganancia"] / r["total_apostado"])
+        if r["total_apostado"]
+        else 0.0,
+        axis=1,
+    )
+    out["tier"] = out["liga"].map(m27_v1_policy.get_tier)
+    out["accion"] = out["liga"].map(m27_v1_policy.get_action)
+    out = out[cols].sort_values(
+        ["tier", "ganancia", "matches_apostados"],
+        ascending=[True, False, False],
+    )
+    return out
 
 
 def _simulate(
@@ -1239,6 +1474,11 @@ def main():
         help="Ejecutar solo v6.3 minuto 27 (sin v6.2, sin raw monitor, sin m30)",
     )
     parser.add_argument(
+        "--only-m27-v1",
+        action="store_true",
+        help="Ejecutar solo m27_v1 (sin v6.2, raw, m27, m30 ni probes)",
+    )
+    parser.add_argument(
         "--with-raw",
         action="store_true",
         help="Forzar incluir v6.3 raw monitor windows",
@@ -1288,7 +1528,30 @@ def main():
         action="store_true",
         help="Excluir v6.3 minuto 30 sin post-filtros live",
     )
+    parser.add_argument(
+        "--with-m27-v1",
+        action="store_true",
+        help="Incluir m27_v1 con post-filtros live",
+    )
+    parser.add_argument(
+        "--no-m27-v1",
+        action="store_true",
+        help="Excluir m27_v1 con post-filtros live",
+    )
+    parser.add_argument(
+        "--with-m27-v1-probe",
+        action="store_true",
+        help="Incluir m27_v1 sin post-filtros live (mantiene odds y Kelly)",
+    )
+    parser.add_argument(
+        "--no-m27-v1-probe",
+        action="store_true",
+        help="Excluir m27_v1 sin post-filtros live",
+    )
     args = parser.parse_args()
+
+    if args.only_m27 and args.only_m27_v1:
+        raise ValueError("No puedes usar --only-m27 y --only-m27-v1 al mismo tiempo")
 
     if args.only_m27:
         include_v62 = False
@@ -1297,6 +1560,17 @@ def main():
         run_v63_m30 = False
         run_v63_m27_probe = False
         run_v63_m30_probe = False
+        run_v63_m27_v1 = False
+        run_v63_m27_v1_probe = False
+    elif args.only_m27_v1:
+        include_v62 = False
+        run_v63_raw = False
+        run_v63_m27 = False
+        run_v63_m30 = False
+        run_v63_m27_probe = False
+        run_v63_m30_probe = False
+        run_v63_m27_v1 = True
+        run_v63_m27_v1_probe = False
     else:
         if args.no_v62:
             include_v62 = False
@@ -1313,12 +1587,18 @@ def main():
             raise ValueError("No puedes usar --with-m27-probe y --no-m27-probe al mismo tiempo")
         if args.with_m30_probe and args.no_m30_probe:
             raise ValueError("No puedes usar --with-m30-probe y --no-m30-probe al mismo tiempo")
+        if args.with_m27_v1 and args.no_m27_v1:
+            raise ValueError("No puedes usar --with-m27-v1 y --no-m27-v1 al mismo tiempo")
+        if args.with_m27_v1_probe and args.no_m27_v1_probe:
+            raise ValueError("No puedes usar --with-m27-v1-probe y --no-m27-v1-probe al mismo tiempo")
 
         run_v63_raw = True if args.with_raw else (False if args.no_raw else _ask_yes_no("¿Incluir v6.3 raw monitor (m27/m30)?", default_yes=False))
         run_v63_m27 = True if args.with_m27 else (False if args.no_m27 else _ask_yes_no("¿Incluir v6.3 m27?", default_yes=True))
         run_v63_m30 = True if args.with_m30 else (False if args.no_m30 else _ask_yes_no("¿Incluir v6.3 m30?", default_yes=False))
         run_v63_m27_probe = True if args.with_m27_probe else (False if args.no_m27_probe else _ask_yes_no("¿Incluir v6.3 m27 probe sin post-filtros live?", default_yes=False))
         run_v63_m30_probe = True if args.with_m30_probe else (False if args.no_m30_probe else _ask_yes_no("¿Incluir v6.3 m30 probe sin post-filtros live?", default_yes=False))
+        run_v63_m27_v1 = True if args.with_m27_v1 else (False if args.no_m27_v1 else _ask_yes_no("¿Incluir m27_v1?", default_yes=False))
+        run_v63_m27_v1_probe = True if args.with_m27_v1_probe else (False if args.no_m27_v1_probe else _ask_yes_no("¿Incluir m27_v1 probe sin post-filtros live?", default_yes=False))
 
     if not any([
         include_v62,
@@ -1327,6 +1607,8 @@ def main():
         run_v63_m30,
         run_v63_m27_probe,
         run_v63_m30_probe,
+        run_v63_m27_v1,
+        run_v63_m27_v1_probe,
     ]):
         raise ValueError("Debes incluir al menos un bloque (v6.2 o alguna variante v6.3)")
 
@@ -1341,7 +1623,7 @@ def main():
     q3_min27_scores_map = _load_match_score_at_minute_map([s.match_id for s in test_rows], V63_SNAPSHOT_MINUTE)
     q3_min30_scores_map = (
         _load_match_score_at_minute_map([s.match_id for s in test_rows], 30)
-        if run_v63_m30
+        if (run_v63_m30 or run_v63_m30_probe)
         else {}
     )
 
@@ -1353,12 +1635,15 @@ def main():
         "run_v63_m30": bool(run_v63_m30),
         "run_v63_m27_probe": bool(run_v63_m27_probe),
         "run_v63_m30_probe": bool(run_v63_m30_probe),
+        "run_v63_m27_v1": bool(run_v63_m27_v1),
+        "run_v63_m27_v1_probe": bool(run_v63_m27_v1_probe),
         "filters_disabled": bool(V63_DISABLE_FILTERS),
         "monitor_snapshots": tuple(int(x) for x in V63_MONITOR_SNAPSHOTS),
         "test_fp": _rows_fingerprint(test_rows),
         "val_fp": _rows_fingerprint(val_rows),
         "v63_model_m27_sig": _file_signature(BASE_V63 / "q4_m27_champion.joblib"),
         "v63_model_m30_sig": _file_signature(BASE_V63 / "q4_m30_champion.joblib"),
+        "m27_v1_model_sig": _file_signature(M27_V1_CHAMPION_PATH),
         "v62_model_sig": _file_signature(BASE_V62 / "q4_champion.joblib") if include_v62 else "na",
     }
     pred_cache = _load_pred_cache(cache_meta, force_rebuild=args.rebuild_pred_cache)
@@ -1394,6 +1679,16 @@ def main():
             excl63_30_probe_flags = pred_cache["excl63_30_probe_flags"]
             excl63_30_probe_reasons = pred_cache["excl63_30_probe_reasons"]
             snap63_30_probe = pred_cache["snap63_30_probe"]
+        if run_v63_m27_v1:
+            p_v63_27_v1 = pred_cache["p_v63_27_v1"]
+            excl63_27_v1_flags = pred_cache["excl63_27_v1_flags"]
+            excl63_27_v1_reasons = pred_cache["excl63_27_v1_reasons"]
+            snap63_27_v1 = pred_cache["snap63_27_v1"]
+        if run_v63_m27_v1_probe:
+            p_v63_27_v1_probe = pred_cache["p_v63_27_v1_probe"]
+            excl63_27_v1_probe_flags = pred_cache["excl63_27_v1_probe_flags"]
+            excl63_27_v1_probe_reasons = pred_cache["excl63_27_v1_probe_reasons"]
+            snap63_27_v1_probe = pred_cache["snap63_27_v1_probe"]
     else:
         if include_v62:
             print("[Q4_ROI_62_63] predicciones v6.2...")
@@ -1454,6 +1749,29 @@ def main():
                 use_live_filters=False,
             )
 
+        if run_v63_m27_v1:
+            print(
+                f"[Q4_ROI_62_63] predicciones m27_v1 (filters={'off' if V63_DISABLE_FILTERS else 'on'})..."
+            )
+            p_v63_27_v1, excl63_27_v1_flags, excl63_27_v1_reasons, snap63_27_v1 = _predict_m27_v1_probs_for_snapshot_mode(
+                test_rows,
+                27,
+                apply_filters=(not V63_DISABLE_FILTERS),
+                use_live_filters=True,
+            )
+
+        if run_v63_m27_v1_probe:
+            print(
+                f"[Q4_ROI_62_63] predicciones m27_v1 probe sin post-filtros live "
+                f"(filters={'off' if V63_DISABLE_FILTERS else 'on'})..."
+            )
+            p_v63_27_v1_probe, excl63_27_v1_probe_flags, excl63_27_v1_probe_reasons, snap63_27_v1_probe = _predict_m27_v1_probs_for_snapshot_mode(
+                test_rows,
+                27,
+                apply_filters=(not V63_DISABLE_FILTERS),
+                use_live_filters=False,
+            )
+
         pred_payload = {}
         if run_v63_raw:
             pred_payload.update({
@@ -1489,6 +1807,20 @@ def main():
                 "excl63_30_probe_flags": excl63_30_probe_flags,
                 "excl63_30_probe_reasons": excl63_30_probe_reasons,
                 "snap63_30_probe": snap63_30_probe,
+            })
+        if run_v63_m27_v1:
+            pred_payload.update({
+                "p_v63_27_v1": p_v63_27_v1,
+                "excl63_27_v1_flags": excl63_27_v1_flags,
+                "excl63_27_v1_reasons": excl63_27_v1_reasons,
+                "snap63_27_v1": snap63_27_v1,
+            })
+        if run_v63_m27_v1_probe:
+            pred_payload.update({
+                "p_v63_27_v1_probe": p_v63_27_v1_probe,
+                "excl63_27_v1_probe_flags": excl63_27_v1_probe_flags,
+                "excl63_27_v1_probe_reasons": excl63_27_v1_probe_reasons,
+                "snap63_27_v1_probe": snap63_27_v1_probe,
             })
         if include_v62:
             pred_payload.update({
@@ -1554,6 +1886,31 @@ def main():
                 v63_blacklist_flags,
                 v63_blacklist_reasons,
             )
+        if run_v63_m27_v1:
+            excl63_27_v1_flags, excl63_27_v1_reasons = _merge_exclusions(
+                excl63_27_v1_flags,
+                excl63_27_v1_reasons,
+                v63_blacklist_flags,
+                v63_blacklist_reasons,
+            )
+        if run_v63_m27_v1_probe:
+            excl63_27_v1_probe_flags, excl63_27_v1_probe_reasons = _merge_exclusions(
+                excl63_27_v1_probe_flags,
+                excl63_27_v1_probe_reasons,
+                v63_blacklist_flags,
+                v63_blacklist_reasons,
+            )
+
+    if run_v63_m27_v1:
+        m27_v1_policy_flags, m27_v1_policy_reasons = _build_m27_v1_policy_flags(
+            test_rows
+        )
+        excl63_27_v1_blacklist_flags, excl63_27_v1_blacklist_reasons = _merge_exclusions(
+            excl63_27_v1_flags,
+            excl63_27_v1_reasons,
+            m27_v1_policy_flags,
+            m27_v1_policy_reasons,
+        )
 
     print("[Q4_ROI_62_63] simulación match-by-match...")
     if include_v62:
@@ -1679,6 +2036,66 @@ def main():
             q3_min27_scores_map,
             snap63_30_probe,
         )
+    if run_v63_m27_v1:
+        v63_m27_v1_details, v63_m27_v1_summary = _simulate(
+            "m27_v1",
+            test_rows,
+            p_v63_27_v1,
+            27,
+            excl63_27_v1_flags,
+            excl63_27_v1_reasons,
+            MODE,
+            KELLY_MULT,
+            KELLY_CAP,
+            MIN_CONF_PROB,
+            STAKE_STEP,
+            MIN_STAKE,
+            MAX_STAKE,
+            teams_map,
+            q4_scores_map,
+            q3_min27_scores_map,
+            snap63_27_v1,
+        )
+    if run_v63_m27_v1_probe:
+        v63_m27_v1_probe_details, v63_m27_v1_probe_summary = _simulate(
+            "m27_v1_probe",
+            test_rows,
+            p_v63_27_v1_probe,
+            27,
+            excl63_27_v1_probe_flags,
+            excl63_27_v1_probe_reasons,
+            MODE,
+            KELLY_MULT,
+            KELLY_CAP,
+            MIN_CONF_PROB,
+            STAKE_STEP,
+            MIN_STAKE,
+            MAX_STAKE,
+            teams_map,
+            q4_scores_map,
+            q3_min27_scores_map,
+            snap63_27_v1_probe,
+        )
+    if run_v63_m27_v1:
+        v63_m27_v1_blacklist_details, v63_m27_v1_blacklist_summary = _simulate(
+            "m27_v1_blacklist",
+            test_rows,
+            p_v63_27_v1,
+            27,
+            excl63_27_v1_blacklist_flags,
+            excl63_27_v1_blacklist_reasons,
+            MODE,
+            KELLY_MULT,
+            KELLY_CAP,
+            MIN_CONF_PROB,
+            STAKE_STEP,
+            MIN_STAKE,
+            MAX_STAKE,
+            teams_map,
+            q4_scores_map,
+            q3_min27_scores_map,
+            snap63_27_v1,
+        )
 
     if run_v63_raw:
         v63_raw_df = pd.DataFrame(v63_raw_details)
@@ -1690,6 +2107,12 @@ def main():
         v63_m27_probe_df = pd.DataFrame(v63_m27_probe_details)
     if run_v63_m30_probe:
         v63_m30_probe_df = pd.DataFrame(v63_m30_probe_details)
+    if run_v63_m27_v1:
+        v63_m27_v1_df = pd.DataFrame(v63_m27_v1_details)
+    if run_v63_m27_v1_probe:
+        v63_m27_v1_probe_df = pd.DataFrame(v63_m27_v1_probe_details)
+    if run_v63_m27_v1:
+        v63_m27_v1_blacklist_df = pd.DataFrame(v63_m27_v1_blacklist_details)
 
     col_order = [
         "fecha", "liga", "resultado_apuesta", "apuesta", "monto_apostado", "ganancia", "bank_final",
@@ -1710,6 +2133,17 @@ def main():
         v63_m27_probe_df = v63_m27_probe_df[[c for c in col_order if c in v63_m27_probe_df.columns]]
     if run_v63_m30_probe:
         v63_m30_probe_df = v63_m30_probe_df[[c for c in col_order if c in v63_m30_probe_df.columns]]
+    if run_v63_m27_v1:
+        v63_m27_v1_df = _annotate_m27_v1_policy(v63_m27_v1_df)
+        v63_m27_v1_df = v63_m27_v1_df[[c for c in col_order if c in v63_m27_v1_df.columns]]
+    if run_v63_m27_v1_probe:
+        v63_m27_v1_probe_df = _annotate_m27_v1_policy(v63_m27_v1_probe_df)
+        v63_m27_v1_probe_df = v63_m27_v1_probe_df[[c for c in col_order if c in v63_m27_v1_probe_df.columns]]
+    if run_v63_m27_v1:
+        v63_m27_v1_blacklist_df = _annotate_m27_v1_policy(v63_m27_v1_blacklist_df)
+        v63_m27_v1_blacklist_df = v63_m27_v1_blacklist_df[
+            [c for c in col_order if c in v63_m27_v1_blacklist_df.columns]
+        ]
 
     v63_compare_df = None
     if run_v63_m27 and run_v63_m30:
@@ -1720,9 +2154,19 @@ def main():
             q3_min30_scores_map,
         )
 
+    v63_compare_m27_v1_probe_vs_m30_probe_df = None
+    if run_v63_m27_v1_probe and run_v63_m30_probe:
+        v63_compare_m27_v1_probe_vs_m30_probe_df = _build_v63_snapshot_comparison(
+            v63_m27_v1_probe_details,
+            v63_m30_probe_details,
+            q3_min27_scores_map,
+            q3_min30_scores_map,
+        )
+
     summaries = []
     league_dfs = []
     sheets_extra = []
+    m27_v1_policy_df = None
     if run_v63_raw:
         summaries.append(v63_raw_summary)
         league_dfs.append(v63_raw_df)
@@ -1743,8 +2187,26 @@ def main():
         summaries.append(v63_m30_probe_summary)
         league_dfs.append(v63_m30_probe_df)
         sheets_extra.append(("v6_3_m30_probe_matches", v63_m30_probe_df))
+    if run_v63_m27_v1:
+        m27_v1_policy_df = _build_m27_v1_policy_sheet(v63_m27_v1_df)
+        summaries.append(v63_m27_v1_summary)
+        summaries.append(v63_m27_v1_blacklist_summary)
+        league_dfs.append(v63_m27_v1_df)
+        league_dfs.append(v63_m27_v1_blacklist_df)
+        sheets_extra.append(("m27_v1_matches", v63_m27_v1_df))
+        sheets_extra.append(("m27_v1_blacklist_matches", v63_m27_v1_blacklist_df))
+        sheets_extra.append(("m27_v1_policy", m27_v1_policy_df))
+    if run_v63_m27_v1_probe:
+        summaries.append(v63_m27_v1_probe_summary)
+        league_dfs.append(v63_m27_v1_probe_df)
+        sheets_extra.append(("m27_v1_probe_matches", v63_m27_v1_probe_df))
     if v63_compare_df is not None:
         sheets_extra.append(("v6_3_m27_vs_m30", v63_compare_df))
+    if v63_compare_m27_v1_probe_vs_m30_probe_df is not None:
+        sheets_extra.append((
+            "m27_v1_probe_vs_m30_probe",
+            v63_compare_m27_v1_probe_vs_m30_probe_df,
+        ))
 
     if include_v62:
         v62_df = pd.DataFrame(v62_details)

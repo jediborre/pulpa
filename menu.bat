@@ -43,6 +43,9 @@ echo   17) V6.3: Reporte m27 + m30 (sin raw)
 echo   18) V6.3: Solo m27 (rebuild caches)
 echo   19) V6.3: m27 probe (sin post-filtros live)
 echo   20) V6.3: m30 probe (sin post-filtros live)
+echo   21) M27_V1: Entrenar
+echo   22) M27_V1: Solo reporte
+echo   23) M27_V1: Solo probe
 echo   0) Salir
 echo.
 set /p OPT="  Selecciona: "
@@ -68,6 +71,9 @@ if "%OPT%"=="17" goto REPORT_V63_M27_M30
 if "%OPT%"=="18" goto REPORT_V63_M27_REBUILD
 if "%OPT%"=="19" goto REPORT_V63_M27_PROBE
 if "%OPT%"=="20" goto REPORT_V63_M30_PROBE
+if "%OPT%"=="21" goto TRAIN_M27_V1
+if "%OPT%"=="22" goto REPORT_M27_V1_ONLY
+if "%OPT%"=="23" goto REPORT_M27_V1_PROBE
 
 echo [ERROR] Opcion invalida.
 timeout /t 2 /nobreak >nul
@@ -262,6 +268,33 @@ cls
 echo [+] V6.3: m30 probe sin post-filtros live...
 call .venv\Scripts\activate
 python match\training\report_v63_q4_roi.py --no-v62 --no-raw --no-m27 --no-m30 --with-m30-probe
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:TRAIN_M27_V1
+cls
+echo [+] M27_V1: Entrenando...
+call .venv\Scripts\activate
+python match\training\train_q4_m27_v1.py
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:REPORT_M27_V1_ONLY
+cls
+echo [+] M27_V1: Solo reporte...
+call .venv\Scripts\activate
+python match\training\report_v63_q4_roi.py --only-m27-v1
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:REPORT_M27_V1_PROBE
+cls
+echo [+] M27_V1: Solo probe...
+call .venv\Scripts\activate
+python match\training\report_v63_q4_roi.py --no-v62 --no-raw --no-m27 --no-m30 --no-m27-probe --no-m30-probe --no-m27-v1 --with-m27-v1-probe
 pause
 goto MENU
 
