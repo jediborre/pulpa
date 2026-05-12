@@ -35,7 +35,12 @@ echo   9) Instalar / actualizar dependencias
 echo   10) V6.2: Solo entrenar
 echo   11) V6.2: Solo reporte Q4 ROI
 echo   12) V6.2: Entrenar + reporte
-echo   13) V6.3: Solo reporte Q4 ROI (--no-v62)
+echo   13) V6.3: Reporte interactivo (elige bloques)
+echo   14) V6.3: Solo reporte m27 (rapido)
+echo   15) V6.3: Solo reporte raw monitor
+echo   16) V6.3: Solo reporte m30
+echo   17) V6.3: Reporte m27 + m30 (sin raw)
+echo   18) V6.3: Solo m27 (rebuild caches)
 echo   0) Salir
 echo.
 set /p OPT="  Selecciona: "
@@ -53,7 +58,12 @@ if "%OPT%"=="9" goto INSTALAR
 if "%OPT%"=="10" goto TRAIN_REPORT_ONLY
 if "%OPT%"=="11" goto REPORT_ONLY
 if "%OPT%"=="12" goto TRAIN_AND_REPORT
-if "%OPT%"=="13" goto REPORT_V63_ONLY
+if "%OPT%"=="13" goto REPORT_V63_INTERACTIVE
+if "%OPT%"=="14" goto REPORT_V63_M27_ONLY
+if "%OPT%"=="15" goto REPORT_V63_RAW_ONLY
+if "%OPT%"=="16" goto REPORT_V63_M30_ONLY
+if "%OPT%"=="17" goto REPORT_V63_M27_M30
+if "%OPT%"=="18" goto REPORT_V63_M27_REBUILD
 
 echo [ERROR] Opcion invalida.
 timeout /t 2 /nobreak >nul
@@ -180,11 +190,56 @@ pause
 goto MENU
 
 :: ─────────────────────────────────────────────────
-:REPORT_V63_ONLY
+:REPORT_V63_INTERACTIVE
 cls
-echo [+] V6.3: Solo generar reporte Q4 ROI (--no-v62)...
+echo [+] V6.3: Reporte interactivo (elige incluir/excluir bloques)...
 call .venv\Scripts\activate
-python match\training\report_v62_v63_q4_roi.py --no-v62
+python match\training\report_v63_q4_roi.py
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:REPORT_V63_M27_ONLY
+cls
+echo [+] V6.3: Solo reporte m27 (--only-m27)...
+call .venv\Scripts\activate
+python match\training\report_v63_q4_roi.py --only-m27
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:REPORT_V63_RAW_ONLY
+cls
+echo [+] V6.3: Solo reporte raw monitor (sin m27/m30)...
+call .venv\Scripts\activate
+python match\training\report_v63_q4_roi.py --no-v62 --with-raw --no-m27 --no-m30
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:REPORT_V63_M30_ONLY
+cls
+echo [+] V6.3: Solo reporte m30...
+call .venv\Scripts\activate
+python match\training\report_v63_q4_roi.py --no-v62 --no-raw --no-m27 --with-m30
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:REPORT_V63_M27_M30
+cls
+echo [+] V6.3: Reporte m27 + m30 (sin raw)...
+call .venv\Scripts\activate
+python match\training\report_v63_q4_roi.py --no-v62 --no-raw --with-m27 --with-m30
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:REPORT_V63_M27_REBUILD
+cls
+echo [+] V6.3: Solo m27 con rebuild de caches...
+call .venv\Scripts\activate
+python match\training\report_v63_q4_roi.py --only-m27 --rebuild-pred-cache --rebuild-splits-cache
 pause
 goto MENU
 
