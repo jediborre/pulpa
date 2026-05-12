@@ -164,6 +164,10 @@ def _q4_timing() -> tuple[int, int, bool, int]:
         # requires_q3_score=True ensures Q3 final score exists before Q4 inference.
         # wake_before=6: start polling at minute ~25 (Q3 underway), never in Q2.
         return 31, 16, True, 6
+    if model == "v6_3":
+        # V6.3 Q4 works on live-like Q3 snapshots at minutes 27 and 30.
+        # Start polling during Q3 and do not require the final Q3 score.
+        return 30, 24, False, 5
     # default (v4, v6, v9, v12, ...)
     return Q4_MINUTE, MIN_GP_Q4, True, WAKE_BEFORE_MINUTES
 
@@ -544,7 +548,10 @@ def init_tables(db_path: str) -> None:
         ("bet_monitor_log",      "model",           "TEXT"),
         ("bet_monitor_log",      "result_checked",  "INTEGER DEFAULT 0"),
         ("bet_monitor_log",      "simulated",       "INTEGER DEFAULT 0"),
-        ("bet_monitor_log",      "filter_reason",   "TEXT"),
+        ("bet_monitor_log",      "filter_reason",    "TEXT"),
+        ("bet_monitor_log",      "signal_last_q",    "TEXT"),
+        ("bet_monitor_log",      "signal_score_home","INTEGER"),
+        ("bet_monitor_log",      "signal_score_away","INTEGER"),
     ]:
         try:
             conn.execute(
@@ -1863,6 +1870,19 @@ def _format_bet_notification(
             return f"{q}: {score_txt} ✈️ {away}"
         return f"{q}: {score_txt}"
 
+    # Build last-Q score snapshot summary line (shown in the header area)
+    _last_q_for_notif = "Q2" if quarter_label == "Q3" else "Q3"
+    _last_q_notif_data = quarters.get(_last_q_for_notif)
+    if isinstance(_last_q_notif_data, dict) and _last_q_notif_data.get("home") is not None:
+        try:
+            _lq_h = int(_last_q_notif_data["home"])
+            _lq_a = int(_last_q_notif_data["away"])
+            _lq_winner = " 🏠" if _lq_h > _lq_a else (" ✈️" if _lq_a > _lq_h else "")
+            _last_q_line = f"Último {_last_q_for_notif}: {_lq_h}-{_lq_a}{_lq_winner} | Min: {current_minute or '?'}"
+        except (TypeError, ValueError):
+            _last_q_line = f"Min: {current_minute or '?'}"
+    else:
+        _last_q_line = f"Min: {current_minute or '?'}"
     score_lines = "\n".join(_q_line(q) for q in q_order)
 
     match_time = str(m_info.get("time") or "")
@@ -1973,7 +1993,7 @@ def _format_bet_notification(
 
     return (
         f"{header}\n\n"
-        f"Match ID: {match_id} | Min: {current_minute or '?'}\n"
+        f"Match ID: {match_id} | {_last_q_line}\n"
         f"{home} vs {away}\n"
         f"Fecha: {fecha_txt}\n"
         f"Liga: {league}\n"
@@ -2174,6 +2194,107 @@ def _v6_2_pick_filter(
 ) -> tuple[bool, float]:
     """Compatibility wrapper for existing callers."""
     accept, stake_factor, _reason = _v6_2_pick_filter_explain(
+        league=league,
+        confidence=confidence,
+        pick=pick,
+        p_pick=p_pick,
+    )
+    return accept, stake_factor
+
+
+# ── v6.3 pick filter ────────────────────────────────────────────────────────────
+
+_V63_BLACKLIST = None
+
+def _get_v63_blacklist_cached():
+    global _V63_BLACKLIST
+    if _V63_BLACKLIST is None:
+        try:
+            import sys
+            from pathlib import Path as _Path
+            _tr = str(_Path(__file__).parent)
+            if _tr not in sys.path:
+                sys.path.insert(0, _tr)
+            from v6_3_league_blacklist import V63LeagueBlacklist
+            _V63_BLACKLIST = V63LeagueBlacklist()
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"v6_3 blacklist load failed: {e}")
+            _V63_BLACKLIST = False
+    return _V63_BLACKLIST if _V63_BLACKLIST else None
+
+
+def _v6_3_pick_filter_explain(
+    league: str,
+    confidence: float,
+    pick: str,
+    p_pick: float | None = None,
+) -> tuple[bool, float, str]:
+    """Apply V6.3 model filtering rules.
+
+    V6.3 uses a manual league blacklist (no statistical league filter).
+    Probability threshold and Kelly staking are identical to V6.2.
+
+    Returns (accept, stake_factor, reason).
+    """
+    bl = _get_v63_blacklist_cached()
+    if bl:
+        blocked, bl_reason = bl.is_blocked(league)
+        if blocked:
+            return False, 0.0, bl_reason or "v6_3_manual_blacklist"
+
+    if p_pick is None:
+        c = max(0.0, min(float(confidence or 0.0), 1.0))
+        p_pick = 0.5 + (c / 2.0)
+    p_pick = max(0.0, min(float(p_pick), 1.0))
+
+    min_conf_prob = 0.58
+    if p_pick < min_conf_prob:
+        return False, 0.0, f"p_pick_below_min:{p_pick:.3f}<{min_conf_prob:.3f}"
+
+    odds = 1.4
+    break_even = 1.0 / odds
+    edge = p_pick - break_even
+    if edge <= 0:
+        return False, 0.0, f"negative_edge:p_pick={p_pick:.3f}<=be={break_even:.3f}@odds={odds:.2f}"
+
+    b = odds - 1.0
+    q = 1.0 - p_pick
+    k_raw = ((b * p_pick) - q) / b if b > 0 else 0.0
+
+    if k_raw <= 0:
+        return False, 0.0, f"kelly_non_positive:k_raw={k_raw:.5f}"
+
+    kelly_mult = 0.25
+    kelly_cap = 0.05
+    k_used = min(k_raw * kelly_mult, kelly_cap)
+    k_strength = max(0.0, min(k_used / kelly_cap, 1.0))
+
+    if p_pick >= 0.97 and edge >= 0.24 and k_strength >= 0.995:
+        stake_val = 100.0
+    elif p_pick >= 0.90 and edge >= 0.18 and k_strength >= 0.85:
+        stake_val = 75.0
+    elif p_pick >= 0.80 and edge >= 0.09 and k_strength >= 0.55:
+        stake_val = 50.0
+    elif k_strength < 0.15:
+        stake_val = 0.0
+    else:
+        stake_val = 25.0
+
+    if stake_val < 25.0:
+        return False, 0.0, f"stake_below_min:stake={stake_val:.0f}"
+
+    stake_factor = stake_val / 100.0
+    return True, stake_factor, f"accepted:stake={stake_val:.0f}"
+
+
+def _v6_3_pick_filter(
+    league: str,
+    confidence: float,
+    pick: str,
+    p_pick: float | None = None,
+) -> tuple[bool, float]:
+    accept, stake_factor, _reason = _v6_3_pick_filter_explain(
         league=league,
         confidence=confidence,
         pick=pick,
@@ -2398,7 +2519,12 @@ async def _check_quarter(
     # ── Terminal debug dump ────────────────────────────────────────────────
     _model_used = _model_config.get(target, "-")
     # Use model-aware cutoff for GP count display
-    _cutoff = (22 if target == "q3" else 31) if _model_used in ("v13", "v15", "v16", "v17") else (24 if target == "q3" else 36)
+    if _model_used in ("v13", "v15", "v16", "v17"):
+        _cutoff = 22 if target == "q3" else 31
+    elif _model_used == "v6_3":
+        _cutoff = 24 if target == "q3" else 30
+    else:
+        _cutoff = 24 if target == "q3" else 36
     _gp_all = data.get("graph_points") or []
     _gp_used = [p for p in _gp_all if int(p.get("minute", 0)) <= _cutoff]
 
@@ -2434,6 +2560,18 @@ async def _check_quarter(
 
     # Persist log entry
     log_conn = _open_db(db_path)
+    # Extract last completed quarter score at the moment of signal
+    _qs_snap = ((data.get("score") or {}).get("quarters") or {})
+    _last_q_key = "Q2" if target == "q3" else "Q3"
+    _last_q_data = _qs_snap.get(_last_q_key) if isinstance(_qs_snap.get(_last_q_key), dict) else None
+    _sig_score_home: int | None = None
+    _sig_score_away: int | None = None
+    if _last_q_data and _last_q_data.get("home") is not None and _last_q_data.get("away") is not None:
+        try:
+            _sig_score_home = int(_last_q_data["home"])
+            _sig_score_away = int(_last_q_data["away"])
+        except (TypeError, ValueError):
+            pass
     _insert_log(
         log_conn,
         match_id=match_id,
@@ -2449,6 +2587,9 @@ async def _check_quarter(
         confidence=round(confidence, 4),
         scraped_minute=current_minute,
         result="pending",
+        signal_last_q=_last_q_key,
+        signal_score_home=_sig_score_home,
+        signal_score_away=_sig_score_away,
     )
     log_conn.close()
 
@@ -2510,7 +2651,10 @@ async def _check_quarter(
                 ]]
             }
 
-        if confidence <= 0.30:
+        # v6_3 bypasses this pre-filter — _v6_3_pick_filter_explain uses p_pick >= 0.58
+        # directly (same logic as the ROI report), so confidence <= 0.30 would wrongly
+        # block picks like p_home=0.624 (confidence=0.248, p_pick=0.624 >= 0.58).
+        if confidence <= 0.30 and _model_config.get(target, "-") != "v6_3":
             _log(f"🔕 BET {quarter_label} [{_model_config.get(target, '-')}]: {home} vs {away} → confianza {confidence*100:.0f}% ≤ 30%, ignorando")
             if _should_notify_filtered_bets(db_path) and not suppress_no_bet_notify:
                 await _notify(
@@ -2649,6 +2793,51 @@ async def _check_quarter(
                         )
                     )
                 return signal, notified, pred
+        elif model_used == "v6_3":
+            _v6_3_accept, _v6_stake, _v6_3_reason = _v6_3_pick_filter_explain(
+                league, confidence, pick, p_pick=p_pick
+            )
+            if not _v6_3_accept:
+                _log(
+                    f"🔕 BET {quarter_label} [v6_3]: {home} vs {away} → filtrado "
+                    f"(conf={confidence*100:.0f}%, p_pick={p_pick*100:.1f}%, liga='{league}', reason={_v6_3_reason})"
+                )
+                if _should_notify_filtered_bets(db_path) and not suppress_no_bet_notify:
+                    await _notify(
+                        _format_filtered_bet_notification(
+                            match_id=match_id,
+                            data=data,
+                            quarter_label=quarter_label,
+                            model_used=model_used,
+                            home=home,
+                            away=away,
+                            league=league,
+                            event_date=event_date,
+                            current_minute=current_minute,
+                            pick=pick,
+                            confidence=confidence,
+                            p_pick=p_pick,
+                            reason=_v6_3_reason,
+                        ),
+                        reply_markup=_filtered_markup(),
+                        notify_type="filtered_bet",
+                        quarter=target,
+                    )
+                    notified = True
+                    _log_simulated_bet(
+                        db_path, match_id, event_date, home, away, league, target,
+                        model_used, signal, pick, confidence,
+                        current_minute, _v6_3_reason
+                    )
+                    pick_name = home if pick == "home" else away
+                    asyncio.ensure_future(
+                        _resolve_simulated_bet_result(
+                            match_id, target, pick, pick_name,
+                            home, away, league, event_date, db_path, model_used,
+                            _v6_3_reason,
+                        )
+                    )
+                return signal, notified, pred
         elif model_used == "v2":
             _v2_accept, _v6_stake = _v2_pick_filter(league, confidence, pick)
             if not _v2_accept:
@@ -2710,7 +2899,7 @@ async def _check_quarter(
             db_path=db_path,
             pick=pick,
         )
-        if model_used == "v6_2":
+        if model_used in ("v6_2", "v6_3"):
             msg += f"\n💰 Stake sugerido (Kelly): ${int(_v6_stake * 100)}"
         elif _v6_stake < 1.0:
             msg += f"\n⚠️ Stake sugerido: {int(_v6_stake * 100)}% del stake normal"
@@ -4383,6 +4572,10 @@ def signals_text_today(
                 _accept, _ = _v6_2_pick_filter(_row_league, _row_conf, _row_pick)
                 if not _accept:
                     continue
+            if _row_model == "v6_3":
+                _accept, _ = _v6_3_pick_filter(_row_league, _row_conf, _row_pick)
+                if not _accept:
+                    continue
             if _row_model == "v2":
                 _accept, _ = _v2_pick_filter(_row_league, _row_conf, _row_pick)
                 if not _accept:
@@ -5156,6 +5349,14 @@ def signals_excel_today(
                     continue
             elif str(row.get("model") or "") == "v6_2":
                 _accept, _ = _v6_2_pick_filter(
+                    str(row.get("league") or ""),
+                    float(row.get("confidence") or 0),
+                    str(row.get("pick") or ""),
+                )
+                if not _accept:
+                    continue
+            elif str(row.get("model") or "") == "v6_3":
+                _accept, _ = _v6_3_pick_filter(
                     str(row.get("league") or ""),
                     float(row.get("confidence") or 0),
                     str(row.get("pick") or ""),

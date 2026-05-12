@@ -506,3 +506,96 @@ Para usar una u otra, apunta tu inferencia/carga de modelos a la carpeta deseada
 - `log_loss` y `brier`: calidad de calibracion de probabilidades.
 
 Para apuestas, no basta con accuracy; la calibracion (`log_loss`, `brier`) y la consistencia por segmento son clave.
+
+## V6.2 (league pruning + name exclusion)
+
+Script:
+
+```bash
+python training/train_q3_q4_models_v6_2.py
+```
+
+Que agrega V6.2 respecto a V6:
+
+- Filtrado automatico de ligas por signal (signal strength pruning por abs_effect_vs_global).
+- Exclusion de ligas por patron de nombre (categorias: obscure, amateur, youth, etc.) via `v6_2_league_name_exclusions.json`.
+- Elimina MLP del ensemble; usa xgb y hist_gb.
+- Champion Q4: 0.6*xgb + 0.4*hist_gb.
+- Champion Q3: xgb solo.
+- Exporta A/B vs V6 baseline.
+
+Salida en:
+
+- `training/model_outputs_v6_2/`
+
+## V6.3 (ventanas dinamicas, Q4 only, 70/15/15, calibracion isotonica)
+
+Script:
+
+```bash
+python training/train_q3_q4_models_v6_3.py
+```
+
+### Cambios respecto a V6.2
+
+| Aspecto | V6.2 | V6.3 |
+|---|---|---|
+| Targets | Q3 + Q4 | **Q4 solo** (Q3 descartado) |
+| Ventanas de features | Estaticas (36 min) | **Dinamicas** [27, 30, 33, 36] min |
+| Split | 80/20 temporal | **70/15/15** (train/val/test) temporal |
+| Calibracion | Sin calibracion | **Isotonica post-hoc** (fit en val) |
+| Cross-validation | Sin CV | **TimeSeriesSplit 5 folds** |
+| Champion Q4 | 0.6*xgb + 0.4*hist_gb | avg(xgb, hist_gb) |
+| Baseline A/B | vs V6 | vs V6 + vs V6.2 |
+
+### Ventanas dinamicas
+
+El monitor de apuestas puede llegar a diferentes minutos del partido (minuto 27 al 38 para Q4). En lugar de entrenar solo con features del minuto 36, V6.3 genera un sample por cada ventana de snapshot para cada partido:
+
+- **snapshot 27**: inicio de Q3 + primeros minutos (baja completitud de Q3)
+- **snapshot 30**: mitad de Q3 (50% completitud)
+- **snapshot 33**: final de Q3 (alta completitud)
+- **snapshot 36**: Q3 completo (100% completitud, cutoff original)
+
+Esto multiplica el dataset por 4 (una fila por partido por ventana) y agrega `snapshot_minute`, `snapshot_minutes_before_q4` y `snapshot_q3_completeness` como features numericas. El modelo aprende el sesgo de cada momento de inferencia.
+
+### Calibracion
+
+Se entrena una calibracion isotonica post-hoc sobre el split de validacion (15%) y se evalua en el test (15%). Los artefactos exportados incluyen:
+
+- `xgb` (raw), `hist_gb` (raw): modelos sin calibrar
+- `xgb_cal`, `hist_gb_cal`: probabilidades calibradas en test
+- `champion_q4_ensemble_avg`: avg raw
+- `champion_q4_ensemble_avg_cal`: avg calibrado
+
+### Cross-Validation Temporal
+
+Se ejecuta `TimeSeriesSplit(n_splits=5)` sobre **todos los datos** para verificar estabilidad en el tiempo y detectar degradacion del modelo con nuevos partidos. Los resultados se exportan en `q4_cv_metrics.csv` con media y desviacion por fold.
+
+### Actualizacion del modelo con nuevos partidos
+
+Cuando llegan nuevos partidos, ejecutar de nuevo el script re-entrena desde cero sobre toda la historia disponible (enfoque estateless, sin fine-tuning). La CV temporal muestra si la efectividad se mantiene en los folds mas recientes.
+
+### Filtro de ligas
+
+Mantiene la misma logica de V6.2:
+
+- Exclusion por nombre: `v6_2_league_name_exclusions.json` (67 patrones)
+- Exclusion por signal: `LEAGUE_MIN_TRAIN_ROWS=30`, `LEAGUE_MIN_EFFECT_ABS_DIFF=0.015`
+
+### Salida en `model_outputs_v6_3/`
+
+| Archivo | Descripcion |
+|---|---|
+| `q4_metrics.csv` | Metricas holdout por modelo y split |
+| `q4_cv_metrics.csv` | Metricas por fold de CV temporal |
+| `ab_comparison_v6_vs_v6_3.csv` | Delta vs V6 baseline |
+| `ab_comparison_v6_2_vs_v6_3.csv` | Delta vs V6.2 |
+| `league_signal_q4.csv` | Signal por liga en train |
+| `league_name_exclusions_q4.csv` | Partidos excluidos por patron de nombre |
+| `window_distribution.csv` | Distribucion de samples por ventana |
+| `q4_champion.joblib` | Artefacto del modelo champion (xgb+hist_gb) |
+| `q4_xgb.joblib` | Modelo xgb raw |
+| `q4_hist_gb.joblib` | Modelo hist_gb raw |
+| `run_summary.json` | Resumen de config y resultados |
+| `V6_3_REPORT.md` | Reporte completo con tablas A/B y CV |

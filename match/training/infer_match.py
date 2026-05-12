@@ -27,6 +27,9 @@ scraper_mod = importlib.import_module("scraper")
 # Import v6_1 league filter (lazy-loaded on first use)
 _v6_1_league_filter = None
 
+# Import v6_3 league blacklist (lazy-loaded on first use)
+_v6_3_blacklist = None
+
 COMPARE_JSON = (
     ROOT / "training" / "model_comparison" / "version_comparison.json"
 )
@@ -37,6 +40,7 @@ MODEL_DIR_V4 = ROOT / "training" / "model_outputs_v4"
 MODEL_DIR_V6 = ROOT / "training" / "model_outputs_v6"
 MODEL_DIR_V6_1 = ROOT / "training" / "model_outputs_v6_1"
 MODEL_DIR_V6_2 = ROOT / "training" / "model_outputs_v6_2"
+MODEL_DIR_V6_3 = ROOT / "training" / "model_outputs_v6_3"
 MODEL_DIR_V9 = ROOT / "training" / "model_outputs_v9"
 MODEL_DIR_V10 = ROOT / "training" / "model_outputs_v10"
 GATE_CONFIG = ROOT / "training" / "model_outputs_v2" / "gate_config.json"
@@ -63,6 +67,22 @@ _GATE_CACHE: dict | None | bool = None
 
 def _safe_rate(num: float, den: float) -> float:
     return float(num / den) if den else 0.0
+
+
+def _get_v6_3_blacklist():
+    """Lazy-load V6.3 manual league blacklist on first use."""
+    global _v6_3_blacklist
+    if _v6_3_blacklist is None:
+        try:
+            from training.v6_3_league_blacklist import V63LeagueBlacklist
+            _v6_3_blacklist = V63LeagueBlacklist()
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                f"Failed to load v6_3 league blacklist: {e}"
+            )
+            _v6_3_blacklist = False
+    return _v6_3_blacklist if _v6_3_blacklist else None
 
 
 def _get_v6_1_league_filter():
@@ -1126,6 +1146,7 @@ def _predict_prob(
     target: str,
     model_name: str,
     features: dict,
+    snapshot_minute: int | None = None,
 ) -> float:
     if version == "v4":
         model_dir = MODEL_DIR_V4
@@ -1178,6 +1199,32 @@ def _predict_prob(
             p_xgb = float(models["xgb"].predict_proba(x)[0][1])
             p_hgb = float(models["hist_gb"].predict_proba(x)[0][1])
             return 0.6 * p_xgb + 0.4 * p_hgb
+
+    if model_name == "champion" and version == "v6_3":
+        snap = int(snapshot_minute or 30) if target == "q4" else None
+        champ_path = (
+            MODEL_DIR_V6_3 / f"{target}_m{snap}_champion.joblib"
+            if target == "q4"
+            else MODEL_DIR_V6_3 / f"{target}_champion.joblib"
+        )
+        if not champ_path.exists():
+            raise FileNotFoundError(f"V6.3 champion not found: {champ_path}")
+        meta = joblib.load(champ_path)
+        vec = meta["vectorizer"]
+        models = meta["models"]
+
+        features_copy = dict(features)
+        league = str(features_copy.get("league", ""))
+        keep_leagues = set(meta.get("league_filter", {}).get("kept_leagues", []))
+        other_token = meta.get("league_filter", {}).get("other_token", "LEAGUE_OTHER_SIGNAL_WEAK")
+        if keep_leagues and league not in keep_leagues:
+            features_copy["league"] = other_token
+            features_copy["league_bucket"] = other_token
+
+        x = vec.transform([features_copy])
+        p_xgb = float(models["xgb"].predict_proba(x)[0][1])
+        p_hgb = float(models["hist_gb"].predict_proba(x)[0][1])
+        return 0.5 * p_xgb + 0.5 * p_hgb
 
     if model_name == "champion" and version == "v6_1":
         champ_path = MODEL_DIR_V6_1 / f"{target}_champion.joblib"
@@ -1361,6 +1408,63 @@ def _build_features_v3(
     )
     out.update(_pbp_stats_upto_minute(match_data, snapshot_minute))
     return out
+
+
+def _clip_pbp_to_minute(match_data: dict, cutoff_minute: int) -> dict:
+    pbp = (match_data.get("play_by_play") or {})
+    out = {"Q1": [], "Q2": [], "Q3": []}
+    cutoff = float(cutoff_minute)
+    for quarter_label, plays in pbp.items():
+        q_idx = _quarter_index(str(quarter_label))
+        if q_idx is None or q_idx < 1 or q_idx > 3:
+            continue
+        q_start = (q_idx - 1) * 12.0
+        kept = []
+        for play in plays or []:
+            rem_sec = _clock_to_seconds(str(play.get("time", "") or ""))
+            if rem_sec is None:
+                continue
+            global_min = q_start + (12.0 - rem_sec / 60.0)
+            if global_min <= cutoff + 1e-9:
+                kept.append(play)
+        out[f"Q{q_idx}"] = kept
+    return out
+
+
+def _build_live_like_q4_snapshot(match_data: dict, snapshot_minute: int) -> dict:
+    """Reconstruct match state as if inference happened at snapshot_minute."""
+    clipped = dict(match_data)
+    clipped["graph_points"] = [
+        p for p in (match_data.get("graph_points") or [])
+        if int(p.get("minute", 0)) <= int(snapshot_minute)
+    ]
+    clipped["play_by_play"] = _clip_pbp_to_minute(match_data, snapshot_minute)
+
+    score_obj = dict((match_data.get("score") or {}))
+    quarters = dict(score_obj.get("quarters") or {})
+    q1h, q1a = _quarter_points(match_data, "Q1")
+    q2h, q2a = _quarter_points(match_data, "Q2")
+    ht_home = int(q1h or 0) + int(q2h or 0)
+    ht_away = int(q1a or 0) + int(q2a or 0)
+
+    game_home, game_away = _score_upto(clipped, int(snapshot_minute))
+    q3_home = max(0, int(game_home) - ht_home)
+    q3_away = max(0, int(game_away) - ht_away)
+    quarters["Q3"] = {"home": q3_home, "away": q3_away}
+
+    score_obj["quarters"] = quarters
+    clipped["score"] = score_obj
+    return clipped
+
+
+def _select_v6_3_q4_snapshot(minute_est: int | None) -> int | None:
+    if minute_est is None:
+        return None
+    if minute_est < 27:
+        return None
+    if minute_est < 30:
+        return 27
+    return 30
 
 
 def _select_q4_snapshot(minute_est: int | None) -> int | None:
@@ -1683,7 +1787,7 @@ def run_inference(
     def forced_version_for_target(target: str) -> str | None:
         if isinstance(force_version, dict):
             return force_version.get(target) or None
-        if force_version in ("v1", "v2", "v4", "v6", "v6_1", "v6_2", "v9"):
+        if force_version in ("v1", "v2", "v4", "v6", "v6_1", "v6_2", "v6_3", "v9"):
             return force_version
         if force_version == "hybrid":
             return "v2" if target == "q3" else "v4"
@@ -1732,7 +1836,7 @@ def run_inference(
         forced = forced_version_for_target(target)
         if forced is not None:
             version = forced
-        if version in ("v6_1", "v6_2"):
+        if version in ("v6_1", "v6_2", "v6_3"):
             model_name = "champion"
 
         use_v3_live = (
@@ -1770,6 +1874,31 @@ def run_inference(
             version = "v3"
             model_name = "ensemble_avg_prob"
             snapshot_used = snap
+        elif version == "v6_3" and target == "q4":
+            snap = _select_v6_3_q4_snapshot(out["match"].get("minute_estimate"))
+            if snap is None:
+                out["predictions"][target] = {
+                    "available": False,
+                    "reason": "v6_3_q4_available_from_minute_27",
+                }
+                continue
+
+            live_like = _build_live_like_q4_snapshot(match_data, snap)
+            features = _build_features_v3(
+                conn,
+                live_like,
+                target=target,
+                snapshot_minute=snap,
+            )
+            prob_home = _predict_prob(
+                version,
+                target,
+                model_name,
+                features,
+                snapshot_minute=snap,
+            )
+            snapshot_used = snap
+            _data = live_like
         else:
             features = _build_features(conn, _data, version, target)
             prob_home = _predict_prob(version, target, model_name, features)
@@ -1810,6 +1939,19 @@ def run_inference(
                     out["predictions"][target] = {
                         "available": False,
                         "reason": f"v6_1_league_filter: {reason}",
+                    }
+                    continue
+
+        # Apply V6.3 manual league blacklist for Q4 predictions
+        if version == "v6_3" and target == "q4":
+            bl = _get_v6_3_blacklist()
+            if bl:
+                league = match_data.get("match", {}).get("league", "")
+                blocked, bl_reason = bl.is_blocked(league)
+                if blocked:
+                    out["predictions"][target] = {
+                        "available": False,
+                        "reason": bl_reason,
                     }
                     continue
 

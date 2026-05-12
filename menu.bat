@@ -35,6 +35,7 @@ echo   9) Instalar / actualizar dependencias
 echo   10) V6.2: Solo entrenar
 echo   11) V6.2: Solo reporte Q4 ROI
 echo   12) V6.2: Entrenar + reporte
+echo   13) V6.3: Solo reporte Q4 ROI (--no-v62)
 echo   0) Salir
 echo.
 set /p OPT="  Selecciona: "
@@ -52,6 +53,7 @@ if "%OPT%"=="9" goto INSTALAR
 if "%OPT%"=="10" goto TRAIN_REPORT_ONLY
 if "%OPT%"=="11" goto REPORT_ONLY
 if "%OPT%"=="12" goto TRAIN_AND_REPORT
+if "%OPT%"=="13" goto REPORT_V63_ONLY
 
 echo [ERROR] Opcion invalida.
 timeout /t 2 /nobreak >nul
@@ -174,6 +176,15 @@ goto MENU
 cls
 echo [+] V6.2: Entrenar + reporte...
 call train_62_and_report.bat both
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:REPORT_V63_ONLY
+cls
+echo [+] V6.3: Solo generar reporte Q4 ROI (--no-v62)...
+call .venv\Scripts\activate
+python match\training\report_v62_v63_q4_roi.py --no-v62
 pause
 goto MENU
 

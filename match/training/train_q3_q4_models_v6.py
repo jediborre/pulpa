@@ -454,7 +454,15 @@ def _bucket(value: str, top_set: set[str], prefix: str) -> str:
     return f"{prefix}_OTHER"
 
 
-def _build_samples(db_path: Path) -> list[MatchSample]:
+def _build_samples(db_path: Path, date_gte: str | None = None) -> list[MatchSample]:
+    """Build MatchSample list from DB.
+
+    If *date_gte* is given (YYYY-MM-DD string), only matches with date >= that
+    value are loaded via get_match().  team_history is initialised from scratch
+    for that window so prior-win-rate features may be slightly inaccurate for
+    the first few matches; this is acceptable for report/evaluation use-cases
+    where a 3x speed-up matters more than perfect feature fidelity.
+    """
     conn = db_mod.get_conn(str(db_path))
     db_mod.init_db(conn)
 
@@ -464,10 +472,18 @@ def _build_samples(db_path: Path) -> list[MatchSample]:
         top_teams=TOP_TEAMS,
     )
 
-    rows = conn.execute(
-        "SELECT match_id, date, time FROM matches "
-        "ORDER BY date, time, match_id"
-    ).fetchall()
+    if date_gte is not None:
+        rows = conn.execute(
+            "SELECT match_id, date, time FROM matches "
+            "WHERE date >= ? "
+            "ORDER BY date, time, match_id",
+            (date_gte,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT match_id, date, time FROM matches "
+            "ORDER BY date, time, match_id"
+        ).fetchall()
 
     team_history: dict[str, list[int]] = defaultdict(list)
     samples: list[MatchSample] = []
