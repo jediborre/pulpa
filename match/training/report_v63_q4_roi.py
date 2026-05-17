@@ -72,6 +72,13 @@ V63_DISABLE_FILTERS = True
 V63_APPLY_MANUAL_BLACKLIST = False
 
 
+def _report_date_from_dt(dt_value) -> str:
+    if not dt_value:
+        return ""
+    dt_local = dt_value if dt_value.tzinfo else dt_value.replace(tzinfo=timezone.utc)
+    return dt_local.astimezone(timezone(timedelta(hours=-6))).strftime("%Y-%m-%d")
+
+
 def _rows_fingerprint(rows) -> str:
     h = hashlib.sha1()
     for s in rows:
@@ -168,7 +175,7 @@ _FAST_COMPLETE_Q4_SQL = """
 """
 
 
-def _prepare_splits(force_rebuild: bool = False):
+def _prepare_splits(force_rebuild: bool = False, only_date: str | None = None):
     """Load Q4 rows and return temporal 70/15/15 splits (fast, cached).
 
     Strategy:
@@ -177,6 +184,21 @@ def _prepare_splits(force_rebuild: bool = False):
       3. Results are serialised to SPLITS_CACHE_PATH keyed by DB file
          signature (mtime + size).  Subsequent runs load from cache instantly.
     """
+    if only_date:
+        print(f"[Q4_ROI_62_63] cargando solo partidos no vistos de la fecha {only_date}...")
+        samples = v6._build_samples(v6.DB_PATH, date_gte=only_date)
+        rows = sorted(
+            [s for s in samples if s.target_q4 is not None and _report_date_from_dt(s.dt) == only_date],
+            key=lambda s: s.dt,
+        )
+        if not rows:
+            raise ValueError(f"No se encontraron partidos no vistos para la fecha {only_date}")
+        print(
+            "[Q4_ROI_62_63] modo fecha específica "
+            f"fecha={only_date} test={len(rows)}"
+        )
+        return [], [], rows
+
     db_sig = _file_signature(v6.DB_PATH)
     cache_key = {"db_sig": db_sig, "split_ratios": (0.70, 0.15, 0.15)}
 
@@ -1451,6 +1473,20 @@ def _ask_yes_no(prompt: str, default_yes: bool = True) -> bool:
     return resp in ("s", "si", "sí", "y", "yes")
 
 
+def _ask_optional_report_date() -> str | None:
+    if not _ask_yes_no("¿Quieres ver resultados de una fecha particular?", default_yes=False):
+        return None
+
+    while True:
+        raw_value = input("Ingresa la fecha en formato YYYY-MM-DD: ").strip()
+        try:
+            chosen_date = datetime.strptime(raw_value, "%Y-%m-%d").strftime("%Y-%m-%d")
+        except ValueError:
+            print("Fecha inválida. Usa el formato YYYY-MM-DD.")
+            continue
+        return chosen_date
+
+
 def main():
     parser = argparse.ArgumentParser(description="Q4 ROI report V6.2 vs V6.3")
     parser.add_argument(
@@ -1616,8 +1652,13 @@ def main():
     v62_label = "v6_2_vs_" if include_v62 else ""
     out_mm_path = BASE_V63 / f"Q4_ROI_match_by_match_{v62_label}v6_3_{ts}.xlsx"
 
+    only_report_date = _ask_optional_report_date()
+
     print("[Q4_ROI_62_63] preparando datos de prueba...")
-    _, val_rows, test_rows = _prepare_splits(force_rebuild=args.rebuild_splits_cache)
+    _, val_rows, test_rows = _prepare_splits(
+        force_rebuild=args.rebuild_splits_cache,
+        only_date=only_report_date,
+    )
     teams_map = _load_match_teams_map()
     q4_scores_map = _load_match_q4_scores_map([s.match_id for s in test_rows])
     q3_min27_scores_map = _load_match_score_at_minute_map([s.match_id for s in test_rows], V63_SNAPSHOT_MINUTE)
