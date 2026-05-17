@@ -7995,15 +7995,22 @@ async def signals_cmd(
     
     today_str = datetime.now().date().isoformat()
     cid = update.effective_chat.id if update.effective_chat else None
-    # Reconcile any ⏳ pending bets from quarter_scores already in DB
-    await asyncio.to_thread(bet_monitor_mod.reconcile_pending_results, DB_PATH)
-    signal_type, quarters = _get_subscriber_pref(cid)
-    text = bet_monitor_mod.signals_text_today(DB_PATH, today_str, pref=signal_type, quarters=quarters)
-    nav_markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📋 Reporte Detallado", callback_data="monitor:report_today")],
-        [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
-    ])
-    await update.effective_message.reply_text(text=text, reply_markup=nav_markup)
+    msg = await update.effective_message.reply_text("⏳ Procesando señales de hoy...")
+    try:
+        # Reconcile any ⏳ pending bets from quarter_scores already in DB
+        await asyncio.to_thread(bet_monitor_mod.reconcile_pending_results, DB_PATH)
+        signal_type, quarters = _get_subscriber_pref(cid)
+        text = await asyncio.to_thread(
+            bet_monitor_mod.signals_text_today, DB_PATH, today_str, signal_type, quarters
+        )
+        nav_markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("📋 Reporte Detallado", callback_data="monitor:report_today")],
+            [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
+        ])
+        await msg.edit_text(text=text, reply_markup=nav_markup)
+    except Exception as e:
+        logger.error("Error generating signals command output: %s", e)
+        await msg.edit_text("❌ Error al procesar señales")
 
 
 async def signals_report_cmd(
@@ -8818,16 +8825,27 @@ async def _handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     if data == "monitor:signals_today":
         today_str = datetime.now().date().isoformat()
         cid = query.from_user.id if query.from_user else None
-        # Reconcile any ⏳ pending bets from quarter_scores already in DB
-        await asyncio.to_thread(bet_monitor_mod.reconcile_pending_results, DB_PATH)
-        signal_type, quarters = _get_subscriber_pref(cid)
-        text = bet_monitor_mod.signals_text_today(DB_PATH, today_str, pref=signal_type, quarters=quarters)
-        nav_markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📋 Reporte Detallado", callback_data="monitor:report_today")],
-            [InlineKeyboardButton("⬅️ Monitor", callback_data="menu:monitor")],
-            [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
-        ])
-        await query.edit_message_text(text=text, reply_markup=nav_markup)
+        # Show loading message immediately
+        await query.edit_message_text(text="⏳ Procesando señales de hoy...", reply_markup=None)
+        try:
+            # Reconcile any ⏳ pending bets from quarter_scores already in DB
+            await asyncio.to_thread(bet_monitor_mod.reconcile_pending_results, DB_PATH)
+            signal_type, quarters = _get_subscriber_pref(cid)
+            text = await asyncio.to_thread(
+                bet_monitor_mod.signals_text_today, DB_PATH, today_str, signal_type, quarters
+            )
+            nav_markup = InlineKeyboardMarkup([
+                [InlineKeyboardButton("📋 Reporte Detallado", callback_data="monitor:report_today")],
+                [InlineKeyboardButton("⬅️ Monitor", callback_data="menu:monitor")],
+                [InlineKeyboardButton("Menu principal", callback_data="nav:main")],
+            ])
+            await query.edit_message_text(text=text, reply_markup=nav_markup)
+        except Exception as e:
+            logger.error("Error generating signals: %s", e)
+            await query.edit_message_text(
+                text="❌ Error al procesar señales",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Volver", callback_data="menu:monitor")]])
+            )
         return
 
     if data == "monitor:report_today":
