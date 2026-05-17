@@ -1211,6 +1211,7 @@ def _simulate(
         "perdidas": losses,
         "empates_contados_como_perdida": 0,
         "sin_apuesta": no_bet,
+        "partidos_no_apostados": no_bet,
         "efectividad": (wins / bets) if bets else 0.0,
         "banco_inicio": BANK_START,
         "banco_final": bank,
@@ -2261,7 +2262,8 @@ def main():
 
     summary_order = [
         "modelo", "partidos_test", "apuestas", "ganadas", "perdidas",
-        "empates_contados_como_perdida", "sin_apuesta", "efectividad",
+        "empates_contados_como_perdida", "partidos_no_apostados",
+        "sin_apuesta", "efectividad",
         "banco_inicio", "banco_final", "ganancia", "roi_bank",
         "total_apostado", "apuesta_promedio", "yield_sobre_apostado", "max_drawdown",
         "minuto_base_apuesta",
