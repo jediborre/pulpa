@@ -2656,6 +2656,21 @@ async def _check_quarter(
         # block picks like p_home=0.624 (confidence=0.248, p_pick=0.624 >= 0.58).
         if confidence <= 0.30 and _model_config.get(target, "-") != "v6_3":
             _log(f"🔕 BET {quarter_label} [{_model_config.get(target, '-')}]: {home} vs {away} → confianza {confidence*100:.0f}% ≤ 30%, ignorando")
+            # Always log simulated bet regardless of notification setting
+            _log_simulated_bet(
+                db_path, match_id, event_date, home, away, league, target,
+                _model_config.get(target, "-"), signal, pick, confidence,
+                current_minute, "confidence_below_min:<=30%"
+            )
+            pick_name = home if pick == "home" else away
+            asyncio.ensure_future(
+                _resolve_simulated_bet_result(
+                    match_id, target, pick, pick_name,
+                    home, away, league, event_date, db_path, _model_config.get(target, "-"),
+                    "confidence_below_min:<=30%",
+                )
+            )
+            # Notify only if enabled
             if _should_notify_filtered_bets(db_path) and not suppress_no_bet_notify:
                 await _notify(
                     _format_filtered_bet_notification(
@@ -2678,20 +2693,6 @@ async def _check_quarter(
                     quarter=target,
                 )
                 notified = True
-                # Log and monitor simulated bet
-                _log_simulated_bet(
-                    db_path, match_id, event_date, home, away, league, target,
-                    _model_config.get(target, "-"), signal, pick, confidence,
-                    current_minute, "confidence_below_min:<=30%"
-                )
-                pick_name = home if pick == "home" else away
-                asyncio.ensure_future(
-                    _resolve_simulated_bet_result(
-                        match_id, target, pick, pick_name,
-                        home, away, league, event_date, db_path, _model_config.get(target, "-"),
-                        "confidence_below_min:<=30%",
-                    )
-                )
             return signal, notified, pred
         try:
             p_home = float(pred.get("p_home_win") or 0.0)
@@ -2709,7 +2710,22 @@ async def _check_quarter(
         if model_used == "v6":
             _v6_accept, _v6_stake = _v6_pick_filter(league, confidence, pick)
             if not _v6_accept:
-                _log(f"🔕 BET {quarter_label} [v6]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")                
+                _log(f"🔕 BET {quarter_label} [v6]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")
+                # Always log simulated bet regardless of notification setting
+                _log_simulated_bet(
+                    db_path, match_id, event_date, home, away, league, target,
+                    model_used, signal, pick, confidence,
+                    current_minute, "v6_filter_reject"
+                )
+                pick_name = home if pick == "home" else away
+                asyncio.ensure_future(
+                    _resolve_simulated_bet_result(
+                        match_id, target, pick, pick_name,
+                        home, away, league, event_date, db_path, model_used,
+                        "v6_filter_reject",
+                    )
+                )
+                # Notify only if enabled
                 if _should_notify_filtered_bets(db_path) and not suppress_no_bet_notify:
                     await _notify(
                         _format_filtered_bet_notification(
@@ -2732,20 +2748,6 @@ async def _check_quarter(
                         quarter=target,
                     )
                     notified = True
-                    # Log and monitor simulated bet
-                    _log_simulated_bet(
-                        db_path, match_id, event_date, home, away, league, target,
-                        model_used, signal, pick, confidence,
-                        current_minute, "v6_filter_reject"
-                    )
-                    pick_name = home if pick == "home" else away
-                    asyncio.ensure_future(
-                        _resolve_simulated_bet_result(
-                            match_id, target, pick, pick_name,
-                            home, away, league, event_date, db_path, model_used,
-                            "v6_filter_reject",
-                        )
-                    )
                 return signal, notified, pred
         elif model_used == "v6_2":
             _v6_2_accept, _v6_stake, _v6_2_reason = _v6_2_pick_filter_explain(
@@ -2756,6 +2758,21 @@ async def _check_quarter(
                     f"🔕 BET {quarter_label} [v6_2]: {home} vs {away} → filtrado "
                     f"(conf={confidence*100:.0f}%, p_pick={p_pick*100:.1f}%, liga='{league}', reason={_v6_2_reason})"
                 )
+                # Always log simulated bet regardless of notification setting
+                _log_simulated_bet(
+                    db_path, match_id, event_date, home, away, league, target,
+                    model_used, signal, pick, confidence,
+                    current_minute, _v6_2_reason
+                )
+                pick_name = home if pick == "home" else away
+                asyncio.ensure_future(
+                    _resolve_simulated_bet_result(
+                        match_id, target, pick, pick_name,
+                        home, away, league, event_date, db_path, model_used,
+                        _v6_2_reason,
+                    )
+                )
+                # Notify only if enabled
                 if _should_notify_filtered_bets(db_path) and not suppress_no_bet_notify:
                     await _notify(
                         _format_filtered_bet_notification(
@@ -2778,20 +2795,6 @@ async def _check_quarter(
                         quarter=target,
                     )
                     notified = True
-                    # Log and monitor simulated bet
-                    _log_simulated_bet(
-                        db_path, match_id, event_date, home, away, league, target,
-                        model_used, signal, pick, confidence,
-                        current_minute, _v6_2_reason
-                    )
-                    pick_name = home if pick == "home" else away
-                    asyncio.ensure_future(
-                        _resolve_simulated_bet_result(
-                            match_id, target, pick, pick_name,
-                            home, away, league, event_date, db_path, model_used,
-                            _v6_2_reason,
-                        )
-                    )
                 return signal, notified, pred
         elif model_used == "v6_3":
             _v6_3_accept, _v6_stake, _v6_3_reason = _v6_3_pick_filter_explain(
@@ -2802,6 +2805,21 @@ async def _check_quarter(
                     f"🔕 BET {quarter_label} [v6_3]: {home} vs {away} → filtrado "
                     f"(conf={confidence*100:.0f}%, p_pick={p_pick*100:.1f}%, liga='{league}', reason={_v6_3_reason})"
                 )
+                # Always log simulated bet regardless of notification setting
+                _log_simulated_bet(
+                    db_path, match_id, event_date, home, away, league, target,
+                    model_used, signal, pick, confidence,
+                    current_minute, _v6_3_reason
+                )
+                pick_name = home if pick == "home" else away
+                asyncio.ensure_future(
+                    _resolve_simulated_bet_result(
+                        match_id, target, pick, pick_name,
+                        home, away, league, event_date, db_path, model_used,
+                        _v6_3_reason,
+                    )
+                )
+                # Notify only if enabled
                 if _should_notify_filtered_bets(db_path) and not suppress_no_bet_notify:
                     await _notify(
                         _format_filtered_bet_notification(
@@ -2824,24 +2842,26 @@ async def _check_quarter(
                         quarter=target,
                     )
                     notified = True
-                    _log_simulated_bet(
-                        db_path, match_id, event_date, home, away, league, target,
-                        model_used, signal, pick, confidence,
-                        current_minute, _v6_3_reason
-                    )
-                    pick_name = home if pick == "home" else away
-                    asyncio.ensure_future(
-                        _resolve_simulated_bet_result(
-                            match_id, target, pick, pick_name,
-                            home, away, league, event_date, db_path, model_used,
-                            _v6_3_reason,
-                        )
-                    )
                 return signal, notified, pred
         elif model_used == "v2":
             _v2_accept, _v6_stake = _v2_pick_filter(league, confidence, pick)
             if not _v2_accept:
                 _log(f"🔕 BET {quarter_label} [v2]: {home} vs {away} → filtrado (conf={confidence*100:.0f}%, liga='{league}')")
+                # Always log simulated bet regardless of notification setting
+                _log_simulated_bet(
+                    db_path, match_id, event_date, home, away, league, target,
+                    model_used, signal, pick, confidence,
+                    current_minute, "v2_filter_reject"
+                )
+                pick_name_sim = home if pick == "home" else away
+                asyncio.ensure_future(
+                    _resolve_simulated_bet_result(
+                        match_id, target, pick, pick_name_sim,
+                        home, away, league, event_date, db_path, model_used,
+                        "v2_filter_reject",
+                    )
+                )
+                # Notify only if enabled
                 if _should_notify_filtered_bets(db_path) and not suppress_no_bet_notify:
                     await _notify(
                         _format_filtered_bet_notification(
@@ -2864,20 +2884,6 @@ async def _check_quarter(
                         quarter=target,
                     )
                     notified = True
-                    # Log and monitor simulated bet
-                    _log_simulated_bet(
-                        db_path, match_id, event_date, home, away, league, target,
-                        model_used, signal, pick, confidence,
-                        current_minute, "v2_filter_reject"
-                    )
-                    pick_name_sim = home if pick == "home" else away
-                    asyncio.ensure_future(
-                        _resolve_simulated_bet_result(
-                            match_id, target, pick, pick_name_sim,
-                            home, away, league, event_date, db_path, model_used,
-                            "v2_filter_reject",
-                        )
-                    )
                 return signal, notified, pred
 
         pick_sym = "🏠" if pick == "home" else ("✈️" if pick == "away" else "?")
@@ -4258,12 +4264,13 @@ def signals_text_today(
                s.scheduled_utc_ts
         FROM bet_monitor_log l
         INNER JOIN (
-            SELECT match_id, target, MAX(id) AS max_id
+            SELECT match_id, target, simulated, MAX(id) AS max_id
             FROM bet_monitor_log
             WHERE event_date = ?
-            GROUP BY match_id, target
+            GROUP BY match_id, target, simulated
         ) latest ON l.match_id = latest.match_id
                  AND l.target  = latest.target
+                 AND l.simulated = latest.simulated
                  AND l.id      = latest.max_id
         LEFT JOIN bet_monitor_schedule s ON l.match_id = s.match_id
         WHERE NOT (l.league LIKE '%WNBA%' OR l.league LIKE '%Women%' OR l.league LIKE '%women%' OR l.league LIKE '%Feminina%' OR l.league LIKE '%Femenina%')
@@ -4313,11 +4320,6 @@ def signals_text_today(
           AND NOT l.league LIKE '%Super League%'
           AND NOT l.league LIKE '%United Cup%'
           AND NOT l.league LIKE '%United League%'
-          AND (
-                l.simulated = 1
-                OR l.signal NOT IN ('BET', 'BET_HOME', 'BET_AWAY')
-                OR l.confidence > 0.30
-              )
         ORDER BY COALESCE(s.scheduled_utc_ts, 0) ASC, l.created_at ASC
         """,
         (local_date,),
@@ -4563,7 +4565,10 @@ def signals_text_today(
         _row_league = str(row["league"]     or "") if "league"     in row.keys() else ""
         _row_conf   = float(row["confidence"] or 0.0) if "confidence" in row.keys() else 0.0
         _row_pick   = str(row["pick"]       or "") if "pick"       in row.keys() else ""
-        if _is_bet_signal(_row_signal.upper()):
+        _row_sim    = int(row["simulated"] or 0) if "simulated" in row.keys() else 0
+        # Re-apply model filter only for real bets. Simulated bets were logged exactly
+        # because they failed this filter and must remain visible as filtered signals.
+        if _is_bet_signal(_row_signal.upper()) and _row_sim == 0:
             if _row_model == "v6":
                 _accept, _ = _v6_pick_filter(_row_league, _row_conf, _row_pick)
                 if not _accept:
@@ -4589,8 +4594,11 @@ def signals_text_today(
                 "ts":     row["scheduled_utc_ts"],
             }
         row_dict = dict(row)
-        row_dict["_kind"] = "filtered" if int(row_dict.get("simulated") or 0) == 1 else "real"
-        match_signals[mid][tgt] = row_dict
+        row_kind = "filtered" if int(row_dict.get("simulated") or 0) == 1 else "real"
+        row_dict["_kind"] = row_kind
+        target_bucket = match_signals[mid].setdefault(tgt, {})
+        if isinstance(target_bucket, dict):
+            target_bucket[row_kind] = row_dict
 
     # Late Q4 entries are sourced from the schedule table, not the log.
     for row in late_rows:
@@ -4603,7 +4611,11 @@ def signals_text_today(
                 "league": str(row["league"] or "?"),
                 "ts":     row["scheduled_utc_ts"],
             }
-        match_signals[mid]["q4"] = {
+        q4_bucket = match_signals[mid].setdefault("q4", {})
+        if not isinstance(q4_bucket, dict):
+            q4_bucket = {}
+            match_signals[mid]["q4"] = q4_bucket
+        q4_bucket["late"] = {
             "match_id": mid,
             "target": "q4",
             "signal": row["signal"],
@@ -4626,7 +4638,7 @@ def signals_text_today(
 
     # Filter by quarters: remove quarters not in quarters_lower
     for mid in match_signals:
-        quarters_to_remove = [q for q in match_signals[mid] if q not in quarters_lower]
+        quarters_to_remove = [q for q in list(match_signals[mid].keys()) if q not in quarters_lower]
         for q in quarters_to_remove:
             del match_signals[mid][q]
 
@@ -4635,22 +4647,20 @@ def signals_text_today(
     real_bet_mids = [
         m for m in match_signals
         if any(
-            _is_bet_signal(str(match_signals[m].get(t, {}).get("signal", "")))
-            and str(match_signals[m].get(t, {}).get("_kind", "real")) == "real"
+            _is_bet_signal(str(match_signals[m].get(t, {}).get("real", {}).get("signal", "")))
             for t in ("q3", "q4")
         )
     ]
     filtered_bet_mids = [
         m for m in match_signals
         if any(
-            _is_bet_signal(str(match_signals[m].get(t, {}).get("signal", "")))
-            and str(match_signals[m].get(t, {}).get("_kind", "real")) == "filtered"
+            _is_bet_signal(str(match_signals[m].get(t, {}).get("filtered", {}).get("signal", "")))
             for t in ("q3", "q4")
         )
     ]
     late_bet_mids = [
         m for m in match_signals
-        if any(str(match_signals[m].get(t, {}).get("_kind", "")) == "late" for t in ("q3", "q4"))
+        if any(bool(match_signals[m].get(t, {}).get("late")) for t in ("q3", "q4"))
     ]
     nobet_mids = [m for m in match_signals if m not in real_bet_mids and m not in filtered_bet_mids and m not in late_bet_mids]
 
@@ -4659,19 +4669,23 @@ def signals_text_today(
         hora = _hora(meta["ts"])
         lines_m = [f"{hora}  {meta['home']} vs {meta['away']} ({meta['league']})"]
         for tgt in ("q3", "q4"):
-            if tgt in match_signals[mid]:
-                row_kind = str(match_signals[mid][tgt].get("_kind", "real"))
-                if source_kind in ("real", "filtered", "late") and row_kind != source_kind:
-                    continue
-                line = _sig_line(
-                    tgt,
-                    match_signals[mid][tgt],
-                    show_no_bet=force_show_no_bet,
-                    mid=mid,
-                    source_kind=source_kind if source_kind != "real" else str(match_signals[mid][tgt].get("_kind", "real")),
-                )
-                if line is not None:
-                    lines_m.append(line)
+            if tgt not in match_signals[mid]:
+                continue
+            tgt_rows = match_signals[mid].get(tgt, {})
+            if not isinstance(tgt_rows, dict):
+                continue
+            src_row = tgt_rows.get(source_kind)
+            if not isinstance(src_row, dict):
+                continue
+            line = _sig_line(
+                tgt,
+                src_row,
+                show_no_bet=force_show_no_bet,
+                mid=mid,
+                source_kind=source_kind,
+            )
+            if line is not None:
+                lines_m.append(line)
         # Skip match block if no lines were added
         if len(lines_m) == 1:
             return []
@@ -4710,12 +4724,10 @@ def signals_text_today(
         for mid in mids:
             targets = [target] if target else ("q3", "q4")
             for tgt in targets:
-                s = match_signals[mid].get(tgt)
+                s = match_signals[mid].get(tgt, {}).get(kind)
                 if not s:
                     continue
                 if not _is_bet_signal(str(s.get("signal") or "")):
-                    continue
-                if str(s.get("_kind", "real")) != kind:
                     continue
                 r = str(s.get("result") or "pending")
                 if r == "win":
@@ -4731,7 +4743,7 @@ def signals_text_today(
         w = l = p = pending = 0
         for mid in mids:
             for tgt in ("q3", "q4"):
-                s = match_signals[mid].get(tgt)
+                s = match_signals[mid].get(tgt, {}).get("real")
                 if not s:
                     continue
                 if _is_bet_signal(str(s.get("signal") or "")):
