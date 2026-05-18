@@ -1,0 +1,262 @@
+﻿{
+  "top_by_suspicious_score": [
+    {
+      "feature": "halftime_leader_now_tied",
+      "importance": 0.02834255062043667,
+      "corr": 0.004682018029655324,
+      "abs_corr": 0.004682018029655324,
+      "suspicious_score": 5.668510124087334,
+      "non_zero_rate": 0.02895752895752896
+    },
+    {
+      "feature": "halftime_leader_still_ahead",
+      "importance": 0.017017608508467674,
+      "corr": -0.005674538654009837,
+      "abs_corr": 0.005674538654009837,
+      "suspicious_score": 2.9989413318107205,
+      "non_zero_rate": 0.790057915057915
+    },
+    {
+      "feature": "halftime_trailer_gain_bin=01_03",
+      "importance": 0.0150862205773592,
+      "corr": 0.01203536277738054,
+      "abs_corr": 0.01203536277738054,
+      "suspicious_score": 1.25349113744311,
+      "non_zero_rate": 0.3658301158301158
+    },
+    {
+      "feature": "halftime_trailer_gain",
+      "importance": 0.01519018318504095,
+      "corr": 0.020706401341222435,
+      "abs_corr": 0.020706401341222435,
+      "suspicious_score": 0.7335984140711229,
+      "non_zero_rate": 0.9140926640926641
+    },
+    {
+      "feature": "halftime_leader_lost_lead",
+      "importance": 0.004104987718164921,
+      "corr": 0.007823593911520163,
+      "abs_corr": 0.007823593911520163,
+      "suspicious_score": 0.524693352516721,
+      "non_zero_rate": 0.17495173745173745
+    },
+    {
+      "feature": "halftime_to_current_margin_delta",
+      "importance": 0.013868450187146664,
+      "corr": 0.030758080127171735,
+      "abs_corr": 0.030758080127171735,
+      "suspicious_score": 0.45088803104115893,
+      "non_zero_rate": 0.9471525096525096
+    },
+    {
+      "feature": "halftime_trailer_strong_recovery",
+      "importance": 0.011345181614160538,
+      "corr": 0.025588318536984653,
+      "abs_corr": 0.025588318536984653,
+      "suspicious_score": 0.443373471287788,
+      "non_zero_rate": 0.263996138996139
+    },
+    {
+      "feature": "abs_margin_delta_from_halftime",
+      "importance": 0.011072013527154922,
+      "corr": -0.02883018521376569,
+      "abs_corr": 0.02883018521376569,
+      "suspicious_score": 0.38404240018091573,
+      "non_zero_rate": 0.9314671814671814
+    },
+    {
+      "feature": "halftime_trailer_gain_bin=04_07",
+      "importance": 0.0017514531500637531,
+      "corr": -0.019846298349104785,
+      "abs_corr": 0.019846298349104785,
+      "suspicious_score": 0.08825087274487924,
+      "non_zero_rate": 0.30357142857142855
+    },
+    {
+      "feature": "halftime_trailer_cutting_in_q3",
+      "importance": 0.0,
+      "corr": 0.019494793630754664,
+      "abs_corr": 0.019494793630754664,
+      "suspicious_score": 0.0,
+      "non_zero_rate": 0.4215733590733591
+    },
+    {
+      "feature": "halftime_trailer_gain_bin=08_plus",
+      "importance": 0.0,
+      "corr": 0.007075130807412416,
+      "abs_corr": 0.007075130807412416,
+      "suspicious_score": 0.0,
+      "non_zero_rate": 0.3305984555984556
+    },
+    {
+      "feature": "halftime_trailer_neutralized_deficit",
+      "importance": 0.0,
+      "corr": 0.007823593911520163,
+      "abs_corr": 0.007823593911520163,
+      "suspicious_score": 0.0,
+      "non_zero_rate": 0.17495173745173745
+    },
+    {
+      "feature": "halftime_trailer_now_leads",
+      "importance": 0.0,
+      "corr": 0.006194472876529705,
+      "abs_corr": 0.006194472876529705,
+      "suspicious_score": 0.0,
+      "non_zero_rate": 0.1459942084942085
+    },
+    {
+      "feature": "halftime_trailer_now_tied",
+      "importance": 0.0,
+      "corr": 0.004682018029655324,
+      "abs_corr": 0.004682018029655324,
+      "suspicious_score": 0.0,
+      "non_zero_rate": 0.02895752895752896
+    },
+    {
+      "feature": "halftime_trailer_won_q3_partial",
+      "importance": 0.0,
+      "corr": 0.019494793630754664,
+      "abs_corr": 0.019494793630754664,
+      "suspicious_score": 0.0,
+      "non_zero_rate": 0.4215733590733591
+    },
+    {
+      "feature": "lead_flip_from_halftime",
+      "importance": 0.0,
+      "corr": 0.006194472876529705,
+      "abs_corr": 0.006194472876529705,
+      "suspicious_score": 0.0,
+      "non_zero_rate": 0.1459942084942085
+    }
+  ],
+  "top_by_importance": [
+    {
+      "feature": "halftime_leader_now_tied",
+      "importance": 0.02834255062043667,
+      "corr": 0.004682018029655324,
+      "abs_corr": 0.004682018029655324,
+      "suspicious_score": 5.668510124087334,
+      "non_zero_rate": 0.02895752895752896
+    },
+    {
+      "feature": "halftime_leader_still_ahead",
+      "importance": 0.017017608508467674,
+      "corr": -0.005674538654009837,
+      "abs_corr": 0.005674538654009837,
+      "suspicious_score": 2.9989413318107205,
+      "non_zero_rate": 0.790057915057915
+    },
+    {
+      "feature": "halftime_trailer_gain",
+      "importance": 0.01519018318504095,
+      "corr": 0.020706401341222435,
+      "abs_corr": 0.020706401341222435,
+      "suspicious_score": 0.7335984140711229,
+      "non_zero_rate": 0.9140926640926641
+    },
+    {
+      "feature": "halftime_trailer_gain_bin=01_03",
+      "importance": 0.0150862205773592,
+      "corr": 0.01203536277738054,
+      "abs_corr": 0.01203536277738054,
+      "suspicious_score": 1.25349113744311,
+      "non_zero_rate": 0.3658301158301158
+    },
+    {
+      "feature": "halftime_to_current_margin_delta",
+      "importance": 0.013868450187146664,
+      "corr": 0.030758080127171735,
+      "abs_corr": 0.030758080127171735,
+      "suspicious_score": 0.45088803104115893,
+      "non_zero_rate": 0.9471525096525096
+    },
+    {
+      "feature": "halftime_trailer_strong_recovery",
+      "importance": 0.011345181614160538,
+      "corr": 0.025588318536984653,
+      "abs_corr": 0.025588318536984653,
+      "suspicious_score": 0.443373471287788,
+      "non_zero_rate": 0.263996138996139
+    },
+    {
+      "feature": "abs_margin_delta_from_halftime",
+      "importance": 0.011072013527154922,
+      "corr": -0.02883018521376569,
+      "abs_corr": 0.02883018521376569,
+      "suspicious_score": 0.38404240018091573,
+      "non_zero_rate": 0.9314671814671814
+    },
+    {
+      "feature": "halftime_leader_lost_lead",
+      "importance": 0.004104987718164921,
+      "corr": 0.007823593911520163,
+      "abs_corr": 0.007823593911520163,
+      "suspicious_score": 0.524693352516721,
+      "non_zero_rate": 0.17495173745173745
+    },
+    {
+      "feature": "halftime_trailer_gain_bin=04_07",
+      "importance": 0.0017514531500637531,
+      "corr": -0.019846298349104785,
+      "abs_corr": 0.019846298349104785,
+      "suspicious_score": 0.08825087274487924,
+      "non_zero_rate": 0.30357142857142855
+    },
+    {
+      "feature": "halftime_trailer_cutting_in_q3",
+      "importance": 0.0,
+      "corr": 0.019494793630754664,
+      "abs_corr": 0.019494793630754664,
+      "suspicious_score": 0.0,
+      "non_zero_rate": 0.4215733590733591
+    },
+    {
+      "feature": "halftime_trailer_gain_bin=08_plus",
+      "importance": 0.0,
+      "corr": 0.007075130807412416,
+      "abs_corr": 0.007075130807412416,
+      "suspicious_score": 0.0,
+      "non_zero_rate": 0.3305984555984556
+    },
+    {
+      "feature": "halftime_trailer_neutralized_deficit",
+      "importance": 0.0,
+      "corr": 0.007823593911520163,
+      "abs_corr": 0.007823593911520163,
+      "suspicious_score": 0.0,
+      "non_zero_rate": 0.17495173745173745
+    },
+    {
+      "feature": "halftime_trailer_now_leads",
+      "importance": 0.0,
+      "corr": 0.006194472876529705,
+      "abs_corr": 0.006194472876529705,
+      "suspicious_score": 0.0,
+      "non_zero_rate": 0.1459942084942085
+    },
+    {
+      "feature": "halftime_trailer_now_tied",
+      "importance": 0.0,
+      "corr": 0.004682018029655324,
+      "abs_corr": 0.004682018029655324,
+      "suspicious_score": 0.0,
+      "non_zero_rate": 0.02895752895752896
+    },
+    {
+      "feature": "halftime_trailer_won_q3_partial",
+      "importance": 0.0,
+      "corr": 0.019494793630754664,
+      "abs_corr": 0.019494793630754664,
+      "suspicious_score": 0.0,
+      "non_zero_rate": 0.4215733590733591
+    },
+    {
+      "feature": "lead_flip_from_halftime",
+      "importance": 0.0,
+      "corr": 0.006194472876529705,
+      "abs_corr": 0.006194472876529705,
+      "suspicious_score": 0.0,
+      "non_zero_rate": 0.1459942084942085
+    }
+  ]
+}

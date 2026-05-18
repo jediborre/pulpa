@@ -1,0 +1,226 @@
+﻿[M_V1_ROI] splits desde cache (q4_roi_splits_cache.joblib) val=4366 test=4093
+
+[DEBUG] m27_v1 m27 gate rejection reasons:
+  no_edge: 1790
+  gate:confidence_below_minimum_edge: 698
+  confidence_filter: 525
+  gate:passed_all_gates: 274
+  gate:match_too_volatile_for_current_signal: 167
+  stake_below_25: 75
+  gate:insufficient_graph_or_pbp_coverage: 28
+[DEBUG] m27_v1 ACCEPTED (n=536): mean=0.575 min=0.035 max=0.979
+[DEBUG] m27_v1 REJECTED (n=3557): mean=0.521 min=0.138 max=0.854
+
+[DEBUG] m30_v1 m30 gate rejection reasons:
+  gate:confidence_below_minimum_edge: 722
+  no_edge: 636
+  confidence_filter: 533
+  gate:passed_all_gates: 449
+  gate:match_too_volatile_for_current_signal: 410
+  late_window_close_game_required:11>10: 101
+  late_window_close_game_required:12>10: 93
+  late_window_close_game_required:15>10: 87
+  late_window_close_game_required:14>10: 80
+  late_window_close_game_required:16>10: 72
+  late_window_close_game_required:18>10: 68
+  late_window_close_game_required:13>10: 67
+  late_window_close_game_required:20>10: 63
+  late_window_close_game_required:17>10: 57
+  late_window_close_game_required:19>10: 53
+  late_window_close_game_required:23>10: 42
+  late_window_close_game_required:21>10: 41
+  late_window_close_game_required:22>10: 41
+  late_window_close_game_required:25>10: 37
+  late_window_close_game_required:24>10: 36
+  late_window_close_game_required:26>10: 31
+  late_window_close_game_required:29>10: 31
+  late_window_close_game_required:31>10: 27
+  late_window_close_game_required:28>10: 27
+  late_window_close_game_required:30>10: 22
+  late_window_close_game_required:27>10: 22
+  late_window_close_game_required:34>10: 20
+  late_window_close_game_required:32>10: 20
+  late_window_close_game_required:35>10: 14
+  late_window_close_game_required:33>10: 14
+  late_window_close_game_required:39>10: 13
+  late_window_close_game_required:38>10: 12
+  late_window_close_game_required:36>10: 10
+  late_window_close_game_required:37>10: 9
+  late_window_close_game_required:41>10: 9
+  late_window_close_game_required:46>10: 8
+  late_window_close_game_required:43>10: 8
+  late_window_close_game_required:40>10: 7
+  late_window_close_game_required:44>10: 7
+  late_window_close_game_required:19>6: 6
+  gate:insufficient_graph_or_pbp_coverage: 6
+  late_window_close_game_required:14>6: 4
+  late_window_close_game_required:21>6: 4
+  late_window_close_game_required:47>10: 4
+  late_window_close_game_required:56>10: 4
+  late_window_close_game_required:15>6: 3
+  late_window_close_game_required:13>6: 3
+  late_window_close_game_required:10>6: 3
+  late_window_close_game_required:8>6: 3
+  late_window_close_game_required:9>6: 3
+  late_window_close_game_required:51>10: 3
+  late_window_close_game_required:50>10: 3
+  late_window_close_game_required:45>10: 3
+  late_window_close_game_required:24>6: 2
+  late_window_close_game_required:17>6: 2
+  late_window_close_game_required:42>10: 2
+  late_window_close_game_required:7>6: 2
+  stake_below_25: 2
+  late_window_close_game_required:16>6: 2
+  late_window_close_game_required:11>6: 2
+  late_window_close_game_required:54>10: 2
+  late_window_close_game_required:49>10: 2
+  late_window_close_game_required:61>10: 2
+  late_window_close_game_required:34>6: 1
+  late_window_close_game_required:48>10: 1
+  late_window_close_game_required:52>10: 1
+  late_window_close_game_required:58>10: 1
+  late_window_close_game_required:36>6: 1
+  late_window_close_game_required:62>10: 1
+  late_window_close_game_required:18>6: 1
+  late_window_close_game_required:63>10: 1
+  late_window_close_game_required:66>10: 1
+  late_window_close_game_required:57>10: 1
+  late_window_close_game_required:60>10: 1
+  late_window_close_game_required:59>10: 1
+  late_window_close_game_required:27>6: 1
+  late_window_close_game_required:53>10: 1
+  late_window_close_game_required:70>10: 1
+  late_window_close_game_required:80>10: 1
+[DEBUG] m30_v1 ACCEPTED (n=6): mean=0.585 min=0.268 max=0.772
+[DEBUG] m30_v1 REJECTED (n=4087): mean=0.528 min=0.066 max=0.956
+{
+  "raw_summary": [
+    {
+      "modelo": "m27_v1_raw",
+      "partidos_test": 4093,
+      "predicciones_disponibles": 4093,
+      "accuracy_raw_pick": 0.6169069142438309,
+      "pick_strength_media": 0.6217598382221585,
+      "pick_strength_mediana": 0.6038472339156348,
+      "pick_strength_p95": 0.776573711617572,
+      "conteo_p_ge_0_58": 2507,
+      "conteo_p_ge_0_60": 2127,
+      "conteo_p_ge_0_65": 1373,
+      "conteo_p_ge_break_even": 647,
+      "max_pick_strength": 0.9788513627462077
+    },
+    {
+      "modelo": "m30_v1_raw",
+      "partidos_test": 4093,
+      "predicciones_disponibles": 4093,
+      "accuracy_raw_pick": 0.5502076716344979,
+      "pick_strength_media": 0.5756130111989115,
+      "pick_strength_mediana": 0.5631417010463848,
+      "pick_strength_p95": 0.6771237877193044,
+      "conteo_p_ge_0_58": 1616,
+      "conteo_p_ge_0_60": 1179,
+      "conteo_p_ge_0_65": 383,
+      "conteo_p_ge_break_even": 95,
+      "max_pick_strength": 0.9562945302735784
+    }
+  ],
+  "raw_compare_stats": {
+    "rows": 4093,
+    "only_m27_correct": 742,
+    "only_m30_correct": 469,
+    "both_correct": 1783,
+    "both_wrong": 1099,
+    "agreement_rate": 0.7041290007329587,
+    "avg_delta_pick_strength_m30_m27": -0.046146827023247065,
+    "avg_delta_when_only_m30_correct": -0.027376592490198942,
+    "avg_delta_when_only_m27_correct": -0.047345792526368585,
+    "top10_leagues_only_m27_correct": {
+      "B1 League": 22,
+      "CIBACOPA , Segunda Vuelta": 18,
+      "China CBA": 14,
+      "Puerto Rico BSN": 14,
+      "Liga Argentina, Playoffs": 11,
+      "NBA": 11,
+      "NBL1, South": 10,
+      "Colombia LPB": 10,
+      "Israeli National League Basketball": 10,
+      "╔lite 2": 10
+    }
+  },
+  "filtered_summary": [
+    {
+      "modelo": "m27_v1",
+      "partidos_test": 4093,
+      "apuestas": 536,
+      "ganadas": 398,
+      "perdidas": 138,
+      "empates_contados_como_perdida": 0,
+      "sin_apuesta": 3557,
+      "partidos_no_apostados": 3557,
+      "efectividad": 0.7425373134328358,
+      "banco_inicio": 1000.0,
+      "banco_final": 2105.0,
+      "ganancia": 1105.0,
+      "roi_bank": 1.105,
+      "total_apostado": 16850.0,
+      "apuesta_promedio": 31.436567164179106,
+      "yield_sobre_apostado": 0.0655786350148368,
+      "max_drawdown": 0.13054830287206268,
+      "minuto_base_apuesta": 27
+    },
+    {
+      "modelo": "m30_v1",
+      "partidos_test": 4093,
+      "apuestas": 6,
+      "ganadas": 5,
+      "perdidas": 1,
+      "empates_contados_como_perdida": 0,
+      "sin_apuesta": 4087,
+      "partidos_no_apostados": 4087,
+      "efectividad": 0.8333333333333334,
+      "banco_inicio": 1000.0,
+      "banco_final": 1025.0,
+      "ganancia": 25.0,
+      "roi_bank": 0.025,
+      "total_apostado": 150.0,
+      "apuesta_promedio": 25.0,
+      "yield_sobre_apostado": 0.16666666666666666,
+      "max_drawdown": 0.024271844660194174,
+      "minuto_base_apuesta": 30
+    }
+  ],
+  "filtered_exclusion_counts": {
+    "m27_v1": {
+      "no_edge": 1790,
+      "gate:confidence_below_minimum_edge": 698,
+      "passed": 536,
+      "confidence_filter": 525,
+      "gate:passed_all_gates": 274,
+      "gate:match_too_volatile_for_current_signal": 167,
+      "stake_below_25": 75,
+      "gate:insufficient_graph_or_pbp_coverage": 28
+    },
+    "m30_v1": {
+      "gate:confidence_below_minimum_edge": 722,
+      "no_edge": 636,
+      "confidence_filter": 533,
+      "gate:passed_all_gates": 449,
+      "gate:match_too_volatile_for_current_signal": 410,
+      "late_window_close_game_required:11>10": 101,
+      "late_window_close_game_required:12>10": 93,
+      "late_window_close_game_required:15>10": 87,
+      "late_window_close_game_required:14>10": 80,
+      "late_window_close_game_required:16>10": 72,
+      "late_window_close_game_required:18>10": 68,
+      "late_window_close_game_required:13>10": 67,
+      "late_window_close_game_required:20>10": 63,
+      "late_window_close_game_required:17>10": 57,
+      "late_window_close_game_required:19>10": 53,
+      "late_window_close_game_required:23>10": 42,
+      "late_window_close_game_required:21>10": 41,
+      "late_window_close_game_required:22>10": 41,
+      "late_window_close_game_required:25>10": 37,
+      "late_window_close_game_required:24>10": 36
+    }
+  }
+}
