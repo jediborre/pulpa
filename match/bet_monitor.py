@@ -3407,10 +3407,11 @@ async def _watch_match(
                 compact_reason = _compact_fetch_error_reason(exc_short)
                 fetch_error_reasons[compact_reason] = fetch_error_reasons.get(compact_reason, 0) + 1
                 logger.warning(
-                    "[MONITOR] %s vs %s (%s) fetch error #%d: %s",
+                    "[MONITOR] %s vs %s (%s | %s) fetch error #%d: %s",
                     home,
                     away,
                     match_id,
+                    sched_label,
                     errors,
                     compact_reason,
                 )
@@ -3430,9 +3431,9 @@ async def _watch_match(
                         )
                     )
                     if reasons_txt:
-                        _log(f"{home} vs {away}: descartado ({errors} errores: {reasons_txt})")
+                        _log(f"{home} vs {away} ({sched_label}): descartado ({errors} errores: {reasons_txt})")
                     else:
-                        _log(f"{home} vs {away}: descartado ({errors} errores)")
+                        _log(f"{home} vs {away} ({sched_label}): descartado ({errors} errores)")
                     break
                 if await _sleep(POLL_NEAR_SECS):
                     break
