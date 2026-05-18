@@ -104,3 +104,11 @@ model_config_report.txt
 # Herramientas AI / editor locales
 # ============================================================
 match/.qwen/
+
+# ============================================================
+# Obscura local (binarios descargados)
+# ============================================================
+tools/obscura/**/*.exe
+tools/obscura/**/*.dll
+tools/obscura/**/*.pdb
+tools/obscura/**/*.zip

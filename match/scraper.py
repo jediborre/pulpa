@@ -11,7 +11,7 @@ within a browser context normally.
 
 Data sources fetched for each match:
     - /event/{id}           -> metadata + final/quarter scores + team ratings
-    - /event/{id}/incidents -> ALL incidents (scoring plays + fouls + timeouts + substitutions + turnovers)
+    - /event/{id}/incidents -> ALL incidents (scoring plays only: twoPoints, threePoints, freeThrow, plus period markers)
     - /event/{id}/graph     -> pressure/momentum curve points
     - /event/{id}/h2h       -> aggregate win counts (FALLBACK: only used when team discovery fails)
     - /team/{id}/events/last/{n} -> actual H2H matchups with PER-QUARTER scores (preferred)
@@ -35,7 +35,13 @@ Output dict keys:
 """
 
 import re
+import os
 from datetime import datetime, timezone
+from contextlib import contextmanager
+
+_node_options = os.environ.get("NODE_OPTIONS", "").strip()
+if "--no-deprecation" not in _node_options:
+    os.environ["NODE_OPTIONS"] = (f"{_node_options} --no-deprecation").strip()
 
 
 STANDARD_UA = (
@@ -43,6 +49,47 @@ STANDARD_UA = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/122.0.0.0 Safari/537.36"
 )
+
+
+def _normalize_backend(backend: str | None = None) -> str:
+    value = (backend or os.getenv("SOFASCORE_SCRAPER_BACKEND", "traditional")).strip().lower()
+    return "obscura" if value in {"obscura", "cdp"} else "traditional"
+
+
+def _obscura_cdp_url() -> str:
+    return os.getenv("OBSCURA_CDP_URL", "http://127.0.0.1:9222").strip()
+
+
+@contextmanager
+def _browser_context(warmup_url: str, backend: str | None = None):
+    from playwright.sync_api import sync_playwright
+
+    engine = _normalize_backend(backend)
+    with sync_playwright() as p:
+        if engine == "obscura":
+            browser = p.chromium.connect_over_cdp(_obscura_cdp_url())
+        else:
+            browser = p.chromium.launch(headless=True)
+
+        ctx = browser.new_context(user_agent=STANDARD_UA)
+        page = ctx.new_page()
+        try:
+            page.goto(warmup_url, wait_until="networkidle", timeout=45_000)
+        except Exception:
+            pass
+
+        try:
+            yield browser, ctx, page
+        finally:
+            try:
+                ctx.close()
+            except Exception:
+                pass
+            if engine == "traditional":
+                try:
+                    browser.close()
+                except Exception:
+                    pass
 
 # Basketball: incidentClass / 'from' field values → point value
 # SofaScore uses camelCase for incidentClass ("threePoints") and
@@ -356,6 +403,7 @@ def _parse_h2h(match_id: str, h2h_data: list | dict | None) -> list[dict]:
                 "match_id": match_id,
                 "h2h_match_id": mid,
                 "date": dt.strftime("%Y-%m-%d") if dt else "",
+                "timestamp": ts or None,
                 "home_team": (entry.get("homeTeam") or {}).get("name", ""),
                 "away_team": (entry.get("awayTeam") or {}).get("name", ""),
                 "home_score": hs.get("current", hs.get("normaltime")),
@@ -816,6 +864,7 @@ def fetch_h2h_via_teams(
         results.append({
             "h2h_match_id": mid,
             "date": dt.strftime("%Y-%m-%d") if dt else "",
+            "timestamp": ts or None,
             "home_team": (ev.get("homeTeam") or {}).get("name", ""),
             "away_team": (ev.get("awayTeam") or {}).get("name", ""),
             "home_score": hs.get("current", hs.get("normaltime")),
@@ -929,6 +978,7 @@ def fetch_match(
     fetch_statistics: bool = True,
     fetch_lineups: bool = True,
     fetch_team_data: bool = True,
+    backend: str | None = None,
 ) -> dict:
     """
     Fetch match data using Playwright's BrowserContext.request API.
@@ -959,6 +1009,7 @@ def fetch_match(
         fetch_h2h=fetch_h2h,
         fetch_statistics=fetch_statistics,
         fetch_lineups=fetch_lineups,
+        backend=backend,
     )
     event_json, incidents_json, graph_json, h2h_json, statistics_json, lineups_json = payloads[:6]
 
@@ -1054,6 +1105,7 @@ def fetch_match_by_id(
     fetch_statistics: bool = True,
     fetch_lineups: bool = True,
     fetch_team_data: bool = True,
+    backend: str | None = None,
 ) -> dict:
     """Fetch match data by ID after warming session on basketball landing page."""
     payloads = _fetch_match_payloads(
@@ -1062,6 +1114,7 @@ def fetch_match_by_id(
         fetch_h2h=fetch_h2h,
         fetch_statistics=fetch_statistics,
         fetch_lineups=fetch_lineups,
+        backend=backend,
     )
     event_json, incidents_json, graph_json, h2h_json, statistics_json, lineups_json = payloads[:6]
 
@@ -1424,6 +1477,7 @@ def _fetch_match_payloads(
     fetch_statistics: bool = True,
     fetch_lineups: bool = True,
     fetch_odds: bool = True,
+    backend: str | None = None,
 ) -> tuple[dict, dict, dict, dict | None, dict | None, dict | None, dict | None]:
     """
     Fetch all SofaScore API payloads for a given match.
@@ -1448,23 +1502,13 @@ def _fetch_match_payloads(
     Tuple of (event_json, incidents_json, graph_json, h2h_json,
               statistics_json, lineups_json, odds_json).
     """
-    from playwright.sync_api import sync_playwright
-
     extra_headers = {
         "Referer": "https://www.sofascore.com/",
         "Accept": "application/json, text/plain, */*",
         "Accept-Language": "en-US,en;q=0.9",
     }
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        ctx = browser.new_context(user_agent=STANDARD_UA)
-        page = ctx.new_page()
-
-        try:
-            page.goto(warmup_url, wait_until="networkidle", timeout=45_000)
-        except Exception:
-            pass
+    with _browser_context(warmup_url, backend=backend) as (_, ctx, _page):
 
         # 1. Event metadata
         resp_event = ctx.request.get(
@@ -1545,7 +1589,5 @@ def _fetch_match_payloads(
             )
             if resp_odds.ok:
                 odds_json = resp_odds.json()
-
-        browser.close()
 
     return event_json, incidents_json, graph_json, h2h_json, statistics_json, lineups_json, odds_json

@@ -247,6 +247,11 @@ def _ingest_pending_matches(
     return len(pending), ing_ok, ing_fail, skipped_ft, ingest_error_samples
 
 
+def _prompt_use_obscura() -> bool:
+    ans = input("[fetch-date] Usar Obscura? [s/N]: ").strip().lower()
+    return ans in {"s", "si", "sí", "y", "yes"}
+
+
 # ── command handlers ──────────────────────────────────────────────────────────
 
 def cmd_scrape(args: argparse.Namespace) -> None:
@@ -1535,6 +1540,7 @@ def _ingest_date_with_progress(
     db_path: str,
     event_date: str,
     limit: int | None,
+    backend: str | None = None,
 ) -> None:
     """Discover FT match IDs for a date and ingest them with a progress bar."""
     print(f"[fetch-date] Consultando SofaScore para {event_date}...")
@@ -1579,7 +1585,7 @@ def _ingest_date_with_progress(
             continue
 
         try:
-            data = scraper_mod.fetch_match_by_id(match_id)
+            data = scraper_mod.fetch_match_by_id(match_id, backend=backend)
             if not _has_usable_data(data):
                 db_mod.mark_discovered_processed(conn, match_id)
                 # Determine skip reason
@@ -1652,7 +1658,9 @@ def cmd_fetch_date_menu(args: argparse.Namespace) -> None:
         print("[fetch-date-menu] cancelado")
         return
     event_date, limit = result
-    _ingest_date_with_progress(args.db, event_date, limit)
+    use_obscura = _prompt_use_obscura()
+    backend = "obscura" if use_obscura else None
+    _ingest_date_with_progress(args.db, event_date, limit, backend=backend)
 
 
 def _build_parser() -> argparse.ArgumentParser:

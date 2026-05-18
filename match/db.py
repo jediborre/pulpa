@@ -5,7 +5,7 @@ Schema:
   matches              – one row per match (metadata + final score)
   quarter_scores       – score per quarter, FK → matches
   play_by_play         – scoring plays only (backward compat), FK → matches
-  match_events         – ALL incidents with classification (fouls, TOs, subs, etc.), FK → matches
+   match_events         – ALL incidents with classification (scoring plays + period markers only in basketball), FK → matches
   match_h2h            – head-to-head history from /event/{id}/h2h, FK → matches
   player_stats         – per-player statistics (TODO: confirm endpoint), FK → matches
   lineups              – starting lineups and substitutions (TODO: confirm endpoint), FK → matches
@@ -158,6 +158,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             match_id    TEXT NOT NULL,
             h2h_match_id TEXT NOT NULL,
             date        TEXT NOT NULL,
+            timestamp   INTEGER,
             home_team   TEXT,
             away_team   TEXT,
             home_score  INTEGER,
@@ -266,6 +267,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             ON team_strength (match_id);
     """)
     _ensure_match_columns(conn)
+    _ensure_h2h_columns(conn)
     conn.commit()
 
 
@@ -324,6 +326,20 @@ def _ensure_match_columns(conn: sqlite3.Connection) -> None:
         conn.execute(
             f"ALTER TABLE matches ADD COLUMN {_quote_ident(col_name)} {col_type}"
         )
+    conn.commit()
+
+
+def _ensure_h2h_columns(conn: sqlite3.Connection) -> None:
+    """Add missing columns to match_h2h table for backward compat."""
+    existing = {
+        row["name"] for row in conn.execute("PRAGMA table_info(match_h2h)").fetchall()
+    }
+    for col_name in ("timestamp",):
+        if col_name not in existing:
+            try:
+                conn.execute(f"ALTER TABLE match_h2h ADD COLUMN {col_name} INTEGER")
+            except Exception:
+                pass
     conn.commit()
 
 
@@ -409,6 +425,101 @@ def get_h2h_team_averages(
         (match_id,),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def compute_h2h_side_stats(
+    conn: sqlite3.Connection,
+    match_id: str,
+) -> dict:
+    """
+    Split H2H matchups by home/away side for the current match's teams.
+
+    Returns dict:
+        home_team: {name, as_home: {wins, losses, q1_avg..q4_avg, pts_scored_avg, pts_conceded_avg},
+                           as_away: {...}}
+        away_team: {name, as_home: {...}, as_away: {...}}
+    """
+    match_row = conn.execute(
+        "SELECT home_team, away_team FROM matches WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()
+    if not match_row:
+        return {}
+    home_team = match_row["home_team"]
+    away_team = match_row["away_team"]
+
+    h2h_rows = conn.execute(
+        """
+        SELECT home_team, away_team, home_score, away_score,
+               q1_home, q1_away, q2_home, q2_away, q3_home, q3_away, q4_home, q4_away
+        FROM match_h2h
+        WHERE match_id = ?
+          AND date != ''
+        """,
+        (match_id,),
+    ).fetchall()
+
+    def _side_stats(team: str, h2h: list) -> dict:
+        as_home = []
+        as_away = []
+        for r in h2h:
+            if r["home_team"] == team:
+                as_home.append(r)
+            elif r["away_team"] == team:
+                as_away.append(r)
+
+        def _agg(matches: list, is_home: bool) -> dict:
+            if not matches:
+                return {"matches": 0, "wins": 0, "losses": 0}
+            wins = 0
+            q1s, q2s, q3s, q4s = [], [], [], []
+            pts_scored, pts_conceded = [], []
+            for m in matches:
+                if is_home:
+                    hs, aw = m["home_score"], m["away_score"]
+                    q1s.append(m["q1_home"] or 0)
+                    q2s.append(m["q2_home"] or 0)
+                    q3s.append(m["q3_home"] or 0)
+                    q4s.append(m["q4_home"] or 0)
+                else:
+                    hs, aw = m["away_score"], m["home_score"]
+                    q1s.append(m["q1_away"] or 0)
+                    q2s.append(m["q2_away"] or 0)
+                    q3s.append(m["q3_away"] or 0)
+                    q4s.append(m["q4_home"] or 0)  # q4_away is opponent
+                if hs > aw:
+                    wins += 1
+                pts_scored.append(hs or 0)
+                pts_conceded.append(aw or 0)
+
+            n = len(matches)
+            def avg(vals):
+                return round(sum(vals) / n, 1) if vals else 0.0
+
+            return {
+                "matches": n,
+                "wins": wins,
+                "losses": n - wins,
+                "win_pct": round(wins / n, 3) if n else 0.0,
+                "q1_avg": avg(q1s),
+                "q2_avg": avg(q2s),
+                "q3_avg": avg(q3s),
+                "q4_avg": avg(q4s),
+                "pts_scored_avg": avg(pts_scored),
+                "pts_conceded_avg": avg(pts_conceded),
+                "pts_diff_avg": avg([s - c for s, c in zip(pts_scored, pts_conceded)]),
+            }
+
+        return {
+            "name": team,
+            "as_home": _agg(as_home, is_home=True),
+            "as_away": _agg(as_away, is_home=False),
+        }
+
+    return {
+        "home_team": _side_stats(home_team, h2h_rows),
+        "away_team": _side_stats(away_team, h2h_rows),
+    }
 
 
 def _winner_from_scores(home: int | None, away: int | None) -> str | None:
@@ -760,21 +871,24 @@ def save_match(conn: sqlite3.Connection, match_id: str, data: dict) -> None:
 
 def save_match_h2h(conn: sqlite3.Connection, match_id: str, h2h_rows: list[dict]) -> None:
     """Replace H2H history for a match."""
+    _ensure_h2h_columns(conn)
     conn.execute("DELETE FROM match_h2h WHERE match_id = ?", (match_id,))
     for row in h2h_rows:
         conn.execute(
             """
             INSERT INTO match_h2h
-              (match_id, h2h_match_id, date, home_team, away_team,
+              (match_id, h2h_match_id, date, timestamp,
+               home_team, away_team,
                home_score, away_score,
                q1_home, q1_away, q2_home, q2_away, q3_home, q3_away, q4_home, q4_away,
                tournament)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
                 match_id,
                 row.get("h2h_match_id", ""),
                 row.get("date", ""),
+                row.get("timestamp"),
                 row.get("home_team", ""),
                 row.get("away_team", ""),
                 row.get("home_score"),
