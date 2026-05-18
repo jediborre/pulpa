@@ -1,11 +1,12 @@
 """
-Backfill: re-fetch existing matches reusing ONE Playwright session.
+Backfill: re-fetch existing matches reusing ONE browser session.
 
 Usage:
     python -m match.scripts.backfill path/to/db.sqlite --all
     python -m match.scripts.backfill path/to/db.sqlite --ids 15935010 --limit 5
 """
 import sys, json, time
+from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -16,8 +17,8 @@ from scraper import (
     _browser_context,
     _parse, _parse_h2h, _parse_team_statistics, _parse_period_stats,
     _parse_lineups, _parse_odds,
-    STANDARD_UA,
 )
+from tqdm import tqdm
 
 BASE = "https://api.sofascore.com/api/v1"
 _HEADERS = {"Referer": "https://www.sofascore.com/", "Accept": "application/json, text/plain, */*"}
@@ -103,84 +104,222 @@ def _all_payloads(ctx, match_id: str):
     )
 
 
+def _group_rows_by_date(rows: list[dict]) -> dict[str, list[dict]]:
+    grouped: dict[str, list[dict]] = defaultdict(list)
+    for row in rows:
+        grouped[str(row.get("date") or "unknown")].append(row)
+    return dict(grouped)
+
+
+def _match_refresh_state(conn, match_id: str) -> dict[str, int | bool]:
+    match_row = conn.execute(
+        "SELECT status_type FROM matches WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()
+    status_type = str((match_row["status_type"] if match_row else "") or "").lower()
+    core = conn.execute(
+        "SELECT COUNT(*) AS n FROM quarter_scores WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()["n"]
+    pbp = conn.execute(
+        "SELECT COUNT(*) AS n FROM play_by_play WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()["n"]
+    events = conn.execute(
+        "SELECT COUNT(*) AS n FROM match_events WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()["n"]
+    graph = conn.execute(
+        "SELECT COUNT(*) AS n FROM graph_points WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()["n"]
+    h2h = conn.execute(
+        "SELECT COUNT(*) AS n FROM match_h2h WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()["n"]
+    team_stats = conn.execute(
+        "SELECT COUNT(*) AS n FROM team_statistics WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()["n"]
+    lineups = conn.execute(
+        "SELECT COUNT(*) AS n FROM lineups WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()["n"]
+    player_stats = conn.execute(
+        "SELECT COUNT(*) AS n FROM player_stats WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()["n"]
+    odds = conn.execute(
+        "SELECT COUNT(*) AS n FROM match_odds WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()["n"]
+    strength = conn.execute(
+        "SELECT COUNT(*) AS n FROM team_strength WHERE match_id = ?",
+        (match_id,),
+    ).fetchone()["n"]
+
+    complete = bool(
+        status_type == "finished"
+        and
+        core >= 4
+        and pbp > 0
+        and events > 0
+        and graph > 0
+        and h2h > 0
+        and team_stats > 0
+        and lineups > 0
+        and player_stats > 0
+        and odds > 0
+        and strength > 0
+    )
+    return {
+        "complete": complete,
+        "status_type": status_type,
+        "quarters": int(core),
+        "pbp": int(pbp),
+        "events": int(events),
+        "graph": int(graph),
+        "h2h": int(h2h),
+        "team_stats": int(team_stats),
+        "lineups": int(lineups),
+        "player_stats": int(player_stats),
+        "odds": int(odds),
+        "strength": int(strength),
+    }
+
+
+def _skip_reason(state: dict[str, int | bool]) -> str:
+    if state.get("status_type") != "finished":
+        return f"not_ft({state.get('status_type') or 'unknown'})"
+    if state.get("complete"):
+        return "already_complete"
+    missing = [
+        name for name in (
+            ("quarters", state.get("quarters", 0) >= 4),
+            ("pbp", state.get("pbp", 0) > 0),
+            ("events", state.get("events", 0) > 0),
+            ("graph", state.get("graph", 0) > 0),
+            ("h2h", state.get("h2h", 0) > 0),
+            ("team_stats", state.get("team_stats", 0) > 0),
+            ("lineups", state.get("lineups", 0) > 0),
+            ("player_stats", state.get("player_stats", 0) > 0),
+            ("odds", state.get("odds", 0) > 0),
+            ("strength", state.get("strength", 0) > 0),
+        ) if not name[1]
+    ]
+    return "missing:" + ",".join(name for name, _ok in missing) if missing else "unknown"
+
+
 def backfill(
     db_path: str,
-    match_ids: list[str],
+    match_rows: list[dict],
     delay: float = 0.5,
     backend: str | None = None,
 ) -> None:
     conn = get_conn(db_path)
-    total = len(match_ids)
-    ok = err = 0
+    grouped = _group_rows_by_date(match_rows)
+    day_totals = {day: len(rows) for day, rows in grouped.items()}
+    total = sum(day_totals.values())
+    ok = err = skipped = 0
 
     with _browser_context("https://www.sofascore.com/basketball", backend=backend) as (_, ctx, _page):
-        for idx, mid in enumerate(match_ids):
-            try:
-                print(f"[{idx + 1}/{total}] {mid}...", end=" ", flush=True)
+        for day, rows in grouped.items():
+            day_ok = day_err = day_skip = 0
+            print(f"\n[backfill] day={day} matches={len(rows)}")
+            with tqdm(total=len(rows), desc=day, unit="match", ncols=140, leave=True) as bar:
+                for row in rows:
+                    mid = str(row.get("match_id", ""))
+                    reason = ""
+                    if not mid:
+                        day_skip += 1
+                        skipped += 1
+                        bar.update(1)
+                        bar.set_postfix_str(f"ok={day_ok} skip={day_skip} err={day_err} r=no_id")
+                        continue
 
-                event_json, incidents_json, graph_json, h2h_json, statistics_json, lineups_json, odds_json = \
-                    _all_payloads(ctx, mid)
+                    state = _match_refresh_state(conn, mid)
+                    if state["complete"]:
+                        day_skip += 1
+                        skipped += 1
+                        reason = _skip_reason(state)
+                        bar.update(1)
+                        bar.set_postfix_str(f"ok={day_ok} skip={day_skip} err={day_err} r={reason}")
+                        continue
 
-                if not event_json or "event" not in event_json:
-                    print("SKIP (no event)")
-                    err += 1
-                    continue
+                    try:
+                        event_json, incidents_json, graph_json, h2h_json, statistics_json, lineups_json, odds_json = \
+                            _all_payloads(ctx, mid)
 
-                ev = event_json.get("event") or {}
-                home_tid = (ev.get("homeTeam") or {}).get("id")
-                away_tid = (ev.get("awayTeam") or {}).get("id")
-                home_name = (ev.get("homeTeam") or {}).get("name", "")
-                away_name = (ev.get("awayTeam") or {}).get("name", "")
+                        if not event_json or "event" not in event_json:
+                            day_skip += 1
+                            skipped += 1
+                            bar.update(1)
+                            bar.set_postfix_str(f"ok={day_ok} skip={day_skip} err={day_err} r=no_event")
+                            continue
 
-                # H2H via teams (preferred)
-                h2h_rows = _parse_h2h(mid, h2h_json)
-                if home_tid and away_tid and home_tid != away_tid:
-                    team_h2h = _h2h_via_teams(ctx, home_tid, away_tid)
-                    if team_h2h:
-                        for r in team_h2h:
-                            r["match_id"] = mid
-                        h2h_rows = team_h2h
+                        ev = event_json.get("event") or {}
+                        home_tid = (ev.get("homeTeam") or {}).get("id")
+                        away_tid = (ev.get("awayTeam") or {}).get("id")
+                        home_name = (ev.get("homeTeam") or {}).get("name", "")
+                        away_name = (ev.get("awayTeam") or {}).get("name", "")
 
-                # Team strength
-                team_strength_rows = _team_strength(ctx, home_tid, away_tid, home_name, away_name) \
-                    if home_tid and away_tid else []
+                        # H2H via teams (preferred)
+                        h2h_rows = _parse_h2h(mid, h2h_json)
+                        if home_tid and away_tid and home_tid != away_tid:
+                            team_h2h = _h2h_via_teams(ctx, home_tid, away_tid)
+                            if team_h2h:
+                                for r in team_h2h:
+                                    r["match_id"] = mid
+                                h2h_rows = team_h2h
 
-                # Parse all
-                parsed = _parse(event_json, incidents_json.get("incidents", []), graph_json.get("graphPoints", []))
-                parsed["h2h"] = h2h_rows
-                parsed["team_statistics"] = _parse_team_statistics(mid, statistics_json) if statistics_json else []
-                parsed["period_stats"] = _parse_period_stats(
-                    mid, incidents_json.get("incidents", []),
-                    period_seconds=(ev.get("time") or {}).get("periodLength", 600),
-                )
-                if lineups_json:
-                    lr, pr = _parse_lineups(mid, lineups_json)
-                    parsed["lineups"], parsed["player_stats"] = lr, pr
-                else:
-                    parsed["lineups"] = parsed["player_stats"] = []
-                parsed["odds"] = _parse_odds(mid, odds_json) if odds_json else []
-                parsed["team_strength"] = team_strength_rows
+                        # Team strength
+                        team_strength_rows = _team_strength(ctx, home_tid, away_tid, home_name, away_name) \
+                            if home_tid and away_tid else []
 
-                save_match(conn, mid, parsed)
-                try:
-                    from db import mark_discovered_processed
-                    mark_discovered_processed(conn, mid)
-                except Exception:
-                    pass
-                ok += 1
-                print("OK")
-                time.sleep(delay)
+                        # Parse all
+                        parsed = _parse(event_json, incidents_json.get("incidents", []), graph_json.get("graphPoints", []))
+                        parsed["h2h"] = h2h_rows
+                        parsed["team_statistics"] = _parse_team_statistics(mid, statistics_json) if statistics_json else []
+                        parsed["period_stats"] = _parse_period_stats(
+                            mid, incidents_json.get("incidents", []),
+                            period_seconds=(ev.get("time") or {}).get("periodLength", 600),
+                        )
+                        if lineups_json:
+                            lr, pr = _parse_lineups(mid, lineups_json)
+                            parsed["lineups"], parsed["player_stats"] = lr, pr
+                        else:
+                            parsed["lineups"] = parsed["player_stats"] = []
+                        parsed["odds"] = _parse_odds(mid, odds_json) if odds_json else []
+                        parsed["team_strength"] = team_strength_rows
 
-            except Exception as e:
-                try:
-                    from db import mark_discovered_error
-                    mark_discovered_error(conn, mid, str(e))
-                except Exception:
-                    pass
-                err += 1
-                print(f"ERROR: {e}")
+                        save_match(conn, mid, parsed)
+                        try:
+                            from db import mark_discovered_processed
+                            mark_discovered_processed(conn, mid)
+                        except Exception:
+                            pass
+                        day_ok += 1
+                        ok += 1
+                        reason = "saved"
+                        time.sleep(delay)
+
+                    except Exception as e:
+                        try:
+                            from db import mark_discovered_error
+                            mark_discovered_error(conn, mid, str(e))
+                        except Exception:
+                            pass
+                        day_err += 1
+                        err += 1
+                        reason = "error"
+                    finally:
+                        bar.update(1)
+                        if reason == "":
+                            reason = "saved" if day_ok + day_err + day_skip else ""
+                        bar.set_postfix_str(f"ok={day_ok} skip={day_skip} err={day_err} r={reason}")
 
     print(f"\nDone. OK={ok}, Errors={err}, Total={total}")
+    print(f"Skipped already-complete: {skipped}")
     conn.close()
 
 
@@ -197,16 +336,25 @@ if __name__ == "__main__":
 
     conn = get_conn(args.db)
     if args.all:
-        rows = conn.execute("SELECT match_id FROM matches ORDER BY date DESC").fetchall()
-        match_ids = [r["match_id"] for r in rows]
+        rows = conn.execute("SELECT match_id, date FROM matches ORDER BY date DESC, time DESC").fetchall()
+        match_rows = [dict(r) for r in rows]
     elif args.ids:
-        match_ids = args.ids
+        placeholders = ",".join("?" for _ in args.ids)
+        rows = conn.execute(
+            f"SELECT match_id, date FROM matches WHERE match_id IN ({placeholders}) ORDER BY date DESC, time DESC",
+            tuple(args.ids),
+        ).fetchall()
+        found = {r["match_id"] for r in rows}
+        match_rows = [dict(r) for r in rows]
+        for mid in args.ids:
+            if mid not in found:
+                match_rows.append({"match_id": mid, "date": "unknown"})
     else:
         print("Specify --ids or --all"); sys.exit(1)
     conn.close()
 
     if args.limit > 0:
-        match_ids = match_ids[:args.limit]
+        match_rows = match_rows[:args.limit]
 
-    print(f"Backfilling {len(match_ids)} matches in {args.db}")
-    backfill(args.db, match_ids, delay=args.delay, backend=args.backend)
+    print(f"Backfilling {len(match_rows)} matches in {args.db}")
+    backfill(args.db, match_rows, delay=args.delay, backend=args.backend)

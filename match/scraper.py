@@ -464,8 +464,8 @@ def _parse_team_statistics(match_id: str, stats_data: dict | None) -> list[dict]
                     "stat_name": item.get("name", ""),
                     "home_value": item.get("homeValue"),
                     "away_value": item.get("awayValue"),
-                    "home_total": item.get("homeTotal"),
-                    "away_total": item.get("awayTotal"),
+                    "home_total": item.get("homeTotal", item.get("homeValue")),
+                    "away_total": item.get("awayTotal", item.get("awayValue")),
                     "home_display": item.get("home", ""),
                     "away_display": item.get("away", ""),
                 })
@@ -654,8 +654,8 @@ def _parse_period_stats(
                 "stat_name": stat_name,
                 "home_value": hv,
                 "away_value": av,
-                "home_total": None,
-                "away_total": None,
+                "home_total": hv,
+                "away_total": av,
                 "home_display": str(hv),
                 "away_display": str(av),
             }

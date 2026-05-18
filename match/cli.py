@@ -54,6 +54,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -613,7 +614,9 @@ def _progress_line(
     prefix: str,
     current: int,
     total: int,
-    width: int = 28,
+    width: int = 44,
+    detail: str = "",
+    eta: str = "",
 ) -> str:
     if total <= 0:
         return f"[{prefix}] 0/0"
@@ -621,7 +624,12 @@ def _progress_line(
     filled = int(ratio * width)
     bar = ("#" * filled) + ("-" * (width - filled))
     pct = int(ratio * 100)
-    return f"[{prefix}] [{bar}] {current}/{total} ({pct}%)"
+    extra = ""
+    if detail:
+        extra += f" {detail}"
+    if eta:
+        extra += f" eta={eta}"
+    return f"[{prefix}] [{bar}] {current}/{total} ({pct}%)" + extra
 
 
 def _print_dual_progress(
@@ -631,12 +639,60 @@ def _print_dual_progress(
     errors: int,
     *,
     started: bool,
+    detail: str = "",
+    eta: str = "",
 ) -> bool:
-    done_line = _progress_line(prefix, current, total)
+    done_line = _progress_line(prefix, current, total, detail=detail, eta=eta)
     suffix = f" err={errors}" if errors else ""
     _ = started
-    print(f"\r{done_line}{suffix}", end="", flush=True)
+    sys.stdout.write(f"\r\x1b[2K{done_line}{suffix}")
+    sys.stdout.flush()
     return True
+
+
+def _fmt_eta(seconds: float | None) -> str:
+    if seconds is None or seconds < 0:
+        return "?"
+    secs = int(seconds)
+    mins, sec = divmod(secs, 60)
+    hrs, mins = divmod(mins, 60)
+    if hrs:
+        return f"{hrs:02d}:{mins:02d}:{sec:02d}"
+    return f"{mins:02d}:{sec:02d}"
+
+
+def _short_reason(reason: str) -> str:
+    if reason.startswith("ya_completo_en_db"):
+        return "done"
+    if reason.startswith("not_finished("):
+        return "ft"
+    if reason.startswith("sin_cuartos("):
+        return "qmiss"
+    if reason == "sin_pbp":
+        return "nopbp"
+    if reason == "sin_graph":
+        return "nograph"
+    if reason == "datos_incompletos":
+        return "incomplete"
+    if reason.startswith("error:"):
+        return "err"
+    if reason == "ok":
+        return "ok"
+    return reason[:16]
+
+
+def _short_state(reason: str) -> str:
+    if reason == "ok":
+        return "S"
+    if reason.startswith("error:"):
+        return "E"
+    return "K"
+
+
+def _short_last(seconds: float | None) -> str:
+    if seconds is None or seconds < 0:
+        return "?"
+    return f"{seconds:.1f}s"
 
 
 def _finalize_eval(stats: dict, odds: float) -> dict:
@@ -1561,6 +1617,9 @@ def _ingest_date_with_progress(
     skipped = 0
     skip_reasons: dict[str, int] = {}
     total = len(rows)
+    run_started = time.perf_counter()
+    last_eta = "00:00"
+    last_elapsed = None
 
     dual_started = False
     if total:
@@ -1574,34 +1633,53 @@ def _ingest_date_with_progress(
             continue
 
         existing = db_mod.get_match(conn, match_id)
+
         if _is_ft_complete(existing):
             db_mod.mark_discovered_processed(conn, match_id)
             reason = "ya_completo_en_db"
             skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
             skipped += 1
+            if idx % 10 == 0 or idx == total:
+                elapsed_run = time.perf_counter() - run_started
+                last_eta = _fmt_eta((elapsed_run / idx) * (total - idx)) if idx < total else "00:00"
             dual_started = _print_dual_progress(
-                "fetch-date", idx, total, ing_fail, started=dual_started
+                "fetch-date",
+                idx,
+                total,
+                ing_fail,
+                started=dual_started,
+                detail=f"mid={match_id[:8]} st={_short_state(reason)} last={_short_last(last_elapsed)}"
+                       + (f" why={_short_reason(reason)}" if _short_state(reason) != "S" else ""),
+                eta=last_eta,
             )
             continue
 
+        reason = ""
+        elapsed = 0.0
+        started_at = time.perf_counter()
         try:
+            dual_started = _print_dual_progress(
+                "fetch-date",
+                idx - 1,
+                total,
+                ing_fail,
+                started=dual_started,
+                detail=f"mid={match_id[:8]} st=R last={_short_last(last_elapsed)}",
+                eta=last_eta,
+            )
             data = scraper_mod.fetch_match_by_id(match_id, backend=backend)
+            elapsed = time.perf_counter() - started_at
             if not _has_usable_data(data):
                 db_mod.mark_discovered_processed(conn, match_id)
-                # Determine skip reason
-                status_type = str(
-                    (data or {}).get("match", {}).get("status_type", "") or ""
-                ).lower()
+                status_type = str((data or {}).get("match", {}).get("status_type", "") or "").lower()
                 if status_type != "finished":
                     reason = f"not_finished({status_type or 'unknown'})"
                 else:
-                    # check which part is missing
                     quarters = (data or {}).get("score", {}).get("quarters", {})
                     pbp = (data or {}).get("play_by_play", {})
                     gp = (data or {}).get("graph_points", [])
                     missing_q = next(
-                        (q for q in ("Q1", "Q2", "Q3", "Q4")
-                         if not isinstance(quarters.get(q), dict)),
+                        (q for q in ("Q1", "Q2", "Q3", "Q4") if not isinstance(quarters.get(q), dict)),
                         None,
                     )
                     if missing_q:
@@ -1618,6 +1696,7 @@ def _ingest_date_with_progress(
                 db_mod.save_match(conn, match_id, data)
                 db_mod.mark_discovered_processed(conn, match_id)
                 ing_ok += 1
+                reason = f"ok"
         except KeyboardInterrupt:
             print()
             print("[fetch-date] interrumpido por usuario")
@@ -1626,9 +1705,20 @@ def _ingest_date_with_progress(
         except Exception as exc:
             db_mod.mark_discovered_error(conn, match_id, str(exc))
             ing_fail += 1
+            reason = f"error:{str(exc).splitlines()[0][:40]}"
 
+        last_elapsed = elapsed if elapsed else last_elapsed
+        if idx % 10 == 0 or idx == total:
+            elapsed_run = time.perf_counter() - run_started
+            last_eta = _fmt_eta((elapsed_run / idx) * (total - idx)) if idx < total else "00:00"
         dual_started = _print_dual_progress(
-            "fetch-date", idx, total, ing_fail, started=dual_started
+            "fetch-date",
+            idx,
+            total,
+            ing_fail,
+            started=dual_started,
+            detail=f"mid={match_id[:8]} last={_short_last(last_elapsed)} r={_short_reason(reason)}",
+            eta=last_eta,
         )
 
     if total:
