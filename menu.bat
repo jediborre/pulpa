@@ -28,10 +28,11 @@ echo   2) Correr API Backend
 echo   3) Correr Dashboard (API + Frontend)
 echo   4) Correr Todo  (Bot + API + Dashboard)
 echo   5) Traer fecha nueva  (option 15 de cli.py)
-echo   6) Entrenar modelo V2
+echo   6) Backfill / actualiza datos nuevos
 echo   7) Entrenar modelo V6
 echo   8) Entrenar V2 + V6  (en orden)
 echo   9) Instalar / actualizar dependencias
+echo   28) Entrenar modelo V2
 echo   10) V6.2: Solo entrenar
 echo   11) V6.2: Solo reporte Q4 ROI
 echo   12) V6.2: Entrenar + reporte
@@ -46,6 +47,11 @@ echo   20) V6.3: m30 probe (sin post-filtros live)
 echo   21) M27_V1: Entrenar
 echo   22) M27_V1: Solo reporte
 echo   23) M27_V1: Solo probe
+echo   24) Backfill historico (matches.db)
+echo   25) Comparar tradicional vs obscura
+echo   26) Instalar Obscura
+echo   27) Iniciar Obscura (CDP)
+echo   29) Apagar Obscura
 echo   0) Salir
 echo.
 set /p OPT="  Selecciona: "
@@ -56,7 +62,7 @@ if "%OPT%"=="2" goto API
 if "%OPT%"=="3" goto DASHBOARD
 if "%OPT%"=="4" goto TODO
 if "%OPT%"=="5" goto FETCH_DATE
-if "%OPT%"=="6" goto TRAIN_V2
+if "%OPT%"=="6" goto BACKFILL
 if "%OPT%"=="7" goto TRAIN_V6
 if "%OPT%"=="8" goto TRAIN_ALL
 if "%OPT%"=="9" goto INSTALAR
@@ -74,6 +80,12 @@ if "%OPT%"=="20" goto REPORT_V63_M30_PROBE
 if "%OPT%"=="21" goto TRAIN_M27_V1
 if "%OPT%"=="22" goto REPORT_M27_V1_ONLY
 if "%OPT%"=="23" goto REPORT_M27_V1_PROBE
+if "%OPT%"=="24" goto BACKFILL
+if "%OPT%"=="25" goto COMPARE_SCRAPER
+if "%OPT%"=="26" goto INSTALL_OBSCURA
+if "%OPT%"=="27" goto START_OBSCURA
+if "%OPT%"=="28" goto TRAIN_V2
+if "%OPT%"=="29" goto STOP_OBSCURA
 
 echo [ERROR] Opcion invalida.
 timeout /t 2 /nobreak >nul
@@ -295,6 +307,50 @@ cls
 echo [+] M27_V1: Solo probe...
 call .venv\Scripts\activate
 python match\training\report_v63_q4_roi.py --no-v62 --no-raw --no-m27 --no-m30 --no-m27-probe --no-m30-probe --no-m27-v1 --with-m27-v1-probe
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:BACKFILL
+cls
+echo [+] Backfill historico de matches...
+echo [+] Comprobando Obscura antes de procesar...
+call start_obscura.bat
+call .venv\Scripts\activate
+python match\scripts\backfill.py match\matches.db --all --backend obscura
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:COMPARE_SCRAPER
+cls
+echo [+] Comparando scraper tradicional vs obscura...
+call .venv\Scripts\activate
+python match\scripts\compare_scrapers.py --all --limit 5
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:INSTALL_OBSCURA
+cls
+call instalar_obscura.bat
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:START_OBSCURA
+cls
+call start_obscura.bat
+if errorlevel 1 (
+    echo [ERROR] Obscura no esta instalado.
+    echo         Ejecuta la opcion 26 primero.
+)
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:STOP_OBSCURA
+cls
+call stop_obscura.bat
 pause
 goto MENU
 

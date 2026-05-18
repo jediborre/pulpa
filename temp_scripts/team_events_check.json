@@ -1,0 +1,81 @@
+{
+  "home_team": {
+    "n_events": 30,
+    "homeScore_keys": [
+      "current",
+      "display",
+      "period1",
+      "period2",
+      "period3",
+      "period4",
+      "normaltime"
+    ],
+    "awayScore_keys": [
+      "current",
+      "display",
+      "period1",
+      "period2",
+      "period3",
+      "period4",
+      "normaltime"
+    ],
+    "event_keys": [
+      "tournament",
+      "season",
+      "roundInfo",
+      "customId",
+      "status",
+      "winnerCode",
+      "homeTeam",
+      "awayTeam",
+      "homeScore",
+      "awayScore",
+      "time",
+      "changes",
+      "hasGlobalHighlights",
+      "crowdsourcingDataDisplayEnabled",
+      "id"
+    ],
+    "has_period_scores": true
+  },
+  "away_team": {
+    "n_events": 30,
+    "homeScore_keys": [
+      "current",
+      "display",
+      "period1",
+      "period2",
+      "period3",
+      "period4",
+      "normaltime"
+    ],
+    "awayScore_keys": [
+      "current",
+      "display",
+      "period1",
+      "period2",
+      "period3",
+      "period4",
+      "normaltime"
+    ],
+    "event_keys": [
+      "tournament",
+      "season",
+      "roundInfo",
+      "customId",
+      "status",
+      "winnerCode",
+      "homeTeam",
+      "awayTeam",
+      "homeScore",
+      "awayScore",
+      "time",
+      "changes",
+      "hasGlobalHighlights",
+      "crowdsourcingDataDisplayEnabled",
+      "id"
+    ],
+    "has_period_scores": true
+  },
+  "common_matches": []
+}

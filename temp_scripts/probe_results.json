@@ -1,0 +1,1977 @@
+{
+  "/event/14491671/statistics/players": {
+    "status": 404,
+    "data": null
+  },
+  "/event/14491671/statistics/player": {
+    "status": 404,
+    "data": null
+  },
+  "/event/14491671/statistics/1": {
+    "status": 404,
+    "data": null
+  },
+  "/event/14491671/statistics/2": {
+    "status": 404,
+    "data": null
+  },
+  "/team/0/events/h2h/14491671": {
+    "status": 404,
+    "data": null
+  },
+  "/event/14491671/duels": {
+    "status": 404,
+    "data": null
+  },
+  "/event/14491671/history": {
+    "status": 404,
+    "data": null
+  },
+  "/odds/event/14491671": {
+    "status": 404,
+    "data": null
+  },
+  "/betting/event/14491671": {
+    "status": 404,
+    "data": null
+  },
+  "/event/14491671/ratings": {
+    "status": 404,
+    "data": null
+  },
+  "/event/14491671/playerRatings": {
+    "status": 404,
+    "data": null
+  },
+  "/event/14491671/statistics/roster": {
+    "status": 404,
+    "data": null
+  },
+  "_event_keys": [
+    "officials",
+    "tournament",
+    "season",
+    "roundInfo",
+    "customId",
+    "status",
+    "winnerCode",
+    "venue",
+    "homeTeam",
+    "awayTeam",
+    "homeScore",
+    "awayScore",
+    "time",
+    "changes",
+    "hasGlobalHighlights",
+    "hasEventPlayerStatistics",
+    "crowdsourcingDataDisplayEnabled",
+    "id",
+    "defaultPeriodCount",
+    "defaultPeriodLength",
+    "defaultOvertimeLength",
+    "periods",
+    "slug",
+    "currentPeriodStartTimestamp",
+    "startTimestamp",
+    "finalResultOnly",
+    "hasBet365LiveStream",
+    "bet365ExcludedCountryCodes",
+    "feedLocked",
+    "seasonStatisticsType",
+    "showTotoPromo",
+    "isEditor",
+    "eventFilters"
+  ],
+  "_event_homeTeam_keys": [
+    "name",
+    "slug",
+    "shortName",
+    "gender",
+    "sport",
+    "userCount",
+    "venue",
+    "nameCode",
+    "national",
+    "type",
+    "country",
+    "id",
+    "fullName",
+    "subTeams",
+    "teamColors",
+    "fieldTranslations",
+    "timeActive"
+  ],
+  "_event_homeTeam_id": 3560,
+  "_event_awayTeam_keys": [
+    "name",
+    "slug",
+    "shortName",
+    "gender",
+    "sport",
+    "userCount",
+    "venue",
+    "nameCode",
+    "disabled",
+    "national",
+    "type",
+    "country",
+    "id",
+    "fullName",
+    "subTeams",
+    "teamColors",
+    "fieldTranslations",
+    "timeActive"
+  ],
+  "_event_awayTeam_id": 25134,
+  "_lineups": {
+    "confirmed": false,
+    "home": {
+      "players": [
+        {
+          "player": {
+            "name": "Kaodirichi Akobundu-Ehiogu",
+            "firstName": "Kaodirichi",
+            "lastName": "Akobundu-Ehiogu",
+            "slug": "kaodirichi-akobundu-ehiogu",
+            "shortName": "K. Akobundu-Ehiogu",
+            "position": "C",
+            "jerseyNumber": "0",
+            "height": 206,
+            "userCount": 60,
+            "gender": "M",
+            "country": {
+              "alpha2": "NG",
+              "alpha3": "NGA",
+              "name": "Nigeria",
+              "slug": "nigeria"
+            },
+            "id": 1510858,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 939254400,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أكوبوندو-إهيغو، كوديريتشي"
+              },
+              "shortNameTranslation": {
+                "ar": "ك. إهيغو"
+              }
+            }
+          },
+          "teamId": 3560,
+          "shirtNumber": 0,
+          "jerseyNumber": "0",
+          "position": "C",
+          "substitute": true,
+          "statistics": {
+            "secondsPlayed": 746,
+            "points": 3,
+            "twoPointsMade": 0,
+            "twoPointAttempts": 0,
+            "threePointsMade": 0,
+            "threePointAttempts": 0,
+            "freeThrowsMade": 3,
+            "freeThrowAttempts": 4,
+            "fieldGoalsMade": 0,
+            "fieldGoalAttempts": 0,
+            "rebounds": 2,
+            "defensiveRebounds": 1,
+            "offensiveRebounds": 1,
+            "turnovers": 1,
+            "blocks": 2,
+            "personalFouls": 4,
+            "assists": 0,
+            "steals": 0,
+            "plusMinus": -11,
+            "rating": 5.9,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Marcis Steinbergs",
+            "firstName": "Marcis",
+            "lastName": "Steinbergs",
+            "slug": "marcis-steinbergs",
+            "shortName": "M. Steinbergs",
+            "position": "F",
+            "jerseyNumber": "12",
+            "height": 207,
+            "userCount": 49,
+            "gender": "M",
+            "country": {
+              "alpha2": "LV",
+              "alpha3": "LVA",
+              "name": "Latvia",
+              "slug": "latvia"
+            },
+            "id": 1189487,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 998956800,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "شتاينبرغ، مارسيس",
+                "bn": "স্টেইনবার্গস, মার্সিস",
+                "hi": "स्टीनबर्ग्स, मार्सिस"
+              },
+              "shortNameTranslation": {
+                "ar": "م. شتاينبرغ",
+                "bn": "এম. স্টেইনবার্গস",
+                "hi": "एम. स्टीनबर्ग्स"
+              }
+            }
+          },
+          "teamId": 3560,
+          "shirtNumber": 12,
+          "jerseyNumber": "12",
+          "position": "F",
+          "substitute": true,
+          "statistics": {
+            "secondsPlayed": 1144,
+            "points": 6,
+            "twoPointsMade": 3,
+            "twoPointAttempts": 5,
+            "threePointsMade": 0,
+            "threePointAttempts": 4,
+            "freeThrowsMade": 0,
+            "freeThrowAttempts": 0,
+            "fieldGoalsMade": 3,
+            "fieldGoalAttempts": 9,
+            "rebounds": 2,
+            "defensiveRebounds": 1,
+            "offensiveRebounds": 1,
+            "turnovers": 0,
+            "blocks": 0,
+            "personalFouls": 2,
+            "assists": 0,
+            "steals": 0,
+            "plusMinus": 13,
+            "rating": 6.3,
+            "fieldGoalPct": 33,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Louis Olinde",
+            "slug": "olinde-louis",
+            "shortName": "L. Olinde",
+            "position": "F",
+            "jerseyNumber": "19",
+            "height": 205,
+            "userCount": 51,
+            "gender": "M",
+            "country": {
+              "alpha2": "DE",
+              "alpha3": "DEU",
+              "name": "Germany",
+              "slug": "germany"
+            },
+            "id": 861473,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 890265600,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أوليندي، لويس",
+                "bn": "ওলিন্দ, লুই",
+                "hi": "ओलिन्डे, लुईस"
+              },
+              "shortNameTranslation": {
+                "ar": "ل. أوليندي",
+                "bn": "এল. অলিন্ডে",
+                "hi": "एल. ओलिन्डे"
+              }
+            }
+          },
+          "teamId": 3560,
+          "shirtNumber": 19,
+          "jerseyNumber": "19",
+          "position": "F",
+          "substitute": true,
+          "statistics": {
+            "secondsPlayed": 529,
+            "points": 11,
+            "twoPointsMade": 4,
+            "twoPointAttempts": 5,
+            "threePointsMade": 1,
+            "threePointAttempts": 1,
+            "freeThrowsMade": 0,
+            "freeThrowAttempts": 0,
+            "fieldGoalsMade": 5,
+            "fieldGoalAttempts": 6,
+            "rebounds": 4,
+            "defensiveRebounds": 3,
+            "offensiveRebounds": 1,
+            "turnovers": 0,
+            "blocks": 0,
+            "personalFouls": 0,
+            "assists": 0,
+            "steals": 0,
+            "plusMinus": 9,
+            "rating": 7.4,
+            "fieldGoalPct": 83,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Retin Obasohan",
+            "firstName": "Retin",
+            "lastName": "Obasohan",
+            "slug": "retin-obasohan",
+            "shortName": "R. Obasohan",
+            "position": "G",
+            "jerseyNumber": "32",
+            "height": 183,
+            "userCount": 66,
+            "gender": "M",
+            "country": {
+              "alpha2": "BE",
+              "alpha3": "BEL",
+              "name": "Belgium",
+              "slug": "belgium"
+            },
+            "id": 1180879,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 741916800,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "روكي سيلفيرا",
+                "bn": "অবসহন, রেটিনা",
+                "hi": "ओबासोहन, रेटिन"
+              },
+              "shortNameTranslation": {
+                "ar": "ر. أوباسوهان",
+                "bn": "আর. ওবাসোহান",
+                "hi": "आर. ओबासोहन"
+              }
+            }
+          },
+          "teamId": 3560,
+          "shirtNumber": 32,
+          "jerseyNumber": "32",
+          "position": "G",
+          "substitute": false,
+          "statistics": {
+            "secondsPlayed": 1286,
+            "points": 15,
+            "twoPointsMade": 6,
+            "twoPointAttempts": 8,
+            "threePointsMade": 0,
+            "threePointAttempts": 1,
+            "freeThrowsMade": 3,
+            "freeThrowAttempts": 6,
+            "fieldGoalsMade": 6,
+            "fieldGoalAttempts": 9,
+            "rebounds": 1,
+            "defensiveRebounds": 1,
+            "offensiveRebounds": 0,
+            "turnovers": 2,
+            "blocks": 0,
+            "personalFouls": 2,
+            "assists": 3,
+            "steals": 5,
+            "plusMinus": 4,
+            "rating": 7.8,
+            "fieldGoalPct": 67,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Eli Brooks",
+            "firstName": "Eli",
+            "lastName": "Brooks",
+            "slug": "eli-brooks",
+            "shortName": "E. Brooks",
+            "position": "G",
+            "jerseyNumber": "24",
+            "height": 185,
+            "userCount": 27,
+            "gender": "M",
+            "country": {
+              "alpha2": "US",
+              "alpha3": "USA",
+              "name": "USA",
+              "slug": "usa"
+            },
+            "id": 1178434,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 908323200,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "بروكس، إيلي"
+              },
+              "shortNameTranslation": {
+                "ar": "إ. بروكس"
+              }
+            }
+          },
+          "teamId": 3560,
+          "shirtNumber": 24,
+          "jerseyNumber": "24",
+          "position": "G",
+          "substitute": true,
+          "statistics": {
+            "secondsPlayed": 1109,
+            "points": 8,
+            "twoPointsMade": 1,
+            "twoPointAttempts": 2,
+            "threePointsMade": 2,
+            "threePointAttempts": 3,
+            "freeThrowsMade": 0,
+            "freeThrowAttempts": 0,
+            "fieldGoalsMade": 3,
+            "fieldGoalAttempts": 5,
+            "rebounds": 2,
+            "defensiveRebounds": 1,
+            "offensiveRebounds": 1,
+            "turnovers": 2,
+            "blocks": 0,
+            "personalFouls": 1,
+            "assists": 4,
+            "steals": 2,
+            "plusMinus": 14,
+            "rating": 7.5,
+            "fieldGoalPct": 60,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "David Duke Jr.",
+            "firstName": "David",
+            "lastName": "Duke Jr.",
+            "slug": "david-duke-jr",
+            "shortName": "D. Duke Jr.",
+            "position": "G",
+            "jerseyNumber": "7",
+            "height": 193,
+            "userCount": 71,
+            "gender": "M",
+            "country": {
+              "alpha2": "US",
+              "alpha3": "USA",
+              "name": "USA",
+              "slug": "usa"
+            },
+            "id": 1133993,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 939772800,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "ديفيد ديوك جونيور",
+                "bn": "ডেভিড ডিউক জুনিয়র",
+                "hi": "डेविड ड्यूक जूनियर."
+              },
+              "shortNameTranslation": {
+                "ar": "د. ديوك جونيور",
+                "bn": "ডি. ডিউক জুনিয়র",
+                "hi": "डी. ड्यूक जूनियर"
+              }
+            }
+          },
+          "teamId": 3416,
+          "shirtNumber": 3,
+          "jerseyNumber": "3",
+          "position": "G",
+          "substitute": true,
+          "statistics": {
+            "secondsPlayed": 325,
+            "points": 3,
+            "twoPointsMade": 0,
+            "twoPointAttempts": 3,
+            "threePointsMade": 1,
+            "threePointAttempts": 3,
+            "freeThrowsMade": 0,
+            "freeThrowAttempts": 0,
+            "fieldGoalsMade": 1,
+            "fieldGoalAttempts": 6,
+            "rebounds": 0,
+            "defensiveRebounds": 0,
+            "offensiveRebounds": 0,
+            "turnovers": 0,
+            "blocks": 0,
+            "personalFouls": 0,
+            "assists": 1,
+            "steals": 0,
+            "plusMinus": 0,
+            "fieldGoalPct": 17,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Agustin Ubal Agostini",
+            "firstName": "Agustin",
+            "lastName": "Ubal Agostini",
+            "slug": "agustin-ubal-agostini",
+            "shortName": "A. Ubal Agostini",
+            "position": "G",
+            "jerseyNumber": "11",
+            "height": 198,
+            "userCount": 108,
+            "gender": "M",
+            "country": {
+              "alpha2": "UY",
+              "alpha3": "URY",
+              "name": "Uruguay",
+              "slug": "uruguay"
+            },
+            "id": 1189921,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 1058572800,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "bn": "উবাল, অগাস্টিন",
+                "hi": "उबाल, अगस्टिन"
+              },
+              "shortNameTranslation": {
+                "bn": "এ. উবাল",
+                "hi": "ए. उबाल"
+              }
+            }
+          },
+          "teamId": 3560,
+          "shirtNumber": 11,
+          "jerseyNumber": "11",
+          "position": "G",
+          "substitute": true,
+          "statistics": {
+            "secondsPlayed": 1020,
+            "points": 9,
+            "twoPointsMade": 1,
+            "twoPointAttempts": 3,
+            "threePointsMade": 0,
+            "threePointAttempts": 1,
+            "freeThrowsMade": 7,
+            "freeThrowAttempts": 8,
+            "fieldGoalsMade": 1,
+            "fieldGoalAttempts": 4,
+            "rebounds": 4,
+            "defensiveRebounds": 3,
+            "offensiveRebounds": 1,
+            "turnovers": 0,
+            "blocks": 0,
+            "personalFouls": 2,
+            "assists": 0,
+            "steals": 0,
+            "plusMinus": 5,
+            "rating": 6.7,
+            "fieldGoalPct": 25,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Alexis Reyes",
+            "firstName": "Alexis",
+            "lastName": "Reyes",
+            "slug": "alexis-reyes",
+            "shortName": "Á. Reyes",
+            "position": "F",
+            "jerseyNumber": "8",
+            "height": 201,
+            "userCount": 26,
+            "gender": "M",
+            "country": {
+              "alpha2": "ES",
+              "alpha3": "ESP",
+              "name": "Spain",
+              "slug": "spain"
+            },
+            "id": 1189927,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 756086400,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "bn": "রেইস, অ্যালেক্স",
+                "hi": "रेयेस, एलेक्स"
+              },
+              "shortNameTranslation": {
+                "bn": "এ. রেয়েস",
+                "hi": "ए. रेयेस"
+              }
+            }
+          },
+          "teamId": 3560,
+          "shirtNumber": 8,
+          "jerseyNumber": "8",
+          "position": "F",
+          "substitute": false,
+          "statistics": {
+            "secondsPlayed": 1426,
+            "points": 17,
+            "twoPointsMade": 1,
+            "twoPointAttempts": 1,
+            "threePointsMade": 4,
+            "threePointAttempts": 8,
+            "freeThrowsMade": 3,
+            "freeThrowAttempts": 3,
+            "fieldGoalsMade": 5,
+            "fieldGoalAttempts": 9,
+            "rebounds": 6,
+            "defensiveRebounds": 5,
+            "offensiveRebounds": 1,
+            "turnovers": 2,
+            "blocks": 0,
+            "personalFouls": 2,
+            "assists": 3,
+            "steals": 0,
+            "plusMinus": 12,
+            "rating": 7.8,
+            "fieldGoalPct": 56,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Daniel Perez",
+            "firstName": "Daniel",
+            "lastName": "Perez",
+            "slug": "daniel-perez",
+            "shortName": "D. Perez",
+            "position": "G",
+            "jerseyNumber": "55",
+            "height": 188,
+            "userCount": 13,
+            "gender": "M",
+            "country": {
+              "alpha2": "ES",
+              "alpha3": "ESP",
+              "name": "Spain",
+              "slug": "spain"
+            },
+            "id": 1179321,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 636163200,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "خوسيه رومان مارتينيز سانشيس",
+                "bn": "পেরেজ, ড্যানিয়েল",
+                "hi": "पेरेज़, डैनियल"
+              },
+              "shortNameTranslation": {
+                "ar": "د. بيريز",
+                "bn": "ডি. পেরেজ",
+                "hi": "डी. पेरेज़"
+              }
+            }
+          },
+          "teamId": 3560,
+          "shirtNumber": 55,
+          "jerseyNumber": "55",
+          "position": "G",
+          "substitute": true,
+          "statistics": {
+            "secondsPlayed": 847,
+            "points": 3,
+            "twoPointsMade": 0,
+            "twoPointAttempts": 2,
+            "threePointsMade": 1,
+            "threePointAttempts": 3,
+            "freeThrowsMade": 0,
+            "freeThrowAttempts": 0,
+            "fieldGoalsMade": 1,
+            "fieldGoalAttempts": 5,
+            "rebounds": 1,
+            "defensiveRebounds": 1,
+            "offensiveRebounds": 0,
+            "turnovers": 2,
+            "blocks": 0,
+            "personalFouls": 2,
+            "assists": 3,
+            "steals": 2,
+            "plusMinus": 4,
+            "rating": 6.3,
+            "fieldGoalPct": 20,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Pierre Oriola",
+            "slug": "oriola-pierre",
+            "shortName": "P. Oriola",
+            "position": "FC",
+            "jerseyNumber": "29",
+            "height": 208,
+            "userCount": 37,
+            "gender": "M",
+            "country": {
+              "alpha2": "ES",
+              "alpha3": "ESP",
+              "name": "Spain",
+              "slug": "spain"
+            },
+            "id": 861847,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 717379200,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "أوريولا، بيير",
+                "bn": "ওরিওলা, পিয়েরে",
+                "hi": "ओरिओला, पियरे"
+              },
+              "shortNameTranslation": {
+                "ar": "ب. أوريولا",
+                "bn": "পি. ওরিওলা",
+                "hi": "पी. ओरिओला"
+              }
+            }
+          },
+          "teamId": 3560,
+          "shirtNumber": 29,
+          "jerseyNumber": "29",
+          "position": "FC",
+          "substitute": false,
+          "statistics": {
+            "secondsPlayed": 941,
+            "points": 12,
+            "twoPointsMade": 3,
+            "twoPointAttempts": 5,
+            "threePointsMade": 0,
+            "threePointAttempts": 0,
+            "freeThrowsMade": 6,
+            "freeThrowAttempts": 6,
+            "fieldGoalsMade": 3,
+            "fieldGoalAttempts": 5,
+            "rebounds": 6,
+            "defensiveRebounds": 3,
+            "offensiveRebounds": 3,
+            "turnovers": 3,
+            "blocks": 1,
+            "personalFouls": 5,
+            "assists": 1,
+            "steals": 0,
+            "plusMinus": 15,
+            "rating": 6.7,
+            "fieldGoalPct": 60,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Gustav Knudsen",
+            "firstName": "Gustav",
+            "lastName": "Knudsen",
+            "slug": "gustav-knudsen",
+            "shortName": "G. Knudsen",
+            "position": "F",
+            "jerseyNumber": "18",
+            "height": 204,
+            "userCount": 15,
+            "gender": "M",
+            "country": {
+              "alpha2": "DK",
+              "alpha3": "DNK",
+              "name": "Denmark",
+              "slug": "denmark"
+            },
+            "id": 1412224,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 1050451200,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "كنودسن، غوستاف"
+              },
+              "shortNameTranslation": {
+                "ar": "غ. كنودسن"
+              }
+            }
+          },
+          "teamId": 3560,
+          "shirtNumber": 18,
+          "jerseyNumber": "18",
+          "position": "F",
+          "substitute": false,
+          "statistics": {
+            "secondsPlayed": 1253,
+            "points": 6,
+            "twoPointsMade": 1,
+            "twoPointAttempts": 3,
+            "threePointsMade": 1,
+            "threePointAttempts": 2,
+            "freeThrowsMade": 1,
+            "freeThrowAttempts": 2,
+            "fieldGoalsMade": 2,
+            "fieldGoalAttempts": 5,
+            "rebounds": 4,
+            "defensiveRebounds": 4,
+            "offensiveRebounds": 0,
+            "turnovers": 3,
+            "blocks": 1,
+            "personalFouls": 1,
+            "assists": 1,
+            "steals": 1,
+            "plusMinus": 10,
+            "rating": 6.5,
+            "fieldGoalPct": 40,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Ferran Bassas",
+            "firstName": "Ferran",
+            "lastName": "Bassas",
+            "slug": "bassas-ferran",
+            "shortName": "F. Bassas",
+            "position": "G",
+            "jerseyNumber": "6",
+            "height": 181,
+            "userCount": 13,
+            "gender": "M",
+            "country": {
+              "alpha2": "ES",
+              "alpha3": "ESP",
+              "name": "Spain",
+              "slug": "spain"
+            },
+            "id": 1067748,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 704505600,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "باساس، فيران",
+                "bn": "বাসাস, ফেরান",
+                "hi": "बासस, फ़ेरैन"
+              },
+              "shortNameTranslation": {
+                "ar": "ف. باساس",
+                "bn": "এফ. বাসাস",
+                "hi": "एफ. बासस"
+              }
+            }
+          },
+          "teamId": 3560,
+          "shirtNumber": 6,
+          "jerseyNumber": "6",
+          "position": "G",
+          "substitute": false,
+          "statistics": {
+            "secondsPlayed": 1374,
+            "points": 8,
+            "twoPointsMade": 0,
+            "twoPointAttempts": 0,
+            "threePointsMade": 2,
+            "threePointAttempts": 4,
+            "freeThrowsMade": 2,
+            "freeThrowAttempts": 2,
+            "fieldGoalsMade": 2,
+            "fieldGoalAttempts": 4,
+            "rebounds": 2,
+            "defensiveRebounds": 1,
+            "offensiveRebounds": 1,
+            "turnovers": 3,
+            "blocks": 0,
+            "personalFouls": 3,
+            "assists": 9,
+            "steals": 1,
+            "plusMinus": 15,
+            "rating": 7.7,
+            "fieldGoalPct": 50,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        }
+      ],
+      "supportStaff": [],
+      "playerColor": {
+        "primary": "000000",
+        "number": "222226",
+        "outline": "808080",
+        "fancyNumber": "222226"
+      },
+      "goalkeeperColor": {
+        "primary": "000000",
+        "number": "000000",
+        "outline": "fafb00",
+        "fancyNumber": "222226"
+      }
+    },
+    "away": {
+      "players": [
+        {
+          "player": {
+            "name": "Isaiah Washington",
+            "firstName": "Isaiah",
+            "lastName": "Washington",
+            "slug": "isaiah-washington",
+            "shortName": "I. Washington",
+            "position": "G",
+            "jerseyNumber": "5",
+            "height": 185,
+            "userCount": 32,
+            "gender": "M",
+            "country": {
+              "alpha2": "US",
+              "alpha3": "USA",
+              "name": "USA",
+              "slug": "usa"
+            },
+            "id": 1461887,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 900892800,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "واشنطن، إيسايا"
+              },
+              "shortNameTranslation": {
+                "ar": "إ. واشنطن"
+              }
+            }
+          },
+          "teamId": 25134,
+          "shirtNumber": 5,
+          "jerseyNumber": "5",
+          "position": "G",
+          "substitute": true,
+          "statistics": {
+            "secondsPlayed": 345,
+            "points": 0,
+            "twoPointsMade": 0,
+            "twoPointAttempts": 3,
+            "threePointsMade": 0,
+            "threePointAttempts": 0,
+            "freeThrowsMade": 0,
+            "freeThrowAttempts": 0,
+            "fieldGoalsMade": 0,
+            "fieldGoalAttempts": 3,
+            "rebounds": 1,
+            "defensiveRebounds": 0,
+            "offensiveRebounds": 1,
+            "turnovers": 0,
+            "blocks": 0,
+            "personalFouls": 0,
+            "assists": 0,
+            "steals": 0,
+            "plusMinus": 0,
+            "fieldGoalPct": 0,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Trae Bell-Haynes",
+            "firstName": "Trae",
+            "lastName": "Bell-Haynes",
+            "slug": "trae-bell-haynes",
+            "shortName": "T. Bell-Haynes",
+            "position": "G",
+            "jerseyNumber": "2",
+            "height": 188,
+            "userCount": 67,
+            "gender": "M",
+            "country": {
+              "alpha2": "CA",
+              "alpha3": "CAN",
+              "name": "Canada",
+              "slug": "canada"
+            },
+            "id": 1189175,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 810259200,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "بيل-هاينز، تراي",
+                "bn": "বেল-হেনস, ট্রে",
+                "hi": "बेल-हेन्स, ट्रे"
+              },
+              "shortNameTranslation": {
+                "ar": "ت. بيل-هاينز",
+                "bn": "টি. বেল-হেইনস",
+                "hi": "टी. बेल-हेन्स"
+              }
+            }
+          },
+          "teamId": 25134,
+          "shirtNumber": 2,
+          "jerseyNumber": "2",
+          "position": "G",
+          "substitute": true,
+          "statistics": {
+            "secondsPlayed": 1366,
+            "points": 10,
+            "twoPointsMade": 3,
+            "twoPointAttempts": 5,
+            "threePointsMade": 1,
+            "threePointAttempts": 1,
+            "freeThrowsMade": 1,
+            "freeThrowAttempts": 2,
+            "fieldGoalsMade": 4,
+            "fieldGoalAttempts": 6,
+            "rebounds": 0,
+            "defensiveRebounds": 0,
+            "offensiveRebounds": 0,
+            "turnovers": 4,
+            "blocks": 1,
+            "personalFouls": 4,
+            "assists": 3,
+            "steals": 1,
+            "plusMinus": -7,
+            "rating": 6.8,
+            "fieldGoalPct": 67,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Justin Wright-Foreman",
+            "firstName": "Justin",
+            "lastName": "Wright-Foreman",
+            "slug": "wright-foreman-justin",
+            "shortName": "J. Wright-Foreman",
+            "position": "G",
+            "jerseyNumber": "3",
+            "height": 183,
+            "userCount": 79,
+            "gender": "M",
+            "country": {
+              "alpha2": "US",
+              "alpha3": "USA",
+              "name": "USA",
+              "slug": "usa"
+            },
+            "id": 988303,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 877910400,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "جاستن رايت-فورمان",
+                "bn": "জাস্টিন রাইট-ফোরম্যান",
+                "hi": "जस्टिन राइट-फोरमैन"
+              },
+              "shortNameTranslation": {
+                "ar": "ج. رايت-فورمان",
+                "bn": "জে. রাইট-ফোরম্যান",
+                "hi": "जे. राइट-फोरमैन"
+              }
+            }
+          },
+          "teamId": 25134,
+          "shirtNumber": 3,
+          "jerseyNumber": "3",
+          "position": "G",
+          "substitute": false,
+          "statistics": {
+            "secondsPlayed": 701,
+            "points": 4,
+            "twoPointsMade": 2,
+            "twoPointAttempts": 4,
+            "threePointsMade": 0,
+            "threePointAttempts": 2,
+            "freeThrowsMade": 0,
+            "freeThrowAttempts": 0,
+            "fieldGoalsMade": 2,
+            "fieldGoalAttempts": 6,
+            "rebounds": 0,
+            "defensiveRebounds": 0,
+            "offensiveRebounds": 0,
+            "turnovers": 3,
+            "blocks": 0,
+            "personalFouls": 1,
+            "assists": 0,
+            "steals": 0,
+            "plusMinus": -8,
+            "rating": 4.9,
+            "fieldGoalPct": 33,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Santiago Yusta",
+            "slug": "yusta-santiago",
+            "shortName": "S. Yusta",
+            "position": "F",
+            "jerseyNumber": "4",
+            "height": 200,
+            "userCount": 89,
+            "gender": "M",
+            "country": {
+              "alpha2": "ES",
+              "alpha3": "ESP",
+              "name": "Spain",
+              "slug": "spain"
+            },
+            "id": 905193,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 862185600,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "يوستا، سانتياغو",
+                "bn": "ইউস্টা, সান্তিয়াগো",
+                "hi": "युस्ता, सैंटियागो"
+              },
+              "shortNameTranslation": {
+                "ar": "س. يوستا",
+                "bn": "এস. ইউস্টা",
+                "hi": "एस. युस्ता"
+              }
+            }
+          },
+          "teamId": 25134,
+          "shirtNumber": 4,
+          "jerseyNumber": "4",
+          "position": "F",
+          "substitute": false,
+          "statistics": {
+            "secondsPlayed": 1391,
+            "points": 14,
+            "twoPointsMade": 5,
+            "twoPointAttempts": 9,
+            "threePointsMade": 0,
+            "threePointAttempts": 5,
+            "freeThrowsMade": 4,
+            "freeThrowAttempts": 8,
+            "fieldGoalsMade": 5,
+            "fieldGoalAttempts": 14,
+            "rebounds": 6,
+            "defensiveRebounds": 6,
+            "offensiveRebounds": 0,
+            "turnovers": 2,
+            "blocks": 0,
+            "personalFouls": 3,
+            "assists": 0,
+            "steals": 2,
+            "plusMinus": -2,
+            "rating": 6.4,
+            "fieldGoalPct": 36,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Youssouf Traore",
+            "firstName": "Youssouf",
+            "lastName": "Traore",
+            "slug": "youssouf-traore",
+            "shortName": "Y. Traore",
+            "position": "C",
+            "jerseyNumber": "23",
+            "height": 205,
+            "userCount": 21,
+            "gender": "M",
+            "country": {
+              "alpha2": "ML",
+              "alpha3": "MLI",
+              "name": "Mali",
+              "slug": "mali"
+            },
+            "id": 1548383,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 1167091200,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "تراوري، يوسوف",
+                "bn": "ট্রাওর, ইউসুফ",
+                "hi": "ट्राओरे, यूसुफ़"
+              },
+              "shortNameTranslation": {
+                "ar": "ي. تراوري",
+                "bn": "ওয়াই. ট্রাওর",
+                "hi": "वाई. ट्राओरे"
+              }
+            }
+          },
+          "teamId": 25134,
+          "shirtNumber": 23,
+          "jerseyNumber": "23",
+          "position": "C",
+          "substitute": true,
+          "statistics": {
+            "secondsPlayed": 268,
+            "points": 0,
+            "twoPointsMade": 0,
+            "twoPointAttempts": 1,
+            "threePointsMade": 0,
+            "threePointAttempts": 0,
+            "freeThrowsMade": 0,
+            "freeThrowAttempts": 0,
+            "fieldGoalsMade": 0,
+            "fieldGoalAttempts": 1,
+            "rebounds": 1,
+            "defensiveRebounds": 1,
+            "offensiveRebounds": 0,
+            "turnovers": 1,
+            "blocks": 0,
+            "personalFouls": 2,
+            "assists": 0,
+            "steals": 0,
+            "plusMinus": 0,
+            "fieldGoalPct": 0,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Bojan Dubljevic",
+            "slug": "dubljevic-bojan",
+            "shortName": "B. Dubljević",
+            "position": "C",
+            "jerseyNumber": "14",
+            "height": 205,
+            "userCount": 109,
+            "gender": "M",
+            "country": {
+              "alpha2": "ME",
+              "alpha3": "MNE",
+              "name": "Montenegro",
+              "slug": "montenegro"
+            },
+            "id": 861853,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 688262400,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "بويان دوبلجيڤيتش",
+                "bn": "ডাবলজেভিক, বোজান",
+                "hi": "डुब्लजेविक, बोजान"
+              },
+              "shortNameTranslation": {
+                "ar": "ب. دوبلجيڤيتش",
+                "bn": "বি. ডাবলজেভিক",
+                "hi": "बी. डुब्लजेविक"
+              }
+            }
+          },
+          "teamId": 25134,
+          "shirtNumber": 14,
+          "jerseyNumber": "14",
+          "position": "C",
+          "substitute": false,
+          "statistics": {
+            "secondsPlayed": 1396,
+            "points": 6,
+            "twoPointsMade": 1,
+            "twoPointAttempts": 2,
+            "threePointsMade": 0,
+            "threePointAttempts": 0,
+            "freeThrowsMade": 4,
+            "freeThrowAttempts": 4,
+            "fieldGoalsMade": 1,
+            "fieldGoalAttempts": 2,
+            "rebounds": 8,
+            "defensiveRebounds": 6,
+            "offensiveRebounds": 2,
+            "turnovers": 2,
+            "blocks": 0,
+            "personalFouls": 3,
+            "assists": 2,
+            "steals": 2,
+            "plusMinus": -18,
+            "rating": 6.8,
+            "fieldGoalPct": 50,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Marco Spissu",
+            "firstName": "Marco Spissu",
+            "slug": "spissu-marco",
+            "shortName": "M. Spissu",
+            "position": "G",
+            "jerseyNumber": "0",
+            "height": 184,
+            "userCount": 170,
+            "gender": "M",
+            "country": {
+              "alpha2": "IT",
+              "alpha3": "ITA",
+              "name": "Italy",
+              "slug": "italy"
+            },
+            "id": 1083494,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 791942400,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "ماركو سبيسو",
+                "bn": "স্পিসু, মার্কো",
+                "hi": "स्पिस्सू, मार्को"
+              },
+              "shortNameTranslation": {
+                "ar": "م. سبيسو",
+                "bn": "এম. স্পিসু",
+                "hi": "एम. स्पिस्सू"
+              }
+            }
+          },
+          "teamId": 25134,
+          "shirtNumber": 0,
+          "jerseyNumber": "0",
+          "position": "G",
+          "substitute": false,
+          "statistics": {
+            "secondsPlayed": 1331,
+            "points": 16,
+            "twoPointsMade": 3,
+            "twoPointAttempts": 6,
+            "threePointsMade": 2,
+            "threePointAttempts": 4,
+            "freeThrowsMade": 4,
+            "freeThrowAttempts": 4,
+            "fieldGoalsMade": 5,
+            "fieldGoalAttempts": 10,
+            "rebounds": 4,
+            "defensiveRebounds": 2,
+            "offensiveRebounds": 2,
+            "turnovers": 2,
+            "blocks": 0,
+            "personalFouls": 2,
+            "assists": 3,
+            "steals": 1,
+            "plusMinus": -19,
+            "rating": 7.4,
+            "fieldGoalPct": 50,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Joaquín Rodríguez",
+            "firstName": "Joaquin Rodriguez",
+            "slug": "joaquin-rodriguez",
+            "shortName": "J. Rodríguez",
+            "position": "G",
+            "jerseyNumber": "15",
+            "height": 194,
+            "userCount": 73,
+            "gender": "M",
+            "country": {
+              "alpha2": "UY",
+              "alpha3": "URY",
+              "name": "Uruguay",
+              "slug": "uruguay"
+            },
+            "id": 1403769,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 929318400,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "خواكين رودريغيز"
+              },
+              "shortNameTranslation": {
+                "ar": "خ. رودريغيز"
+              }
+            }
+          },
+          "teamId": 25134,
+          "shirtNumber": 15,
+          "jerseyNumber": "15",
+          "position": "G",
+          "substitute": true,
+          "statistics": {
+            "secondsPlayed": 1579,
+            "points": 7,
+            "twoPointsMade": 2,
+            "twoPointAttempts": 5,
+            "threePointsMade": 0,
+            "threePointAttempts": 3,
+            "freeThrowsMade": 3,
+            "freeThrowAttempts": 4,
+            "fieldGoalsMade": 2,
+            "fieldGoalAttempts": 8,
+            "rebounds": 2,
+            "defensiveRebounds": 1,
+            "offensiveRebounds": 1,
+            "turnovers": 1,
+            "blocks": 0,
+            "personalFouls": 3,
+            "assists": 2,
+            "steals": 1,
+            "plusMinus": -14,
+            "rating": 6.1,
+            "fieldGoalPct": 25,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Miguel Gonzalez",
+            "slug": "gonzalez-miguel",
+            "shortName": "M. González",
+            "position": "F",
+            "jerseyNumber": "7",
+            "height": 203,
+            "userCount": 16,
+            "gender": "M",
+            "country": {
+              "alpha2": "ES",
+              "alpha3": "ESP",
+              "name": "Spain",
+              "slug": "spain"
+            },
+            "id": 906119,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 921888000,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "غونزاليس، ميغيل",
+                "bn": "গঞ্জালেজ, মিগুয়েল",
+                "hi": "गोंजालेज़, मिगुएल"
+              },
+              "shortNameTranslation": {
+                "ar": "م. غونزاليس",
+                "bn": "এম. গনজালেজ",
+                "hi": "एम. गोंजालेज़"
+              }
+            }
+          },
+          "teamId": 25134,
+          "shirtNumber": 7,
+          "jerseyNumber": "7",
+          "position": "F",
+          "substitute": true,
+          "statistics": {
+            "secondsPlayed": 918,
+            "points": 1,
+            "twoPointsMade": 0,
+            "twoPointAttempts": 1,
+            "threePointsMade": 0,
+            "threePointAttempts": 0,
+            "freeThrowsMade": 1,
+            "freeThrowAttempts": 2,
+            "fieldGoalsMade": 0,
+            "fieldGoalAttempts": 1,
+            "rebounds": 2,
+            "defensiveRebounds": 1,
+            "offensiveRebounds": 1,
+            "turnovers": 1,
+            "blocks": 1,
+            "personalFouls": 1,
+            "assists": 1,
+            "steals": 0,
+            "plusMinus": -9,
+            "rating": 6.1,
+            "fieldGoalPct": 0,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Jaime Fernandez",
+            "firstName": "Jaime",
+            "lastName": "Fernandez",
+            "slug": "jaime-fernandez",
+            "shortName": "J. Fernández",
+            "position": "F",
+            "jerseyNumber": "10",
+            "height": 203,
+            "userCount": 13,
+            "gender": "M",
+            "country": {
+              "alpha2": "ES",
+              "alpha3": "ESP",
+              "name": "Spain",
+              "slug": "spain"
+            },
+            "id": 1190041,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 963619200,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "فرنانديز، خايمي",
+                "bn": "জেইম ফার্নান্ডেজ",
+                "hi": "जैमे फर्नांडीज"
+              },
+              "shortNameTranslation": {
+                "ar": "خ. فرنانديز",
+                "bn": "জে. ফার্নান্ডেজ",
+                "hi": "जे. फर्नांडीज"
+              }
+            }
+          },
+          "teamId": 25134,
+          "shirtNumber": 10,
+          "jerseyNumber": "10",
+          "position": "F",
+          "substitute": true,
+          "statistics": {
+            "secondsPlayed": 661,
+            "points": 5,
+            "twoPointsMade": 1,
+            "twoPointAttempts": 1,
+            "threePointsMade": 1,
+            "threePointAttempts": 1,
+            "freeThrowsMade": 0,
+            "freeThrowAttempts": 0,
+            "fieldGoalsMade": 2,
+            "fieldGoalAttempts": 2,
+            "rebounds": 1,
+            "defensiveRebounds": 1,
+            "offensiveRebounds": 0,
+            "turnovers": 0,
+            "blocks": 0,
+            "personalFouls": 2,
+            "assists": 0,
+            "steals": 1,
+            "plusMinus": -7,
+            "rating": 6.8,
+            "fieldGoalPct": 100,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Devin Robinson",
+            "firstName": "Devin",
+            "lastName": "Robinson",
+            "slug": "devin-robinson",
+            "shortName": "D. Robinson",
+            "position": "F",
+            "jerseyNumber": "0",
+            "height": 203,
+            "userCount": 98,
+            "gender": "M",
+            "country": {
+              "alpha2": "US",
+              "alpha3": "USA",
+              "name": "USA",
+              "slug": "usa"
+            },
+            "id": 1409155,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 794534400,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "روبينسون، ديفين",
+                "bn": "রবিনসন, ডেভিন",
+                "hi": "रॉबिन्सन, डेविन"
+              },
+              "shortNameTranslation": {
+                "ar": "د. روبينسون",
+                "bn": "ডি. রবিনসন",
+                "hi": "डी. रॉबिन्सन"
+              }
+            }
+          },
+          "teamId": 25134,
+          "shirtNumber": 0,
+          "jerseyNumber": "00",
+          "position": "F",
+          "substitute": false,
+          "statistics": {
+            "secondsPlayed": 1424,
+            "points": 13,
+            "twoPointsMade": 6,
+            "twoPointAttempts": 8,
+            "threePointsMade": 0,
+            "threePointAttempts": 1,
+            "freeThrowsMade": 1,
+            "freeThrowAttempts": 2,
+            "fieldGoalsMade": 6,
+            "fieldGoalAttempts": 9,
+            "rebounds": 3,
+            "defensiveRebounds": 2,
+            "offensiveRebounds": 1,
+            "turnovers": 5,
+            "blocks": 2,
+            "personalFouls": 5,
+            "assists": 0,
+            "steals": 2,
+            "plusMinus": -9,
+            "rating": 6,
+            "fieldGoalPct": 67,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        },
+        {
+          "player": {
+            "name": "Olaseni Gabe",
+            "firstName": "Olaseni",
+            "lastName": "Gabe",
+            "slug": "olaseni-gabe",
+            "shortName": "O. Gabe",
+            "position": "C",
+            "jerseyNumber": "12",
+            "height": 210,
+            "userCount": 33,
+            "gender": "M",
+            "country": {
+              "alpha2": "GB",
+              "alpha3": "GBR",
+              "name": "United Kingdom",
+              "slug": "united-kingdom"
+            },
+            "id": 1179324,
+            "marketValueCurrency": "EUR",
+            "dateOfBirthTimestamp": 693964800,
+            "fieldTranslations": {
+              "nameTranslation": {
+                "ar": "مينو نولتن",
+                "bn": "ওলাসেনি, গ্যাব্রিয়েল",
+                "hi": "ओलासेनी, गेब्रियल"
+              },
+              "shortNameTranslation": {
+                "bn": "জি. ওলাসেনি",
+                "hi": "जी. ओलासेनी"
+              }
+            }
+          },
+          "teamId": 25134,
+          "shirtNumber": 11,
+          "jerseyNumber": "11",
+          "position": "C",
+          "substitute": true,
+          "statistics": {
+            "secondsPlayed": 620,
+            "points": 7,
+            "twoPointsMade": 3,
+            "twoPointAttempts": 4,
+            "threePointsMade": 0,
+            "threePointAttempts": 0,
+            "freeThrowsMade": 1,
+            "freeThrowAttempts": 1,
+            "fieldGoalsMade": 3,
+            "fieldGoalAttempts": 4,
+            "rebounds": 1,
+            "defensiveRebounds": 1,
+            "offensiveRebounds": 0,
+            "turnovers": 1,
+            "blocks": 0,
+            "personalFouls": 2,
+            "assists": 0,
+            "steals": 0,
+            "plusMinus": 3,
+            "rating": 6.8,
+            "fieldGoalPct": 75,
+            "statisticsType": {
+              "sportSlug": "basketball",
+              "statisticsType": "player"
+            }
+          }
+        }
+      ],
+      "supportStaff": [],
+      "playerColor": {
+        "primary": "000000",
+        "number": "222226",
+        "outline": "808080",
+        "fancyNumber": "222226"
+      },
+      "goalkeeperColor": {
+        "primary": "000000",
+        "number": "000000",
+        "outline": "fafb00",
+        "fancyNumber": "222226"
+      }
+    },
+    "statisticalVersion": null
+  },
+  "_statistics": {
+    "statistics": [
+      {
+        "period": "ALL",
+        "groups": [
+          {
+            "groupName": "Scoring",
+            "statisticsItems": [
+              {
+                "name": "Free throws",
+                "home": "25/31 (81%)",
+                "away": "19/27 (70%)",
+                "compareCode": 1,
+                "statisticsType": "positive",
+                "valueType": "team",
+                "homeValue": 25,
+                "awayValue": 19,
+                "homeTotal": 31,
+                "awayTotal": 27,
+                "renderType": 3,
+                "key": "freeThrowsScored"
+              },
+              {
+                "name": "2 pointers",
+                "home": "20/37 (54%)",
+                "away": "26/49 (53%)",
+                "compareCode": 1,
+                "statisticsType": "positive",
+                "valueType": "team",
+                "homeValue": 20,
+                "awayValue": 26,
+                "homeTotal": 37,
+                "awayTotal": 49,
+                "renderType": 3,
+                "key": "twoPointersScored"
+              },
+              {
+                "name": "3 pointers",
+                "home": "12/30 (40%)",
+                "away": "4/17 (24%)",
+                "compareCode": 1,
+                "statisticsType": "positive",
+                "valueType": "team",
+                "homeValue": 12,
+                "awayValue": 4,
+                "homeTotal": 30,
+                "awayTotal": 17,
+                "renderType": 3,
+                "key": "threePointersScored"
+              },
+              {
+                "name": "Field goals",
+                "home": "32/67 (48%)",
+                "away": "30/66 (45%)",
+                "compareCode": 1,
+                "statisticsType": "positive",
+                "valueType": "team",
+                "homeValue": 32,
+                "awayValue": 30,
+                "homeTotal": 67,
+                "awayTotal": 66,
+                "renderType": 3,
+                "key": "fieldGoalsScored"
+              }
+            ]
+          },
+          {
+            "groupName": "Other",
+            "statisticsItems": [
+              {
+                "name": "Rebounds",
+                "home": "37",
+                "away": "34",
+                "compareCode": 1,
+                "statisticsType": "positive",
+                "valueType": "event",
+                "homeValue": 37,
+                "awayValue": 34,
+                "renderType": 2,
+                "key": "rebounds"
+              },
+              {
+                "name": "Defensive rebounds",
+                "home": "25",
+                "away": "23",
+                "compareCode": 1,
+                "statisticsType": "positive",
+                "valueType": "event",
+                "homeValue": 25,
+                "awayValue": 23,
+                "renderType": 1,
+                "key": "defensiveRebounds"
+              },
+              {
+                "name": "Offensive rebounds",
+                "home": "12",
+                "away": "11",
+                "compareCode": 1,
+                "statisticsType": "positive",
+                "valueType": "event",
+                "homeValue": 12,
+                "awayValue": 11,
+                "renderType": 1,
+                "key": "offensiveRebounds"
+              },
+              {
+                "name": "Assists",
+                "home": "25",
+                "away": "11",
+                "compareCode": 1,
+                "statisticsType": "positive",
+                "valueType": "event",
+                "homeValue": 25,
+                "awayValue": 11,
+                "renderType": 2,
+                "key": "assists"
+              },
+              {
+                "name": "Turnovers",
+                "home": "21",
+                "away": "24",
+                "compareCode": 2,
+                "statisticsType": "negative",
+                "valueType": "event",
+                "homeValue": 21,
+                "awayValue": 24,
+                "renderType": 1,
+                "key": "turnovers"
+              },
+              {
+                "name": "Steals",
+                "home": "12",
+                "away": "11",
+                "compareCode": 1,
+                "statisticsType": "positive",
+                "valueType": "event",
+                "homeValue": 12,
+                "awayValue": 11,
+                "renderType": 1,
+                "key": "steals"
+              },
+              {
+                "name": "Blocks",
+                "home": "4",
+                "away": "3",
+                "compareCode": 1,
+                "statisticsType": "positive",
+                "valueType": "event",
+                "homeValue": 4,
+                "awayValue": 3,
+                "renderType": 1,
+                "key": "blocks"
+              },
+              {
+                "name": "Fouls",
+                "home": "25",
+                "away": "29",
+                "compareCode": 2,
+                "statisticsType": "negative",
+                "valueType": "event",
+                "homeValue": 25,
+                "awayValue": 29,
+                "renderType": 1,
+                "key": "totalFouls"
+              },
+              {
+                "name": "Timeouts",
+                "home": "3",
+                "away": "4",
+                "compareCode": 2,
+                "statisticsType": "positive",
+                "valueType": "event",
+                "homeValue": 3,
+                "awayValue": 4,
+                "renderType": 1,
+                "key": "timeouts"
+              }
+            ]
+          },
+          {
+            "groupName": "Lead",
+            "statisticsItems": [
+              {
+                "name": "Max points in a row",
+                "home": "8",
+                "away": "12",
+                "compareCode": 2,
+                "statisticsType": "positive",
+                "valueType": "event",
+                "homeValue": 8,
+                "awayValue": 12,
+                "renderType": 1,
+                "key": "maxPointsInARow"
+              },
+              {
+                "name": "Time spent in lead",
+                "home": "37:19",
+                "away": "1:38",
+                "compareCode": 1,
+                "statisticsType": "positive",
+                "valueType": "time",
+                "homeValue": 2239,
+                "awayValue": 98,
+                "homeTotal": 2400,
+                "awayTotal": 2400,
+                "renderType": 1,
+                "key": "timeSpentInLead"
+              },
+              {
+                "name": "Lead changes",
+                "home": "4",
+                "away": "3",
+                "compareCode": 1,
+                "statisticsType": "positive",
+                "valueType": "event",
+                "homeValue": 4,
+                "awayValue": 3,
+                "renderType": 1,
+                "key": "leadChanges"
+              },
+              {
+                "name": "Biggest lead",
+                "home": "21",
+                "away": "1",
+                "compareCode": 1,
+                "statisticsType": "positive",
+                "valueType": "event",
+                "homeValue": 21,
+                "awayValue": 1,
+                "renderType": 1,
+                "key": "biggestLead"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "_h2h": {
+    "teamDuel": {
+      "homeWins": 7,
+      "awayWins": 3,
+      "draws": 0
+    },
+    "managerDuel": null
+  }
+}

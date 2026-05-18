@@ -35,6 +35,8 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Awaitable, Callable, TextIO
 
+os.environ.setdefault("SOFASCORE_SCRAPER_BACKEND", "obscura")
+
 BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))

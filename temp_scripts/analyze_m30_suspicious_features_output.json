@@ -1,0 +1,835 @@
+﻿{
+  "top_importance": [
+    {
+      "feature": "prior_wr_diff",
+      "family": "prior_strength",
+      "importance": 0.06895683705806732,
+      "corr": 0.13322721908146132,
+      "abs_corr": 0.13322721908146132,
+      "importance_rank_score": 0.06895683705806732,
+      "suspicious_score": 0.5175882040734027,
+      "non_zero_rate": 0.8713803088803089
+    },
+    {
+      "feature": "score_est_diff",
+      "family": "current_state",
+      "importance": 0.02791748195886612,
+      "corr": 0.07818159695664255,
+      "abs_corr": 0.07818159695664255,
+      "importance_rank_score": 0.02791748195886612,
+      "suspicious_score": 0.35708508198353145,
+      "non_zero_rate": 0.9691119691119691
+    },
+    {
+      "feature": "current_margin_bin=08_plus",
+      "family": "current_state",
+      "importance": 0.027775365859270096,
+      "corr": -0.04474671431746442,
+      "abs_corr": 0.04474671431746442,
+      "importance_rank_score": 0.027775365859270096,
+      "suspicious_score": 0.6207241421618639,
+      "non_zero_rate": 0.6018339768339769
+    },
+    {
+      "feature": "recent_2m_last_scoring_away",
+      "family": "recent_window",
+      "importance": 0.01912134699523449,
+      "corr": -0.02597555478875735,
+      "abs_corr": 0.02597555478875735,
+      "importance_rank_score": 0.01912134699523449,
+      "suspicious_score": 0.7361285312570311,
+      "non_zero_rate": 0.492519305019305
+    },
+    {
+      "feature": "gp_last",
+      "family": "graph",
+      "importance": 0.01898367702960968,
+      "corr": 0.07685735416277818,
+      "abs_corr": 0.07685735416277818,
+      "importance_rank_score": 0.01898367702960968,
+      "suspicious_score": 0.24699883617387686,
+      "non_zero_rate": 0.9671814671814671
+    },
+    {
+      "feature": "q3_elapsed_minutes",
+      "family": "snapshot_phase",
+      "importance": 0.016679903492331505,
+      "corr": 0.005972703350731133,
+      "abs_corr": 0.005972703350731133,
+      "importance_rank_score": 0.016679903492331505,
+      "suspicious_score": 2.792689091161656,
+      "non_zero_rate": 1.0
+    },
+    {
+      "feature": "halftime_diff",
+      "family": "other",
+      "importance": 0.015449742786586285,
+      "corr": 0.08026891114561154,
+      "abs_corr": 0.08026891114561154,
+      "importance_rank_score": 0.015449742786586285,
+      "suspicious_score": 0.19247480208819245,
+      "non_zero_rate": 0.9650096525096525
+    },
+    {
+      "feature": "home_prior_wr",
+      "family": "prior_strength",
+      "importance": 0.015182923525571823,
+      "corr": 0.08660925111081096,
+      "abs_corr": 0.08660925111081096,
+      "importance_rank_score": 0.015182923525571823,
+      "suspicious_score": 0.17530371560592586,
+      "non_zero_rate": 0.9297779922779923
+    },
+    {
+      "feature": "halftime_margin_bin=04_07",
+      "family": "other",
+      "importance": 0.01498151384294033,
+      "corr": -0.019924252505102776,
+      "abs_corr": 0.019924252505102776,
+      "importance_rank_score": 0.01498151384294033,
+      "suspicious_score": 0.7519235082522385,
+      "non_zero_rate": 0.2388996138996139
+    },
+    {
+      "feature": "halftime_current_combo=tied__home",
+      "family": "combo_halftime_current",
+      "importance": 0.014582499861717224,
+      "corr": -0.016212801662244477,
+      "abs_corr": 0.016212801662244477,
+      "importance_rank_score": 0.014582499861717224,
+      "suspicious_score": 0.8994435487159622,
+      "non_zero_rate": 0.01833976833976834
+    },
+    {
+      "feature": "gender_bucket=men_or_open",
+      "family": "other",
+      "importance": 0.014015872962772846,
+      "corr": 0.01226725775712008,
+      "abs_corr": 0.01226725775712008,
+      "importance_rank_score": 0.014015872962772846,
+      "suspicious_score": 1.1425432839411764,
+      "non_zero_rate": 0.8453185328185329
+    },
+    {
+      "feature": "halftime_trailer_gain_bin=01_03",
+      "family": "halftime_recovery",
+      "importance": 0.013963878154754639,
+      "corr": 0.01203536277738054,
+      "abs_corr": 0.01203536277738054,
+      "importance_rank_score": 0.013963878154754639,
+      "suspicious_score": 1.1602374114553973,
+      "non_zero_rate": 0.3658301158301158
+    },
+    {
+      "feature": "q1_winner=tied",
+      "family": "early_quarters",
+      "importance": 0.013929716311395168,
+      "corr": -0.026061282373546407,
+      "abs_corr": 0.026061282373546407,
+      "importance_rank_score": 0.013929716311395168,
+      "suspicious_score": 0.5344984990276064,
+      "non_zero_rate": 0.045125482625482626
+    },
+    {
+      "feature": "q1_q2_same_winner",
+      "family": "early_quarters",
+      "importance": 0.013827234506607056,
+      "corr": -0.00762641458782573,
+      "abs_corr": 0.00762641458782573,
+      "importance_rank_score": 0.013827234506607056,
+      "suspicious_score": 1.8130714436479598,
+      "non_zero_rate": 0.4864864864864865
+    },
+    {
+      "feature": "q3_partial_diff",
+      "family": "q3_partial",
+      "importance": 0.013744707219302654,
+      "corr": 0.030758080127171735,
+      "abs_corr": 0.030758080127171735,
+      "importance_rank_score": 0.013744707219302654,
+      "suspicious_score": 0.4468649266298178,
+      "non_zero_rate": 0.9471525096525096
+    },
+    {
+      "feature": "trailing_now_recent_run_2m",
+      "family": "current_state",
+      "importance": 0.01329808123409748,
+      "corr": 0.015133977988860948,
+      "abs_corr": 0.015133977988860948,
+      "importance_rank_score": 0.01329808123409748,
+      "suspicious_score": 0.8786904040619895,
+      "non_zero_rate": 0.3375965250965251
+    },
+    {
+      "feature": "halftime_current_combo=away__tied",
+      "family": "combo_halftime_current",
+      "importance": 0.013250438496470451,
+      "corr": -0.008859839473616814,
+      "abs_corr": 0.008859839473616814,
+      "importance_rank_score": 0.013250438496470451,
+      "suspicious_score": 1.4955619157579705,
+      "non_zero_rate": 0.014961389961389961
+    },
+    {
+      "feature": "score_est_away",
+      "family": "current_state",
+      "importance": 0.01300526037812233,
+      "corr": -0.04954396875397975,
+      "abs_corr": 0.04954396875397975,
+      "importance_rank_score": 0.01300526037812233,
+      "suspicious_score": 0.2624993658199344,
+      "non_zero_rate": 1.0
+    },
+    {
+      "feature": "q3_partial_away_pace_per_min",
+      "family": "q3_partial",
+      "importance": 0.012983598746359348,
+      "corr": -0.01897302431612833,
+      "abs_corr": 0.01897302431612833,
+      "importance_rank_score": 0.012983598746359348,
+      "suspicious_score": 0.6843188797962182,
+      "non_zero_rate": 0.9992760617760618
+    },
+    {
+      "feature": "trailing_now_deficit_abs",
+      "family": "current_state",
+      "importance": 0.012937002815306187,
+      "corr": -0.016070296818894898,
+      "abs_corr": 0.016070296818894898,
+      "importance_rank_score": 0.012937002815306187,
+      "suspicious_score": 0.805025754104013,
+      "non_zero_rate": 0.9691119691119691
+    },
+    {
+      "feature": "current_leader_won_q1",
+      "family": "current_state",
+      "importance": 0.012669358402490616,
+      "corr": -0.009018701499981997,
+      "abs_corr": 0.009018701499981997,
+      "importance_rank_score": 0.012669358402490616,
+      "suspicious_score": 1.4047874189555898,
+      "non_zero_rate": 0.6961872586872587
+    },
+    {
+      "feature": "q1_q2_q3_partial_same_leader",
+      "family": "early_quarters",
+      "importance": 0.012527279555797577,
+      "corr": -0.013013599495839528,
+      "abs_corr": 0.013013599495839528,
+      "importance_rank_score": 0.012527279555797577,
+      "suspicious_score": 0.9626298673017079,
+      "non_zero_rate": 0.2673745173745174
+    },
+    {
+      "feature": "current_margin_bin=01_03",
+      "family": "current_state",
+      "importance": 0.012060597538948059,
+      "corr": 0.019990411330063646,
+      "abs_corr": 0.019990411330063646,
+      "importance_rank_score": 0.012060597538948059,
+      "suspicious_score": 0.6033191283468032,
+      "non_zero_rate": 0.1916023166023166
+    },
+    {
+      "feature": "halftime_leader_now_tied",
+      "family": "halftime_recovery",
+      "importance": 0.011888381093740463,
+      "corr": 0.004682018029655324,
+      "abs_corr": 0.004682018029655324,
+      "importance_rank_score": 0.011888381093740463,
+      "suspicious_score": 2.3776762187480927,
+      "non_zero_rate": 0.02895752895752896
+    },
+    {
+      "feature": "q3_partial_projected_diff",
+      "family": "q3_partial",
+      "importance": 0.011848698370158672,
+      "corr": 0.026433266253191146,
+      "abs_corr": 0.026433266253191146,
+      "importance_rank_score": 0.011848698370158672,
+      "suspicious_score": 0.44824949957624866,
+      "non_zero_rate": 0.9471525096525096
+    },
+    {
+      "feature": "halftime_home",
+      "family": "other",
+      "importance": 0.011664438992738724,
+      "corr": 0.05027616396623784,
+      "abs_corr": 0.05027616396623784,
+      "importance_rank_score": 0.011664438992738724,
+      "suspicious_score": 0.23200733851874206,
+      "non_zero_rate": 1.0
+    },
+    {
+      "feature": "away_prior_wr",
+      "family": "prior_strength",
+      "importance": 0.011491874232888222,
+      "corr": -0.08771939488738688,
+      "abs_corr": 0.08771939488738688,
+      "importance_rank_score": 0.011491874232888222,
+      "suspicious_score": 0.13100722192214564,
+      "non_zero_rate": 0.9288127413127413
+    },
+    {
+      "feature": "current_leader_won_q3_partial",
+      "family": "current_state",
+      "importance": 0.011295477859675884,
+      "corr": -0.029589430280262462,
+      "abs_corr": 0.029589430280262462,
+      "importance_rank_score": 0.011295477859675884,
+      "suspicious_score": 0.38174029552743693,
+      "non_zero_rate": 0.673503861003861
+    },
+    {
+      "feature": "away_wins_first2_plus_q3_partial_count",
+      "family": "other",
+      "importance": 0.011287949979305267,
+      "corr": -0.043198118119132926,
+      "abs_corr": 0.043198118119132926,
+      "importance_rank_score": 0.011287949979305267,
+      "suspicious_score": 0.2613065214594547,
+      "non_zero_rate": 0.790057915057915
+    },
+    {
+      "feature": "halftime_current_combo=away__home",
+      "family": "combo_halftime_current",
+      "importance": 0.011205822229385376,
+      "corr": -0.003671523350023695,
+      "abs_corr": 0.003671523350023695,
+      "importance_rank_score": 0.011205822229385376,
+      "suspicious_score": 2.241164445877075,
+      "non_zero_rate": 0.07287644787644787
+    },
+    {
+      "feature": "recent_4m_away_max_run",
+      "family": "recent_window",
+      "importance": 0.011186364106833935,
+      "corr": -0.00647936585645202,
+      "abs_corr": 0.00647936585645202,
+      "importance_rank_score": 0.011186364106833935,
+      "suspicious_score": 1.7264597114383935,
+      "non_zero_rate": 0.990588803088803
+    },
+    {
+      "feature": "halftime_leader_still_ahead",
+      "family": "halftime_recovery",
+      "importance": 0.011073595844209194,
+      "corr": -0.005674538654009837,
+      "abs_corr": 0.005674538654009837,
+      "importance_rank_score": 0.011073595844209194,
+      "suspicious_score": 1.9514530641859642,
+      "non_zero_rate": 0.790057915057915
+    },
+    {
+      "feature": "q3_partial_home_share",
+      "family": "q3_partial",
+      "importance": 0.011068001389503479,
+      "corr": 0.031631423009815474,
+      "abs_corr": 0.031631423009815474,
+      "importance_rank_score": 0.011068001389503479,
+      "suspicious_score": 0.34990526306922687,
+      "non_zero_rate": 0.9997586872586872
+    },
+    {
+      "feature": "recent_2m_home_max_run",
+      "family": "recent_window",
+      "importance": 0.010918095707893372,
+      "corr": 0.026397692904810147,
+      "abs_corr": 0.026397692904810147,
+      "importance_rank_score": 0.010918095707893372,
+      "suspicious_score": 0.4136003758837536,
+      "non_zero_rate": 0.9232625482625483
+    },
+    {
+      "feature": "current_leader=tied",
+      "family": "current_state",
+      "importance": 0.010881778784096241,
+      "corr": 0.0013042298280191791,
+      "abs_corr": 0.0013042298280191791,
+      "importance_rank_score": 0.010881778784096241,
+      "suspicious_score": 2.176355756819248,
+      "non_zero_rate": 0.03088803088803089
+    }
+  ],
+  "suspicious_high_importance_low_corr": [
+    {
+      "feature": "q3_elapsed_minutes",
+      "family": "snapshot_phase",
+      "importance": 0.016679903492331505,
+      "corr": 0.005972703350731133,
+      "abs_corr": 0.005972703350731133,
+      "importance_rank_score": 0.016679903492331505,
+      "suspicious_score": 2.792689091161656,
+      "non_zero_rate": 1.0
+    },
+    {
+      "feature": "halftime_leader_now_tied",
+      "family": "halftime_recovery",
+      "importance": 0.011888381093740463,
+      "corr": 0.004682018029655324,
+      "abs_corr": 0.004682018029655324,
+      "importance_rank_score": 0.011888381093740463,
+      "suspicious_score": 2.3776762187480927,
+      "non_zero_rate": 0.02895752895752896
+    },
+    {
+      "feature": "halftime_current_combo=away__home",
+      "family": "combo_halftime_current",
+      "importance": 0.011205822229385376,
+      "corr": -0.003671523350023695,
+      "abs_corr": 0.003671523350023695,
+      "importance_rank_score": 0.011205822229385376,
+      "suspicious_score": 2.241164445877075,
+      "non_zero_rate": 0.07287644787644787
+    },
+    {
+      "feature": "current_leader=tied",
+      "family": "current_state",
+      "importance": 0.010881778784096241,
+      "corr": 0.0013042298280191791,
+      "abs_corr": 0.0013042298280191791,
+      "importance_rank_score": 0.010881778784096241,
+      "suspicious_score": 2.176355756819248,
+      "non_zero_rate": 0.03088803088803089
+    },
+    {
+      "feature": "q3_partial_total_pace_per_min",
+      "family": "q3_partial",
+      "importance": 0.010410597547888756,
+      "corr": 0.0001939536693735357,
+      "abs_corr": 0.0001939536693735357,
+      "importance_rank_score": 0.010410597547888756,
+      "suspicious_score": 2.082119509577751,
+      "non_zero_rate": 1.0
+    },
+    {
+      "feature": "halftime_trailer_recovery_ratio",
+      "family": "halftime_recovery",
+      "importance": 0.009824799373745918,
+      "corr": -0.0013086873749613471,
+      "abs_corr": 0.0013086873749613471,
+      "importance_rank_score": 0.009824799373745918,
+      "suspicious_score": 1.9649598747491837,
+      "non_zero_rate": 0.9140926640926641
+    },
+    {
+      "feature": "current_leader_won_q2",
+      "family": "current_state",
+      "importance": 0.009816081263124943,
+      "corr": -0.000623676738400656,
+      "abs_corr": 0.000623676738400656,
+      "importance_rank_score": 0.009816081263124943,
+      "suspicious_score": 1.9632162526249886,
+      "non_zero_rate": 0.678088803088803
+    },
+    {
+      "feature": "halftime_leader_still_ahead",
+      "family": "halftime_recovery",
+      "importance": 0.011073595844209194,
+      "corr": -0.005674538654009837,
+      "abs_corr": 0.005674538654009837,
+      "importance_rank_score": 0.011073595844209194,
+      "suspicious_score": 1.9514530641859642,
+      "non_zero_rate": 0.790057915057915
+    },
+    {
+      "feature": "q3_partial_projected_total",
+      "family": "q3_partial",
+      "importance": 0.009253881871700287,
+      "corr": 0.00036283306955032206,
+      "abs_corr": 0.00036283306955032206,
+      "importance_rank_score": 0.009253881871700287,
+      "suspicious_score": 1.8507763743400574,
+      "non_zero_rate": 1.0
+    },
+    {
+      "feature": "q1_q2_same_winner",
+      "family": "early_quarters",
+      "importance": 0.013827234506607056,
+      "corr": -0.00762641458782573,
+      "abs_corr": 0.00762641458782573,
+      "importance_rank_score": 0.013827234506607056,
+      "suspicious_score": 1.8130714436479598,
+      "non_zero_rate": 0.4864864864864865
+    },
+    {
+      "feature": "prior_wr_sum",
+      "family": "prior_strength",
+      "importance": 0.00895750056952238,
+      "corr": -0.00019113061196197377,
+      "abs_corr": 0.00019113061196197377,
+      "importance_rank_score": 0.00895750056952238,
+      "suspicious_score": 1.7915001139044762,
+      "non_zero_rate": 0.9722490347490348
+    },
+    {
+      "feature": "halftime_deficit_abs",
+      "family": "other",
+      "importance": 0.008820882998406887,
+      "corr": 0.004397603291949918,
+      "abs_corr": 0.004397603291949918,
+      "importance_rank_score": 0.008820882998406887,
+      "suspicious_score": 1.7641765996813774,
+      "non_zero_rate": 0.9650096525096525
+    },
+    {
+      "feature": "recent_4m_away_points",
+      "family": "recent_window",
+      "importance": 0.008820362389087677,
+      "corr": -0.0018298903403729824,
+      "abs_corr": 0.0018298903403729824,
+      "importance_rank_score": 0.008820362389087677,
+      "suspicious_score": 1.7640724778175354,
+      "non_zero_rate": 0.990588803088803
+    },
+    {
+      "feature": "halftime_total",
+      "family": "other",
+      "importance": 0.008658036589622498,
+      "corr": 0.0005396123868269361,
+      "abs_corr": 0.0005396123868269361,
+      "importance_rank_score": 0.008658036589622498,
+      "suspicious_score": 1.7316073179244995,
+      "non_zero_rate": 1.0
+    },
+    {
+      "feature": "recent_4m_away_max_run",
+      "family": "recent_window",
+      "importance": 0.011186364106833935,
+      "corr": -0.00647936585645202,
+      "abs_corr": 0.00647936585645202,
+      "importance_rank_score": 0.011186364106833935,
+      "suspicious_score": 1.7264597114383935,
+      "non_zero_rate": 0.990588803088803
+    },
+    {
+      "feature": "q3_partial_total",
+      "family": "q3_partial",
+      "importance": 0.008224192075431347,
+      "corr": -0.00018633794311800057,
+      "abs_corr": 0.00018633794311800057,
+      "importance_rank_score": 0.008224192075431347,
+      "suspicious_score": 1.6448384150862694,
+      "non_zero_rate": 1.0
+    },
+    {
+      "feature": "halftime_current_combo=away__tied",
+      "family": "combo_halftime_current",
+      "importance": 0.013250438496470451,
+      "corr": -0.008859839473616814,
+      "abs_corr": 0.008859839473616814,
+      "importance_rank_score": 0.013250438496470451,
+      "suspicious_score": 1.4955619157579705,
+      "non_zero_rate": 0.014961389961389961
+    },
+    {
+      "feature": "halftime_q3_partial_combo=away__home",
+      "family": "combo_halftime_q3_partial",
+      "importance": 0.009896557778120041,
+      "corr": -0.006921026655289778,
+      "abs_corr": 0.006921026655289778,
+      "importance_rank_score": 0.009896557778120041,
+      "suspicious_score": 1.4299262625373719,
+      "non_zero_rate": 0.19763513513513514
+    },
+    {
+      "feature": "current_leader_won_q1",
+      "family": "current_state",
+      "importance": 0.012669358402490616,
+      "corr": -0.009018701499981997,
+      "abs_corr": 0.009018701499981997,
+      "importance_rank_score": 0.012669358402490616,
+      "suspicious_score": 1.4047874189555898,
+      "non_zero_rate": 0.6961872586872587
+    },
+    {
+      "feature": "halftime_trailer_gain_bin=01_03",
+      "family": "halftime_recovery",
+      "importance": 0.013963878154754639,
+      "corr": 0.01203536277738054,
+      "abs_corr": 0.01203536277738054,
+      "importance_rank_score": 0.013963878154754639,
+      "suspicious_score": 1.1602374114553973,
+      "non_zero_rate": 0.3658301158301158
+    },
+    {
+      "feature": "gender_bucket=men_or_open",
+      "family": "other",
+      "importance": 0.014015872962772846,
+      "corr": 0.01226725775712008,
+      "abs_corr": 0.01226725775712008,
+      "importance_rank_score": 0.014015872962772846,
+      "suspicious_score": 1.1425432839411764,
+      "non_zero_rate": 0.8453185328185329
+    },
+    {
+      "feature": "halftime_leader_lost_lead",
+      "family": "halftime_recovery",
+      "importance": 0.008617737330496311,
+      "corr": 0.007823593911520163,
+      "abs_corr": 0.007823593911520163,
+      "importance_rank_score": 0.008617737330496311,
+      "suspicious_score": 1.1015062167026306,
+      "non_zero_rate": 0.17495173745173745
+    },
+    {
+      "feature": "q1_q2_q3_partial_same_leader",
+      "family": "early_quarters",
+      "importance": 0.012527279555797577,
+      "corr": -0.013013599495839528,
+      "abs_corr": 0.013013599495839528,
+      "importance_rank_score": 0.012527279555797577,
+      "suspicious_score": 0.9626298673017079,
+      "non_zero_rate": 0.2673745173745174
+    },
+    {
+      "feature": "gp_slope_5m",
+      "family": "graph",
+      "importance": 0.010227619670331478,
+      "corr": 0.010956441589263987,
+      "abs_corr": 0.010956441589263987,
+      "importance_rank_score": 0.010227619670331478,
+      "suspicious_score": 0.9334800525339662,
+      "non_zero_rate": 0.9256756756756757
+    },
+    {
+      "feature": "halftime_current_combo=tied__home",
+      "family": "combo_halftime_current",
+      "importance": 0.014582499861717224,
+      "corr": -0.016212801662244477,
+      "abs_corr": 0.016212801662244477,
+      "importance_rank_score": 0.014582499861717224,
+      "suspicious_score": 0.8994435487159622,
+      "non_zero_rate": 0.01833976833976834
+    },
+    {
+      "feature": "recent_4m_points_diff",
+      "family": "recent_window",
+      "importance": 0.01080265361815691,
+      "corr": 0.012229509123547557,
+      "abs_corr": 0.012229509123547557,
+      "importance_rank_score": 0.01080265361815691,
+      "suspicious_score": 0.883326837489881,
+      "non_zero_rate": 0.9206081081081081
+    },
+    {
+      "feature": "trailing_now_recent_run_2m",
+      "family": "current_state",
+      "importance": 0.01329808123409748,
+      "corr": 0.015133977988860948,
+      "abs_corr": 0.015133977988860948,
+      "importance_rank_score": 0.01329808123409748,
+      "suspicious_score": 0.8786904040619895,
+      "non_zero_rate": 0.3375965250965251
+    },
+    {
+      "feature": "trailing_now_deficit_abs",
+      "family": "current_state",
+      "importance": 0.012937002815306187,
+      "corr": -0.016070296818894898,
+      "abs_corr": 0.016070296818894898,
+      "importance_rank_score": 0.012937002815306187,
+      "suspicious_score": 0.805025754104013,
+      "non_zero_rate": 0.9691119691119691
+    },
+    {
+      "feature": "recent_2m_away_points",
+      "family": "recent_window",
+      "importance": 0.00928318127989769,
+      "corr": -0.012088620491768825,
+      "abs_corr": 0.012088620491768825,
+      "importance_rank_score": 0.00928318127989769,
+      "suspicious_score": 0.767927265664319,
+      "non_zero_rate": 0.9121621621621622
+    },
+    {
+      "feature": "halftime_margin_bin=04_07",
+      "family": "other",
+      "importance": 0.01498151384294033,
+      "corr": -0.019924252505102776,
+      "abs_corr": 0.019924252505102776,
+      "importance_rank_score": 0.01498151384294033,
+      "suspicious_score": 0.7519235082522385,
+      "non_zero_rate": 0.2388996138996139
+    },
+    {
+      "feature": "q3_partial_away_pace_per_min",
+      "family": "q3_partial",
+      "importance": 0.012983598746359348,
+      "corr": -0.01897302431612833,
+      "abs_corr": 0.01897302431612833,
+      "importance_rank_score": 0.012983598746359348,
+      "suspicious_score": 0.6843188797962182,
+      "non_zero_rate": 0.9992760617760618
+    },
+    {
+      "feature": "trailing_now_recent_run_4m",
+      "family": "current_state",
+      "importance": 0.010787992738187313,
+      "corr": 0.01587356498219806,
+      "abs_corr": 0.01587356498219806,
+      "importance_rank_score": 0.010787992738187313,
+      "suspicious_score": 0.6796200318130092,
+      "non_zero_rate": 0.31925675675675674
+    },
+    {
+      "feature": "current_margin_bin=01_03",
+      "family": "current_state",
+      "importance": 0.012060597538948059,
+      "corr": 0.019990411330063646,
+      "abs_corr": 0.019990411330063646,
+      "importance_rank_score": 0.012060597538948059,
+      "suspicious_score": 0.6033191283468032,
+      "non_zero_rate": 0.1916023166023166
+    },
+    {
+      "feature": "q3_partial_margin_bin=04_07",
+      "family": "q3_partial",
+      "importance": 0.01003623940050602,
+      "corr": -0.017341079312941245,
+      "abs_corr": 0.017341079312941245,
+      "importance_rank_score": 0.01003623940050602,
+      "suspicious_score": 0.5787551754645518,
+      "non_zero_rate": 0.3127413127413127
+    },
+    {
+      "feature": "recent_4m_run_diff",
+      "family": "recent_window",
+      "importance": 0.009600667282938957,
+      "corr": 0.01718193114542759,
+      "abs_corr": 0.01718193114542759,
+      "importance_rank_score": 0.009600667282938957,
+      "suspicious_score": 0.5587653216439445,
+      "non_zero_rate": 0.874034749034749
+    },
+    {
+      "feature": "halftime_current_combo=home__tied",
+      "family": "combo_halftime_current",
+      "importance": 0.008631663396954536,
+      "corr": 0.015839050865304793,
+      "abs_corr": 0.015839050865304793,
+      "importance_rank_score": 0.008631663396954536,
+      "suspicious_score": 0.5449608988794946,
+      "non_zero_rate": 0.013996138996138996
+    },
+    {
+      "feature": "q3_partial_home_pace_per_min",
+      "family": "q3_partial",
+      "importance": 0.010198548436164856,
+      "corr": 0.018880321699382835,
+      "abs_corr": 0.018880321699382835,
+      "importance_rank_score": 0.010198548436164856,
+      "suspicious_score": 0.5401681495976961,
+      "non_zero_rate": 0.9997586872586872
+    },
+    {
+      "feature": "q3_partial_projected_away",
+      "family": "q3_partial",
+      "importance": 0.008968843147158623,
+      "corr": -0.017365903656596807,
+      "abs_corr": 0.017365903656596807,
+      "importance_rank_score": 0.008968843147158623,
+      "suspicious_score": 0.5164627954014716,
+      "non_zero_rate": 0.9992760617760618
+    },
+    {
+      "feature": "q3_partial_projected_home",
+      "family": "q3_partial",
+      "importance": 0.008584250696003437,
+      "corr": 0.01764298984968491,
+      "abs_corr": 0.01764298984968491,
+      "importance_rank_score": 0.008584250696003437,
+      "suspicious_score": 0.4865530598350792,
+      "non_zero_rate": 0.9997586872586872
+    },
+    {
+      "feature": "halftime_trailer_gain",
+      "family": "halftime_recovery",
+      "importance": 0.010053099133074284,
+      "corr": 0.020706401341222435,
+      "abs_corr": 0.020706401341222435,
+      "importance_rank_score": 0.010053099133074284,
+      "suspicious_score": 0.4855068231030812,
+      "non_zero_rate": 0.9140926640926641
+    }
+  ],
+  "family_importance_mass": [
+    {
+      "family": "current_state",
+      "feature_count": 23,
+      "importance_sum": 0.18071682751178741,
+      "mean_abs_corr": 0.02428503536175844,
+      "max_abs_corr": 0.07818159695664255
+    },
+    {
+      "family": "recent_window",
+      "feature_count": 18,
+      "importance_sum": 0.14947907347232103,
+      "mean_abs_corr": 0.019166781427469172,
+      "max_abs_corr": 0.0291034433796287
+    },
+    {
+      "family": "other",
+      "feature_count": 25,
+      "importance_sum": 0.14423801400698721,
+      "mean_abs_corr": 0.028705886041707193,
+      "max_abs_corr": 0.08026891114561154
+    },
+    {
+      "family": "q3_partial",
+      "feature_count": 19,
+      "importance_sum": 0.13915130635723472,
+      "mean_abs_corr": 0.014851582521670433,
+      "max_abs_corr": 0.031631423009815474
+    },
+    {
+      "family": "prior_strength",
+      "feature_count": 4,
+      "importance_sum": 0.10458913538604975,
+      "mean_abs_corr": 0.07693674892290528,
+      "max_abs_corr": 0.13322721908146132
+    },
+    {
+      "family": "combo_halftime_current",
+      "feature_count": 9,
+      "importance_sum": 0.07531182747334242,
+      "mean_abs_corr": 0.018022896793939324,
+      "max_abs_corr": 0.04138165694865444
+    },
+    {
+      "family": "halftime_recovery",
+      "feature_count": 15,
+      "importance_sum": 0.0664993126410991,
+      "mean_abs_corr": 0.01124163298253305,
+      "max_abs_corr": 0.025588318536984653
+    },
+    {
+      "family": "early_quarters",
+      "feature_count": 10,
+      "importance_sum": 0.06625071074813604,
+      "mean_abs_corr": 0.03267146339240686,
+      "max_abs_corr": 0.07400748027207904
+    },
+    {
+      "family": "graph",
+      "feature_count": 4,
+      "importance_sum": 0.03704914078116417,
+      "mean_abs_corr": 0.025529646545298875,
+      "max_abs_corr": 0.07685735416277818
+    },
+    {
+      "family": "combo_halftime_q3_partial",
+      "feature_count": 9,
+      "importance_sum": 0.020034730434417725,
+      "mean_abs_corr": 0.020013458583537355,
+      "max_abs_corr": 0.04935319150810183
+    },
+    {
+      "family": "snapshot_phase",
+      "feature_count": 3,
+      "importance_sum": 0.016679903492331505,
+      "mean_abs_corr": 0.005972703350730736,
+      "max_abs_corr": 0.005972703350731133
+    }
+  ]
+}
