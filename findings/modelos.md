@@ -514,7 +514,7 @@ Todos los modelos comparten:
 
 ---
 
-## m27_v2 — Bugfixed + Normalized Q3 Rates + Filter-10m
+## m27_v2 — Bugfixed + Normalized Q3 Rates + Filter-10m + Low-Effort Features
 
 | Campo | Valor |
 |-------|-------|
@@ -523,18 +523,83 @@ Todos los modelos comparten:
 | **Script** | `train_q4_m27_v2.py` |
 | **Hiperparams** | XGB(n_est=300, lr=0.05, max_depth=4); HistGB(max_iter=300, lr=0.05, max_depth=5) |
 | **Target** | **Solo Q4** |
-| **Ensemble** | Avg simple + isotonic |
+| **Ensemble** | AUC-weighted (XGB 48% / HistGB 52%) + isotonic |
 | **Split** | 70/15/15, 5-fold TimeSeriesSplit CV (match-aware, sin leakage) |
-| **Features** | v1 features + **q3_partial_home_rate/away_rate/diff_rate** (normalizados por minuto en Q3, siempre activos). Pace features (`regulation_quarter_minutes`, `q3_remaining_minutes`, `q3_partial_completion`, `q3_partial_home_pace_per_min`, `q3_partial_away_pace_per_min`, `q3_partial_projected_diff`) gated detrás de `--enable-pace-features` (default: OFF). |
-| **Filtros** | Eligibility filter (`_window_is_eligible_m27`) restaurado. `--filter-10m`: solo ligas de 10 minutos, dropea 6 features constantes/redundantes. |
+| **Features** | v1 features + **q3_partial_home_rate/away_rate/diff_rate** (siempre). **F8** (scoring runs: `current_run_home/away`, `max_run_home/away`). **G1** (score ratios: `score_halftime_diff_ratio`, `score_q1_share`, `score_q3_vs_ht_momentum`). **G4** (PBP density: `pbp_count`, `pbp_home/away_pts`, `pbp_pts_per_event`, `pbp_home/away_3pt_rate`). Pace features gated. _7 features podadas por imp=0 (ver findings)._ |
+| **Filtros** | Eligibility filter (`_window_is_eligible_m27`) restaurado. `--filter-10m`: solo ligas de 10 minutos. |
 | **Muestras** | ~27,542 (train: 19,279; val: 4,131; test: 4,132) |
-| **ROC AUC (test, default)** | **0.667** (ensemble), XGB: 0.665, HistGB: 0.667 |
+| **ROC AUC (test, default)** | **0.668** (ensemble), XGB: 0.666, HistGB: 0.668 |
 | **ROC AUC (test, filter-10m)** | **0.671** (ensemble), XGB: 0.670, HistGB: 0.670 |
-| **Accuracy** | 0.621 (default) / 0.626 (10m) |
+| **Brier** | 0.228 (ensemble) |
+| **Accuracy** | 0.623 (default) / 0.626 (10m) |
 | **Champion** | `model_outputs_m27_v2/m27_v2_xgb.joblib` + `m27_v2_histgb.joblib` + `m27_v2_calibrator.joblib` |
-| **Nota features** | v1 + normalized Q3 rates (siempre). Pace features gated. |
-| **Diferencias vs m27_v1** | 4 bugs corregidos: eligibility filter, target None skip, match-aware split, quality guards. Normalized Q3 rates. Pace features gated. Filter-10m mode. |
-| **Notas** | Pipeline limpio listo para experimentar con pace features y filtro 10m. Performance idéntica a v1 (~0.667 AUC). Filter-10m da +0.004 marginal. |
+| **Nota features** | v1 + normalized Q3 rates + F8 + G1 + G4. 86 features (7 podadas). Pace gated. |
+| **Diferencias vs m27_v2 baseline** | +F8/G1/G4 (no suman). AUC-weighted ensemble (no mejora). Poda 7 features muertas (AUC idéntico). |
+| **Notas** | El modelo es dominado por `recent_2m_points_diff` (18.4% imp). Recent windows 2m+3m = 35.9%. Features nuevas no sumaron señal. Filter-10m da +0.004 marginal. Próximo paso: buscar señales nuevas (fouls, timeouts, lineups, streak, pace real, datos externos). |
+
+---
+
+## m27_v3 — H2H Head-to-Head Features
+
+| Campo | Valor |
+|-------|-------|
+| **Snapshot** | **27** |
+| **Algoritmo** | XGBoost + HistGradientBoosting |
+| **Script** | `train_q4_m27_v3.py` |
+| **Hiperparams** | XGB(n_est=300, lr=0.05, max_depth=4); HistGB(max_iter=300, lr=0.05, max_depth=5) |
+| **Target** | **Solo Q4** |
+| **Ensemble** | AUC-weighted (XGB + HistGB) + isotonic |
+| **Split** | 70/15/15, 5-fold TimeSeriesSplit CV |
+| **Features** | m27_v2 features + **H2H**: `h2h_avg_q1_diff`, `h2h_recent3_home_won`, `h2h_last_home_won` |
+| **Filtros** | Eligibility filter (`_window_is_eligible_m27`). Sin filter-10m. |
+| **Muestras** | 27,542 (train: 19,279; val: 4,131; test: 4,132) |
+| **Cobertura H2H** | 42% global (11,622 muestras con ≥1 H2H previo). **99% en test** (el split test es el más reciente, los equipos ya se enfrentaron). |
+| **ROC AUC (test)** | **0.789** (ensemble), XGB: 0.788, HistGB: 0.787 |
+| **Brier** | **0.187** (ensemble) |
+| **Accuracy** | **0.705** (thr=0.60) |
+| **Yield (odds=1.40)** | **+13.0%** @ thr=0.62 (2,414 bets, 80.7% hit rate). **+21.0%** @ thr=0.70 (1,599 bets, 86.4%). **+29.8%** @ thr=0.80 (960 bets, 92.7%). |
+| **Champion** | `model_outputs_m27_v3/m27_v3_xgb.joblib` + `m27_v3_histgb.joblib` + `m27_v3_calibrator.joblib` |
+| **Feature importance top 5** | `h2h_last_home_won` **(0.228)**, `trailing_now_recent_run_2m` (0.064), `score_est_diff` (0.052), `recent_2m_points_diff` (0.045), `h2h_recent3_home_won` (0.039) |
+| **Nota features** | `h2h_last_home_won` es #1 con 22.8% de importancia (4× la siguiente). Las 3 H2H suman 28.5% del modelo. Las H2H se computan desde la DB local (tablas `matches` + `quarter_scores`). Si no hay historial previo, las features valen 0. |
+| **Inference** | Integrado en `infer_match.py` vía `score_m27_v3()`. Disponible como `--force-version m27_v3` en `cli.py eval-date`. |
+| **Diferencias vs m27_v2** | +**+0.122 ROC AUC**. Yield +13% vs +4.5% de m27_v1. 2,414 bets vs 643. El salto más grande desde m27_v1. Las H2H capturan dinámicas de matchup que `prior_wr_diff` (genérico) no ve. |
+| **Próximos pasos** | Ver detalle abajo. |
+
+### Próximos pasos e ideas de mejora — m27_v3
+
+#### 1. Descomposición de `recent_2m_points_diff` (35.9% del modelo)
+- **Pace real del live**: `recent_2m_possessions` — número de posesiones reales en la ventana de 2m. No es lo mismo +4 pts en 6 posesiones (juego lento, controlado) que +4 pts en 12 posesiones (transición, alta varianza).
+- **Eficiencia pintura vs perímetro**: desglosar los puntos recientes en `recent_2m_paint_pts` / `recent_2m_perimeter_pts`. Los triples en racha tienen alta probabilidad de regresión a la media; los puntos en pintura + tiros libres indican ataque sostenido y faltas acumuladas.
+
+#### 2. Variables de contexto de juego (fouls & timeouts)
+- **Bonus flag**: si al minuto 27 algún equipo está en bonus (4+ faltas de equipo), cada falta defensiva se convierte en 2 TL automáticos. Cambia la eficiencia esperada del Q4.
+- **Foul trouble**: flag si la estrella o el principal defensor interior tiene 4+ faltas individuales. Limita la agresividad defensiva o fuerza su salida.
+- **Timeouts restantes**: si el entrenador del equipo que va perdiendo ya quemó sus timeouts para frenar la racha, o tiene la pizarra limpia para ajustar el cierre.
+
+#### 3. Dinámica de alineaciones (lineups & rest)
+- **Descanso acumulado de titulares**: minutos de descanso de los 3 mejores jugadores de cada equipo al llegar al minuto 27. Si los titulares del equipo A descansaron todo el Q3 y entran frescos vs un equipo B desgastado, hay ventaja estructural invisible.
+- **Quinteto de cierre (clutch lineup)**: ± histórico de los 5 jugadores en duela. ¿Están los suplentes aguantando o ya entró el quinteto pesado?
+
+#### 4. Datos macroscópicos y de mercado
+- **Back-to-back / gira larga**: flag si el equipo jugó el día anterior o es su 4º partido como visitante en una gira. El cansancio crónico se nota exponencialmente en los últimos 6 minutos.
+- **Closing Line Value (CLV) o hándicap inicial**: el hándicap de apertura/cierre le da al modelo la "línea base de calidad". Un favorito por -12 que va perdiendo por 4 tiene mucho más talento y urgencia para remontar que un underdog en la misma situación.
+
+#### 5. Explotación de series de tiempo (hibridación ligera)
+- **Bandas de Bollinger / Canales de Keltner** sobre los graph points históricos del partido para detectar cuándo una racha reciente está en un extremo estadístico (sobrecompra/sobreventa de momentum) y predecir regresión inminente.
+
+#### 6. Robustez e ingeniería de variables H2H
+- **Decaimiento temporal**: si el último H2H fue hace 2 semanas tiene gran valor; si fue hace 3 años (plantillas distintas) es ruido. Aplicar factor de decaimiento por días o filtrar a ≤365 días.
+- **Localía estricta**: separar `h2h_last_match_absolute_winner` (quién ganó) de `h2h_last_match_same_venue_winner` (qué pasó la última vez en la misma duela específica).
+- **H2H de Q4 específico**: `h2h_avg_q4_diff_historical` — ¿cómo se han comportado estos equipos cerrando partidos entre sí? Es la señal más alineada con el target.
+
+#### 7. Estrategia de fallback para el 58% sin cobertura H2H
+- **Two-stage inference**: gate lógico en `infer_match.py` — si existe H2H previo calificado → `score_m27_v3()` (AUC 0.789); si no → `score_m27_v2()` (optimizado sin H2H).
+- **H2H proxy por rivales comunes**: para partidos sin enfrentamiento directo, computar el diferencial de rendimiento contra rivales comunes recientes (misma temporada, últimos 3 equipos compartidos).
+
+#### 8. Infraestructura de producción
+- **Async pre-fetching de H2H**: tan pronto como un partido aparezca en la lista del día, lanzar un worker asíncrono que consulte `/event/{id}/h2h` de SofaScore, transforme el historial al formato de la DB local y deje las features H2H cacheadas antes del minuto 27. Evitar latencia en la ventana de apuesta live.
+
+---
 
 ---
 
@@ -588,7 +653,7 @@ Todos los modelos comparten:
 | V16 | 31 | Acc only | 0.597 val / 0.711 hold | 9,442 / 1,378 | Snapshot 31. PROD 46/90 ligas. **Holdout 0.711 con gates implícitos** — sesgo alcista. | TimesFM/Chronos |
 | V17 | 31 | Acc only | 0.595 val / 0.609 hold | 7,488 / 5,518 | Snapshot 31. 67/150 ligas. Holdout 17k grande. **Holdout con sesgo de gates**. | +G9 legacy hybrid |
 | **m27_v1** | **27** | **0.668** | 0.626 | 3,713 | **Snapshot 27 (3m Q4 real)**. Sin filtro. Match-level. | **Señal real pre-Q4** |
-| **m27_v2** | **27** | **0.667** / 0.671\* | 0.621 / 0.626 | 4,132 | \*10m filter. Default: sin filtro. Match-level. | Idéntico a v1. +0.004 con filter-10m |
+| **m27_v2** | **27** | **0.668** / 0.671\* | 0.623 / 0.626 | 4,132 | \*10m filter. 86 feat (7 podadas). Match-level. | Idéntico a v1. Recent windows dominan. Features nuevas no suman |
 | **m30_v1** | **30** | 0.585 | 0.562 | 4,144 | **Snapshot 30 (sin Q4 real)**. Sin filtro. Match-level. | Límite ~0.59 |
 
 ---

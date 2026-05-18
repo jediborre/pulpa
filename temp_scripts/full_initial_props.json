@@ -1,0 +1,4678 @@
+{
+  "event": {
+    "officials": [],
+    "tournament": {
+      "name": "Liga ACB",
+      "slug": "liga-acb",
+      "category": {
+        "name": "Spain",
+        "slug": "spain",
+        "sport": {
+          "name": "Basketball",
+          "slug": "basketball",
+          "id": 2
+        },
+        "priority": 0,
+        "country": {
+          "alpha2": "ES",
+          "alpha3": "ESP",
+          "name": "Spain",
+          "slug": "spain"
+        },
+        "id": 109,
+        "flag": "spain",
+        "alpha2": "ES",
+        "fieldTranslations": {
+          "nameTranslation": {
+            "hi": "एटीपी",
+            "ar": "إسبانيا",
+            "bn": "স্পেন",
+            "ru": "Испания"
+          },
+          "shortNameTranslation": {}
+        }
+      },
+      "uniqueTournament": {
+        "name": "Liga ACB",
+        "slug": "liga-acb",
+        "primaryColorHex": "#e9510e",
+        "secondaryColorHex": "#b23c0a",
+        "category": {
+          "name": "Spain",
+          "slug": "spain",
+          "sport": {
+            "name": "Basketball",
+            "slug": "basketball",
+            "id": 2
+          },
+          "priority": 0,
+          "country": {
+            "alpha2": "ES",
+            "alpha3": "ESP",
+            "name": "Spain",
+            "slug": "spain"
+          },
+          "id": 109,
+          "flag": "spain",
+          "alpha2": "ES",
+          "fieldTranslations": {
+            "nameTranslation": {
+              "hi": "एटीपी",
+              "ar": "إسبانيا",
+              "bn": "স্পেন",
+              "ru": "Испания"
+            },
+            "shortNameTranslation": {}
+          }
+        },
+        "userCount": 9268,
+        "hasRounds": true,
+        "hasPerformanceGraphFeature": false,
+        "country": {},
+        "id": 264,
+        "hasEventPlayerStatistics": false,
+        "hasBoxScore": true,
+        "displayInverseHomeAwayTeams": false,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "এসিবি লীগ",
+            "ar": "الدوري الإسباني لكرة السلة",
+            "hi": "लीगा एसीबी"
+          },
+          "shortNameTranslation": {}
+        },
+        "hasRating": true
+      },
+      "priority": 97,
+      "isGroup": false,
+      "competitionType": 1,
+      "isLive": false,
+      "id": 271,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "hi": "लीगा एसीबी",
+          "ar": "دوري ACB",
+          "bn": "এসিবি লীগ"
+        },
+        "shortNameTranslation": {}
+      }
+    },
+    "season": {
+      "name": "Liga ACB 25/26",
+      "year": "25/26",
+      "editor": false,
+      "id": 80922
+    },
+    "roundInfo": {
+      "round": 32
+    },
+    "customId": "kwbsJck",
+    "status": {
+      "code": 100,
+      "description": "Ended",
+      "type": "finished"
+    },
+    "winnerCode": 1,
+    "venue": {
+      "city": {
+        "name": "Manresa",
+        "country": {
+          "alpha2": "ES",
+          "alpha3": "ESP",
+          "name": "Spain",
+          "slug": "spain"
+        },
+        "id": 19349
+      },
+      "hidden": true,
+      "slug": "pavello-nou-congost",
+      "name": "Pavello Nou Congost",
+      "capacity": 5000,
+      "country": {
+        "alpha2": "ES",
+        "alpha3": "ESP",
+        "name": "Spain",
+        "slug": "spain"
+      },
+      "id": 7004,
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "صالة بافيليو نو كونغوست",
+          "bn": "পাভেলো নউ কঙ্গোস্ট",
+          "hi": "पावेल्लो नू कांगोस्ट"
+        },
+        "shortNameTranslation": {}
+      },
+      "stadium": {
+        "name": "Pavello Nou Congost",
+        "capacity": 5000
+      }
+    },
+    "homeTeam": {
+      "name": "BAXI Manresa",
+      "slug": "baxi-manresa",
+      "shortName": "Manresa",
+      "gender": "M",
+      "sport": {
+        "name": "Basketball",
+        "slug": "basketball",
+        "id": 2
+      },
+      "userCount": 2300,
+      "venue": {
+        "city": {
+          "name": "Manresa",
+          "country": {
+            "alpha2": "ES",
+            "alpha3": "ESP",
+            "name": "Spain",
+            "slug": "spain"
+          },
+          "id": 19349
+        },
+        "hidden": true,
+        "slug": "pavello-nou-congost",
+        "name": "Pavello Nou Congost",
+        "capacity": 5000,
+        "country": {
+          "alpha2": "ES",
+          "alpha3": "ESP",
+          "name": "Spain",
+          "slug": "spain"
+        },
+        "id": 7004,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "صالة بافيليو نو كونغوست",
+            "bn": "পাভেলো নউ কঙ্গোস্ট",
+            "hi": "पावेल्लो नू कांगोस्ट"
+          },
+          "shortNameTranslation": {}
+        },
+        "stadium": {
+          "name": "Pavello Nou Congost",
+          "capacity": 5000
+        }
+      },
+      "nameCode": "MAN",
+      "national": false,
+      "type": 0,
+      "country": {
+        "alpha2": "ES",
+        "alpha3": "ESP",
+        "name": "Spain",
+        "slug": "spain"
+      },
+      "id": 3560,
+      "fullName": "BAXI Manresa",
+      "subTeams": [],
+      "teamColors": {
+        "primary": "#ff0000",
+        "secondary": "#ffffff",
+        "text": "#ffffff"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "باكسي مانريسا",
+          "ru": "Манреса"
+        },
+        "shortNameTranslation": {
+          "ar": "مانريسا",
+          "bn": "মানরেসা",
+          "hi": "मनरेसा"
+        }
+      },
+      "timeActive": []
+    },
+    "awayTeam": {
+      "name": "Basket Zaragoza",
+      "slug": "basket-zaragoza",
+      "shortName": "Zaragoza",
+      "gender": "M",
+      "sport": {
+        "name": "Basketball",
+        "slug": "basketball",
+        "id": 2
+      },
+      "userCount": 4500,
+      "venue": {
+        "city": {
+          "name": "Zaragoza",
+          "country": {
+            "alpha2": "ES",
+            "alpha3": "ESP",
+            "name": "Spain",
+            "slug": "spain"
+          },
+          "id": 19535
+        },
+        "hidden": true,
+        "slug": "pabell-n-pr-ncipe-felipe",
+        "name": "Pabellón Príncipe Felipe",
+        "capacity": 10744,
+        "country": {
+          "alpha2": "ES",
+          "alpha3": "ESP",
+          "name": "Spain",
+          "slug": "spain"
+        },
+        "id": 6642,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "صالة الأمير فيليبي",
+            "bn": "পাবেলন প্রিন্সিপে ফেলিপ",
+            "hi": "पैबेलोन प्रिंसिपे फ़ेलिप"
+          },
+          "shortNameTranslation": {}
+        },
+        "stadium": {
+          "name": "Pabellón Príncipe Felipe",
+          "capacity": 10744
+        }
+      },
+      "nameCode": "ZAR",
+      "disabled": false,
+      "national": false,
+      "type": 0,
+      "country": {
+        "alpha2": "ES",
+        "alpha3": "ESP",
+        "name": "Spain",
+        "slug": "spain"
+      },
+      "id": 25134,
+      "fullName": "Basket Zaragoza",
+      "subTeams": [],
+      "teamColors": {
+        "primary": "#ff0000",
+        "secondary": "#000000",
+        "text": "#000000"
+      },
+      "fieldTranslations": {
+        "nameTranslation": {
+          "ar": "باسكت زاراغوزا",
+          "ru": "Сарагоса"
+        },
+        "shortNameTranslation": {
+          "ar": "زاراغوزا",
+          "bn": "জারাগোজা",
+          "hi": "ज़रागोज़ा"
+        }
+      },
+      "timeActive": []
+    },
+    "homeScore": {
+      "current": 101,
+      "display": 101,
+      "period1": 23,
+      "period2": 23,
+      "period3": 25,
+      "period4": 30,
+      "normaltime": 101
+    },
+    "awayScore": {
+      "current": 83,
+      "display": 83,
+      "period1": 21,
+      "period2": 20,
+      "period3": 17,
+      "period4": 25,
+      "normaltime": 83
+    },
+    "time": {
+      "played": 2388,
+      "periodLength": 600,
+      "overtimeLength": 300,
+      "totalPeriodCount": 4,
+      "currentPeriodStartTimestamp": 1778965779
+    },
+    "changes": {
+      "changes": [
+        "time.currentPeriodStart",
+        "status.code",
+        "status.description",
+        "status.type",
+        "homeScore.normaltime",
+        "awayScore.normaltime"
+      ],
+      "changeTimestamp": 1778965788
+    },
+    "hasGlobalHighlights": true,
+    "hasEventPlayerStatistics": true,
+    "crowdsourcingDataDisplayEnabled": false,
+    "id": 14491671,
+    "defaultPeriodCount": 4,
+    "defaultPeriodLength": 10,
+    "defaultOvertimeLength": 5,
+    "periods": {
+      "current": "Score",
+      "period1": "1st quarter",
+      "period2": "2nd quarter",
+      "period3": "3rd quarter",
+      "period4": "4th quarter",
+      "overtime": "Overtime"
+    },
+    "slug": "basket-zaragoza-baxi-manresa",
+    "currentPeriodStartTimestamp": 1778965779,
+    "startTimestamp": 1778958000,
+    "finalResultOnly": false,
+    "hasBet365LiveStream": true,
+    "bet365ExcludedCountryCodes": [
+      "ES",
+      "SG",
+      "IR",
+      "GR",
+      "RU",
+      "CH",
+      "CA"
+    ],
+    "feedLocked": false,
+    "seasonStatisticsType": "overall",
+    "showTotoPromo": true,
+    "isEditor": false,
+    "eventFilters": {
+      "category": [
+        "club"
+      ],
+      "level": [
+        "top-competitions",
+        "pro"
+      ],
+      "gender": [
+        "M"
+      ]
+    }
+  },
+  "eventMeta": {
+    "currentSeasonEventCount": 2,
+    "previousSeasonEventCount": 2,
+    "homeTeamStandingsPosition": 11,
+    "awayTeamStandingsPosition": 16,
+    "competitionType": 1
+  },
+  "seoContent": {
+    "about": "<p>BAXI Manresa is playing against Basket Zaragoza on May 16, 2026 at 7:00:00 PM UTC.</p><p>The game is played at Pavello Nou Congost.</p><p>This game is part of <a href=\"https://www.sofascore.com/basketball/tournament/spain/liga-acb/264\">Liga ACB</a>.</p><p>Here you can find previous BAXI Manresa vs Basket Zaragoza results sorted by their H2H games. Sofascore also allows you to check different information regarding the match, such as: <ul><li>Box score (points and rebounds)</li><li>Detailed stats for each quarter</li><li>Player statistics</li><li>Head to head streaks</li><li>Team streaks</li><li>Current odds and predictions</li><li>Sofascore community votes on which team is more likely to win the game</li></ul></p><p>BAXI Manresa - Basket Zaragoza video highlights are collected in the Media tab for the most popular matches as soon as videos appear on video hosting sites like Youtube or Dailymotion.</p><p>If you are interested in a live schedule of basketball games, check our page for <a href=\"https://www.sofascore.com/basketball\" target=\"_self\">today's basketball games and live scores</a>.</p>",
+    "description": "BAXI Manresa - Basket Zaragoza game starts on <strong>May 16, 2026</strong> at <strong>7:00:00 PM UTC</strong>. Follow the game on Sofascore with live scores and statistics.",
+    "heading": "BAXI Manresa vs Basket Zaragoza live scores, head to head, schedule, predictions and stats",
+    "title": "Manresa vs Zaragoza scores &amp; predictions | Sofascore"
+  },
+  "initialHasLineups": true,
+  "revalidate": true,
+  "incidents": [
+    {
+      "text": "FT",
+      "homeScore": 101,
+      "awayScore": 83,
+      "isLive": false,
+      "period": "period4",
+      "time": 40,
+      "addedTime": 999,
+      "timeSeconds": 2400,
+      "reversedPeriodTime": 1,
+      "reversedPeriodTimeSeconds": 0,
+      "periodTimeSeconds": 600,
+      "incidentType": "period"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 101,
+      "awayScore": 83,
+      "player": {
+        "name": "Santiago Yusta",
+        "slug": "yusta-santiago",
+        "shortName": "S. Yusta",
+        "position": "F",
+        "jerseyNumber": "4",
+        "height": 200,
+        "userCount": 91,
+        "gender": "M",
+        "id": 905193,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 862185600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "يوستا، سانتياغو",
+            "bn": "ইউস্টা, সান্তিয়াগো",
+            "hi": "युस्ता, सैंटियागो"
+          },
+          "shortNameTranslation": {
+            "ar": "س. يوستا",
+            "bn": "এস. ইউস্টা",
+            "hi": "एस. युस्ता"
+          }
+        }
+      },
+      "id": 348716163,
+      "time": 40,
+      "timeSeconds": 2381,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 1,
+      "reversedPeriodTimeSeconds": 19,
+      "periodTimeSeconds": 581,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 101,
+      "awayScore": 81,
+      "player": {
+        "name": "Alexis Reyes",
+        "firstName": "Alexis",
+        "lastName": "Reyes",
+        "slug": "alexis-reyes",
+        "shortName": "Á. Reyes",
+        "position": "F",
+        "jerseyNumber": "8",
+        "height": 201,
+        "userCount": 26,
+        "gender": "M",
+        "id": 1189927,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 756086400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "রেইস, অ্যালেক্স",
+            "hi": "रेयेस, एलेक्स"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. রেয়েস",
+            "hi": "ए. रेयेस"
+          }
+        }
+      },
+      "id": 348716154,
+      "time": 40,
+      "timeSeconds": 2372,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 1,
+      "reversedPeriodTimeSeconds": 28,
+      "periodTimeSeconds": 572,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 99,
+      "awayScore": 81,
+      "player": {
+        "name": "Marco Spissu",
+        "firstName": "Marco Spissu",
+        "slug": "spissu-marco",
+        "shortName": "M. Spissu",
+        "position": "G",
+        "jerseyNumber": "0",
+        "height": 184,
+        "userCount": 170,
+        "gender": "M",
+        "id": 1083494,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 791942400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ماركو سبيسو",
+            "bn": "স্পিসু, মার্কো",
+            "hi": "स्पिस्सू, मार्को"
+          },
+          "shortNameTranslation": {
+            "ar": "م. سبيسو",
+            "bn": "এম. স্পিসু",
+            "hi": "एम. स्पिस्सू"
+          }
+        }
+      },
+      "id": 348716091,
+      "time": 40,
+      "timeSeconds": 2349,
+      "isHome": false,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 1,
+      "reversedPeriodTimeSeconds": 51,
+      "periodTimeSeconds": 549,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 99,
+      "awayScore": 78,
+      "player": {
+        "name": "Retin Obasohan",
+        "firstName": "Retin",
+        "lastName": "Obasohan",
+        "slug": "retin-obasohan",
+        "shortName": "R. Obasohan",
+        "position": "G",
+        "jerseyNumber": "32",
+        "height": 183,
+        "userCount": 66,
+        "gender": "M",
+        "id": 1180879,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 741916800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روكي سيلفيرا",
+            "bn": "অবসহন, রেটিনা",
+            "hi": "ओबासोहन, रेटिन"
+          },
+          "shortNameTranslation": {
+            "ar": "ر. أوباسوهان",
+            "bn": "আর. ওবাসোহান",
+            "hi": "आर. ओबासोहन"
+          }
+        }
+      },
+      "id": 348716081,
+      "time": 39,
+      "timeSeconds": 2330,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 2,
+      "reversedPeriodTimeSeconds": 70,
+      "periodTimeSeconds": 530,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 97,
+      "awayScore": 78,
+      "player": {
+        "name": "Ferran Bassas",
+        "firstName": "Ferran",
+        "lastName": "Bassas",
+        "slug": "bassas-ferran",
+        "shortName": "F. Bassas",
+        "position": "G",
+        "jerseyNumber": "6",
+        "height": 181,
+        "userCount": 14,
+        "gender": "M",
+        "id": 1067748,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 704505600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "باساس، فيران",
+            "bn": "বাসাস, ফেরান",
+            "hi": "बासस, फ़ेरैन"
+          },
+          "shortNameTranslation": {
+            "ar": "ف. باساس",
+            "bn": "এফ. বাসাস",
+            "hi": "एफ. बासस"
+          }
+        }
+      },
+      "id": 348716073,
+      "time": 39,
+      "timeSeconds": 2320,
+      "isHome": true,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 2,
+      "reversedPeriodTimeSeconds": 80,
+      "periodTimeSeconds": 520,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 94,
+      "awayScore": 78,
+      "player": {
+        "name": "Marco Spissu",
+        "firstName": "Marco Spissu",
+        "slug": "spissu-marco",
+        "shortName": "M. Spissu",
+        "position": "G",
+        "jerseyNumber": "0",
+        "height": 184,
+        "userCount": 170,
+        "gender": "M",
+        "id": 1083494,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 791942400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ماركو سبيسو",
+            "bn": "স্পিসু, মার্কো",
+            "hi": "स्पिस्सू, मार्को"
+          },
+          "shortNameTranslation": {
+            "ar": "م. سبيسو",
+            "bn": "এম. স্পিসু",
+            "hi": "एम. स्पिस्सू"
+          }
+        }
+      },
+      "id": 348716051,
+      "time": 39,
+      "timeSeconds": 2305,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 2,
+      "reversedPeriodTimeSeconds": 95,
+      "periodTimeSeconds": 505,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 94,
+      "awayScore": 76,
+      "player": {
+        "name": "Marco Spissu",
+        "firstName": "Marco Spissu",
+        "slug": "spissu-marco",
+        "shortName": "M. Spissu",
+        "position": "G",
+        "jerseyNumber": "0",
+        "height": 184,
+        "userCount": 170,
+        "gender": "M",
+        "id": 1083494,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 791942400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ماركو سبيسو",
+            "bn": "স্পিসু, মার্কো",
+            "hi": "स्पिस्सू, मार्को"
+          },
+          "shortNameTranslation": {
+            "ar": "م. سبيسو",
+            "bn": "এম. স্পিসু",
+            "hi": "एम. स्पिस्सू"
+          }
+        }
+      },
+      "id": 348715935,
+      "time": 39,
+      "timeSeconds": 2285,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 2,
+      "reversedPeriodTimeSeconds": 115,
+      "periodTimeSeconds": 485,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 94,
+      "awayScore": 75,
+      "player": {
+        "name": "Retin Obasohan",
+        "firstName": "Retin",
+        "lastName": "Obasohan",
+        "slug": "retin-obasohan",
+        "shortName": "R. Obasohan",
+        "position": "G",
+        "jerseyNumber": "32",
+        "height": 183,
+        "userCount": 66,
+        "gender": "M",
+        "id": 1180879,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 741916800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روكي سيلفيرا",
+            "bn": "অবসহন, রেটিনা",
+            "hi": "ओबासोहन, रेटिन"
+          },
+          "shortNameTranslation": {
+            "ar": "ر. أوباسوهان",
+            "bn": "আর. ওবাসোহান",
+            "hi": "आर. ओबासोहन"
+          }
+        }
+      },
+      "id": 348715902,
+      "time": 39,
+      "timeSeconds": 2280,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 2,
+      "reversedPeriodTimeSeconds": 120,
+      "periodTimeSeconds": 480,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 92,
+      "awayScore": 75,
+      "player": {
+        "name": "Marco Spissu",
+        "firstName": "Marco Spissu",
+        "slug": "spissu-marco",
+        "shortName": "M. Spissu",
+        "position": "G",
+        "jerseyNumber": "0",
+        "height": 184,
+        "userCount": 170,
+        "gender": "M",
+        "id": 1083494,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 791942400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ماركو سبيسو",
+            "bn": "স্পিসু, মার্কো",
+            "hi": "स्पिस्सू, मार्को"
+          },
+          "shortNameTranslation": {
+            "ar": "م. سبيسو",
+            "bn": "এম. স্পিসু",
+            "hi": "एम. स्पिस्सू"
+          }
+        }
+      },
+      "id": 348715851,
+      "time": 38,
+      "timeSeconds": 2221,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 3,
+      "reversedPeriodTimeSeconds": 179,
+      "periodTimeSeconds": 421,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 92,
+      "awayScore": 74,
+      "player": {
+        "name": "Retin Obasohan",
+        "firstName": "Retin",
+        "lastName": "Obasohan",
+        "slug": "retin-obasohan",
+        "shortName": "R. Obasohan",
+        "position": "G",
+        "jerseyNumber": "32",
+        "height": 183,
+        "userCount": 66,
+        "gender": "M",
+        "id": 1180879,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 741916800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روكي سيلفيرا",
+            "bn": "অবসহন, রেটিনা",
+            "hi": "ओबासोहन, रेटिन"
+          },
+          "shortNameTranslation": {
+            "ar": "ر. أوباسوهان",
+            "bn": "আর. ওবাসোহান",
+            "hi": "आर. ओबासोहन"
+          }
+        }
+      },
+      "id": 348715831,
+      "time": 37,
+      "timeSeconds": 2219,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 4,
+      "reversedPeriodTimeSeconds": 181,
+      "periodTimeSeconds": 419,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 90,
+      "awayScore": 74,
+      "player": {
+        "name": "Santiago Yusta",
+        "slug": "yusta-santiago",
+        "shortName": "S. Yusta",
+        "position": "F",
+        "jerseyNumber": "4",
+        "height": 200,
+        "userCount": 91,
+        "gender": "M",
+        "id": 905193,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 862185600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "يوستا، سانتياغو",
+            "bn": "ইউস্টা, সান্তিয়াগো",
+            "hi": "युस्ता, सैंटियागो"
+          },
+          "shortNameTranslation": {
+            "ar": "س. يوستا",
+            "bn": "এস. ইউস্টা",
+            "hi": "एस. युस्ता"
+          }
+        }
+      },
+      "id": 348715824,
+      "time": 37,
+      "timeSeconds": 2206,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 4,
+      "reversedPeriodTimeSeconds": 194,
+      "periodTimeSeconds": 406,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 90,
+      "awayScore": 72,
+      "player": {
+        "name": "Marcis Steinbergs",
+        "firstName": "Marcis",
+        "lastName": "Steinbergs",
+        "slug": "marcis-steinbergs",
+        "shortName": "M. Steinbergs",
+        "position": "F",
+        "jerseyNumber": "12",
+        "height": 207,
+        "userCount": 49,
+        "gender": "M",
+        "id": 1189487,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 998956800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "شتاينبرغ، مارسيس",
+            "bn": "স্টেইনবার্গস, মার্সিস",
+            "hi": "स्टीनबर्ग्स, मार्सिस"
+          },
+          "shortNameTranslation": {
+            "ar": "م. شتاينبرغ",
+            "bn": "এম. স্টেইনবার্গস",
+            "hi": "एम. स्टीनबर्ग्स"
+          }
+        }
+      },
+      "id": 348715785,
+      "time": 37,
+      "timeSeconds": 2177,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 4,
+      "reversedPeriodTimeSeconds": 223,
+      "periodTimeSeconds": 377,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 88,
+      "awayScore": 72,
+      "player": {
+        "name": "Agustin Ubal Agostini",
+        "firstName": "Agustin",
+        "lastName": "Ubal Agostini",
+        "slug": "agustin-ubal-agostini",
+        "shortName": "A. Ubal Agostini",
+        "position": "G",
+        "jerseyNumber": "11",
+        "height": 198,
+        "userCount": 108,
+        "gender": "M",
+        "id": 1189921,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 1058572800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "উবাল, অগাস্টিন",
+            "hi": "उबाल, अगस्टिन"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. উবাল",
+            "hi": "ए. उबाल"
+          }
+        }
+      },
+      "id": 348715704,
+      "time": 36,
+      "timeSeconds": 2121,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 5,
+      "reversedPeriodTimeSeconds": 279,
+      "periodTimeSeconds": 321,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 87,
+      "awayScore": 72,
+      "player": {
+        "name": "Agustin Ubal Agostini",
+        "firstName": "Agustin",
+        "lastName": "Ubal Agostini",
+        "slug": "agustin-ubal-agostini",
+        "shortName": "A. Ubal Agostini",
+        "position": "G",
+        "jerseyNumber": "11",
+        "height": 198,
+        "userCount": 108,
+        "gender": "M",
+        "id": 1189921,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 1058572800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "উবাল, অগাস্টিন",
+            "hi": "उबाल, अगस्टिन"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. উবাল",
+            "hi": "ए. उबाल"
+          }
+        }
+      },
+      "id": 348715689,
+      "time": 36,
+      "timeSeconds": 2121,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 5,
+      "reversedPeriodTimeSeconds": 279,
+      "periodTimeSeconds": 321,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 86,
+      "awayScore": 72,
+      "player": {
+        "name": "Bojan Dubljevic",
+        "slug": "dubljevic-bojan",
+        "shortName": "B. Dubljević",
+        "position": "C",
+        "jerseyNumber": "14",
+        "height": 205,
+        "userCount": 109,
+        "gender": "M",
+        "id": 861853,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 688262400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "بويان دوبلجيڤيتش",
+            "bn": "ডাবলজেভিক, বোজান",
+            "hi": "डुब्लजेविक, बोजान"
+          },
+          "shortNameTranslation": {
+            "ar": "ب. دوبلجيڤيتش",
+            "bn": "বি. ডাবলজেভিক",
+            "hi": "बी. डुब्लजेविक"
+          }
+        }
+      },
+      "id": 348715676,
+      "time": 36,
+      "timeSeconds": 2121,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 5,
+      "reversedPeriodTimeSeconds": 279,
+      "periodTimeSeconds": 321,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 86,
+      "awayScore": 70,
+      "player": {
+        "name": "Retin Obasohan",
+        "firstName": "Retin",
+        "lastName": "Obasohan",
+        "slug": "retin-obasohan",
+        "shortName": "R. Obasohan",
+        "position": "G",
+        "jerseyNumber": "32",
+        "height": 183,
+        "userCount": 66,
+        "gender": "M",
+        "id": 1180879,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 741916800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روكي سيلفيرا",
+            "bn": "অবসহন, রেটিনা",
+            "hi": "ओबासोहन, रेटिन"
+          },
+          "shortNameTranslation": {
+            "ar": "ر. أوباسوهان",
+            "bn": "আর. ওবাসোহান",
+            "hi": "आर. ओबासोहन"
+          }
+        }
+      },
+      "id": 348715571,
+      "time": 36,
+      "timeSeconds": 2100,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 5,
+      "reversedPeriodTimeSeconds": 300,
+      "periodTimeSeconds": 300,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 84,
+      "awayScore": 70,
+      "player": {
+        "name": "Santiago Yusta",
+        "slug": "yusta-santiago",
+        "shortName": "S. Yusta",
+        "position": "F",
+        "jerseyNumber": "4",
+        "height": 200,
+        "userCount": 91,
+        "gender": "M",
+        "id": 905193,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 862185600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "يوستا، سانتياغو",
+            "bn": "ইউস্টা, সান্তিয়াগো",
+            "hi": "युस्ता, सैंटियागो"
+          },
+          "shortNameTranslation": {
+            "ar": "س. يوستا",
+            "bn": "এস. ইউস্টা",
+            "hi": "एस. युस्ता"
+          }
+        }
+      },
+      "id": 348715525,
+      "time": 35,
+      "timeSeconds": 2069,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 6,
+      "reversedPeriodTimeSeconds": 331,
+      "periodTimeSeconds": 269,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 84,
+      "awayScore": 68,
+      "player": {
+        "name": "Retin Obasohan",
+        "firstName": "Retin",
+        "lastName": "Obasohan",
+        "slug": "retin-obasohan",
+        "shortName": "R. Obasohan",
+        "position": "G",
+        "jerseyNumber": "32",
+        "height": 183,
+        "userCount": 66,
+        "gender": "M",
+        "id": 1180879,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 741916800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روكي سيلفيرا",
+            "bn": "অবসহন, রেটিনা",
+            "hi": "ओबासोहन, रेटिन"
+          },
+          "shortNameTranslation": {
+            "ar": "ر. أوباسوهان",
+            "bn": "আর. ওবাসোহান",
+            "hi": "आर. ओबासोहन"
+          }
+        }
+      },
+      "id": 348715513,
+      "time": 35,
+      "timeSeconds": 2066,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 6,
+      "reversedPeriodTimeSeconds": 334,
+      "periodTimeSeconds": 266,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 82,
+      "awayScore": 68,
+      "player": {
+        "name": "Bojan Dubljevic",
+        "slug": "dubljevic-bojan",
+        "shortName": "B. Dubljević",
+        "position": "C",
+        "jerseyNumber": "14",
+        "height": 205,
+        "userCount": 109,
+        "gender": "M",
+        "id": 861853,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 688262400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "بويان دوبلجيڤيتش",
+            "bn": "ডাবলজেভিক, বোজান",
+            "hi": "डुब्लजेविक, बोजान"
+          },
+          "shortNameTranslation": {
+            "ar": "ب. دوبلجيڤيتش",
+            "bn": "বি. ডাবলজেভিক",
+            "hi": "बी. डुब्लजेविक"
+          }
+        }
+      },
+      "id": 348715511,
+      "time": 35,
+      "timeSeconds": 2063,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 6,
+      "reversedPeriodTimeSeconds": 337,
+      "periodTimeSeconds": 263,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 82,
+      "awayScore": 67,
+      "player": {
+        "name": "Bojan Dubljevic",
+        "slug": "dubljevic-bojan",
+        "shortName": "B. Dubljević",
+        "position": "C",
+        "jerseyNumber": "14",
+        "height": 205,
+        "userCount": 109,
+        "gender": "M",
+        "id": 861853,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 688262400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "بويان دوبلجيڤيتش",
+            "bn": "ডাবলজেভিক, বোজান",
+            "hi": "डुब्लजेविक, बोजान"
+          },
+          "shortNameTranslation": {
+            "ar": "ب. دوبلجيڤيتش",
+            "bn": "বি. ডাবলজেভিক",
+            "hi": "बी. डुब्लजेविक"
+          }
+        }
+      },
+      "id": 348715495,
+      "time": 35,
+      "timeSeconds": 2042,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 6,
+      "reversedPeriodTimeSeconds": 358,
+      "periodTimeSeconds": 242,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 82,
+      "awayScore": 66,
+      "player": {
+        "name": "Alexis Reyes",
+        "firstName": "Alexis",
+        "lastName": "Reyes",
+        "slug": "alexis-reyes",
+        "shortName": "Á. Reyes",
+        "position": "F",
+        "jerseyNumber": "8",
+        "height": 201,
+        "userCount": 26,
+        "gender": "M",
+        "id": 1189927,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 756086400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "রেইস, অ্যালেক্স",
+            "hi": "रेयेस, एलेक्स"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. রেয়েস",
+            "hi": "ए. रेयेस"
+          }
+        }
+      },
+      "id": 348715349,
+      "time": 35,
+      "timeSeconds": 2042,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 6,
+      "reversedPeriodTimeSeconds": 358,
+      "periodTimeSeconds": 242,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 81,
+      "awayScore": 66,
+      "player": {
+        "name": "Santiago Yusta",
+        "slug": "yusta-santiago",
+        "shortName": "S. Yusta",
+        "position": "F",
+        "jerseyNumber": "4",
+        "height": 200,
+        "userCount": 91,
+        "gender": "M",
+        "id": 905193,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 862185600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "يوستا، سانتياغو",
+            "bn": "ইউস্টা, সান্তিয়াগো",
+            "hi": "युस्ता, सैंटियागो"
+          },
+          "shortNameTranslation": {
+            "ar": "س. يوستا",
+            "bn": "এস. ইউস্টা",
+            "hi": "एस. युस्ता"
+          }
+        }
+      },
+      "id": 348715279,
+      "time": 34,
+      "timeSeconds": 2008,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 7,
+      "reversedPeriodTimeSeconds": 392,
+      "periodTimeSeconds": 208,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 81,
+      "awayScore": 64,
+      "player": {
+        "name": "Devin Robinson",
+        "firstName": "Devin",
+        "lastName": "Robinson",
+        "slug": "devin-robinson",
+        "shortName": "D. Robinson",
+        "position": "F",
+        "jerseyNumber": "0",
+        "height": 203,
+        "userCount": 98,
+        "gender": "M",
+        "id": 1409155,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 794534400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روبينسون، ديفين",
+            "bn": "রবিনসন, ডেভিন",
+            "hi": "रॉबिन्सन, डेविन"
+          },
+          "shortNameTranslation": {
+            "ar": "د. روبينسون",
+            "bn": "ডি. রবিনসন",
+            "hi": "डी. रॉबिन्सन"
+          }
+        }
+      },
+      "id": 348715137,
+      "time": 34,
+      "timeSeconds": 1980,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 7,
+      "reversedPeriodTimeSeconds": 420,
+      "periodTimeSeconds": 180,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 81,
+      "awayScore": 62,
+      "player": {
+        "name": "Alexis Reyes",
+        "firstName": "Alexis",
+        "lastName": "Reyes",
+        "slug": "alexis-reyes",
+        "shortName": "Á. Reyes",
+        "position": "F",
+        "jerseyNumber": "8",
+        "height": 201,
+        "userCount": 26,
+        "gender": "M",
+        "id": 1189927,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 756086400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "রেইস, অ্যালেক্স",
+            "hi": "रेयेस, एलेक्स"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. রেয়েস",
+            "hi": "ए. रेयेस"
+          }
+        }
+      },
+      "id": 348714880,
+      "time": 33,
+      "timeSeconds": 1950,
+      "isHome": true,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 8,
+      "reversedPeriodTimeSeconds": 450,
+      "periodTimeSeconds": 150,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 78,
+      "awayScore": 62,
+      "player": {
+        "name": "Ferran Bassas",
+        "firstName": "Ferran",
+        "lastName": "Bassas",
+        "slug": "bassas-ferran",
+        "shortName": "F. Bassas",
+        "position": "G",
+        "jerseyNumber": "6",
+        "height": 181,
+        "userCount": 14,
+        "gender": "M",
+        "id": 1067748,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 704505600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "باساس، فيران",
+            "bn": "বাসাস, ফেরান",
+            "hi": "बासस, फ़ेरैन"
+          },
+          "shortNameTranslation": {
+            "ar": "ف. باساس",
+            "bn": "এফ. বাসাস",
+            "hi": "एफ. बासस"
+          }
+        }
+      },
+      "id": 348714866,
+      "time": 33,
+      "timeSeconds": 1927,
+      "isHome": true,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 8,
+      "reversedPeriodTimeSeconds": 473,
+      "periodTimeSeconds": 127,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 75,
+      "awayScore": 62,
+      "player": {
+        "name": "Marcis Steinbergs",
+        "firstName": "Marcis",
+        "lastName": "Steinbergs",
+        "slug": "marcis-steinbergs",
+        "shortName": "M. Steinbergs",
+        "position": "F",
+        "jerseyNumber": "12",
+        "height": 207,
+        "userCount": 49,
+        "gender": "M",
+        "id": 1189487,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 998956800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "شتاينبرغ، مارسيس",
+            "bn": "স্টেইনবার্গস, মার্সিস",
+            "hi": "स्टीनबर्ग्स, मार्सिस"
+          },
+          "shortNameTranslation": {
+            "ar": "م. شتاينبرغ",
+            "bn": "এম. স্টেইনবার্গস",
+            "hi": "एम. स्टीनबर्ग्स"
+          }
+        }
+      },
+      "id": 348714705,
+      "time": 32,
+      "timeSeconds": 1893,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 9,
+      "reversedPeriodTimeSeconds": 507,
+      "periodTimeSeconds": 93,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 73,
+      "awayScore": 62,
+      "player": {
+        "name": "Joaquín Rodríguez",
+        "firstName": "Joaquin Rodriguez",
+        "slug": "joaquin-rodriguez",
+        "shortName": "J. Rodríguez",
+        "position": "G",
+        "jerseyNumber": "15",
+        "height": 194,
+        "userCount": 73,
+        "gender": "M",
+        "id": 1403769,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 929318400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "خواكين رودريغيز"
+          },
+          "shortNameTranslation": {
+            "ar": "خ. رودريغيز"
+          }
+        }
+      },
+      "id": 348714545,
+      "time": 31,
+      "timeSeconds": 1848,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 10,
+      "reversedPeriodTimeSeconds": 552,
+      "periodTimeSeconds": 48,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 73,
+      "awayScore": 60,
+      "player": {
+        "name": "Louis Olinde",
+        "slug": "olinde-louis",
+        "shortName": "L. Olinde",
+        "position": "F",
+        "jerseyNumber": "19",
+        "height": 205,
+        "userCount": 51,
+        "gender": "M",
+        "id": 861473,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 890265600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أوليندي، لويس",
+            "bn": "ওলিন্দ, লুই",
+            "hi": "ओलिन्डे, लुईस"
+          },
+          "shortNameTranslation": {
+            "ar": "ل. أوليندي",
+            "bn": "এল. অলিন্ডে",
+            "hi": "एल. ओलिन्डे"
+          }
+        }
+      },
+      "id": 348714502,
+      "time": 31,
+      "timeSeconds": 1828,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 10,
+      "reversedPeriodTimeSeconds": 572,
+      "periodTimeSeconds": 28,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 71,
+      "awayScore": 60,
+      "player": {
+        "name": "Devin Robinson",
+        "firstName": "Devin",
+        "lastName": "Robinson",
+        "slug": "devin-robinson",
+        "shortName": "D. Robinson",
+        "position": "F",
+        "jerseyNumber": "0",
+        "height": 203,
+        "userCount": 98,
+        "gender": "M",
+        "id": 1409155,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 794534400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روبينسون، ديفين",
+            "bn": "রবিনসন, ডেভিন",
+            "hi": "रॉबिन्सन, डेविन"
+          },
+          "shortNameTranslation": {
+            "ar": "د. روبينسون",
+            "bn": "ডি. রবিনসন",
+            "hi": "डी. रॉबिन्सन"
+          }
+        }
+      },
+      "id": 348714489,
+      "time": 31,
+      "timeSeconds": 1810,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 10,
+      "reversedPeriodTimeSeconds": 590,
+      "periodTimeSeconds": 10,
+      "incidentType": "goal"
+    },
+    {
+      "text": "Q3",
+      "homeScore": 71,
+      "awayScore": 58,
+      "isLive": false,
+      "period": "period3",
+      "time": 30,
+      "addedTime": 999,
+      "timeSeconds": 1800,
+      "reversedPeriodTime": 1,
+      "reversedPeriodTimeSeconds": 0,
+      "periodTimeSeconds": 600,
+      "incidentType": "period"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 71,
+      "awayScore": 58,
+      "player": {
+        "name": "Louis Olinde",
+        "slug": "olinde-louis",
+        "shortName": "L. Olinde",
+        "position": "F",
+        "jerseyNumber": "19",
+        "height": 205,
+        "userCount": 51,
+        "gender": "M",
+        "id": 861473,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 890265600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أوليندي، لويس",
+            "bn": "ওলিন্দ, লুই",
+            "hi": "ओलिन्डे, लुईस"
+          },
+          "shortNameTranslation": {
+            "ar": "ل. أوليندي",
+            "bn": "এল. অলিন্ডে",
+            "hi": "एल. ओलिन्डे"
+          }
+        }
+      },
+      "id": 348714154,
+      "time": 30,
+      "timeSeconds": 1770,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 1,
+      "reversedPeriodTimeSeconds": 30,
+      "periodTimeSeconds": 570,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 69,
+      "awayScore": 58,
+      "player": {
+        "name": "Eli Brooks",
+        "firstName": "Eli",
+        "lastName": "Brooks",
+        "slug": "eli-brooks",
+        "shortName": "E. Brooks",
+        "position": "G",
+        "jerseyNumber": "24",
+        "height": 185,
+        "userCount": 27,
+        "gender": "M",
+        "id": 1178434,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 908323200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "بروكس، إيلي"
+          },
+          "shortNameTranslation": {
+            "ar": "إ. بروكس"
+          }
+        }
+      },
+      "id": 348714028,
+      "time": 29,
+      "timeSeconds": 1721,
+      "isHome": true,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 2,
+      "reversedPeriodTimeSeconds": 79,
+      "periodTimeSeconds": 521,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 66,
+      "awayScore": 58,
+      "player": {
+        "name": "Josh Richardson",
+        "firstName": "Josh",
+        "lastName": "Richardson ",
+        "slug": "josh-richardson",
+        "shortName": "J. Richardson",
+        "position": "G",
+        "jerseyNumber": "11",
+        "height": 196,
+        "userCount": 224,
+        "gender": "M",
+        "id": 817343,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 748051200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "جوش ريتشاردسون",
+            "bn": "জোশ রিচার্ডসন",
+            "hi": "जोश रिचर्डसन"
+          },
+          "shortNameTranslation": {
+            "ar": "ج. ريتشاردسون",
+            "bn": "জে. রিচার্ডসন",
+            "hi": "जे. रिचर्डसन"
+          }
+        }
+      },
+      "id": 348714011,
+      "time": 29,
+      "timeSeconds": 1713,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 2,
+      "reversedPeriodTimeSeconds": 87,
+      "periodTimeSeconds": 513,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 66,
+      "awayScore": 57,
+      "player": {
+        "name": "Josh Richardson",
+        "firstName": "Josh",
+        "lastName": "Richardson ",
+        "slug": "josh-richardson",
+        "shortName": "J. Richardson",
+        "position": "G",
+        "jerseyNumber": "11",
+        "height": 196,
+        "userCount": 224,
+        "gender": "M",
+        "id": 817343,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 748051200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "جوش ريتشاردسون",
+            "bn": "জোশ রিচার্ডসন",
+            "hi": "जोश रिचर्डसन"
+          },
+          "shortNameTranslation": {
+            "ar": "ج. ريتشاردسون",
+            "bn": "জে. রিচার্ডসন",
+            "hi": "जे. रिचर्डसन"
+          }
+        }
+      },
+      "id": 348713974,
+      "time": 29,
+      "timeSeconds": 1713,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 2,
+      "reversedPeriodTimeSeconds": 87,
+      "periodTimeSeconds": 513,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 66,
+      "awayScore": 55,
+      "player": {
+        "name": "Devin Robinson",
+        "firstName": "Devin",
+        "lastName": "Robinson",
+        "slug": "devin-robinson",
+        "shortName": "D. Robinson",
+        "position": "F",
+        "jerseyNumber": "0",
+        "height": 203,
+        "userCount": 98,
+        "gender": "M",
+        "id": 1409155,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 794534400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روبينسون، ديفين",
+            "bn": "রবিনসন, ডেভিন",
+            "hi": "रॉबिन्सन, डेविन"
+          },
+          "shortNameTranslation": {
+            "ar": "د. روبينسون",
+            "bn": "ডি. রবিনসন",
+            "hi": "डी. रॉबिन्सन"
+          }
+        }
+      },
+      "id": 348713760,
+      "time": 29,
+      "timeSeconds": 1681,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 2,
+      "reversedPeriodTimeSeconds": 119,
+      "periodTimeSeconds": 481,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 66,
+      "awayScore": 53,
+      "player": {
+        "name": "Joaquín Rodríguez",
+        "firstName": "Joaquin Rodriguez",
+        "slug": "joaquin-rodriguez",
+        "shortName": "J. Rodríguez",
+        "position": "G",
+        "jerseyNumber": "15",
+        "height": 194,
+        "userCount": 73,
+        "gender": "M",
+        "id": 1403769,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 929318400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "خواكين رودريغيز"
+          },
+          "shortNameTranslation": {
+            "ar": "خ. رودريغيز"
+          }
+        }
+      },
+      "id": 348713708,
+      "time": 28,
+      "timeSeconds": 1643,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 3,
+      "reversedPeriodTimeSeconds": 157,
+      "periodTimeSeconds": 443,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 66,
+      "awayScore": 52,
+      "player": {
+        "name": "Joaquín Rodríguez",
+        "firstName": "Joaquin Rodriguez",
+        "slug": "joaquin-rodriguez",
+        "shortName": "J. Rodríguez",
+        "position": "G",
+        "jerseyNumber": "15",
+        "height": 194,
+        "userCount": 73,
+        "gender": "M",
+        "id": 1403769,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 929318400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "خواكين رودريغيز"
+          },
+          "shortNameTranslation": {
+            "ar": "خ. رودريغيز"
+          }
+        }
+      },
+      "id": 348713694,
+      "time": 28,
+      "timeSeconds": 1643,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 3,
+      "reversedPeriodTimeSeconds": 157,
+      "periodTimeSeconds": 443,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 66,
+      "awayScore": 51,
+      "player": {
+        "name": "Trae Bell-Haynes",
+        "firstName": "Trae",
+        "lastName": "Bell-Haynes",
+        "slug": "trae-bell-haynes",
+        "shortName": "T. Bell-Haynes",
+        "position": "G",
+        "jerseyNumber": "2",
+        "height": 188,
+        "userCount": 67,
+        "gender": "M",
+        "id": 1189175,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 810259200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "بيل-هاينز، تراي",
+            "bn": "বেল-হেনস, ট্রে",
+            "hi": "बेल-हेन्स, ट्रे"
+          },
+          "shortNameTranslation": {
+            "ar": "ت. بيل-هاينز",
+            "bn": "টি. বেল-হেইনস",
+            "hi": "टी. बेल-हेन्स"
+          }
+        }
+      },
+      "id": 348713490,
+      "time": 28,
+      "timeSeconds": 1622,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 3,
+      "reversedPeriodTimeSeconds": 178,
+      "periodTimeSeconds": 422,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 66,
+      "awayScore": 49,
+      "player": {
+        "name": "Devin Robinson",
+        "firstName": "Devin",
+        "lastName": "Robinson",
+        "slug": "devin-robinson",
+        "shortName": "D. Robinson",
+        "position": "F",
+        "jerseyNumber": "0",
+        "height": 203,
+        "userCount": 98,
+        "gender": "M",
+        "id": 1409155,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 794534400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روبينسون، ديفين",
+            "bn": "রবিনসন, ডেভিন",
+            "hi": "रॉबिन्सन, डेविन"
+          },
+          "shortNameTranslation": {
+            "ar": "د. روبينسون",
+            "bn": "ডি. রবিনসন",
+            "hi": "डी. रॉबिन्सन"
+          }
+        }
+      },
+      "id": 348713445,
+      "time": 27,
+      "timeSeconds": 1597,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 4,
+      "reversedPeriodTimeSeconds": 203,
+      "periodTimeSeconds": 397,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 66,
+      "awayScore": 48,
+      "player": {
+        "name": "Santiago Yusta",
+        "slug": "yusta-santiago",
+        "shortName": "S. Yusta",
+        "position": "F",
+        "jerseyNumber": "4",
+        "height": 200,
+        "userCount": 91,
+        "gender": "M",
+        "id": 905193,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 862185600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "يوستا، سانتياغو",
+            "bn": "ইউস্টা, সান্তিয়াগো",
+            "hi": "युस्ता, सैंटियागो"
+          },
+          "shortNameTranslation": {
+            "ar": "س. يوستا",
+            "bn": "এস. ইউস্টা",
+            "hi": "एस. युस्ता"
+          }
+        }
+      },
+      "id": 348713278,
+      "time": 27,
+      "timeSeconds": 1579,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 4,
+      "reversedPeriodTimeSeconds": 221,
+      "periodTimeSeconds": 379,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 66,
+      "awayScore": 47,
+      "player": {
+        "name": "Santiago Yusta",
+        "slug": "yusta-santiago",
+        "shortName": "S. Yusta",
+        "position": "F",
+        "jerseyNumber": "4",
+        "height": 200,
+        "userCount": 91,
+        "gender": "M",
+        "id": 905193,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 862185600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "يوستا، سانتياغو",
+            "bn": "ইউস্টা, সান্তিয়াগো",
+            "hi": "युस्ता, सैंटियागो"
+          },
+          "shortNameTranslation": {
+            "ar": "س. يوستا",
+            "bn": "এস. ইউস্টা",
+            "hi": "एस. युस्ता"
+          }
+        }
+      },
+      "id": 348713204,
+      "time": 27,
+      "timeSeconds": 1579,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 4,
+      "reversedPeriodTimeSeconds": 221,
+      "periodTimeSeconds": 379,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 66,
+      "awayScore": 46,
+      "player": {
+        "name": "Agustin Ubal Agostini",
+        "firstName": "Agustin",
+        "lastName": "Ubal Agostini",
+        "slug": "agustin-ubal-agostini",
+        "shortName": "A. Ubal Agostini",
+        "position": "G",
+        "jerseyNumber": "11",
+        "height": 198,
+        "userCount": 108,
+        "gender": "M",
+        "id": 1189921,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 1058572800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "উবাল, অগাস্টিন",
+            "hi": "उबाल, अगस्टिन"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. উবাল",
+            "hi": "ए. उबाल"
+          }
+        }
+      },
+      "id": 348713161,
+      "time": 27,
+      "timeSeconds": 1566,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 4,
+      "reversedPeriodTimeSeconds": 234,
+      "periodTimeSeconds": 366,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 65,
+      "awayScore": 46,
+      "player": {
+        "name": "Agustin Ubal Agostini",
+        "firstName": "Agustin",
+        "lastName": "Ubal Agostini",
+        "slug": "agustin-ubal-agostini",
+        "shortName": "A. Ubal Agostini",
+        "position": "G",
+        "jerseyNumber": "11",
+        "height": 198,
+        "userCount": 108,
+        "gender": "M",
+        "id": 1189921,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 1058572800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "উবাল, অগাস্টিন",
+            "hi": "उबाल, अगस्टिन"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. উবাল",
+            "hi": "ए. उबाल"
+          }
+        }
+      },
+      "id": 348713160,
+      "time": 27,
+      "timeSeconds": 1566,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 4,
+      "reversedPeriodTimeSeconds": 234,
+      "periodTimeSeconds": 366,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 64,
+      "awayScore": 46,
+      "player": {
+        "name": "Retin Obasohan",
+        "firstName": "Retin",
+        "lastName": "Obasohan",
+        "slug": "retin-obasohan",
+        "shortName": "R. Obasohan",
+        "position": "G",
+        "jerseyNumber": "32",
+        "height": 183,
+        "userCount": 66,
+        "gender": "M",
+        "id": 1180879,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 741916800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روكي سيلفيرا",
+            "bn": "অবসহন, রেটিনা",
+            "hi": "ओबासोहन, रेटिन"
+          },
+          "shortNameTranslation": {
+            "ar": "ر. أوباسوهان",
+            "bn": "আর. ওবাসোহান",
+            "hi": "आर. ओबासोहन"
+          }
+        }
+      },
+      "id": 348712828,
+      "time": 26,
+      "timeSeconds": 1515,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 5,
+      "reversedPeriodTimeSeconds": 285,
+      "periodTimeSeconds": 315,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 62,
+      "awayScore": 46,
+      "player": {
+        "name": "Retin Obasohan",
+        "firstName": "Retin",
+        "lastName": "Obasohan",
+        "slug": "retin-obasohan",
+        "shortName": "R. Obasohan",
+        "position": "G",
+        "jerseyNumber": "32",
+        "height": 183,
+        "userCount": 66,
+        "gender": "M",
+        "id": 1180879,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 741916800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روكي سيلفيرا",
+            "bn": "অবসহন, রেটিনা",
+            "hi": "ओबासोहन, रेटिन"
+          },
+          "shortNameTranslation": {
+            "ar": "ر. أوباسوهان",
+            "bn": "আর. ওবাসোহান",
+            "hi": "आर. ओबासोहन"
+          }
+        }
+      },
+      "id": 348712806,
+      "time": 26,
+      "timeSeconds": 1507,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 5,
+      "reversedPeriodTimeSeconds": 293,
+      "periodTimeSeconds": 307,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 61,
+      "awayScore": 46,
+      "player": {
+        "name": "Devin Robinson",
+        "firstName": "Devin",
+        "lastName": "Robinson",
+        "slug": "devin-robinson",
+        "shortName": "D. Robinson",
+        "position": "F",
+        "jerseyNumber": "0",
+        "height": 203,
+        "userCount": 98,
+        "gender": "M",
+        "id": 1409155,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 794534400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روبينسون، ديفين",
+            "bn": "রবিনসন, ডেভিন",
+            "hi": "रॉबिन्सन, डेविन"
+          },
+          "shortNameTranslation": {
+            "ar": "د. روبينسون",
+            "bn": "ডি. রবিনসন",
+            "hi": "डी. रॉबिन्सन"
+          }
+        }
+      },
+      "id": 348712661,
+      "time": 25,
+      "timeSeconds": 1496,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 6,
+      "reversedPeriodTimeSeconds": 304,
+      "periodTimeSeconds": 296,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 61,
+      "awayScore": 44,
+      "player": {
+        "name": "Pierre Oriola",
+        "slug": "oriola-pierre",
+        "shortName": "P. Oriola",
+        "position": "FC",
+        "jerseyNumber": "29",
+        "height": 208,
+        "userCount": 37,
+        "gender": "M",
+        "id": 861847,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 717379200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أوريولا، بيير",
+            "bn": "ওরিওলা, পিয়েরে",
+            "hi": "ओरिओला, पियरे"
+          },
+          "shortNameTranslation": {
+            "ar": "ب. أوريولا",
+            "bn": "পি. ওরিওলা",
+            "hi": "पी. ओरिओला"
+          }
+        }
+      },
+      "id": 348712646,
+      "time": 25,
+      "timeSeconds": 1473,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 6,
+      "reversedPeriodTimeSeconds": 327,
+      "periodTimeSeconds": 273,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 59,
+      "awayScore": 44,
+      "player": {
+        "name": "Retin Obasohan",
+        "firstName": "Retin",
+        "lastName": "Obasohan",
+        "slug": "retin-obasohan",
+        "shortName": "R. Obasohan",
+        "position": "G",
+        "jerseyNumber": "32",
+        "height": 183,
+        "userCount": 66,
+        "gender": "M",
+        "id": 1180879,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 741916800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روكي سيلفيرا",
+            "bn": "অবসহন, রেটিনা",
+            "hi": "ओबासोहन, रेटिन"
+          },
+          "shortNameTranslation": {
+            "ar": "ر. أوباسوهان",
+            "bn": "আর. ওবাসোহান",
+            "hi": "आर. ओबासोहन"
+          }
+        }
+      },
+      "id": 348712599,
+      "time": 24,
+      "timeSeconds": 1434,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 7,
+      "reversedPeriodTimeSeconds": 366,
+      "periodTimeSeconds": 234,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 58,
+      "awayScore": 44,
+      "player": {
+        "name": "Agustin Ubal Agostini",
+        "firstName": "Agustin",
+        "lastName": "Ubal Agostini",
+        "slug": "agustin-ubal-agostini",
+        "shortName": "A. Ubal Agostini",
+        "position": "G",
+        "jerseyNumber": "11",
+        "height": 198,
+        "userCount": 108,
+        "gender": "M",
+        "id": 1189921,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 1058572800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "উবাল, অগাস্টিন",
+            "hi": "उबाल, अगस्टिन"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. উবাল",
+            "hi": "ए. उबाल"
+          }
+        }
+      },
+      "id": 348712232,
+      "time": 24,
+      "timeSeconds": 1426,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 7,
+      "reversedPeriodTimeSeconds": 374,
+      "periodTimeSeconds": 226,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 56,
+      "awayScore": 44,
+      "player": {
+        "name": "Pierre Oriola",
+        "slug": "oriola-pierre",
+        "shortName": "P. Oriola",
+        "position": "FC",
+        "jerseyNumber": "29",
+        "height": 208,
+        "userCount": 37,
+        "gender": "M",
+        "id": 861847,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 717379200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أوريولا، بيير",
+            "bn": "ওরিওলা, পিয়েরে",
+            "hi": "ओरिओला, पियरे"
+          },
+          "shortNameTranslation": {
+            "ar": "ب. أوريولا",
+            "bn": "পি. ওরিওলা",
+            "hi": "पी. ओरिओला"
+          }
+        }
+      },
+      "id": 348712120,
+      "time": 24,
+      "timeSeconds": 1384,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 7,
+      "reversedPeriodTimeSeconds": 416,
+      "periodTimeSeconds": 184,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 55,
+      "awayScore": 44,
+      "player": {
+        "name": "Pierre Oriola",
+        "slug": "oriola-pierre",
+        "shortName": "P. Oriola",
+        "position": "FC",
+        "jerseyNumber": "29",
+        "height": 208,
+        "userCount": 37,
+        "gender": "M",
+        "id": 861847,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 717379200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أوريولا، بيير",
+            "bn": "ওরিওলা, পিয়েরে",
+            "hi": "ओरिओला, पियरे"
+          },
+          "shortNameTranslation": {
+            "ar": "ب. أوريولا",
+            "bn": "পি. ওরিওলা",
+            "hi": "पी. ओरिओला"
+          }
+        }
+      },
+      "id": 348712011,
+      "time": 24,
+      "timeSeconds": 1384,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 7,
+      "reversedPeriodTimeSeconds": 416,
+      "periodTimeSeconds": 184,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 54,
+      "awayScore": 44,
+      "player": {
+        "name": "Joaquín Rodríguez",
+        "firstName": "Joaquin Rodriguez",
+        "slug": "joaquin-rodriguez",
+        "shortName": "J. Rodríguez",
+        "position": "G",
+        "jerseyNumber": "15",
+        "height": 194,
+        "userCount": 73,
+        "gender": "M",
+        "id": 1403769,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 929318400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "خواكين رودريغيز"
+          },
+          "shortNameTranslation": {
+            "ar": "خ. رودريغيز"
+          }
+        }
+      },
+      "id": 348711918,
+      "time": 23,
+      "timeSeconds": 1369,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 8,
+      "reversedPeriodTimeSeconds": 431,
+      "periodTimeSeconds": 169,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 54,
+      "awayScore": 43,
+      "player": {
+        "name": "Alexis Reyes",
+        "firstName": "Alexis",
+        "lastName": "Reyes",
+        "slug": "alexis-reyes",
+        "shortName": "Á. Reyes",
+        "position": "F",
+        "jerseyNumber": "8",
+        "height": 201,
+        "userCount": 26,
+        "gender": "M",
+        "id": 1189927,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 756086400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "রেইস, অ্যালেক্স",
+            "hi": "रेयेस, एलेक्स"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. রেয়েস",
+            "hi": "ए. रेयेस"
+          }
+        }
+      },
+      "id": 348711812,
+      "time": 22,
+      "timeSeconds": 1299,
+      "isHome": true,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 9,
+      "reversedPeriodTimeSeconds": 501,
+      "periodTimeSeconds": 99,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 51,
+      "awayScore": 43,
+      "player": {
+        "name": "Marco Spissu",
+        "firstName": "Marco Spissu",
+        "slug": "spissu-marco",
+        "shortName": "M. Spissu",
+        "position": "G",
+        "jerseyNumber": "0",
+        "height": 184,
+        "userCount": 170,
+        "gender": "M",
+        "id": 1083494,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 791942400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ماركو سبيسو",
+            "bn": "স্পিসু, মার্কো",
+            "hi": "स्पिस्सू, मार्को"
+          },
+          "shortNameTranslation": {
+            "ar": "م. سبيسو",
+            "bn": "এম. স্পিসু",
+            "hi": "एम. स्पिस्सू"
+          }
+        }
+      },
+      "id": 348711804,
+      "time": 22,
+      "timeSeconds": 1282,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 9,
+      "reversedPeriodTimeSeconds": 518,
+      "periodTimeSeconds": 82,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 51,
+      "awayScore": 41,
+      "player": {
+        "name": "Eli Brooks",
+        "firstName": "Eli",
+        "lastName": "Brooks",
+        "slug": "eli-brooks",
+        "shortName": "E. Brooks",
+        "position": "G",
+        "jerseyNumber": "24",
+        "height": 185,
+        "userCount": 27,
+        "gender": "M",
+        "id": 1178434,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 908323200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "بروكس، إيلي"
+          },
+          "shortNameTranslation": {
+            "ar": "إ. بروكس"
+          }
+        }
+      },
+      "id": 348711738,
+      "time": 21,
+      "timeSeconds": 1244,
+      "isHome": true,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 10,
+      "reversedPeriodTimeSeconds": 556,
+      "periodTimeSeconds": 44,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 48,
+      "awayScore": 41,
+      "player": {
+        "name": "Pierre Oriola",
+        "slug": "oriola-pierre",
+        "shortName": "P. Oriola",
+        "position": "FC",
+        "jerseyNumber": "29",
+        "height": 208,
+        "userCount": 37,
+        "gender": "M",
+        "id": 861847,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 717379200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أوريولا، بيير",
+            "bn": "ওরিওলা, পিয়েরে",
+            "hi": "ओरिओला, पियरे"
+          },
+          "shortNameTranslation": {
+            "ar": "ب. أوريولا",
+            "bn": "পি. ওরিওলা",
+            "hi": "पी. ओरिओला"
+          }
+        }
+      },
+      "id": 348711483,
+      "time": 21,
+      "timeSeconds": 1222,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 10,
+      "reversedPeriodTimeSeconds": 578,
+      "periodTimeSeconds": 22,
+      "incidentType": "goal"
+    },
+    {
+      "text": "Q2",
+      "homeScore": 46,
+      "awayScore": 41,
+      "isLive": false,
+      "period": "period2",
+      "time": 20,
+      "addedTime": 999,
+      "timeSeconds": 1200,
+      "reversedPeriodTime": 1,
+      "reversedPeriodTimeSeconds": 0,
+      "periodTimeSeconds": 600,
+      "incidentType": "period"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 46,
+      "awayScore": 41,
+      "player": {
+        "name": "Jaime Fernandez",
+        "firstName": "Jaime",
+        "lastName": "Fernandez",
+        "slug": "jaime-fernandez",
+        "shortName": "J. Fernández",
+        "position": "F",
+        "jerseyNumber": "10",
+        "height": 203,
+        "userCount": 13,
+        "gender": "M",
+        "id": 1190041,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 963619200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "فرنانديز، خايمي",
+            "bn": "জেইম ফার্নান্ডেজ",
+            "hi": "जैमे फर्नांडीज"
+          },
+          "shortNameTranslation": {
+            "ar": "خ. فرنانديز",
+            "bn": "জে. ফার্নান্ডেজ",
+            "hi": "जे. फर्नांडीज"
+          }
+        }
+      },
+      "id": 348709997,
+      "time": 20,
+      "timeSeconds": 1191,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 1,
+      "reversedPeriodTimeSeconds": 9,
+      "periodTimeSeconds": 591,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 46,
+      "awayScore": 39,
+      "player": {
+        "name": "Trae Bell-Haynes",
+        "firstName": "Trae",
+        "lastName": "Bell-Haynes",
+        "slug": "trae-bell-haynes",
+        "shortName": "T. Bell-Haynes",
+        "position": "G",
+        "jerseyNumber": "2",
+        "height": 188,
+        "userCount": 67,
+        "gender": "M",
+        "id": 1189175,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 810259200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "بيل-هاينز، تراي",
+            "bn": "বেল-হেনস, ট্রে",
+            "hi": "बेल-हेन्स, ट्रे"
+          },
+          "shortNameTranslation": {
+            "ar": "ت. بيل-هاينز",
+            "bn": "টি. বেল-হেইনস",
+            "hi": "टी. बेल-हेन्स"
+          }
+        }
+      },
+      "id": 348709935,
+      "time": 20,
+      "timeSeconds": 1153,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 1,
+      "reversedPeriodTimeSeconds": 47,
+      "periodTimeSeconds": 553,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 46,
+      "awayScore": 38,
+      "player": {
+        "name": "Agustin Ubal Agostini",
+        "firstName": "Agustin",
+        "lastName": "Ubal Agostini",
+        "slug": "agustin-ubal-agostini",
+        "shortName": "A. Ubal Agostini",
+        "position": "G",
+        "jerseyNumber": "11",
+        "height": 198,
+        "userCount": 108,
+        "gender": "M",
+        "id": 1189921,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 1058572800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "উবাল, অগাস্টিন",
+            "hi": "उबाल, अगस्टिन"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. উবাল",
+            "hi": "ए. उबाल"
+          }
+        }
+      },
+      "id": 348709841,
+      "time": 19,
+      "timeSeconds": 1115,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 2,
+      "reversedPeriodTimeSeconds": 85,
+      "periodTimeSeconds": 515,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 45,
+      "awayScore": 38,
+      "player": {
+        "name": "Eli Brooks",
+        "firstName": "Eli",
+        "lastName": "Brooks",
+        "slug": "eli-brooks",
+        "shortName": "E. Brooks",
+        "position": "G",
+        "jerseyNumber": "24",
+        "height": 185,
+        "userCount": 27,
+        "gender": "M",
+        "id": 1178434,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 908323200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "بروكس، إيلي"
+          },
+          "shortNameTranslation": {
+            "ar": "إ. بروكس"
+          }
+        }
+      },
+      "id": 348709453,
+      "time": 18,
+      "timeSeconds": 1058,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 3,
+      "reversedPeriodTimeSeconds": 142,
+      "periodTimeSeconds": 458,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 43,
+      "awayScore": 38,
+      "player": {
+        "name": "Agustin Ubal Agostini",
+        "firstName": "Agustin",
+        "lastName": "Ubal Agostini",
+        "slug": "agustin-ubal-agostini",
+        "shortName": "A. Ubal Agostini",
+        "position": "G",
+        "jerseyNumber": "11",
+        "height": 198,
+        "userCount": 108,
+        "gender": "M",
+        "id": 1189921,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 1058572800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "উবাল, অগাস্টিন",
+            "hi": "उबाल, अगस्टिन"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. উবাল",
+            "hi": "ए. उबाल"
+          }
+        }
+      },
+      "id": 348709406,
+      "time": 18,
+      "timeSeconds": 1036,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 3,
+      "reversedPeriodTimeSeconds": 164,
+      "periodTimeSeconds": 436,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 42,
+      "awayScore": 38,
+      "player": {
+        "name": "Agustin Ubal Agostini",
+        "firstName": "Agustin",
+        "lastName": "Ubal Agostini",
+        "slug": "agustin-ubal-agostini",
+        "shortName": "A. Ubal Agostini",
+        "position": "G",
+        "jerseyNumber": "11",
+        "height": 198,
+        "userCount": 108,
+        "gender": "M",
+        "id": 1189921,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 1058572800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "উবাল, অগাস্টিন",
+            "hi": "उबाल, अगस्टिन"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. উবাল",
+            "hi": "ए. उबाल"
+          }
+        }
+      },
+      "id": 348709390,
+      "time": 18,
+      "timeSeconds": 1036,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 3,
+      "reversedPeriodTimeSeconds": 164,
+      "periodTimeSeconds": 436,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 41,
+      "awayScore": 38,
+      "player": {
+        "name": "Devin Robinson",
+        "firstName": "Devin",
+        "lastName": "Robinson",
+        "slug": "devin-robinson",
+        "shortName": "D. Robinson",
+        "position": "F",
+        "jerseyNumber": "0",
+        "height": 203,
+        "userCount": 98,
+        "gender": "M",
+        "id": 1409155,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 794534400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روبينسون، ديفين",
+            "bn": "রবিনসন, ডেভিন",
+            "hi": "रॉबिन्सन, डेविन"
+          },
+          "shortNameTranslation": {
+            "ar": "د. روبينسون",
+            "bn": "ডি. রবিনসন",
+            "hi": "डी. रॉबिन्सन"
+          }
+        }
+      },
+      "id": 348709331,
+      "time": 18,
+      "timeSeconds": 1021,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 3,
+      "reversedPeriodTimeSeconds": 179,
+      "periodTimeSeconds": 421,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 41,
+      "awayScore": 36,
+      "player": {
+        "name": "Retin Obasohan",
+        "firstName": "Retin",
+        "lastName": "Obasohan",
+        "slug": "retin-obasohan",
+        "shortName": "R. Obasohan",
+        "position": "G",
+        "jerseyNumber": "32",
+        "height": 183,
+        "userCount": 66,
+        "gender": "M",
+        "id": 1180879,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 741916800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روكي سيلفيرا",
+            "bn": "অবসহন, রেটিনা",
+            "hi": "ओबासोहन, रेटिन"
+          },
+          "shortNameTranslation": {
+            "ar": "ر. أوباسوهان",
+            "bn": "আর. ওবাসোহান",
+            "hi": "आर. ओबासोहन"
+          }
+        }
+      },
+      "id": 348709306,
+      "time": 17,
+      "timeSeconds": 998,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 4,
+      "reversedPeriodTimeSeconds": 202,
+      "periodTimeSeconds": 398,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 40,
+      "awayScore": 36,
+      "player": {
+        "name": "Louis Olinde",
+        "slug": "olinde-louis",
+        "shortName": "L. Olinde",
+        "position": "F",
+        "jerseyNumber": "19",
+        "height": 205,
+        "userCount": 51,
+        "gender": "M",
+        "id": 861473,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 890265600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أوليندي، لويس",
+            "bn": "ওলিন্দ, লুই",
+            "hi": "ओलिन्डे, लुईस"
+          },
+          "shortNameTranslation": {
+            "ar": "ل. أوليندي",
+            "bn": "এল. অলিন্ডে",
+            "hi": "एल. ओलिन्डे"
+          }
+        }
+      },
+      "id": 348709048,
+      "time": 17,
+      "timeSeconds": 972,
+      "isHome": true,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 4,
+      "reversedPeriodTimeSeconds": 228,
+      "periodTimeSeconds": 372,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 37,
+      "awayScore": 36,
+      "player": {
+        "name": "Miguel Gonzalez",
+        "slug": "gonzalez-miguel",
+        "shortName": "M. González",
+        "position": "F",
+        "jerseyNumber": "7",
+        "height": 203,
+        "userCount": 16,
+        "gender": "M",
+        "id": 906119,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 921888000,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "غونزاليس، ميغيل",
+            "bn": "গঞ্জালেজ, মিগুয়েল",
+            "hi": "गोंजालेज़, मिगुएल"
+          },
+          "shortNameTranslation": {
+            "ar": "م. غونزاليس",
+            "bn": "এম. গনজালেজ",
+            "hi": "एम. गोंजालेज़"
+          }
+        }
+      },
+      "id": 348708765,
+      "time": 16,
+      "timeSeconds": 952,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 5,
+      "reversedPeriodTimeSeconds": 248,
+      "periodTimeSeconds": 352,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 37,
+      "awayScore": 35,
+      "player": {
+        "name": "Justin Wright-Foreman",
+        "firstName": "Justin",
+        "lastName": "Wright-Foreman",
+        "slug": "wright-foreman-justin",
+        "shortName": "J. Wright-Foreman",
+        "position": "G",
+        "jerseyNumber": "3",
+        "height": 183,
+        "userCount": 79,
+        "gender": "M",
+        "id": 988303,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 877910400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "جاستن رايت-فورمان",
+            "bn": "জাস্টিন রাইট-ফোরম্যান",
+            "hi": "जस्टिन राइट-फोरमैन"
+          },
+          "shortNameTranslation": {
+            "ar": "ج. رايت-فورمان",
+            "bn": "জে. রাইট-ফোরম্যান",
+            "hi": "जे. राइट-फोरमैन"
+          }
+        }
+      },
+      "id": 348708319,
+      "time": 15,
+      "timeSeconds": 890,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 6,
+      "reversedPeriodTimeSeconds": 310,
+      "periodTimeSeconds": 290,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 37,
+      "awayScore": 33,
+      "player": {
+        "name": "Gustav Knudsen",
+        "firstName": "Gustav",
+        "lastName": "Knudsen",
+        "slug": "gustav-knudsen",
+        "shortName": "G. Knudsen",
+        "position": "F",
+        "jerseyNumber": "18",
+        "height": 204,
+        "userCount": 15,
+        "gender": "M",
+        "id": 1412224,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 1050451200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "كنودسن، غوستاف"
+          },
+          "shortNameTranslation": {
+            "ar": "غ. كنودسن"
+          }
+        }
+      },
+      "id": 348708298,
+      "time": 15,
+      "timeSeconds": 874,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 6,
+      "reversedPeriodTimeSeconds": 326,
+      "periodTimeSeconds": 274,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 35,
+      "awayScore": 33,
+      "player": {
+        "name": "Santiago Yusta",
+        "slug": "yusta-santiago",
+        "shortName": "S. Yusta",
+        "position": "F",
+        "jerseyNumber": "4",
+        "height": 200,
+        "userCount": 91,
+        "gender": "M",
+        "id": 905193,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 862185600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "يوستا، سانتياغو",
+            "bn": "ইউস্টা, সান্তিয়াগো",
+            "hi": "युस्ता, सैंटियागो"
+          },
+          "shortNameTranslation": {
+            "ar": "س. يوستا",
+            "bn": "এস. ইউস্টা",
+            "hi": "एस. युस्ता"
+          }
+        }
+      },
+      "id": 348708272,
+      "time": 15,
+      "timeSeconds": 864,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 6,
+      "reversedPeriodTimeSeconds": 336,
+      "periodTimeSeconds": 264,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 35,
+      "awayScore": 32,
+      "player": {
+        "name": "Santiago Yusta",
+        "slug": "yusta-santiago",
+        "shortName": "S. Yusta",
+        "position": "F",
+        "jerseyNumber": "4",
+        "height": 200,
+        "userCount": 91,
+        "gender": "M",
+        "id": 905193,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 862185600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "يوستا، سانتياغو",
+            "bn": "ইউস্টা, সান্তিয়াগো",
+            "hi": "युस्ता, सैंटियागो"
+          },
+          "shortNameTranslation": {
+            "ar": "س. يوستا",
+            "bn": "এস. ইউস্টা",
+            "hi": "एस. युस्ता"
+          }
+        }
+      },
+      "id": 348708251,
+      "time": 15,
+      "timeSeconds": 864,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 6,
+      "reversedPeriodTimeSeconds": 336,
+      "periodTimeSeconds": 264,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 35,
+      "awayScore": 31,
+      "player": {
+        "name": "Alexis Reyes",
+        "firstName": "Alexis",
+        "lastName": "Reyes",
+        "slug": "alexis-reyes",
+        "shortName": "Á. Reyes",
+        "position": "F",
+        "jerseyNumber": "8",
+        "height": 201,
+        "userCount": 26,
+        "gender": "M",
+        "id": 1189927,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 756086400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "রেইস, অ্যালেক্স",
+            "hi": "रेयेस, एलेक्स"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. রেয়েস",
+            "hi": "ए. रेयेस"
+          }
+        }
+      },
+      "id": 348708151,
+      "time": 14,
+      "timeSeconds": 829,
+      "isHome": true,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 7,
+      "reversedPeriodTimeSeconds": 371,
+      "periodTimeSeconds": 229,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 32,
+      "awayScore": 31,
+      "player": {
+        "name": "Justin Wright-Foreman",
+        "firstName": "Justin",
+        "lastName": "Wright-Foreman",
+        "slug": "wright-foreman-justin",
+        "shortName": "J. Wright-Foreman",
+        "position": "G",
+        "jerseyNumber": "3",
+        "height": 183,
+        "userCount": 79,
+        "gender": "M",
+        "id": 988303,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 877910400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "جاستن رايت-فورمان",
+            "bn": "জাস্টিন রাইট-ফোরম্যান",
+            "hi": "जस्टिन राइट-फोरमैन"
+          },
+          "shortNameTranslation": {
+            "ar": "ج. رايت-فورمان",
+            "bn": "জে. রাইট-ফোরম্যান",
+            "hi": "जे. राइट-फोरमैन"
+          }
+        }
+      },
+      "id": 348708141,
+      "time": 14,
+      "timeSeconds": 819,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 7,
+      "reversedPeriodTimeSeconds": 381,
+      "periodTimeSeconds": 219,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 32,
+      "awayScore": 29,
+      "player": {
+        "name": "Devin Robinson",
+        "firstName": "Devin",
+        "lastName": "Robinson",
+        "slug": "devin-robinson",
+        "shortName": "D. Robinson",
+        "position": "F",
+        "jerseyNumber": "0",
+        "height": 203,
+        "userCount": 98,
+        "gender": "M",
+        "id": 1409155,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 794534400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "روبينسون، ديفين",
+            "bn": "রবিনসন, ডেভিন",
+            "hi": "रॉबिन्सन, डेविन"
+          },
+          "shortNameTranslation": {
+            "ar": "د. روبينسون",
+            "bn": "ডি. রবিনসন",
+            "hi": "डी. रॉबिन्सन"
+          }
+        }
+      },
+      "id": 348708090,
+      "time": 14,
+      "timeSeconds": 787,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 7,
+      "reversedPeriodTimeSeconds": 413,
+      "periodTimeSeconds": 187,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 32,
+      "awayScore": 27,
+      "player": {
+        "name": "Louis Olinde",
+        "slug": "olinde-louis",
+        "shortName": "L. Olinde",
+        "position": "F",
+        "jerseyNumber": "19",
+        "height": 205,
+        "userCount": 51,
+        "gender": "M",
+        "id": 861473,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 890265600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أوليندي، لويس",
+            "bn": "ওলিন্দ, লুই",
+            "hi": "ओलिन्डे, लुईस"
+          },
+          "shortNameTranslation": {
+            "ar": "ل. أوليندي",
+            "bn": "এল. অলিন্ডে",
+            "hi": "एल. ओलिन्डे"
+          }
+        }
+      },
+      "id": 348708013,
+      "time": 13,
+      "timeSeconds": 768,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 8,
+      "reversedPeriodTimeSeconds": 432,
+      "periodTimeSeconds": 168,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 30,
+      "awayScore": 27,
+      "player": {
+        "name": "Bojan Dubljevic",
+        "slug": "dubljevic-bojan",
+        "shortName": "B. Dubljević",
+        "position": "C",
+        "jerseyNumber": "14",
+        "height": 205,
+        "userCount": 109,
+        "gender": "M",
+        "id": 861853,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 688262400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "بويان دوبلجيڤيتش",
+            "bn": "ডাবলজেভিক, বোজান",
+            "hi": "डुब्लजेविक, बोजान"
+          },
+          "shortNameTranslation": {
+            "ar": "ب. دوبلجيڤيتش",
+            "bn": "বি. ডাবলজেভিক",
+            "hi": "बी. डुब्लजेविक"
+          }
+        }
+      },
+      "id": 348708009,
+      "time": 13,
+      "timeSeconds": 765,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 8,
+      "reversedPeriodTimeSeconds": 435,
+      "periodTimeSeconds": 165,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 30,
+      "awayScore": 26,
+      "player": {
+        "name": "Bojan Dubljevic",
+        "slug": "dubljevic-bojan",
+        "shortName": "B. Dubljević",
+        "position": "C",
+        "jerseyNumber": "14",
+        "height": 205,
+        "userCount": 109,
+        "gender": "M",
+        "id": 861853,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 688262400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "بويان دوبلجيڤيتش",
+            "bn": "ডাবলজেভিক, বোজান",
+            "hi": "डुब्लजेविक, बोजान"
+          },
+          "shortNameTranslation": {
+            "ar": "ب. دوبلجيڤيتش",
+            "bn": "বি. ডাবলজেভিক",
+            "hi": "बी. डुब्लजेविक"
+          }
+        }
+      },
+      "id": 348707987,
+      "time": 13,
+      "timeSeconds": 765,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 8,
+      "reversedPeriodTimeSeconds": 435,
+      "periodTimeSeconds": 165,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 30,
+      "awayScore": 25,
+      "player": {
+        "name": "Ferran Bassas",
+        "firstName": "Ferran",
+        "lastName": "Bassas",
+        "slug": "bassas-ferran",
+        "shortName": "F. Bassas",
+        "position": "G",
+        "jerseyNumber": "6",
+        "height": 181,
+        "userCount": 14,
+        "gender": "M",
+        "id": 1067748,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 704505600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "باساس، فيران",
+            "bn": "বাসাস, ফেরান",
+            "hi": "बासस, फ़ेरैन"
+          },
+          "shortNameTranslation": {
+            "ar": "ف. باساس",
+            "bn": "এফ. বাসাস",
+            "hi": "एफ. बासस"
+          }
+        }
+      },
+      "id": 348707817,
+      "time": 13,
+      "timeSeconds": 749,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 8,
+      "reversedPeriodTimeSeconds": 451,
+      "periodTimeSeconds": 149,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 29,
+      "awayScore": 25,
+      "player": {
+        "name": "Ferran Bassas",
+        "firstName": "Ferran",
+        "lastName": "Bassas",
+        "slug": "bassas-ferran",
+        "shortName": "F. Bassas",
+        "position": "G",
+        "jerseyNumber": "6",
+        "height": 181,
+        "userCount": 14,
+        "gender": "M",
+        "id": 1067748,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 704505600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "باساس، فيران",
+            "bn": "বাসাস, ফেরান",
+            "hi": "बासस, फ़ेरैन"
+          },
+          "shortNameTranslation": {
+            "ar": "ف. باساس",
+            "bn": "এফ. বাসাস",
+            "hi": "एफ. बासस"
+          }
+        }
+      },
+      "id": 348707810,
+      "time": 13,
+      "timeSeconds": 749,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 8,
+      "reversedPeriodTimeSeconds": 451,
+      "periodTimeSeconds": 149,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 28,
+      "awayScore": 25,
+      "player": {
+        "name": "Louis Olinde",
+        "slug": "olinde-louis",
+        "shortName": "L. Olinde",
+        "position": "F",
+        "jerseyNumber": "19",
+        "height": 205,
+        "userCount": 51,
+        "gender": "M",
+        "id": 861473,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 890265600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أوليندي، لويس",
+            "bn": "ওলিন্দ, লুই",
+            "hi": "ओलिन्डे, लुईस"
+          },
+          "shortNameTranslation": {
+            "ar": "ل. أوليندي",
+            "bn": "এল. অলিন্ডে",
+            "hi": "एल. ओलिन्डे"
+          }
+        }
+      },
+      "id": 348707744,
+      "time": 12,
+      "timeSeconds": 710,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 9,
+      "reversedPeriodTimeSeconds": 490,
+      "periodTimeSeconds": 110,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 26,
+      "awayScore": 25,
+      "player": {
+        "name": "Marco Spissu",
+        "firstName": "Marco Spissu",
+        "slug": "spissu-marco",
+        "shortName": "M. Spissu",
+        "position": "G",
+        "jerseyNumber": "0",
+        "height": 184,
+        "userCount": 170,
+        "gender": "M",
+        "id": 1083494,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 791942400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ماركو سبيسو",
+            "bn": "স্পিসু, মার্কো",
+            "hi": "स्पिस्सू, मार्को"
+          },
+          "shortNameTranslation": {
+            "ar": "م. سبيسو",
+            "bn": "এম. স্পিসু",
+            "hi": "एम. स्पिस्सू"
+          }
+        }
+      },
+      "id": 348707600,
+      "time": 12,
+      "timeSeconds": 698,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 9,
+      "reversedPeriodTimeSeconds": 502,
+      "periodTimeSeconds": 98,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 26,
+      "awayScore": 23,
+      "player": {
+        "name": "Joaquín Rodríguez",
+        "firstName": "Joaquin Rodriguez",
+        "slug": "joaquin-rodriguez",
+        "shortName": "J. Rodríguez",
+        "position": "G",
+        "jerseyNumber": "15",
+        "height": 194,
+        "userCount": 73,
+        "gender": "M",
+        "id": 1403769,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 929318400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "خواكين رودريغيز"
+          },
+          "shortNameTranslation": {
+            "ar": "خ. رودريغيز"
+          }
+        }
+      },
+      "id": 348707438,
+      "time": 11,
+      "timeSeconds": 655,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 10,
+      "reversedPeriodTimeSeconds": 545,
+      "periodTimeSeconds": 55,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 26,
+      "awayScore": 21,
+      "player": {
+        "name": "David Duke Jr.",
+        "firstName": "David",
+        "lastName": "Duke Jr.",
+        "slug": "david-duke-jr",
+        "shortName": "D. Duke Jr.",
+        "position": "G",
+        "jerseyNumber": "7",
+        "height": 193,
+        "userCount": 71,
+        "gender": "M",
+        "id": 1133993,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 939772800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ديفيد ديوك جونيور",
+            "bn": "ডেভিড ডিউক জুনিয়র",
+            "hi": "डेविड ड्यूक जूनियर."
+          },
+          "shortNameTranslation": {
+            "ar": "د. ديوك جونيور",
+            "bn": "ডি. ডিউক জুনিয়র",
+            "hi": "डी. ड्यूक जूनियर"
+          }
+        }
+      },
+      "id": 348707421,
+      "time": 11,
+      "timeSeconds": 633,
+      "isHome": true,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 10,
+      "reversedPeriodTimeSeconds": 567,
+      "periodTimeSeconds": 33,
+      "incidentType": "goal"
+    },
+    {
+      "text": "Q1",
+      "homeScore": 23,
+      "awayScore": 21,
+      "isLive": false,
+      "period": "period1",
+      "time": 10,
+      "addedTime": 999,
+      "timeSeconds": 600,
+      "reversedPeriodTime": 1,
+      "reversedPeriodTimeSeconds": 0,
+      "periodTimeSeconds": 600,
+      "incidentType": "period"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 23,
+      "awayScore": 21,
+      "player": {
+        "name": "Ferran Bassas",
+        "firstName": "Ferran",
+        "lastName": "Bassas",
+        "slug": "bassas-ferran",
+        "shortName": "F. Bassas",
+        "position": "G",
+        "jerseyNumber": "6",
+        "height": 181,
+        "userCount": 14,
+        "gender": "M",
+        "id": 1067748,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 704505600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "باساس، فيران",
+            "bn": "বাসাস, ফেরান",
+            "hi": "बासस, फ़ेरैन"
+          },
+          "shortNameTranslation": {
+            "ar": "ف. باساس",
+            "bn": "এফ. বাসাস",
+            "hi": "एफ. बासस"
+          }
+        }
+      },
+      "id": 348707130,
+      "time": 10,
+      "timeSeconds": 567,
+      "isHome": true,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 1,
+      "reversedPeriodTimeSeconds": 33,
+      "periodTimeSeconds": 567,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 20,
+      "awayScore": 21,
+      "player": {
+        "name": "Trae Bell-Haynes",
+        "firstName": "Trae",
+        "lastName": "Bell-Haynes",
+        "slug": "trae-bell-haynes",
+        "shortName": "T. Bell-Haynes",
+        "position": "G",
+        "jerseyNumber": "2",
+        "height": 188,
+        "userCount": 67,
+        "gender": "M",
+        "id": 1189175,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 810259200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "بيل-هاينز، تراي",
+            "bn": "বেল-হেনস, ট্রে",
+            "hi": "बेल-हेन्स, ट्रे"
+          },
+          "shortNameTranslation": {
+            "ar": "ت. بيل-هاينز",
+            "bn": "টি. বেল-হেইনস",
+            "hi": "टी. बेल-हेन्स"
+          }
+        }
+      },
+      "id": 348707008,
+      "time": 9,
+      "timeSeconds": 529,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 2,
+      "reversedPeriodTimeSeconds": 71,
+      "periodTimeSeconds": 529,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 20,
+      "awayScore": 19,
+      "player": {
+        "name": "Pierre Oriola",
+        "slug": "oriola-pierre",
+        "shortName": "P. Oriola",
+        "position": "FC",
+        "jerseyNumber": "29",
+        "height": 208,
+        "userCount": 37,
+        "gender": "M",
+        "id": 861847,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 717379200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أوريولا، بيير",
+            "bn": "ওরিওলা, পিয়েরে",
+            "hi": "ओरिओला, पियरे"
+          },
+          "shortNameTranslation": {
+            "ar": "ب. أوريولا",
+            "bn": "পি. ওরিওলা",
+            "hi": "पी. ओरिओला"
+          }
+        }
+      },
+      "id": 348706991,
+      "time": 9,
+      "timeSeconds": 508,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 2,
+      "reversedPeriodTimeSeconds": 92,
+      "periodTimeSeconds": 508,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 19,
+      "awayScore": 19,
+      "player": {
+        "name": "Pierre Oriola",
+        "slug": "oriola-pierre",
+        "shortName": "P. Oriola",
+        "position": "FC",
+        "jerseyNumber": "29",
+        "height": 208,
+        "userCount": 37,
+        "gender": "M",
+        "id": 861847,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 717379200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أوريولا، بيير",
+            "bn": "ওরিওলা, পিয়েরে",
+            "hi": "ओरिओला, पियरे"
+          },
+          "shortNameTranslation": {
+            "ar": "ب. أوريولا",
+            "bn": "পি. ওরিওলা",
+            "hi": "पी. ओरिओला"
+          }
+        }
+      },
+      "id": 348706971,
+      "time": 9,
+      "timeSeconds": 508,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 2,
+      "reversedPeriodTimeSeconds": 92,
+      "periodTimeSeconds": 508,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 18,
+      "awayScore": 19,
+      "player": {
+        "name": "Jaime Fernandez",
+        "firstName": "Jaime",
+        "lastName": "Fernandez",
+        "slug": "jaime-fernandez",
+        "shortName": "J. Fernández",
+        "position": "F",
+        "jerseyNumber": "10",
+        "height": 203,
+        "userCount": 13,
+        "gender": "M",
+        "id": 1190041,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 963619200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "فرنانديز، خايمي",
+            "bn": "জেইম ফার্নান্ডেজ",
+            "hi": "जैमे फर्नांडीज"
+          },
+          "shortNameTranslation": {
+            "ar": "خ. فرنانديز",
+            "bn": "জে. ফার্নান্ডেজ",
+            "hi": "जे. फर्नांडीज"
+          }
+        }
+      },
+      "id": 348706828,
+      "time": 8,
+      "timeSeconds": 463,
+      "isHome": false,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 3,
+      "reversedPeriodTimeSeconds": 137,
+      "periodTimeSeconds": 463,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 18,
+      "awayScore": 16,
+      "player": {
+        "name": "Gustav Knudsen",
+        "firstName": "Gustav",
+        "lastName": "Knudsen",
+        "slug": "gustav-knudsen",
+        "shortName": "G. Knudsen",
+        "position": "F",
+        "jerseyNumber": "18",
+        "height": 204,
+        "userCount": 15,
+        "gender": "M",
+        "id": 1412224,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 1050451200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "كنودسن، غوستاف"
+          },
+          "shortNameTranslation": {
+            "ar": "غ. كنودسن"
+          }
+        }
+      },
+      "id": 348706806,
+      "time": 8,
+      "timeSeconds": 442,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 3,
+      "reversedPeriodTimeSeconds": 158,
+      "periodTimeSeconds": 442,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 17,
+      "awayScore": 16,
+      "player": {
+        "name": "Josh Richardson",
+        "firstName": "Josh",
+        "lastName": "Richardson ",
+        "slug": "josh-richardson",
+        "shortName": "J. Richardson",
+        "position": "G",
+        "jerseyNumber": "11",
+        "height": 196,
+        "userCount": 224,
+        "gender": "M",
+        "id": 817343,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 748051200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "جوش ريتشاردسون",
+            "bn": "জোশ রিচার্ডসন",
+            "hi": "जोश रिचर्डसन"
+          },
+          "shortNameTranslation": {
+            "ar": "ج. ريتشاردسون",
+            "bn": "জে. রিচার্ডসন",
+            "hi": "जे. रिचर्डसन"
+          }
+        }
+      },
+      "id": 348706639,
+      "time": 7,
+      "timeSeconds": 418,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 4,
+      "reversedPeriodTimeSeconds": 182,
+      "periodTimeSeconds": 418,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 17,
+      "awayScore": 14,
+      "player": {
+        "name": "Daniel Perez",
+        "firstName": "Daniel",
+        "lastName": "Perez",
+        "slug": "daniel-perez",
+        "shortName": "D. Perez",
+        "position": "G",
+        "jerseyNumber": "55",
+        "height": 188,
+        "userCount": 13,
+        "gender": "M",
+        "id": 1179321,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 636163200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "خوسيه رومان مارتينيز سانشيس",
+            "bn": "পেরেজ, ড্যানিয়েল",
+            "hi": "पेरेज़, डैनियल"
+          },
+          "shortNameTranslation": {
+            "ar": "د. بيريز",
+            "bn": "ডি. পেরেজ",
+            "hi": "डी. पेरेज़"
+          }
+        }
+      },
+      "id": 348706614,
+      "time": 7,
+      "timeSeconds": 386,
+      "isHome": true,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 4,
+      "reversedPeriodTimeSeconds": 214,
+      "periodTimeSeconds": 386,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 14,
+      "awayScore": 14,
+      "player": {
+        "name": "Trae Bell-Haynes",
+        "firstName": "Trae",
+        "lastName": "Bell-Haynes",
+        "slug": "trae-bell-haynes",
+        "shortName": "T. Bell-Haynes",
+        "position": "G",
+        "jerseyNumber": "2",
+        "height": 188,
+        "userCount": 67,
+        "gender": "M",
+        "id": 1189175,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 810259200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "بيل-هاينز، تراي",
+            "bn": "বেল-হেনস, ট্রে",
+            "hi": "बेल-हेन्स, ट्रे"
+          },
+          "shortNameTranslation": {
+            "ar": "ت. بيل-هاينز",
+            "bn": "টি. বেল-হেইনস",
+            "hi": "टी. बेल-हेन्स"
+          }
+        }
+      },
+      "id": 348706604,
+      "time": 7,
+      "timeSeconds": 368,
+      "isHome": false,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 4,
+      "reversedPeriodTimeSeconds": 232,
+      "periodTimeSeconds": 368,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 14,
+      "awayScore": 11,
+      "player": {
+        "name": "Kaodirichi Akobundu-Ehiogu",
+        "firstName": "Kaodirichi",
+        "lastName": "Akobundu-Ehiogu",
+        "slug": "kaodirichi-akobundu-ehiogu",
+        "shortName": "K. Akobundu-Ehiogu",
+        "position": "C",
+        "jerseyNumber": "0",
+        "height": 206,
+        "userCount": 60,
+        "gender": "M",
+        "id": 1510858,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 939254400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أكوبوندو-إهيغو، كوديريتشي"
+          },
+          "shortNameTranslation": {
+            "ar": "ك. إهيغو"
+          }
+        }
+      },
+      "id": 348706514,
+      "time": 6,
+      "timeSeconds": 347,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 5,
+      "reversedPeriodTimeSeconds": 253,
+      "periodTimeSeconds": 347,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 13,
+      "awayScore": 11,
+      "player": {
+        "name": "Josh Richardson",
+        "firstName": "Josh",
+        "lastName": "Richardson ",
+        "slug": "josh-richardson",
+        "shortName": "J. Richardson",
+        "position": "G",
+        "jerseyNumber": "11",
+        "height": 196,
+        "userCount": 224,
+        "gender": "M",
+        "id": 817343,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 748051200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "جوش ريتشاردسون",
+            "bn": "জোশ রিচার্ডসন",
+            "hi": "जोश रिचर्डसन"
+          },
+          "shortNameTranslation": {
+            "ar": "ج. ريتشاردسون",
+            "bn": "জে. রিচার্ডসন",
+            "hi": "जे. रिचर्डसन"
+          }
+        }
+      },
+      "id": 348706153,
+      "time": 5,
+      "timeSeconds": 283,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 6,
+      "reversedPeriodTimeSeconds": 317,
+      "periodTimeSeconds": 283,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 13,
+      "awayScore": 9,
+      "player": {
+        "name": "Marcis Steinbergs",
+        "firstName": "Marcis",
+        "lastName": "Steinbergs",
+        "slug": "marcis-steinbergs",
+        "shortName": "M. Steinbergs",
+        "position": "F",
+        "jerseyNumber": "12",
+        "height": 207,
+        "userCount": 49,
+        "gender": "M",
+        "id": 1189487,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 998956800,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "شتاينبرغ، مارسيس",
+            "bn": "স্টেইনবার্গস, মার্সিস",
+            "hi": "स्टीनबर्ग्स, मार्सिस"
+          },
+          "shortNameTranslation": {
+            "ar": "م. شتاينبرغ",
+            "bn": "এম. স্টেইনবার্গস",
+            "hi": "एम. स्टीनबर्ग्स"
+          }
+        }
+      },
+      "id": 348706013,
+      "time": 5,
+      "timeSeconds": 276,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 6,
+      "reversedPeriodTimeSeconds": 324,
+      "periodTimeSeconds": 276,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 11,
+      "awayScore": 9,
+      "player": {
+        "name": "Trae Bell-Haynes",
+        "firstName": "Trae",
+        "lastName": "Bell-Haynes",
+        "slug": "trae-bell-haynes",
+        "shortName": "T. Bell-Haynes",
+        "position": "G",
+        "jerseyNumber": "2",
+        "height": 188,
+        "userCount": 67,
+        "gender": "M",
+        "id": 1189175,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 810259200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "بيل-هاينز، تراي",
+            "bn": "বেল-হেনস, ট্রে",
+            "hi": "बेल-हेन्स, ट्रे"
+          },
+          "shortNameTranslation": {
+            "ar": "ت. بيل-هاينز",
+            "bn": "টি. বেল-হেইনস",
+            "hi": "टी. बेल-हेन्स"
+          }
+        }
+      },
+      "id": 348706004,
+      "time": 5,
+      "timeSeconds": 269,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 6,
+      "reversedPeriodTimeSeconds": 331,
+      "periodTimeSeconds": 269,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 11,
+      "awayScore": 7,
+      "player": {
+        "name": "Kaodirichi Akobundu-Ehiogu",
+        "firstName": "Kaodirichi",
+        "lastName": "Akobundu-Ehiogu",
+        "slug": "kaodirichi-akobundu-ehiogu",
+        "shortName": "K. Akobundu-Ehiogu",
+        "position": "C",
+        "jerseyNumber": "0",
+        "height": 206,
+        "userCount": 60,
+        "gender": "M",
+        "id": 1510858,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 939254400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أكوبوندو-إهيغو، كوديريتشي"
+          },
+          "shortNameTranslation": {
+            "ar": "ك. إهيغو"
+          }
+        }
+      },
+      "id": 348705875,
+      "time": 4,
+      "timeSeconds": 237,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 7,
+      "reversedPeriodTimeSeconds": 363,
+      "periodTimeSeconds": 237,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 10,
+      "awayScore": 7,
+      "player": {
+        "name": "Kaodirichi Akobundu-Ehiogu",
+        "firstName": "Kaodirichi",
+        "lastName": "Akobundu-Ehiogu",
+        "slug": "kaodirichi-akobundu-ehiogu",
+        "shortName": "K. Akobundu-Ehiogu",
+        "position": "C",
+        "jerseyNumber": "0",
+        "height": 206,
+        "userCount": 60,
+        "gender": "M",
+        "id": 1510858,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 939254400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أكوبوندو-إهيغو، كوديريتشي"
+          },
+          "shortNameTranslation": {
+            "ar": "ك. إهيغو"
+          }
+        }
+      },
+      "id": 348705857,
+      "time": 4,
+      "timeSeconds": 237,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 7,
+      "reversedPeriodTimeSeconds": 363,
+      "periodTimeSeconds": 237,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 9,
+      "awayScore": 7,
+      "player": {
+        "name": "Pierre Oriola",
+        "slug": "oriola-pierre",
+        "shortName": "P. Oriola",
+        "position": "FC",
+        "jerseyNumber": "29",
+        "height": 208,
+        "userCount": 37,
+        "gender": "M",
+        "id": 861847,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 717379200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أوريولا، بيير",
+            "bn": "ওরিওলা, পিয়েরে",
+            "hi": "ओरिओला, पियरे"
+          },
+          "shortNameTranslation": {
+            "ar": "ب. أوريولا",
+            "bn": "পি. ওরিওলা",
+            "hi": "पी. ओरिओला"
+          }
+        }
+      },
+      "id": 348705644,
+      "time": 3,
+      "timeSeconds": 174,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 8,
+      "reversedPeriodTimeSeconds": 426,
+      "periodTimeSeconds": 174,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 8,
+      "awayScore": 7,
+      "player": {
+        "name": "Pierre Oriola",
+        "slug": "oriola-pierre",
+        "shortName": "P. Oriola",
+        "position": "FC",
+        "jerseyNumber": "29",
+        "height": 208,
+        "userCount": 37,
+        "gender": "M",
+        "id": 861847,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 717379200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أوريولا، بيير",
+            "bn": "ওরিওলা, পিয়েরে",
+            "hi": "ओरिओला, पियरे"
+          },
+          "shortNameTranslation": {
+            "ar": "ب. أوريولا",
+            "bn": "পি. ওরিওলা",
+            "hi": "पी. ओरिओला"
+          }
+        }
+      },
+      "id": 348705626,
+      "time": 3,
+      "timeSeconds": 174,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 8,
+      "reversedPeriodTimeSeconds": 426,
+      "periodTimeSeconds": 174,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 7,
+      "awayScore": 7,
+      "player": {
+        "name": "Marco Spissu",
+        "firstName": "Marco Spissu",
+        "slug": "spissu-marco",
+        "shortName": "M. Spissu",
+        "position": "G",
+        "jerseyNumber": "0",
+        "height": 184,
+        "userCount": 170,
+        "gender": "M",
+        "id": 1083494,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 791942400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ماركو سبيسو",
+            "bn": "স্পিসু, মার্কো",
+            "hi": "स्पिस्सू, मार्को"
+          },
+          "shortNameTranslation": {
+            "ar": "م. سبيسو",
+            "bn": "এম. স্পিসু",
+            "hi": "एम. स्पिस्सू"
+          }
+        }
+      },
+      "id": 348705559,
+      "time": 3,
+      "timeSeconds": 163,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 8,
+      "reversedPeriodTimeSeconds": 437,
+      "periodTimeSeconds": 163,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 7,
+      "awayScore": 6,
+      "player": {
+        "name": "Marco Spissu",
+        "firstName": "Marco Spissu",
+        "slug": "spissu-marco",
+        "shortName": "M. Spissu",
+        "position": "G",
+        "jerseyNumber": "0",
+        "height": 184,
+        "userCount": 170,
+        "gender": "M",
+        "id": 1083494,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 791942400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ماركو سبيسو",
+            "bn": "স্পিসু, মার্কো",
+            "hi": "स्पिस्सू, मार्को"
+          },
+          "shortNameTranslation": {
+            "ar": "م. سبيسو",
+            "bn": "এম. স্পিসু",
+            "hi": "एम. स्पिस्सू"
+          }
+        }
+      },
+      "id": 348705545,
+      "time": 3,
+      "timeSeconds": 163,
+      "isHome": false,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 8,
+      "reversedPeriodTimeSeconds": 437,
+      "periodTimeSeconds": 163,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 7,
+      "awayScore": 5,
+      "player": {
+        "name": "Gustav Knudsen",
+        "firstName": "Gustav",
+        "lastName": "Knudsen",
+        "slug": "gustav-knudsen",
+        "shortName": "G. Knudsen",
+        "position": "F",
+        "jerseyNumber": "18",
+        "height": 204,
+        "userCount": 15,
+        "gender": "M",
+        "id": 1412224,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 1050451200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "كنودسن، غوستاف"
+          },
+          "shortNameTranslation": {
+            "ar": "غ. كنودسن"
+          }
+        }
+      },
+      "id": 348705490,
+      "time": 3,
+      "timeSeconds": 148,
+      "isHome": true,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 8,
+      "reversedPeriodTimeSeconds": 452,
+      "periodTimeSeconds": 148,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 4,
+      "awayScore": 5,
+      "player": {
+        "name": "Santiago Yusta",
+        "slug": "yusta-santiago",
+        "shortName": "S. Yusta",
+        "position": "F",
+        "jerseyNumber": "4",
+        "height": 200,
+        "userCount": 91,
+        "gender": "M",
+        "id": 905193,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 862185600,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "يوستا، سانتياغو",
+            "bn": "ইউস্টা, সান্তিয়াগো",
+            "hi": "युस्ता, सैंटियागो"
+          },
+          "shortNameTranslation": {
+            "ar": "س. يوستا",
+            "bn": "এস. ইউস্টা",
+            "hi": "एस. युस्ता"
+          }
+        }
+      },
+      "id": 348705473,
+      "time": 3,
+      "timeSeconds": 133,
+      "isHome": false,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 8,
+      "reversedPeriodTimeSeconds": 467,
+      "periodTimeSeconds": 133,
+      "incidentType": "goal"
+    },
+    {
+      "from": "threepoints",
+      "homeScore": 4,
+      "awayScore": 3,
+      "player": {
+        "name": "Marco Spissu",
+        "firstName": "Marco Spissu",
+        "slug": "spissu-marco",
+        "shortName": "M. Spissu",
+        "position": "G",
+        "jerseyNumber": "0",
+        "height": 184,
+        "userCount": 170,
+        "gender": "M",
+        "id": 1083494,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 791942400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "ماركو سبيسو",
+            "bn": "স্পিসু, মার্কো",
+            "hi": "स्पिस्सू, मार्को"
+          },
+          "shortNameTranslation": {
+            "ar": "م. سبيسو",
+            "bn": "এম. স্পিসু",
+            "hi": "एम. स्पिस्सू"
+          }
+        }
+      },
+      "id": 348705415,
+      "time": 2,
+      "timeSeconds": 80,
+      "isHome": false,
+      "incidentClass": "threePoints",
+      "reversedPeriodTime": 9,
+      "reversedPeriodTimeSeconds": 520,
+      "periodTimeSeconds": 80,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 4,
+      "awayScore": 0,
+      "player": {
+        "name": "Alexis Reyes",
+        "firstName": "Alexis",
+        "lastName": "Reyes",
+        "slug": "alexis-reyes",
+        "shortName": "Á. Reyes",
+        "position": "F",
+        "jerseyNumber": "8",
+        "height": 201,
+        "userCount": 26,
+        "gender": "M",
+        "id": 1189927,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 756086400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "রেইস, অ্যালেক্স",
+            "hi": "रेयेस, एलेक्स"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. রেয়েস",
+            "hi": "ए. रेयेस"
+          }
+        }
+      },
+      "id": 348705396,
+      "time": 2,
+      "timeSeconds": 60,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 9,
+      "reversedPeriodTimeSeconds": 540,
+      "periodTimeSeconds": 60,
+      "incidentType": "goal"
+    },
+    {
+      "from": "onepoint",
+      "homeScore": 3,
+      "awayScore": 0,
+      "player": {
+        "name": "Alexis Reyes",
+        "firstName": "Alexis",
+        "lastName": "Reyes",
+        "slug": "alexis-reyes",
+        "shortName": "Á. Reyes",
+        "position": "F",
+        "jerseyNumber": "8",
+        "height": 201,
+        "userCount": 26,
+        "gender": "M",
+        "id": 1189927,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 756086400,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "bn": "রেইস, অ্যালেক্স",
+            "hi": "रेयेस, एलेक्स"
+          },
+          "shortNameTranslation": {
+            "bn": "এ. রেয়েস",
+            "hi": "ए. रेयेस"
+          }
+        }
+      },
+      "id": 348705379,
+      "time": 2,
+      "timeSeconds": 60,
+      "isHome": true,
+      "incidentClass": "onePoint",
+      "reversedPeriodTime": 9,
+      "reversedPeriodTimeSeconds": 540,
+      "periodTimeSeconds": 60,
+      "incidentType": "goal"
+    },
+    {
+      "from": "twopoints",
+      "homeScore": 2,
+      "awayScore": 0,
+      "player": {
+        "name": "Pierre Oriola",
+        "slug": "oriola-pierre",
+        "shortName": "P. Oriola",
+        "position": "FC",
+        "jerseyNumber": "29",
+        "height": 208,
+        "userCount": 37,
+        "gender": "M",
+        "id": 861847,
+        "marketValueCurrency": "EUR",
+        "dateOfBirthTimestamp": 717379200,
+        "fieldTranslations": {
+          "nameTranslation": {
+            "ar": "أوريولا، بيير",
+            "bn": "ওরিওলা, পিয়েরে",
+            "hi": "ओरिओला, पियरे"
+          },
+          "shortNameTranslation": {
+            "ar": "ب. أوريولا",
+            "bn": "পি. ওরিওলা",
+            "hi": "पी. ओरिओला"
+          }
+        }
+      },
+      "id": 348705182,
+      "time": 1,
+      "timeSeconds": 34,
+      "isHome": true,
+      "incidentClass": "twoPoints",
+      "reversedPeriodTime": 10,
+      "reversedPeriodTimeSeconds": 566,
+      "periodTimeSeconds": 34,
+      "incidentType": "goal"
+    }
+  ],
+  "initialStandingsProperties": {
+    "hasStandings": true,
+    "numberOfRows": 18
+  },
+  "initialFeaturedArticle": [
+    {
+      "id": 102474,
+      "slug": "arsenal-vs-man-city-premier-league-2025-26-title-race",
+      "date": "2026-05-17T23:59:44",
+      "title": "Arsenal vs Man City: Premier League 2025/26 title race",
+      "excerpt": "With 36 games played, Arsenal have 79 points and Manchester City 77. We break down form, fixtures and Sofascore Ratings shaping the Premier League title run‑in.",
+      "imageUrl": "https://files.sofascore.com/news/2026/05/imago1076374935-1-1024x683.jpg",
+      "tags": [
+        {
+          "id": 6301,
+          "slug": "arsenal",
+          "name": "Arsenal"
+        },
+        {
+          "id": 5675,
+          "slug": "manchester-city",
+          "name": "Manchester City"
+        },
+        {
+          "id": 124,
+          "slug": "premier-league",
+          "name": "Premier League"
+        }
+      ]
+    }
+  ]
+}

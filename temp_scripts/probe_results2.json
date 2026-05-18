@@ -1,0 +1,182 @@
+{
+  "event_keys": {
+    "officials": "list",
+    "tournament": "dict",
+    "season": "dict",
+    "roundInfo": "dict",
+    "customId": "str",
+    "status": "dict",
+    "winnerCode": "int",
+    "venue": "dict",
+    "homeTeam": "dict",
+    "awayTeam": "dict",
+    "homeScore": "dict",
+    "awayScore": "dict",
+    "time": "dict",
+    "changes": "dict",
+    "hasGlobalHighlights": "bool",
+    "hasEventPlayerStatistics": "bool",
+    "crowdsourcingDataDisplayEnabled": "bool",
+    "id": "int",
+    "defaultPeriodCount": "int",
+    "defaultPeriodLength": "int",
+    "defaultOvertimeLength": "int",
+    "periods": "dict",
+    "slug": "str",
+    "currentPeriodStartTimestamp": "int",
+    "startTimestamp": "int",
+    "finalResultOnly": "bool",
+    "hasBet365LiveStream": "bool",
+    "bet365ExcludedCountryCodes": "list",
+    "feedLocked": "bool",
+    "seasonStatisticsType": "str",
+    "showTotoPromo": "bool",
+    "isEditor": "bool",
+    "eventFilters": "dict"
+  },
+  "event_officials_len": 0,
+  "event_tournament_keys": [
+    "name",
+    "slug",
+    "category",
+    "uniqueTournament",
+    "priority",
+    "isGroup",
+    "competitionType",
+    "isLive",
+    "id",
+    "fieldTranslations"
+  ],
+  "event_tournament_sample": "{'name': 'Liga ACB', 'slug': 'liga-acb', 'category': {'name': 'Spain', 'slug': 'spain', 'sport': {'name': 'Basketball', 'slug': 'basketball', 'id': 2}, 'priority': 0, 'country': {'alpha2': 'ES', 'alpha3': 'ESP', 'name': 'Spain', 'slug': 'spain'}, 'id': 109, 'flag': 'spain', 'alpha2': 'ES', 'fieldTra",
+  "event_season_keys": [
+    "name",
+    "year",
+    "editor",
+    "id"
+  ],
+  "event_season_sample": "{'name': 'Liga ACB 25/26', 'year': '25/26', 'editor': False, 'id': 80922}",
+  "event_roundInfo_keys": [
+    "round"
+  ],
+  "event_roundInfo_sample": "{'round': 32}",
+  "event_status_keys": [
+    "code",
+    "description",
+    "type"
+  ],
+  "event_status_sample": "{'code': 100, 'description': 'Ended', 'type': 'finished'}",
+  "event_venue_keys": [
+    "city",
+    "hidden",
+    "slug",
+    "name",
+    "capacity",
+    "country",
+    "id",
+    "fieldTranslations",
+    "stadium"
+  ],
+  "event_venue_sample": "{'city': {'name': 'Manresa', 'country': {'alpha2': 'ES', 'alpha3': 'ESP', 'name': 'Spain', 'slug': 'spain'}, 'id': 19349}, 'hidden': True, 'slug': 'pavello-nou-congost', 'name': 'Pavello Nou Congost', 'capacity': 5000, 'country': {'alpha2': 'ES', 'alpha3': 'ESP', 'name': 'Spain', 'slug': 'spain'}, '",
+  "event_homeTeam_keys": [
+    "name",
+    "slug",
+    "shortName",
+    "gender",
+    "sport",
+    "userCount",
+    "venue",
+    "nameCode",
+    "national",
+    "type",
+    "country",
+    "id",
+    "fullName",
+    "subTeams",
+    "teamColors"
+  ],
+  "event_homeTeam_sample": "{'name': 'BAXI Manresa', 'slug': 'baxi-manresa', 'shortName': 'Manresa', 'gender': 'M', 'sport': {'name': 'Basketball', 'slug': 'basketball', 'id': 2}, 'userCount': 2300, 'venue': {'city': {'name': 'Manresa', 'country': {'alpha2': 'ES', 'alpha3': 'ESP', 'name': 'Spain', 'slug': 'spain'}, 'id': 19349",
+  "event_awayTeam_keys": [
+    "name",
+    "slug",
+    "shortName",
+    "gender",
+    "sport",
+    "userCount",
+    "venue",
+    "nameCode",
+    "disabled",
+    "national",
+    "type",
+    "country",
+    "id",
+    "fullName",
+    "subTeams"
+  ],
+  "event_awayTeam_sample": "{'name': 'Basket Zaragoza', 'slug': 'basket-zaragoza', 'shortName': 'Zaragoza', 'gender': 'M', 'sport': {'name': 'Basketball', 'slug': 'basketball', 'id': 2}, 'userCount': 4500, 'venue': {'city': {'name': 'Zaragoza', 'country': {'alpha2': 'ES', 'alpha3': 'ESP', 'name': 'Spain', 'slug': 'spain'}, 'id",
+  "event_homeScore_keys": [
+    "current",
+    "display",
+    "period1",
+    "period2",
+    "period3",
+    "period4",
+    "normaltime"
+  ],
+  "event_homeScore_sample": "{'current': 101, 'display': 101, 'period1': 23, 'period2': 23, 'period3': 25, 'period4': 30, 'normaltime': 101}",
+  "event_awayScore_keys": [
+    "current",
+    "display",
+    "period1",
+    "period2",
+    "period3",
+    "period4",
+    "normaltime"
+  ],
+  "event_awayScore_sample": "{'current': 83, 'display': 83, 'period1': 21, 'period2': 20, 'period3': 17, 'period4': 25, 'normaltime': 83}",
+  "event_time_keys": [
+    "played",
+    "periodLength",
+    "overtimeLength",
+    "totalPeriodCount",
+    "currentPeriodStartTimestamp"
+  ],
+  "event_time_sample": "{'played': 2388, 'periodLength': 600, 'overtimeLength': 300, 'totalPeriodCount': 4, 'currentPeriodStartTimestamp': 1778965779}",
+  "event_changes_keys": [
+    "changes",
+    "changeTimestamp"
+  ],
+  "event_changes_sample": "{'changes': ['time.currentPeriodStart', 'status.code', 'status.description', 'status.type', 'homeScore.normaltime', 'awayScore.normaltime'], 'changeTimestamp': 1778965788}",
+  "event_periods_keys": [
+    "current",
+    "period1",
+    "period2",
+    "period3",
+    "period4",
+    "overtime"
+  ],
+  "event_periods_sample": "{'current': 'Score', 'period1': '1st quarter', 'period2': '2nd quarter', 'period3': '3rd quarter', 'period4': '4th quarter', 'overtime': 'Overtime'}",
+  "event_bet365ExcludedCountryCodes_len": 7,
+  "event_bet365ExcludedCountryCodes_sample": "ES",
+  "event_eventFilters_keys": [
+    "category",
+    "level",
+    "gender"
+  ],
+  "event_eventFilters_sample": "{'category': ['club'], 'level': ['top-competitions', 'pro'], 'gender': ['M']}",
+  "team_ep_/team/3560/events/last/10": {
+    "status": 200,
+    "keys": [
+      "events",
+      "hasNextPage"
+    ],
+    "sample": "{\n  \"events\": [\n    {\n      \"tournament\": {\n        \"name\": \"Liga ACB\",\n        \"slug\": \"liga-acb\",\n        \"category\": {\n          \"name\": \"Spain\",\n          \"slug\": \"spain\",\n          \"sport\": {\n            \"name\": \"Basketball\",\n            \"slug\": \"basketball\",\n            \"id\": 2\n          },\n          \"priority\": 0,\n          \"country\": {\n            \"alpha2\": \"ES\",\n            \"alpha3\": \"ESP\",\n            \"name\": \"Spain\",\n            \"slug\": \"spain\"\n          },\n          \"id\": 109,\n          \"flag\": \"spain\",\n          \"alpha2\": \"ES\",\n          \"fieldTranslations\": {\n            \"nameTranslation\": {\n              \"hi\": \"एटीपी\",\n              \"ar\": \"إسبانيا\",\n              \"bn\": \"স্পেন\",\n              \"ru\": \"Испания\"\n            },\n            \"shortNameTranslation\": {}\n          }\n        },\n        \"uniqueTournament\": {\n          \"name\": \"Liga ACB\",\n          \"slug\": \"liga-acb\",\n          \"primaryColorHex\": \"#e9510e\",\n          \"secondaryColorHex\": \"#b23c0a\",\n          \"category\": {\n            \"name\": \"Spain\",\n            \"slug\": \"spain\",\n            \"sport\": {\n              \"name\": \"Basketball\",\n              \"slug\": \"basketball\",\n              \"id\": 2\n            },\n            \"priority\": 0,\n            \"country\": {\n              \"alpha2\": \"ES\",\n              \"alpha3\": \"ESP\",\n              \"name\": \"Spain\",\n              \"slug\": \"spain\"\n            },\n            \"id\": 109,\n            \"flag\": \"spain\",\n            \"alpha2\": \"ES\",\n            \"fieldTranslations\": {\n              \"nameTranslation\": {\n                \"hi\": \"एटीपी\",\n                \"ar\": \"إسبانيا\",\n                \"bn\": \"স্পেন\",\n                \"ru\": \"Испания\"\n              },\n              \"shortNameTranslation\": {}\n            }\n          },\n          \"userCount\": 9283,\n          \"hasPerformanceGraphFeature\": false,\n          \"country\": {},\n          \"id\": 264,\n          \"hasEventPlayerStatistics\": false,\n          \"hasBoxScore\": true,\n          \"displayInverseHomeAwayTeams\": false,\n        "
+  },
+  "team_ep_/team/3560/events/h2h/25134": {
+    "status": 404,
+    "keys": null
+  },
+  "team_ep_/team/3560/h2h/25134": {
+    "status": 404,
+    "keys": null
+  }
+}

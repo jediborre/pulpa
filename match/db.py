@@ -2,13 +2,18 @@
 SQLite persistence layer for SofaScore match data.
 
 Schema:
-  matches        – one row per match (metadata + final score)
-  quarter_scores – score per quarter, FK → matches
-  play_by_play   – every scoring play, FK → matches
-    graph_points   – match pressure/momentum graph points, FK → matches
-    discovered_ft_matches – finished match IDs discovered by date crawl
-    backfill_state – key/value state checkpoints for resumable jobs
-        eval_match_results – per-date per-match eval outputs (+ dynamic model columns)
+  matches              – one row per match (metadata + final score)
+  quarter_scores       – score per quarter, FK → matches
+  play_by_play         – scoring plays only (backward compat), FK → matches
+  match_events         – ALL incidents with classification (fouls, TOs, subs, etc.), FK → matches
+  match_h2h            – head-to-head history from /event/{id}/h2h, FK → matches
+  player_stats         – per-player statistics (TODO: confirm endpoint), FK → matches
+  lineups              – starting lineups and substitutions (TODO: confirm endpoint), FK → matches
+  match_odds           – betting odds / handicap (TODO: confirm endpoint), FK → matches
+  graph_points         – match pressure/momentum graph points, FK → matches
+  discovered_ft_matches – finished match IDs discovered by date crawl
+  backfill_state       – key/value state checkpoints for resumable jobs
+  eval_match_results   – per-date per-match eval outputs (+ dynamic model columns)
 """
 
 import re
@@ -128,11 +133,137 @@ def init_db(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_matches_date
             ON matches (date);
 
+        -- All incidents (scoring + non-scoring) with classification
+        CREATE TABLE IF NOT EXISTS match_events (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id      TEXT NOT NULL,
+            quarter       TEXT NOT NULL,
+            seq           INTEGER NOT NULL,
+            time          TEXT,
+            time_seconds  INTEGER,
+            incident_type TEXT NOT NULL,
+            subtype       TEXT,
+            player        TEXT,
+            player_id     TEXT,
+            team          TEXT,
+            points        INTEGER,
+            home_score    INTEGER,
+            away_score    INTEGER,
+            FOREIGN KEY (match_id) REFERENCES matches(match_id)
+        );
+
+        -- Head-to-head history per match
+        CREATE TABLE IF NOT EXISTS match_h2h (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id    TEXT NOT NULL,
+            h2h_match_id TEXT NOT NULL,
+            date        TEXT NOT NULL,
+            home_team   TEXT,
+            away_team   TEXT,
+            home_score  INTEGER,
+            away_score  INTEGER,
+            q1_home     INTEGER, q1_away INTEGER,
+            q2_home     INTEGER, q2_away INTEGER,
+            q3_home     INTEGER, q3_away INTEGER,
+            q4_home     INTEGER, q4_away INTEGER,
+            tournament  TEXT,
+            FOREIGN KEY (match_id) REFERENCES matches(match_id)
+        );
+
+        -- Per-player statistics (SofaScore rating, pts, fouls, mins, +/-)
+        CREATE TABLE IF NOT EXISTS player_stats (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id        TEXT NOT NULL,
+            team            TEXT NOT NULL,
+            player_name     TEXT NOT NULL,
+            player_id       TEXT,
+            sofascore_rating REAL,
+            minutes_played  INTEGER,
+            points          INTEGER,
+            fouls           INTEGER,
+            plus_minus      INTEGER,
+            field_goals_made    INTEGER,
+            field_goals_attempted INTEGER,
+            three_made      INTEGER,
+            three_attempted INTEGER,
+            free_throws_made    INTEGER,
+            free_throws_attempted INTEGER,
+            rebounds        INTEGER,
+            assists         INTEGER,
+            steals          INTEGER,
+            turnovers       INTEGER,
+            blocks          INTEGER,
+            FOREIGN KEY (match_id) REFERENCES matches(match_id)
+        );
+
+        -- Lineups / starting players per match
+        CREATE TABLE IF NOT EXISTS lineups (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id    TEXT NOT NULL,
+            team        TEXT NOT NULL,
+            player_name TEXT NOT NULL,
+            player_id   TEXT,
+            is_starter  INTEGER NOT NULL DEFAULT 0,
+            shirt_number INTEGER,
+            position    TEXT,
+            FOREIGN KEY (match_id) REFERENCES matches(match_id)
+        );
+
+        -- Team-level statistics (2PT%, 3PT%, rebounds, fouls, timeouts, etc.)
+        CREATE TABLE IF NOT EXISTS team_statistics (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id     TEXT NOT NULL,
+            period       TEXT NOT NULL DEFAULT 'ALL',
+            group_name   TEXT,
+            stat_key     TEXT NOT NULL,
+            stat_name    TEXT,
+            home_value   REAL,
+            away_value   REAL,
+            home_total   REAL,
+            away_total   REAL,
+            home_display TEXT,
+            away_display TEXT,
+            FOREIGN KEY (match_id) REFERENCES matches(match_id)
+        );
+
+        -- Betting odds / handicap
+        CREATE TABLE IF NOT EXISTS match_odds (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id      TEXT NOT NULL,
+            odds_type     TEXT NOT NULL,
+            market_name   TEXT,
+            market_period TEXT,
+            home_value    REAL,
+            away_value    REAL,
+            draw_value    REAL,
+            timestamp     TEXT,
+            FOREIGN KEY (match_id) REFERENCES matches(match_id)
+        );
+
         CREATE TABLE IF NOT EXISTS settings (
             key        TEXT PRIMARY KEY,
             value      TEXT NOT NULL,
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
+
+        -- Team strength snapshot (pregameForm + performance points)
+        CREATE TABLE IF NOT EXISTS team_strength (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            team_id      INTEGER NOT NULL,
+            team_name    TEXT NOT NULL,
+            match_id     TEXT NOT NULL,
+            position     INTEGER,
+            wins         INTEGER,
+            losses       INTEGER,
+            form         TEXT,
+            perf_points  TEXT,
+            fetched_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (match_id) REFERENCES matches(match_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_team_strength_team
+            ON team_strength (team_id);
+        CREATE INDEX IF NOT EXISTS idx_team_strength_match
+            ON team_strength (match_id);
     """)
     _ensure_match_columns(conn)
     conn.commit()
@@ -159,6 +290,17 @@ def _ensure_match_columns(conn: sqlite3.Connection) -> None:
     existing = {
         row["name"] for row in conn.execute("PRAGMA table_info(matches)").fetchall()
     }
+    # Also migrate match_odds columns
+    odds_existing = {
+        row["name"] for row in conn.execute("PRAGMA table_info(match_odds)").fetchall()
+    }
+    for col_name in ("market_name", "market_period"):
+        if col_name not in odds_existing:
+            try:
+                conn.execute(f"ALTER TABLE match_odds ADD COLUMN {col_name} TEXT")
+            except Exception:
+                pass
+
     for col_name in (
         "home_slug",
         "away_slug",
@@ -166,13 +308,107 @@ def _ensure_match_columns(conn: sqlite3.Connection) -> None:
         "custom_id",
         "status_type",
         "status_description",
+        "home_team_id",
+        "away_team_id",
+        "home_rating",
+        "away_rating",
     ):
         if col_name in existing:
             continue
+        if col_name.endswith("_id"):
+            col_type = "INTEGER"
+        elif col_name.endswith("_rating"):
+            col_type = "REAL"
+        else:
+            col_type = "TEXT"
         conn.execute(
-            f"ALTER TABLE matches ADD COLUMN {_quote_ident(col_name)} TEXT"
+            f"ALTER TABLE matches ADD COLUMN {_quote_ident(col_name)} {col_type}"
         )
     conn.commit()
+
+
+def enrich_h2h_team_stats(
+    conn: sqlite3.Connection,
+    match_id: str,
+) -> list[dict]:
+    """
+    Enrich H2H data for a match with team strength statistics.
+
+    For each past matchup between the same teams, looks up
+    team_statistics from the DB to include avg game stats.
+
+    Returns list with enriched H2H rows.
+    """
+    h2h_rows = conn.execute(
+        """
+        SELECT h2h_match_id, date, home_team, away_team,
+               home_score, away_score
+        FROM match_h2h
+        WHERE match_id = ?
+          AND date != ''
+        ORDER BY date DESC LIMIT 20
+        """,
+        (match_id,),
+    ).fetchall()
+
+    enriched: list[dict] = []
+    for row in h2h_rows:
+        r = dict(row)
+        stat_avgs = conn.execute(
+            """
+            SELECT t.stat_key, t.stat_name,
+                   ROUND(AVG(t.home_value), 1) as home_avg,
+                   ROUND(AVG(t.away_value), 1) as away_avg
+            FROM match_h2h h
+            JOIN team_statistics t ON t.match_id = h.h2h_match_id
+            WHERE h.match_id = ?
+              AND h.h2h_match_id != ?
+              AND t.period = 'ALL'
+              AND t.home_value IS NOT NULL
+              AND t.away_value IS NOT NULL
+            GROUP BY t.stat_key, t.stat_name
+            ORDER BY t.stat_key
+            """,
+            (match_id, row["h2h_match_id"]),
+        ).fetchall()
+        if stat_avgs:
+            r["h2h_team_avgs"] = [dict(s) for s in stat_avgs]
+        enriched.append(r)
+
+    return enriched or [dict(r) for r in h2h_rows]
+
+
+def get_h2h_team_averages(
+    conn: sqlite3.Connection,
+    match_id: str,
+) -> list[dict]:
+    """
+    Compute rolling averages of team statistics across all H2H matches
+    for this team pairing.
+
+    Returns list of stat dicts with stat_key, stat_name,
+    n_matches, home_avg, away_avg.
+    """
+    rows = conn.execute(
+        """
+        SELECT
+            t.stat_key,
+            t.stat_name,
+            COUNT(*) AS n_matches,
+            ROUND(AVG(t.home_value), 1) AS home_avg,
+            ROUND(AVG(t.away_value), 1) AS away_avg
+        FROM match_h2h h
+        JOIN team_statistics t ON t.match_id = h.h2h_match_id
+        WHERE h.match_id = ?
+          AND t.period = 'ALL'
+          AND t.home_value IS NOT NULL
+          AND t.away_value IS NOT NULL
+        GROUP BY t.stat_key, t.stat_name
+        ORDER BY t.stat_key
+        """,
+        (match_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def _winner_from_scores(home: int | None, away: int | None) -> str | None:
@@ -406,7 +642,7 @@ def save_eval_match_result(
 
 
 def save_match(conn: sqlite3.Connection, match_id: str, data: dict) -> None:
-    """Upsert a full match (metadata + quarters + play-by-play + graph)."""
+    """Upsert a full match (metadata + quarters + PBP + events + H2H + graph)."""
     m = data["match"]
     s = data["score"]
 
@@ -415,20 +651,25 @@ def save_match(conn: sqlite3.Connection, match_id: str, data: dict) -> None:
     conn.execute(
         """
         INSERT OR REPLACE INTO matches
-                    (match_id, home_team, away_team, home_slug, away_slug, event_slug, custom_id, status_type, status_description, date, time, venue, league,
-           home_record, away_record, home_score, away_score)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    (match_id, home_team, away_team, home_slug, away_slug, event_slug,
+                     custom_id, status_type, status_description, date, time, venue, league,
+                     home_record, away_record, home_score, away_score,
+                     home_team_id, away_team_id,
+                     home_rating, away_rating)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """,
         (
             match_id,
             m["home_team"], m["away_team"],
             m.get("home_slug", "unknown"), m.get("away_slug", "unknown"),
-                        m.get("event_slug", "unknown"), m.get("custom_id", ""),
-                        m.get("status_type", ""), m.get("status_description", ""),
+            m.get("event_slug", "unknown"), m.get("custom_id", ""),
+            m.get("status_type", ""), m.get("status_description", ""),
             m["date"], m["time"],
             m.get("venue", ""), m.get("league", ""),
             m.get("home_record", ""), m.get("away_record", ""),
             s["home"], s["away"],
+            m.get("home_team_id"), m.get("away_team_id"),
+            m.get("home_rating"), m.get("away_rating"),
         ),
     )
 
@@ -438,7 +679,7 @@ def save_match(conn: sqlite3.Connection, match_id: str, data: dict) -> None:
             (match_id, quarter, scores["home"], scores["away"]),
         )
 
-    # Full replace for play-by-play to avoid duplicates on re-scrape
+    # Full replace for play-by-play (scoring plays only, backward compat)
     conn.execute("DELETE FROM play_by_play WHERE match_id = ?", (match_id,))
     for quarter, plays in data.get("play_by_play", {}).items():
         for seq, play in enumerate(plays):
@@ -454,6 +695,49 @@ def save_match(conn: sqlite3.Connection, match_id: str, data: dict) -> None:
                     play.get("team"), play.get("home_score"), play.get("away_score"),
                 ),
             )
+
+    # Full replace for all events (includes scoring + non-scoring)
+    conn.execute("DELETE FROM match_events WHERE match_id = ?", (match_id,))
+    for quarter, events in data.get("events", {}).items():
+        for seq, ev in enumerate(events):
+            conn.execute(
+                """
+                INSERT INTO match_events
+                  (match_id, quarter, seq, time, time_seconds, incident_type, subtype,
+                   player, player_id, team, points, home_score, away_score)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                """,
+                (
+                    match_id, quarter, seq,
+                    ev.get("time"), ev.get("time_seconds"),
+                    ev.get("incident_type"), ev.get("subtype"),
+                    ev.get("player"), ev.get("player_id"),
+                    ev.get("team"), ev.get("points"),
+                    ev.get("home_score"), ev.get("away_score"),
+                ),
+            )
+
+    # Full replace for H2H
+    save_match_h2h(conn, match_id, data.get("h2h", []))
+
+    # Lineups
+    save_lineups(conn, match_id, data.get("lineups", []))
+
+    # Player statistics (with SofaScore ratings)
+    save_player_stats(conn, match_id, data.get("player_stats", []))
+
+    # Team-level statistics (2PT%, 3PT%, rebounds, fouls, etc.)
+    save_team_statistics(conn, match_id, data.get("team_statistics", []))
+
+    # Per-period team statistics (computed from incidents)
+    # Stored in the same team_statistics table with period='Q1','Q2',etc.
+    save_team_statistics(conn, match_id, data.get("period_stats", []))
+
+    # Pre-match betting odds
+    save_match_odds(conn, match_id, data.get("odds", []))
+
+    # Team strength snapshots (pregameForm + performance points)
+    save_team_strength(conn, match_id, data.get("team_strength", []))
 
     # Full replace for graph points to avoid duplicates on re-scrape
     conn.execute("DELETE FROM graph_points WHERE match_id = ?", (match_id,))
@@ -474,8 +758,197 @@ def save_match(conn: sqlite3.Connection, match_id: str, data: dict) -> None:
     conn.commit()
 
 
-def get_match(conn: sqlite3.Connection, match_id: str) -> dict | None:
-    """Reconstruct the full match dict from the DB (same shape as scraper output)."""
+def save_match_h2h(conn: sqlite3.Connection, match_id: str, h2h_rows: list[dict]) -> None:
+    """Replace H2H history for a match."""
+    conn.execute("DELETE FROM match_h2h WHERE match_id = ?", (match_id,))
+    for row in h2h_rows:
+        conn.execute(
+            """
+            INSERT INTO match_h2h
+              (match_id, h2h_match_id, date, home_team, away_team,
+               home_score, away_score,
+               q1_home, q1_away, q2_home, q2_away, q3_home, q3_away, q4_home, q4_away,
+               tournament)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                match_id,
+                row.get("h2h_match_id", ""),
+                row.get("date", ""),
+                row.get("home_team", ""),
+                row.get("away_team", ""),
+                row.get("home_score"),
+                row.get("away_score"),
+                row.get("q1_home"), row.get("q1_away"),
+                row.get("q2_home"), row.get("q2_away"),
+                row.get("q3_home"), row.get("q3_away"),
+                row.get("q4_home"), row.get("q4_away"),
+                row.get("tournament", ""),
+            ),
+        )
+
+
+def save_player_stats(conn: sqlite3.Connection, match_id: str, stats_rows: list[dict]) -> None:
+    """Replace player statistics for a match."""
+    if not stats_rows:
+        return
+    conn.execute("DELETE FROM player_stats WHERE match_id = ?", (match_id,))
+    for row in stats_rows:
+        conn.execute(
+            """
+            INSERT INTO player_stats
+              (match_id, team, player_name, player_id, sofascore_rating,
+               minutes_played, points, fouls, plus_minus,
+               field_goals_made, field_goals_attempted,
+               three_made, three_attempted,
+               free_throws_made, free_throws_attempted,
+               rebounds, assists, steals, turnovers, blocks)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                match_id,
+                row.get("team", ""),
+                row.get("player_name", ""),
+                row.get("player_id"),
+                row.get("sofascore_rating"),
+                row.get("minutes_played"),
+                row.get("points"),
+                row.get("fouls"),
+                row.get("plus_minus"),
+                row.get("field_goals_made"),
+                row.get("field_goals_attempted"),
+                row.get("three_made"),
+                row.get("three_attempted"),
+                row.get("free_throws_made"),
+                row.get("free_throws_attempted"),
+                row.get("rebounds"),
+                row.get("assists"),
+                row.get("steals"),
+                row.get("turnovers"),
+                row.get("blocks"),
+            ),
+        )
+
+
+def save_lineups(conn: sqlite3.Connection, match_id: str, lineup_rows: list[dict]) -> None:
+    """Replace lineups for a match."""
+    if not lineup_rows:
+        return
+    conn.execute("DELETE FROM lineups WHERE match_id = ?", (match_id,))
+    for row in lineup_rows:
+        conn.execute(
+            """
+            INSERT INTO lineups
+              (match_id, team, player_name, player_id, is_starter, shirt_number, position)
+            VALUES (?,?,?,?,?,?,?)
+            """,
+            (
+                match_id,
+                row.get("team", ""),
+                row.get("player_name", ""),
+                row.get("player_id"),
+                1 if row.get("is_starter") else 0,
+                row.get("shirt_number"),
+                row.get("position"),
+            ),
+        )
+
+
+def save_team_statistics(conn: sqlite3.Connection, match_id: str, stat_rows: list[dict]) -> None:
+    """Replace team-level statistics for a match."""
+    conn.execute("DELETE FROM team_statistics WHERE match_id = ?", (match_id,))
+    for row in stat_rows:
+        conn.execute(
+            """
+            INSERT INTO team_statistics
+              (match_id, period, group_name, stat_key, stat_name,
+               home_value, away_value, home_total, away_total,
+               home_display, away_display)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                match_id,
+                row.get("period", "ALL"),
+                row.get("group_name", ""),
+                row.get("stat_key", ""),
+                row.get("stat_name", ""),
+                row.get("home_value"),
+                row.get("away_value"),
+                row.get("home_total"),
+                row.get("away_total"),
+                row.get("home_display", ""),
+                row.get("away_display", ""),
+            ),
+        )
+
+
+def save_match_odds(conn: sqlite3.Connection, match_id: str, odds_rows: list[dict]) -> None:
+    """Replace betting odds for a match."""
+    if not odds_rows:
+        return
+    conn.execute("DELETE FROM match_odds WHERE match_id = ?", (match_id,))
+    for row in odds_rows:
+        conn.execute(
+            """
+            INSERT INTO match_odds
+              (match_id, odds_type, market_name, market_period,
+               home_value, away_value, draw_value, timestamp)
+            VALUES (?,?,?,?,?,?,?,?)
+            """,
+            (
+                match_id,
+                row.get("odds_type", ""),
+                row.get("market_name", ""),
+                row.get("market_period", ""),
+                row.get("home_value"),
+                row.get("away_value"),
+                row.get("draw_value"),
+                row.get("timestamp"),
+            ),
+        )
+    conn.commit()
+
+
+def save_team_strength(
+    conn: sqlite3.Connection, match_id: str, rows: list[dict]
+) -> None:
+    """Replace team strength data for a match."""
+    if not rows:
+        return
+    conn.execute("DELETE FROM team_strength WHERE match_id = ?", (match_id,))
+    for row in rows:
+        conn.execute(
+            """
+            INSERT INTO team_strength
+              (team_id, team_name, match_id, position, wins, losses, form, perf_points)
+            VALUES (?,?,?,?,?,?,?,?)
+            """,
+            (
+                row["team_id"],
+                row.get("team_name", ""),
+                match_id,
+                row.get("position"),
+                row.get("wins"),
+                row.get("losses"),
+                row.get("form"),
+                row.get("perf_points"),
+            ),
+        )
+    conn.commit()
+
+
+def get_match(
+    conn: sqlite3.Connection,
+    match_id: str,
+    include_events: bool = False,
+    include_h2h: bool = False,
+) -> dict | None:
+    """Reconstruct the full match dict from the DB.
+
+    By default returns the same shape as the old scraper output (backward compat).
+    Set include_events=True to also load the full event stream.
+    Set include_h2h=True to also load H2H history.
+    """
     _ensure_match_columns(conn)
     row = conn.execute(
         "SELECT * FROM matches WHERE match_id = ?", (match_id,)
@@ -512,7 +985,7 @@ def get_match(conn: sqlite3.Connection, match_id: str) -> dict | None:
     ):
         graph_points.append({"minute": gr["minute"], "value": gr["value"]})
 
-    return {
+    out = {
         "match_id": match_id,
         "match": {
             "home_team": row["home_team"],
@@ -523,6 +996,10 @@ def get_match(conn: sqlite3.Connection, match_id: str) -> dict | None:
             "custom_id": row["custom_id"] or "",
             "status_type": row["status_type"] or "",
             "status_description": row["status_description"] or "",
+            "home_team_id": row.get("home_team_id"),
+            "away_team_id": row.get("away_team_id"),
+            "home_rating": row.get("home_rating"),
+            "away_rating": row.get("away_rating"),
             "date": row["date"],
             "time": row["time"],
             "venue": row["venue"],
@@ -539,6 +1016,46 @@ def get_match(conn: sqlite3.Connection, match_id: str) -> dict | None:
         "play_by_play": pbp,
         "graph_points": graph_points,
     }
+
+    if include_events:
+        events: dict[str, list] = {}
+        for er in conn.execute(
+            """
+            SELECT quarter, time, time_seconds, incident_type, subtype,
+                   player, player_id, team, points, home_score, away_score
+            FROM match_events WHERE match_id = ? ORDER BY quarter, seq
+            """,
+            (match_id,),
+        ):
+            events.setdefault(er["quarter"], []).append({
+                "time": er["time"],
+                "time_seconds": er["time_seconds"],
+                "incident_type": er["incident_type"],
+                "subtype": er["subtype"],
+                "player": er["player"],
+                "player_id": er["player_id"],
+                "team": er["team"],
+                "points": er["points"],
+                "home_score": er["home_score"],
+                "away_score": er["away_score"],
+            })
+        out["events"] = events
+
+    if include_h2h:
+        h2h_rows = conn.execute(
+            """
+            SELECT h2h_match_id, date, home_team, away_team,
+                   home_score, away_score,
+                   q1_home, q1_away, q2_home, q2_away,
+                   q3_home, q3_away, q4_home, q4_away,
+                   tournament
+            FROM match_h2h WHERE match_id = ? ORDER BY date
+            """,
+            (match_id,),
+        ).fetchall()
+        out["h2h"] = [dict(r) for r in h2h_rows]
+
+    return out
 
 
 def list_matches(conn: sqlite3.Connection) -> list:

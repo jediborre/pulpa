@@ -1831,7 +1831,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_eval.add_argument(
         "--force-version",
-        choices=["auto", "v1", "v2", "v4", "hybrid"],
+        choices=["auto", "v1", "v2", "v4", "v6", "v6_1", "v6_2", "v6_3", "m27_v3", "hybrid"],
         default="hybrid",
         help="Inference policy (default: hybrid)",
     )

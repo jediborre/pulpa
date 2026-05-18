@@ -1,0 +1,72 @@
+{
+  "uicontrols": {
+    "activeSport": "basketball",
+    "activeWidgetEvent": null,
+    "favoritesUI": {
+      "isSyncingFavorites": false
+    },
+    "showListOdds": false,
+    "showAuthModal": false,
+    "showRecommendationLanguageModal": false,
+    "showAllByDate": {},
+    "siteBettingAgeConfirmed": null,
+    "surveys": {},
+    "inAppSurveys": {},
+    "isMenuOpen": false,
+    "triggerToast": {
+      "msgId": "",
+      "toastOptions": {
+        "autoClose": 3000,
+        "closeButton": false,
+        "closeOnClick": false,
+        "position": "bottom-center",
+        "className": "sofa-toast--info"
+      }
+    },
+    "muteChallengeResultPopup": false,
+    "calendarType": null
+  },
+  "locale": {
+    "selectedLocale": "",
+    "geoIPAlpha2": "",
+    "continent": ""
+  },
+  "branding": {},
+  "odds": {
+    "type": "decimal",
+    "isOddsTypeSet": false,
+    "selectedProviderId": null,
+    "selectedOddsTabProviderId": null,
+    "selectedFeaturedTournamentProviders": null
+  },
+  "l10n": {
+    "displayInverseHomeAwayTeams": false
+  },
+  "auth": {},
+  "votes": {
+    "eventVotes": {},
+    "dailyBonus": null,
+    "changedVotes": []
+  },
+  "favorites": {
+    "lists": {
+      "teams": [],
+      "favoriteTeams": [],
+      "tournaments": [],
+      "favoriteLeagues": [],
+      "stages": [],
+      "mutedStages": [],
+      "players": [],
+      "favoritePlayers": [],
+      "events": [],
+      "mutedEvents": [],
+      "uniqueStages": [],
+      "favoriteUniqueStages": []
+    },
+    "events": {},
+    "teams": {},
+    "tournaments": {},
+    "stages": {},
+    "players": {}
+  }
+}

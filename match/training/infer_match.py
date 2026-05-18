@@ -43,6 +43,7 @@ MODEL_DIR_V6_2 = ROOT / "training" / "model_outputs_v6_2"
 MODEL_DIR_V6_3 = ROOT / "training" / "model_outputs_v6_3"
 MODEL_DIR_V9 = ROOT / "training" / "model_outputs_v9"
 MODEL_DIR_V10 = ROOT / "training" / "model_outputs_v10"
+MODEL_DIR_M27_V3 = ROOT / "training" / "model_outputs_m27_v3"
 GATE_CONFIG = ROOT / "training" / "model_outputs_v2" / "gate_config.json"
 
 # ---------------------------------------------------------------------------
@@ -1724,6 +1725,194 @@ def _decision_gate(
     }
 
 
+# -----------------------------------------------------------------------
+# m27_v3 inference
+# -----------------------------------------------------------------------
+_M27_V3_CACHE: dict | None = None
+
+def _load_m27_v3_artifacts() -> dict:
+    global _M27_V3_CACHE
+    if _M27_V3_CACHE is not None:
+        return _M27_V3_CACHE
+    d = MODEL_DIR_M27_V3
+    artifacts = {
+        "xgb": joblib.load(d / "m27_v3_xgb.joblib"),
+        "hist": joblib.load(d / "m27_v3_histgb.joblib"),
+        "vec": joblib.load(d / "m27_v3_vectorizer.joblib"),
+        "cal": joblib.load(d / "m27_v3_calibrator.joblib"),
+    }
+    # Compute ensemble weights from validation split once
+    cache = joblib.load(d / "dynamic_rows_cache.joblib")
+    from sklearn.metrics import roc_auc_score
+
+    match_first_dt = {}
+    for r in cache:
+        mid = str(r["match_id"])
+        dt = r["dt"]
+        prev = match_first_dt.get(mid)
+        if prev is None or dt < prev:
+            match_first_dt[mid] = dt
+    ordered = sorted(match_first_dt.items(), key=lambda x: (x[1], x[0]))
+    n = len(ordered)
+    n_train = int(n * 0.70)
+    n_val = int(n * 0.15)
+    val_ids = {m for m, _ in ordered[n_train:n_train + n_val]}
+    val_rows = [r for r in cache if r["match_id"] in val_ids]
+
+    if val_rows:
+        val_dict = [r["features"] for r in val_rows]
+        y_val = [r["target"] for r in val_rows]
+        val_mat = artifacts["vec"].transform(val_dict)
+        xgb_val_auc = roc_auc_score(
+            y_val, artifacts["xgb"].predict_proba(val_mat)[:, 1]
+        )
+        hist_val_auc = roc_auc_score(
+            y_val,
+            artifacts["hist"].predict_proba(
+                val_mat.toarray() if hasattr(val_mat, "toarray") else val_mat
+            )[:, 1],
+        )
+        total = xgb_val_auc + hist_val_auc
+        artifacts["w_xgb"] = xgb_val_auc / total if total > 0 else 0.5
+        artifacts["w_hist"] = hist_val_auc / total if total > 0 else 0.5
+    else:
+        artifacts["w_xgb"] = 0.5
+        artifacts["w_hist"] = 0.5
+
+    _M27_V3_CACHE = artifacts
+    return artifacts
+
+
+def _compute_h2h_for_match(
+    conn, home_team: str, away_team: str, match_date: str
+) -> dict:
+    pair = tuple(sorted([home_team, away_team]))
+    qs_rows = conn.execute(
+        """SELECT m.date, qs.quarter, qs.home, qs.away
+           FROM quarter_scores qs
+           JOIN matches m ON m.match_id = qs.match_id
+           WHERE (m.home_team = ? AND m.away_team = ?)
+              OR (m.home_team = ? AND m.away_team = ?)
+           ORDER BY m.date""",
+        (*pair, *pair),
+    ).fetchall()
+    past_games: list[dict] = []
+    for dt, qtr, hs, aw in qs_rows:
+        if hs is None or aw is None:
+            continue
+        g = past_games[-1] if past_games and past_games[-1].get("_date") == dt else None
+        if g is None:
+            g = {"_date": dt, "home_team": None, "away_team": None, "quarters": {}}
+            past_games.append(g)
+        g["quarters"][qtr] = (int(hs), int(aw))
+    # Populate teams for each game
+    for g in past_games:
+        row = conn.execute(
+            "SELECT home_team, away_team FROM matches WHERE date = ? AND "
+            "((home_team = ? AND away_team = ?) OR (home_team = ? AND away_team = ?))",
+            (g["_date"], *pair, *pair),
+        ).fetchone()
+        if row:
+            g["home_team"], g["away_team"] = row
+
+    # Filter to games before match_date and compute features
+    past = [g for g in past_games if str(g["_date"]) < str(match_date)]
+
+    if not past:
+        return {}
+
+    q1_diffs: list[int] = []
+    home_won_last3 = 0
+    last_home_won = 0
+    n = len(past)
+
+    for i, g in enumerate(past):
+        qs = g.get("quarters", {})
+        is_home = g["home_team"] == home_team
+        sign = 1 if is_home else -1
+        q1 = qs.get("Q1")
+        if q1:
+            q1_diffs.append((q1[0] - q1[1]) * sign)
+
+        total_h = sum(v[0] for v in qs.values())
+        total_a = sum(v[1] for v in qs.values())
+        home_won = (total_h > total_a) == is_home
+
+        if n - i <= 3:
+            if home_won:
+                home_won_last3 += 1
+
+        if i == n - 1:
+            last_home_won = 1 if home_won else 0
+
+    feats: dict = {}
+    feats["h2h_avg_q1_diff"] = round(sum(q1_diffs) / len(q1_diffs), 3) if q1_diffs else 0.0
+    feats["h2h_recent3_home_won"] = round(home_won_last3 / min(n, 3), 3)
+    feats["h2h_last_home_won"] = last_home_won
+    return feats
+
+
+def score_m27_v3(
+    match_data: dict,
+    conn,
+    match_id: str,
+) -> dict:
+    from train_q4_m27_v3 import _build_m27_v3_features as _build_m27v3_feats
+
+    sample_dt = (match_data.get("match") or {}).get("date", "")
+    ht = (match_data.get("match") or {}).get("home_team", "")
+    at = (match_data.get("match") or {}).get("away_team", "")
+    if not ht or not at:
+        return {"available": False, "reason": "missing_team_info"}
+
+    # Compute prior_wr from DB (same as training pipeline)
+    sample_time = (match_data.get("match") or {}).get("time", "23:59")
+    home_prior_wr = _team_prior_wr(conn, ht, sample_dt, sample_time, window=12)
+    away_prior_wr = _team_prior_wr(conn, at, sample_dt, sample_time, window=12)
+
+    # Build a minimal sample-like object
+    class _FakeSample:
+        features_q4 = {
+            "gender_bucket": _infer_gender(
+                (match_data.get("match") or {}).get("league", ""), ht, at
+            ),
+            "home_prior_wr": home_prior_wr,
+            "away_prior_wr": away_prior_wr,
+            "prior_wr_diff": home_prior_wr - away_prior_wr,
+            "prior_wr_sum": home_prior_wr + away_prior_wr,
+        }
+
+    feat = _build_m27v3_feats(_FakeSample(), match_data)
+
+    # Add H2H features
+    h2h_feats = _compute_h2h_for_match(conn, ht, at, sample_dt)
+    feat.update(h2h_feats)
+
+    # Load model (cached singleton)
+    arts = _load_m27_v3_artifacts()
+    x_mat = arts["vec"].transform([feat])
+
+    xgb_p = arts["xgb"].predict_proba(x_mat)[0, 1]
+    hist_p = arts["hist"].predict_proba(
+        x_mat.toarray() if hasattr(x_mat, "toarray") else x_mat
+    )[0, 1]
+
+    import numpy as np
+    ens_p = float(arts["w_xgb"] * xgb_p + arts["w_hist"] * hist_p)
+    cal_p = float(np.clip(arts["cal"].transform(np.clip([[ens_p]], 0.0, 1.0))[0], 0.0, 1.0))
+
+    confidence = max(cal_p, 1.0 - cal_p)
+
+    return {
+        "available": True,
+        "version": "m27_v3",
+        "p_home_win": round(cal_p, 6),
+        "p_away_win": round(1.0 - cal_p, 6),
+        "predicted_winner": "home" if cal_p >= 0.5 else "away",
+        "confidence": round(confidence, 6),
+    }
+
+
 def run_inference(
     match_id: str,
     metric: str,
@@ -1787,7 +1976,7 @@ def run_inference(
     def forced_version_for_target(target: str) -> str | None:
         if isinstance(force_version, dict):
             return force_version.get(target) or None
-        if force_version in ("v1", "v2", "v4", "v6", "v6_1", "v6_2", "v6_3", "v9"):
+        if force_version in ("v1", "v2", "v4", "v6", "v6_1", "v6_2", "v6_3", "v9", "m27_v3"):
             return force_version
         if force_version == "hybrid":
             return "v2" if target == "q3" else "v4"
@@ -1873,6 +2062,16 @@ def run_inference(
             prob_home = probs["ensemble_avg_prob"]
             version = "v3"
             model_name = "ensemble_avg_prob"
+            snapshot_used = snap
+        elif version == "m27_v3" and target == "q4":
+            snap = 27
+            result = score_m27_v3(match_data, conn, match_id)
+            if not result.get("available"):
+                out["predictions"][target] = result
+                continue
+            prob_home = result["p_home_win"]
+            version = "m27_v3"
+            model_name = "m27_v3_ensemble"
             snapshot_used = snap
         elif version == "v6_3" and target == "q4":
             snap = _select_v6_3_q4_snapshot(out["match"].get("minute_estimate"))

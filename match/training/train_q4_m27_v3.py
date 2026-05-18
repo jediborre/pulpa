@@ -36,7 +36,7 @@ import train_q3_q4_models_v6 as v6
 
 ROOT = v6.ROOT
 DB_PATH = v6.DB_PATH
-OUT_DIR = ROOT / "training" / "model_outputs_m27_v2"
+OUT_DIR = ROOT / "training" / "model_outputs_m27_v3"
 DYNAMIC_ROWS_CACHE = OUT_DIR / "dynamic_rows_cache.joblib"
 TRAIN_RATIO = 0.70
 VAL_RATIO = 0.15
@@ -226,7 +226,7 @@ def _infer_regulation_quarter_minutes(match_data: dict) -> float:
     return 10.0
 
 
-def _build_m27_v2_features(
+def _build_m27_v3_features(
     sample: v6.MatchSample,
     match_data: dict,
 ) -> dict:
@@ -575,7 +575,7 @@ def _build_dynamic_samples(
         if not match_data or not _window_is_eligible_m27(match_data):
             continue
 
-        feat = _build_m27_v2_features(sample, match_data)
+        feat = _build_m27_v3_features(sample, match_data)
 
         ht = match_data["match"]["home_team"]
         at = match_data["match"]["away_team"]
@@ -819,7 +819,7 @@ def train() -> dict:
 
     results = {
         "config": {
-            "version": "m27_v2",
+            "version": "m27_v3",
             "snapshot": SNAPSHOT_MINUTE,
             "train_ratio": TRAIN_RATIO,
             "val_ratio": VAL_RATIO,
@@ -836,24 +836,24 @@ def train() -> dict:
         "trained_at": time.time(),
     }
 
-    vectorizer_path = OUT_DIR / "m27_v2_vectorizer.joblib"
+    vectorizer_path = OUT_DIR / "m27_v3_vectorizer.joblib"
     joblib.dump(outer["vectorizer"], vectorizer_path)
     results["model_files"]["vectorizer"] = str(vectorizer_path)
 
-    xgb_path = OUT_DIR / "m27_v2_xgb.joblib"
+    xgb_path = OUT_DIR / "m27_v3_xgb.joblib"
     joblib.dump(outer["xgb_model"], xgb_path)
     results["model_files"]["xgb"] = str(xgb_path)
 
-    hist_path = OUT_DIR / "m27_v2_histgb.joblib"
+    hist_path = OUT_DIR / "m27_v3_histgb.joblib"
     joblib.dump(outer["hist_model"], hist_path)
     results["model_files"]["histgb"] = str(hist_path)
 
-    cal_path = OUT_DIR / "m27_v2_calibrator.joblib"
+    cal_path = OUT_DIR / "m27_v3_calibrator.joblib"
     joblib.dump(outer["calibrator"], cal_path)
     results["model_files"]["calibrator"] = str(cal_path)
 
-    summary = {"m27_v2": results}
-    summary_path = OUT_DIR / "training_summary_m27_v2.json"
+    summary = {"m27_v3": results}
+    summary_path = OUT_DIR / "training_summary_m27_v3.json"
     with summary_path.open("w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, default=str)
     print(f"Summary saved to {summary_path}")
@@ -868,7 +868,7 @@ def train() -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train m27_v2 Q4 model")
+    parser = argparse.ArgumentParser(description="Train m27_v3 Q4 model")
     parser.add_argument("--rebuild-cache", action="store_true", help="Force rebuild dynamic rows cache")
     parser.add_argument("--filter-10m", action="store_true", help="Only 10-minute regulation leagues")
     parser.add_argument("--enable-pace-features", action="store_true", help="Enable Q3 pace/regulation features")
