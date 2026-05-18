@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "match"))
 
-from db import get_conn, save_match
+from db import get_conn, init_db, save_match
 from scraper import (
     _browser_context,
     _parse, _parse_h2h, _parse_team_statistics, _parse_period_stats,
@@ -217,6 +217,7 @@ def backfill(
     backend: str | None = None,
 ) -> None:
     conn = get_conn(db_path)
+    init_db(conn)
     grouped = _group_rows_by_date(match_rows)
     day_totals = {day: len(rows) for day, rows in grouped.items()}
     total = sum(day_totals.values())
