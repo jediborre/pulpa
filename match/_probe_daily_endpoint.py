@@ -1,4 +1,4 @@
-from playwright.sync_api import sync_playwright
+from scraper import _browser_context
 
 candidates = [
     'https://api.sofascore.com/api/v1/sport/basketball/scheduled-events/2026-03-20',
@@ -15,11 +15,7 @@ ua = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
       'AppleWebKit/537.36 (KHTML, like Gecko) '
       'Chrome/122.0.0.0 Safari/537.36')
 
-with sync_playwright() as p:
-    browser = p.chromium.launch(headless=True)
-    ctx = browser.new_context(user_agent=ua)
-    page = ctx.new_page()
-    page.goto('https://www.sofascore.com/basketball', wait_until='networkidle', timeout=45000)
+with _browser_context('https://www.sofascore.com/basketball', backend='obscura') as (_, ctx, _page):
     for u in candidates:
         r = ctx.request.get(u, headers=headers, timeout=20000)
         print('URL', u)
@@ -34,4 +30,3 @@ with sync_playwright() as p:
                     e0 = evs[0]
                     print('sample id', e0.get('id'), 'status', (e0.get('status') or {}).get('type'))
         print('-' * 60)
-    browser.close()

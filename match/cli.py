@@ -58,6 +58,8 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+os.environ.setdefault("SOFASCORE_SCRAPER_BACKEND", "obscura")
+
 import db as db_mod
 import ml_tools as ml_mod
 import scraper as scraper_mod

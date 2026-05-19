@@ -1080,13 +1080,8 @@ def _fetch_all_events_for_date_sync(local_date: str) -> list[dict]:
     Queries two UTC dates (local_date and local_date+1) to catch overnight
     games, then filters by startTimestamp converted to local time.
     """
-    from playwright.sync_api import sync_playwright
+    from scraper import _browser_context
 
-    UA = (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/122.0.0.0 Safari/537.36"
-    )
     hdrs = {
         "Referer": "https://www.sofascore.com/",
         "Accept": "application/json, text/plain, */*",
@@ -1097,18 +1092,7 @@ def _fetch_all_events_for_date_sync(local_date: str) -> list[dict]:
     utc_dates = [local_dt.isoformat(), (local_dt + timedelta(days=1)).isoformat()]
 
     all_events: list = []
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        ctx = browser.new_context(user_agent=UA)
-        page = ctx.new_page()
-        try:
-            page.goto(
-                "https://www.sofascore.com/basketball",
-                wait_until="domcontentloaded",
-                timeout=45_000,
-            )
-        except Exception:
-            pass
+    with _browser_context("https://www.sofascore.com/basketball", backend="obscura") as (_, ctx, _page):
         for utc_date in utc_dates:
             url = (
                 "https://api.sofascore.com/api/v1/"
@@ -1121,7 +1105,6 @@ def _fetch_all_events_for_date_sync(local_date: str) -> list[dict]:
                     all_events.extend(body.get("events", []))
             except Exception as exc:
                 logger.warning("[MONITOR] schedule fetch %s: %s", utc_date, str(exc).split("\n")[0][:160])
-        browser.close()
 
     out: list[dict] = []
     seen: set[str] = set()
