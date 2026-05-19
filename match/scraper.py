@@ -60,6 +60,10 @@ def _obscura_cdp_url() -> str:
     return os.getenv("OBSCURA_CDP_URL", "http://127.0.0.1:9222").strip()
 
 
+def _match_warmup_url(match_id: str) -> str:
+    return f"https://www.sofascore.com/basketball/match/unknown/unknown#id:{match_id}"
+
+
 @contextmanager
 def _browser_context(warmup_url: str, backend: str | None = None):
     from playwright.sync_api import sync_playwright
@@ -1061,9 +1065,9 @@ def fetch_match_by_id(
     fetch_team_data: bool = True,
     backend: str | None = None,
 ) -> dict:
-    """Fetch match data by ID after warming session on basketball landing page."""
+    """Fetch match data by ID after warming session on the match route."""
     payloads = _fetch_match_payloads(
-        warmup_url="https://www.sofascore.com/basketball",
+        warmup_url=_match_warmup_url(match_id),
         match_id=match_id,
         fetch_h2h=fetch_h2h,
         fetch_statistics=fetch_statistics,

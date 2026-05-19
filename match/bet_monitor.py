@@ -27,8 +27,10 @@ import json
 import logging
 import os
 import re
+import random
 import sqlite3
 import sys
+import threading
 import time
 import math
 from datetime import datetime, timezone, timedelta
@@ -59,6 +61,11 @@ SECS_PER_GAME_MIN = 170      # initial estimate: ~2.8 real-min per game-minute
 MIN_GP_Q3 = 16               # graph_points with minute ≤ 24 required for Q3 check
 MIN_GP_Q4 = 26               # graph_points with minute ≤ 36 required for Q4 check
 SKIP_Q3 = True               # temporarily disable Q3 monitoring to reduce CPU load
+Q4_ONLY_EARLY_WAKE_MINUTE = 27  # when SKIP_Q3, start fetching near this game minute
+Q4_ONLY_WAKE_LEAD_MINUTES = 2   # wake this many game-minutes before target minute
+PRESTART_PROBE_MIN_SECS = 90    # lightweight probe interval when match hasn't started yet
+PRESTART_PROBE_MAX_SECS = 11 * 60
+PRESTART_PROBE_BACKOFF = 1.45
 MAX_FETCH_ERRORS = 4         # consecutive errors before discarding a match
 SCHEDULE_REFRESH_HOURS = 8   # re-fetch schedule this often
 PENDING_RECHECK_SECS = 15 * 60  # periodically backfill pending outcomes
@@ -70,12 +77,17 @@ PENDING_RECHECK_MAX_FETCHES_IN_FLIGHT = 2  # skip periodic rechecks only if fetc
 NO_GRAPH_REAL_SECS = 55 * 60 # discard if no graph_points 55 real-min after start
 MAX_CONCURRENT_FETCHES = 6   # max simultaneous Playwright fetches across all watchers
 FINAL_FETCH_EXTRA_SECS = 300 # extra real-seconds after estimated end before final save
-FINAL_FETCH_MIN_GP = 8       # require at least this many graph_points to attempt save
+FINAL_FETCH_MIN_GP = 8       # legacy threshold kept for diagnostics/logging only
 MONITOR_LOG_DIR = BASE_DIR / "logs"  # daily monitor logs written here
 Q4_TOO_LATE_BET_MINUTE = 33  # discard Q4 bet if minute >= this AND pick is ahead
 Q4_TOO_LATE_HARD_MINUTE = 36 # always discard Q4 bet if minute >= this (hard cutoff)
 Q4_TOO_LATE_SCORE_MARGIN = 5 # q4 margin threshold for score-aware late discard
 Q4_REEVAL_FAST_SECS = 45     # fast re-evaluation tick for uncertain Q4 signals
+GLOBAL_FETCH_MIN_SPACING_SECS = 0.80   # global request spacing to reduce burstiness
+GLOBAL_FETCH_SPACING_JITTER_SECS = 0.35
+GLOBAL_403_STREAK_TRIGGER = 6          # trip anti-block cooldown after this many 403s
+GLOBAL_403_COOLDOWN_SECS = 12 * 60     # global pause when API starts returning 403s
+GLOBAL_COOLDOWN_LOG_EVERY_SECS = 120   # avoid log spam while cooldown is active
 
 # ─ Global state (read by telegram_bot.py) ──────────────────
 MONITOR_STATUS: dict = {
@@ -186,6 +198,11 @@ def set_model_config(config: dict[str, str]) -> None:
 
 # Lazy semaphore ÔÇö created inside the monitor thread's event loop
 _fetch_sem: asyncio.Semaphore | None = None
+_fetch_state_lock = threading.Lock()
+_global_403_streak = 0
+_global_fetch_cooldown_until = 0.0
+_global_next_fetch_wall = 0.0
+_last_cooldown_log_wall = 0.0
 
 
 def _get_fetch_sem() -> asyncio.Semaphore:
@@ -206,6 +223,84 @@ def _fetches_in_flight() -> int:
     except (TypeError, ValueError):
         return 0
     return max(0, in_flight)
+
+
+def _is_http_403_error(msg: str) -> bool:
+    text = str(msg or "").lower()
+    return " 403" in text or "http 403" in text
+
+
+def _get_global_fetch_cooldown_left() -> float:
+    with _fetch_state_lock:
+        return max(0.0, _global_fetch_cooldown_until - time.monotonic())
+
+
+def _next_global_fetch_delay_secs() -> float:
+    """Return delay needed to keep global spacing+jitter between scrapes."""
+    global _global_next_fetch_wall
+    with _fetch_state_lock:
+        now = time.monotonic()
+        due = max(0.0, _global_next_fetch_wall - now)
+        slot_base = max(now, _global_next_fetch_wall)
+        _global_next_fetch_wall = slot_base + GLOBAL_FETCH_MIN_SPACING_SECS
+    return due + random.uniform(0.0, GLOBAL_FETCH_SPACING_JITTER_SECS)
+
+
+def _note_fetch_success() -> None:
+    global _global_403_streak
+    with _fetch_state_lock:
+        _global_403_streak = 0
+
+
+def _note_fetch_error(msg: str, source: str) -> None:
+    """Track 403 streaks globally and arm cooldown when blocked."""
+    global _global_403_streak, _global_fetch_cooldown_until
+    now = time.monotonic()
+    tripped = False
+    cooldown_mins = 0.0
+    streak_val = 0
+
+    with _fetch_state_lock:
+        if _is_http_403_error(msg):
+            _global_403_streak += 1
+            streak_val = _global_403_streak
+            if _global_403_streak >= GLOBAL_403_STREAK_TRIGGER:
+                _global_fetch_cooldown_until = max(
+                    _global_fetch_cooldown_until,
+                    now + GLOBAL_403_COOLDOWN_SECS,
+                )
+                _global_403_streak = 0
+                tripped = True
+                cooldown_mins = (
+                    max(0.0, _global_fetch_cooldown_until - now) / 60.0
+                )
+        else:
+            _global_403_streak = 0
+
+    if tripped:
+        _log(
+            "anti-bloqueo activado: pausa global "
+            f"{cooldown_mins:.1f} min tras racha HTTP 403 "
+            f"(source={source}, streak={streak_val})"
+        )
+
+
+def _maybe_log_global_cooldown(source: str) -> float:
+    """Return cooldown-left seconds and throttle repeated cooldown logs."""
+    global _last_cooldown_log_wall
+    now = time.monotonic()
+    should_log = False
+    left = 0.0
+
+    with _fetch_state_lock:
+        left = max(0.0, _global_fetch_cooldown_until - now)
+        if left > 0 and (now - _last_cooldown_log_wall) >= GLOBAL_COOLDOWN_LOG_EVERY_SECS:
+            _last_cooldown_log_wall = now
+            should_log = True
+
+    if should_log:
+        _log(f"pausa anti-bloqueo activa ({source}): ~{left / 60:.1f} min")
+    return left
 
 
 # Internal helpers
@@ -959,14 +1054,22 @@ async def _recheck_pending_outcomes_once(db_path: str) -> dict[str, int]:
         db_mod.init_db(save_conn)
         try:
             for mid in ids_to_scrape:
+                if _get_global_fetch_cooldown_left() > 0:
+                    fail += 1
+                    continue
+                delay = _next_global_fetch_delay_secs()
+                if delay > 0:
+                    time.sleep(delay)
                 try:
-                    fresh = scraper_mod.fetch_match_by_id(mid)
+                    fresh = scraper_mod.fetch_match_by_id(mid, backend="obscura")
                     if fresh:
                         db_mod.save_match(save_conn, mid, fresh)
+                        _note_fetch_success()
                         ok += 1
                     else:
                         fail += 1
-                except Exception:
+                except Exception as exc:
+                    _note_fetch_error(str(exc), source="recheck_pending")
                     fail += 1
         finally:
             save_conn.close()
@@ -1028,9 +1131,16 @@ async def _recheck_pending_finished_schedule_once(db_path: str) -> dict[str, int
             for row in rows:
                 mid = str(row["match_id"])
                 checked += 1
+                if _get_global_fetch_cooldown_left() > 0:
+                    scraped_fail += 1
+                    continue
+                delay = _next_global_fetch_delay_secs()
+                if delay > 0:
+                    time.sleep(delay)
                 try:
-                    fresh = scraper_mod.fetch_match_by_id(mid)
-                except Exception:
+                    fresh = scraper_mod.fetch_match_by_id(mid, backend="obscura")
+                except Exception as exc:
+                    _note_fetch_error(str(exc), source="recheck_schedule_ft")
                     scraped_fail += 1
                     continue
 
@@ -1039,6 +1149,7 @@ async def _recheck_pending_finished_schedule_once(db_path: str) -> dict[str, int
                     continue
 
                 scraped_ok += 1
+                _note_fetch_success()
                 st = str((fresh.get("match", {}) or {}).get("status_type", "") or "").lower()
                 if st != "finished":
                     continue
@@ -1213,10 +1324,6 @@ async def _final_fetch_and_save(
 ) -> None:
     """Wait for the estimated end of the match, then scrape and persist
     the final result to the matches DB.
-
-    Only attempts the save if the live data already has graph_points
-    (FINAL_FETCH_MIN_GP threshold). Matches without graph data are skipped
-    to avoid polluting the DB with empty records.
     """
     import scraper as scraper_mod
 
@@ -1240,15 +1347,31 @@ async def _final_fetch_and_save(
     while waited_finish <= MAX_FINISH_WAIT:
         if stop_event.is_set():
             return
+        cooldown_left = _maybe_log_global_cooldown("final_fetch")
+        if cooldown_left > 0:
+            pause_secs = min(float(POLL_INTERVAL), max(15.0, cooldown_left))
+            if await sleep_fn(pause_secs):
+                return
+            waited_finish += pause_secs
+            continue
+
+        spacing_delay = _next_global_fetch_delay_secs()
+        if spacing_delay > 0:
+            if await sleep_fn(spacing_delay):
+                return
         try:
             async with _get_fetch_sem():
                 last_data = await asyncio.to_thread(
                     scraper_mod.fetch_match_by_id, match_id
                 )
+            _note_fetch_success()
         except Exception as exc:
+            exc_short = str(exc).split("\n")[0][:160]
+            exc_short = _sanitize_fetch_error_message(exc_short, match_id)
+            _note_fetch_error(exc_short, source="final_fetch")
             logger.warning(
                 "[MONITOR] final_fetch %s error: %s",
-                match_id, str(exc).split("\n")[0][:120],
+                match_id, exc_short[:120],
             )
             if await sleep_fn(POLL_INTERVAL):
                 return
@@ -1278,10 +1401,9 @@ async def _final_fetch_and_save(
     gp_total = len(data.get("graph_points") or [])
     if gp_total < FINAL_FETCH_MIN_GP:
         _log(
-            f"{home} vs {away}: final_fetch omitido "
-            f"(sólo {gp_total} graph_points, mínimo {FINAL_FETCH_MIN_GP})"
+            f"{home} vs {away}: final_fetch con gráfica corta "
+            f"(gp={gp_total}, ref={FINAL_FETCH_MIN_GP}) — guardando igual"
         )
-        return
 
     # Save to matches DB
     try:
@@ -2986,11 +3108,21 @@ async def _resolve_bet_result(
     while waited < MAX_WAIT_SECS:
         await asyncio.sleep(POLL_SECS)
         waited += POLL_SECS
+        cooldown_left = _maybe_log_global_cooldown("result_poll")
+        if cooldown_left > 0:
+            continue
+        spacing_delay = _next_global_fetch_delay_secs()
+        if spacing_delay > 0:
+            await asyncio.sleep(spacing_delay)
         try:
             async with _get_fetch_sem():
                 data = await asyncio.to_thread(scraper_mod.fetch_match_by_id, match_id)
+            _note_fetch_success()
         except Exception as exc:
-            logger.warning("[MONITOR] result-poll %s: %s", match_id, str(exc).split("\n")[0][:160])
+            exc_short = str(exc).split("\n")[0][:160]
+            exc_short = _sanitize_fetch_error_message(exc_short, match_id)
+            _note_fetch_error(exc_short, source="result_poll")
+            logger.warning("[MONITOR] result-poll %s: %s", match_id, exc_short)
             continue
         if not data:
             continue
@@ -3170,11 +3302,21 @@ async def _resolve_simulated_bet_result(
     while waited < MAX_WAIT_SECS:
         await asyncio.sleep(POLL_SECS)
         waited += POLL_SECS
+        cooldown_left = _maybe_log_global_cooldown("simulated_result_poll")
+        if cooldown_left > 0:
+            continue
+        spacing_delay = _next_global_fetch_delay_secs()
+        if spacing_delay > 0:
+            await asyncio.sleep(spacing_delay)
         try:
             async with _get_fetch_sem():
                 data = await asyncio.to_thread(scraper_mod.fetch_match_by_id, match_id)
+            _note_fetch_success()
         except Exception as exc:
-            logger.warning("[MONITOR] simulated-result-poll %s: %s", match_id, str(exc).split("\n")[0][:160])
+            exc_short = str(exc).split("\n")[0][:160]
+            exc_short = _sanitize_fetch_error_message(exc_short, match_id)
+            _note_fetch_error(exc_short, source="simulated_result_poll")
+            logger.warning("[MONITOR] simulated-result-poll %s: %s", match_id, exc_short)
             continue
         if not data:
             continue
@@ -3307,6 +3449,8 @@ async def _watch_match(
     event_date = str(row.get("event_date") or "")
     scheduled_ts = int(row.get("scheduled_utc_ts") or 0)
     sched_label = _format_sched_local_label(scheduled_ts)
+    seed_material = f"{match_id}:{scheduled_ts}:{time.time_ns()}:{os.getpid()}"
+    match_rng = random.Random(seed_material)
 
     _log(f"Vigilando: {home} vs {away} ({match_id}) | {sched_label}")
     MONITOR_STATUS["active_matches"] = list(
@@ -3330,6 +3474,10 @@ async def _watch_match(
     secs_per_gmin = float(SECS_PER_GAME_MIN)
     last_gmin: int | None = None
     last_gmin_wall: float = 0.0
+    q4_prefetch_armed = bool(SKIP_Q3)
+    q4_prestart_probe_mode = bool(SKIP_Q3)
+    q4_prestart_probe_delay = float(PRESTART_PROBE_MIN_SECS)
+    q4_prestart_probe_ticks = 0
 
     conn = _open_db(db_path)
 
@@ -3342,10 +3490,45 @@ async def _watch_match(
             await asyncio.sleep(min(10.0, end - time.monotonic()))
         return False
 
+    def _jitter_sleep_secs(
+        base_secs: float,
+        *,
+        phase: str,
+        urgent: bool = False,
+    ) -> float:
+        """Return phase-aware jittered sleep to avoid fixed request patterns."""
+        base = max(1.0, float(base_secs))
+
+        if phase in {"startup", "q3_far", "q4_far"}:
+            jitter_pct = 0.20
+            jitter_abs = 45.0
+            floor = 20.0
+        elif phase in {"q3_window", "q4_window", "no_graph"}:
+            jitter_pct = 0.12
+            jitter_abs = 18.0
+            floor = 12.0
+        elif phase == "error_retry":
+            jitter_pct = 0.22
+            jitter_abs = 55.0
+            floor = 15.0
+        else:
+            jitter_pct = 0.10
+            jitter_abs = 15.0
+            floor = 10.0
+
+        if urgent:
+            jitter_pct = min(jitter_pct, 0.05)
+            jitter_abs = min(jitter_abs, 6.0)
+
+        amp = min(jitter_abs, base * jitter_pct)
+        jitter = match_rng.uniform(-amp, amp)
+        return max(floor, base + jitter)
+
     try:
         # Wait until close to match start (2-min buffer)
         if scheduled_ts > 0:
-            wait = scheduled_ts - time.time() - 120
+            start_buffer_secs = _jitter_sleep_secs(120.0, phase="startup")
+            wait = scheduled_ts - time.time() - start_buffer_secs
             if wait > 120:
                 eta = _format_wait_eta(wait)
                 eta_color = _color_text(eta, "96")
@@ -3358,30 +3541,133 @@ async def _watch_match(
 
         # Main watch loop
         while not stop_event.is_set():
+            # Q4-only mode: avoid hitting endpoints during Q1/Q2/early Q3.
+            if q4_prefetch_armed and not q4_done and scheduled_ts > 0:
+                wake_game_min = max(1.0, float(Q4_ONLY_EARLY_WAKE_MINUTE - Q4_ONLY_WAKE_LEAD_MINUTES))
+                wake_wall_ts = float(scheduled_ts) + wake_game_min * float(secs_per_gmin)
+                wait_to_wake = wake_wall_ts - time.time()
+                if wait_to_wake > 60:
+                    prefetch_sleep = _jitter_sleep_secs(wait_to_wake, phase="q4_far")
+                    _log(
+                        f"{home} vs {away}: Q4-only activo, durmiendo ~{prefetch_sleep/60:.0f} min "
+                        f"(wake cerca min {Q4_ONLY_EARLY_WAKE_MINUTE})"
+                    )
+                    if await _sleep(prefetch_sleep):
+                        break
+                    continue
+                q4_prefetch_armed = False
+
+            # Q4-only delayed-start adaptation: probe lightweight status first.
+            # This avoids full match scraping on a fixed cadence while kickoff is delayed.
+            if q4_prestart_probe_mode and not q4_done:
+                cooldown_left = _maybe_log_global_cooldown("watcher_prestart_probe")
+                if cooldown_left > 0:
+                    cooldown_sleep = _jitter_sleep_secs(
+                        min(float(POLL_NEAR_SECS), max(20.0, cooldown_left)),
+                        phase="error_retry",
+                    )
+                    if await _sleep(cooldown_sleep):
+                        break
+                    continue
+
+                spacing_delay = _next_global_fetch_delay_secs()
+                if spacing_delay > 0:
+                    if await _sleep(spacing_delay):
+                        break
+
+                try:
+                    async with _get_fetch_sem():
+                        snap = await asyncio.to_thread(
+                            scraper_mod.fetch_event_snapshot, match_id
+                        )
+                    _note_fetch_success()
+                except Exception as exc:
+                    exc_short = str(exc).split("\n")[0][:160]
+                    exc_short = _sanitize_fetch_error_message(exc_short, match_id)
+                    _note_fetch_error(exc_short, source="watcher_prestart_probe")
+                    q4_prestart_probe_delay = min(
+                        float(PRESTART_PROBE_MAX_SECS),
+                        max(float(PRESTART_PROBE_MIN_SECS), q4_prestart_probe_delay * PRESTART_PROBE_BACKOFF),
+                    )
+                    probe_sleep = _jitter_sleep_secs(q4_prestart_probe_delay, phase="q4_far")
+                    _log(
+                        f"{home} vs {away}: sonda prestart falló ({_compact_fetch_error_reason(exc_short)}), "
+                        f"reintento en ~{probe_sleep:.0f}s"
+                    )
+                    if await _sleep(probe_sleep):
+                        break
+                    continue
+
+                snap_status = str((snap or {}).get("status_type", "") or "").lower()
+                if snap_status == "finished" or snap_status in {"inprogress", "live"}:
+                    q4_prestart_probe_mode = False
+                    _log(
+                        f"{home} vs {away}: partido detectado en estado={snap_status}, "
+                        "activando scrape completo"
+                    )
+                else:
+                    q4_prestart_probe_ticks += 1
+                    drift_secs = max(0.0, time.time() - float(scheduled_ts or 0))
+                    # If the game is heavily delayed, reduce probe pressure over time.
+                    if drift_secs >= 60 * 45:
+                        growth = 1.30
+                    elif drift_secs >= 60 * 20:
+                        growth = 1.22
+                    else:
+                        growth = PRESTART_PROBE_BACKOFF
+
+                    q4_prestart_probe_delay = min(
+                        float(PRESTART_PROBE_MAX_SECS),
+                        max(float(PRESTART_PROBE_MIN_SECS), q4_prestart_probe_delay * growth),
+                    )
+                    probe_sleep = _jitter_sleep_secs(q4_prestart_probe_delay, phase="q4_far")
+                    if q4_prestart_probe_ticks == 1 or q4_prestart_probe_ticks % 3 == 0:
+                        _log(
+                            f"{home} vs {away}: prestart/delay detectado (status={snap_status or 'unknown'}, "
+                            f"drift={drift_secs/60:.0f}m), próxima sonda en ~{probe_sleep:.0f}s"
+                        )
+                    if await _sleep(probe_sleep):
+                        break
+                    continue
+
             if q3_done and q4_done:
                 _update_row(conn, match_id, status="done")
                 # Schedule final data save after estimated match end
-                gp_total = len(data.get("graph_points") or []) if data else 0
-                if gp_total >= FINAL_FETCH_MIN_GP:
-                    await _final_fetch_and_save(
-                        match_id=match_id,
-                        db_path=db_path,
-                        conn_sched=conn,
-                        home=home,
-                        away=away,
-                        current_minute=minute,
-                        secs_per_gmin=secs_per_gmin,
-                        stop_event=stop_event,
-                        sleep_fn=_sleep,
-                    )
+                await _final_fetch_and_save(
+                    match_id=match_id,
+                    db_path=db_path,
+                    conn_sched=conn,
+                    home=home,
+                    away=away,
+                    current_minute=minute,
+                    secs_per_gmin=secs_per_gmin,
+                    stop_event=stop_event,
+                    sleep_fn=_sleep,
+                )
                 break
 
             # Fetch live data
+            cooldown_left = _maybe_log_global_cooldown("watcher")
+            if cooldown_left > 0:
+                cooldown_sleep = _jitter_sleep_secs(
+                    min(float(POLL_NEAR_SECS), max(15.0, cooldown_left)),
+                    phase="error_retry",
+                )
+                if await _sleep(cooldown_sleep):
+                    break
+                continue
+
+            spacing_delay = _next_global_fetch_delay_secs()
+            if spacing_delay > 0:
+                if await _sleep(spacing_delay):
+                    break
+
             try:
                 async with _get_fetch_sem():
                     data = await asyncio.to_thread(
                         scraper_mod.fetch_match_by_id, match_id
                     )
+                _note_fetch_success()
                 errors = 0
                 fetch_error_reasons.clear()
             except Exception as exc:
@@ -3389,6 +3675,7 @@ async def _watch_match(
                 # Truncate Playwright call-log to first meaningful line
                 exc_short = str(exc).split("\n")[0][:160]
                 exc_short = _sanitize_fetch_error_message(exc_short, match_id)
+                _note_fetch_error(exc_short, source="watcher")
                 compact_reason = _compact_fetch_error_reason(exc_short)
                 fetch_error_reasons[compact_reason] = fetch_error_reasons.get(compact_reason, 0) + 1
                 logger.warning(
@@ -3420,12 +3707,18 @@ async def _watch_match(
                     else:
                         _log(f"{home} vs {away} ({sched_label}): descartado ({errors} errores)")
                     break
-                if await _sleep(POLL_NEAR_SECS):
+                retry_base = min(
+                    float(IDLE_POLL_SECS),
+                    float(POLL_NEAR_SECS) * (1.35 ** min(errors, 5)),
+                )
+                retry_sleep = _jitter_sleep_secs(retry_base, phase="error_retry")
+                if await _sleep(retry_sleep):
                     break
                 continue
 
             if not data:
-                if await _sleep(POLL_NEAR_SECS):
+                no_data_sleep = _jitter_sleep_secs(POLL_NEAR_SECS, phase="q3_window")
+                if await _sleep(no_data_sleep):
                     break
                 continue
 
@@ -3496,20 +3789,24 @@ async def _watch_match(
 
                 # Save final data immediately (match is already finished)
                 gp_total = len(data.get("graph_points") or [])
-                if gp_total >= FINAL_FETCH_MIN_GP:
-                    try:
-                        db_conn = __import__("db").get_conn(db_path)
-                        __import__("db").init_db(db_conn)
-                        __import__("db").save_match(db_conn, match_id, data)
-                        db_conn.close()
-                        _update_row(
-                            conn, match_id,
-                            final_fetched=1,
-                            final_fetch_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                        )
-                        _log(f"{home} vs {away}: resultado final guardado al detectar fin (gp={gp_total})")
-                    except Exception as _exc:
-                        logger.warning("[MONITOR] final_fetch save (finished branch) %s: %s", match_id, _exc)
+                if gp_total < FINAL_FETCH_MIN_GP:
+                    _log(
+                        f"{home} vs {away}: fin detectado con gráfica corta "
+                        f"(gp={gp_total}, ref={FINAL_FETCH_MIN_GP}) — guardando igual"
+                    )
+                try:
+                    db_conn = __import__("db").get_conn(db_path)
+                    __import__("db").init_db(db_conn)
+                    __import__("db").save_match(db_conn, match_id, data)
+                    db_conn.close()
+                    _update_row(
+                        conn, match_id,
+                        final_fetched=1,
+                        final_fetch_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                    )
+                    _log(f"{home} vs {away}: resultado final guardado al detectar fin (gp={gp_total})")
+                except Exception as _exc:
+                    logger.warning("[MONITOR] final_fetch save (finished branch) %s: %s", match_id, _exc)
                 break
 
             # ── Q3 logic ─────────────────────────────────────────────────────
@@ -3529,7 +3826,8 @@ async def _watch_match(
                         )
                         _log(f"{home} vs {away}: sin gráfica tras {elapsed_real/60:.0f}min reales, descartado")
                         break
-                    if await _sleep(POLL_NEAR_SECS):
+                    no_graph_sleep = _jitter_sleep_secs(POLL_NEAR_SECS, phase="no_graph")
+                    if await _sleep(no_graph_sleep):
                         break
                     continue
 
@@ -3560,33 +3858,36 @@ async def _watch_match(
                             q3_done = True
                         elif sig == "UNAVAILABLE":
                             q3_unavailable_ticks += 1
+                            q3_retry_sleep = _jitter_sleep_secs(POLL_NEAR_SECS, phase="q3_window")
                             if q3_unavailable_ticks % UNAVAILABLE_LOG_EVERY == 0:
                                 _log(
                                     f"{home} vs {away}: Q3 UNAVAILABLE "
                                     f"(tick {q3_unavailable_ticks}), "
-                                    f"re-evaluando en {POLL_NEAR_SECS}s"
+                                    f"re-evaluando en ~{q3_retry_sleep:.0f}s"
                                 )
                             q3_no_bet_ticks = 0
-                            if await _sleep(POLL_NEAR_SECS):
+                            if await _sleep(q3_retry_sleep):
                                 break
                             continue
                         else:
                             q3_unavailable_ticks = 0
                             q3_no_bet_ticks += 1
+                            q3_retry_sleep = _jitter_sleep_secs(POLL_NEAR_SECS, phase="q3_window")
                             _log(
                                 f"{home} vs {away}: Q3 NO BET incierto "
                                 f"(tick {q3_no_bet_ticks}/{NO_BET_CONFIRM_TICKS}), "
-                                f"re-evaluando en {POLL_NEAR_SECS}s"
+                                f"re-evaluando en ~{q3_retry_sleep:.0f}s"
                             )
-                            if await _sleep(POLL_NEAR_SECS):
+                            if await _sleep(q3_retry_sleep):
                                 break
                             continue
                     else:
+                        q3_retry_sleep = _jitter_sleep_secs(POLL_NEAR_SECS, phase="q3_window")
                         _log(
                             f"{home} vs {away}: Q3 ventana abierta pero datos insuficientes "
                             f"(min={minute} gp={gp3} Q1Q2={_has_scores(data,'Q1','Q2')})"
                         )
-                        if await _sleep(POLL_NEAR_SECS):
+                        if await _sleep(q3_retry_sleep):
                             break
                         continue
 
@@ -3595,18 +3896,20 @@ async def _watch_match(
                     mins_to_wake = (q3_cut - q3_wake_before) - minute
                     mins_to_wake_label = max(1, int(math.ceil(float(mins_to_wake))))
                     sleep_secs = max(30.0, min(mins_to_wake * secs_per_gmin, IDLE_POLL_SECS))
+                    q3_far_sleep = _jitter_sleep_secs(sleep_secs, phase="q3_far")
                     _log(
                         f"{home} vs {away}: Q3 faltan ~{mins_to_wake_label} game-min, "
-                        f"durmiendo {sleep_secs:.0f}s"
+                        f"durmiendo ~{q3_far_sleep:.0f}s"
                     )
-                    if await _sleep(sleep_secs):
+                    if await _sleep(q3_far_sleep):
                         break
                     continue
 
             # ── Q4 logic ─────────────────────────────────
             if not q4_done:
                 if minute is None:
-                    if await _sleep(POLL_NEAR_SECS):
+                    q4_no_graph_sleep = _jitter_sleep_secs(POLL_NEAR_SECS, phase="no_graph")
+                    if await _sleep(q4_no_graph_sleep):
                         break
                     continue
 
@@ -3640,6 +3943,11 @@ async def _watch_match(
                         poll_secs = 30.0
                     else:
                         poll_secs = min(float(POLL_NEAR_SECS), float(Q4_REEVAL_FAST_SECS))
+                    poll_sleep = _jitter_sleep_secs(
+                        poll_secs,
+                        phase="q4_window",
+                        urgent=mins_left <= 2,
+                    )
 
                     if score_ok and gp4 >= q4_mgp:
                         q4_waiting_score_ticks = 0
@@ -3663,10 +3971,10 @@ async def _watch_match(
                             _log(
                                 f"🟡 {home} vs {away}: Q4 UNAVAILABLE "
                                 f"(tick {q4_unavailable_ticks}, presupuesto~{budget_secs:.0f}s), "
-                                f"re-evaluando en {poll_secs:.0f}s"
+                                f"re-evaluando en ~{poll_sleep:.0f}s"
                             )
                             q4_no_bet_ticks = 0
-                            if await _sleep(poll_secs):
+                            if await _sleep(poll_sleep):
                                 break
                             continue
                         else:
@@ -3676,9 +3984,9 @@ async def _watch_match(
                                 f"🟡 {home} vs {away}: Q4 NO BET incierto "
                                 f"(tick {q4_no_bet_ticks}/{NO_BET_CONFIRM_TICKS}, "
                                 f"min={minute}, presupuesto~{budget_secs:.0f}s), "
-                                f"re-evaluando en {poll_secs:.0f}s"
+                                f"re-evaluando en ~{poll_sleep:.0f}s"
                             )
-                            if await _sleep(poll_secs):
+                            if await _sleep(poll_sleep):
                                 break
                             continue
                     else:
@@ -3723,9 +4031,9 @@ async def _watch_match(
                             f"(min={minute} gp={gp4}/{q4_mgp}{need_q3_str}{q3_prog_str} "
                             f"tick={q4_waiting_score_ticks} stale={q4_stale_ticks} "
                             f"presupuesto~{budget_secs:.0f}s), "
-                            f"re-eval en {poll_secs:.0f}s"
+                            f"re-eval en ~{poll_sleep:.0f}s"
                         )
-                        if await _sleep(poll_secs):
+                        if await _sleep(poll_sleep):
                             break
                         continue
 
@@ -3746,12 +4054,13 @@ async def _watch_match(
                     else:
                         sleep_secs = min(mins_to_wake * secs_per_gmin * 0.6, 120.0)
                     sleep_secs = max(20.0, sleep_secs)
+                    q4_far_sleep = _jitter_sleep_secs(sleep_secs, phase="q4_far")
                     _log(
                         f"🟡 {home} vs {away}: Q4 faltan ~{mins_to_wake_label} game-min "
                         f"(min={minute}, ritmo={secs_per_gmin:.0f}s/gmin, "
-                        f"esperando min {Q4_EARLIEST_MINUTE}), durmiendo {sleep_secs:.0f}s"
+                        f"esperando min {Q4_EARLIEST_MINUTE}), durmiendo ~{q4_far_sleep:.0f}s"
                     )
-                    if await _sleep(sleep_secs):
+                    if await _sleep(q4_far_sleep):
                         break
                     continue
 
@@ -3906,8 +4215,14 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
 
             # Periodically backfill unfinished outcomes created while monitor was off.
             if now_wall - last_pending_recheck_wall >= PENDING_RECHECK_SECS:
+                cooldown_left = _maybe_log_global_cooldown("recheck_pending")
                 fetches_in_flight = _fetches_in_flight()
-                if fetches_in_flight > PENDING_RECHECK_MAX_FETCHES_IN_FLIGHT:
+                if cooldown_left > 0:
+                    _log(
+                        "recheck pendientes omitido por anti-bloqueo: "
+                        f"cooldown~{cooldown_left / 60:.1f} min"
+                    )
+                elif fetches_in_flight > PENDING_RECHECK_MAX_FETCHES_IN_FLIGHT:
                     _log(
                         "recheck pendientes omitido por carga: "
                         f"fetches={fetches_in_flight}/>{PENDING_RECHECK_MAX_FETCHES_IN_FLIGHT}"
@@ -3930,8 +4245,14 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
 
             # Periodically revisit pending schedule rows and persist FT matches.
             if now_wall - last_pending_schedule_recheck_wall >= PENDING_SCHEDULE_RECHECK_SECS:
+                cooldown_left = _maybe_log_global_cooldown("recheck_schedule_ft")
                 fetches_in_flight = _fetches_in_flight()
-                if fetches_in_flight > PENDING_RECHECK_MAX_FETCHES_IN_FLIGHT:
+                if cooldown_left > 0:
+                    _log(
+                        "recheck schedule FT omitido por anti-bloqueo: "
+                        f"cooldown~{cooldown_left / 60:.1f} min"
+                    )
+                elif fetches_in_flight > PENDING_RECHECK_MAX_FETCHES_IN_FLIGHT:
                     _log(
                         "recheck schedule FT omitido por carga: "
                         f"fetches={fetches_in_flight}/>{PENDING_RECHECK_MAX_FETCHES_IN_FLIGHT}"
