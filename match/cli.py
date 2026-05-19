@@ -1514,8 +1514,8 @@ def _get_missing_dates_cli(
     }
 
 
-def _select_fetch_date_interactive(db_path: str) -> tuple[str, int | None] | None:
-    """Show missing-date selector.  Returns (date_str, limit|None) or None to abort."""
+def _select_fetch_date_interactive(db_path: str) -> tuple[str | list[str], int | None] | None:
+    """Show missing-date selector.  Returns (date|dates, limit|None) or None to abort."""
     print("\n=== Traer fecha nueva ===")
     data = _get_missing_dates_cli(db_path)
     recent = data["recent"]
@@ -1531,12 +1531,16 @@ def _select_fetch_date_interactive(db_path: str) -> tuple[str, int | None] | Non
         print("\nFechas anteriores (o igual) a la minima en base:")
         try:
             min_dt = datetime.strptime(min_date, "%Y-%m-%d").date()
+            print("  1) Descargar rango de 5 dias hacia atras desde una fecha base")
             for i in range(10):
                 d = (min_dt - timedelta(days=i)).isoformat()
                 options.append(d)
-                print(f"  {len(options)}) {d}")
+                print(f"  {len(options) + 1}) {d}")
         except ValueError:
             pass
+    else:
+        print("\nFechas anteriores (o igual) a la minima en base:")
+        print("  1) Descargar rango de 5 dias hacia atras desde una fecha base")
 
     if recent:
         print("\nFechas recientes sin datos (ultimos 30 dias):")
@@ -1560,11 +1564,28 @@ def _select_fetch_date_interactive(db_path: str) -> tuple[str, int | None] | Non
     choice = input("Selecciona: ").strip()
     if choice == "0":
         return None
-    if choice.lower() == "m":
+    if choice == "1":
+        base_date = _ask("Fecha base YYYY-MM-DD (Enter para minima)", min_date or "")
+        if not base_date:
+            if not min_date:
+                print("[fetch-date] No hay fecha minima disponible para usar como base")
+                return None
+            base_date = min_date
+        try:
+            base_dt = datetime.strptime(base_date, "%Y-%m-%d").date()
+        except ValueError:
+            print(f"[fetch-date] Fecha invalida: {base_date}")
+            return None
+        event_date = [(base_dt - timedelta(days=i)).isoformat() for i in range(5)]
+    elif choice.lower() == "m":
         event_date = _ask("Fecha (YYYY-MM-DD)")
     else:
         try:
             idx = int(choice) - 1
+            if idx == 0:
+                print("[fetch-date] opcion invalida")
+                return None
+            idx -= 1
             if 0 <= idx < len(options):
                 event_date = options[idx]
             else:
@@ -1573,6 +1594,15 @@ def _select_fetch_date_interactive(db_path: str) -> tuple[str, int | None] | Non
         except ValueError:
             print("[fetch-date] opcion invalida")
             return None
+
+    if isinstance(event_date, list):
+        for d in event_date:
+            try:
+                datetime.strptime(d, "%Y-%m-%d")
+            except ValueError:
+                print(f"[fetch-date] Fecha invalida: {d}")
+                return None
+        return event_date, None
 
     # Validate
     try:
@@ -1752,7 +1782,11 @@ def cmd_fetch_date_menu(args: argparse.Namespace) -> None:
     event_date, limit = result
     use_obscura = _prompt_use_obscura()
     backend = "obscura" if use_obscura else None
-    _ingest_date_with_progress(args.db, event_date, limit, backend=backend)
+    if isinstance(event_date, list):
+        for d in event_date:
+            _ingest_date_with_progress(args.db, d, limit, backend=backend)
+    else:
+        _ingest_date_with_progress(args.db, event_date, limit, backend=backend)
 
 
 def _build_parser() -> argparse.ArgumentParser:

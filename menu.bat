@@ -27,7 +27,7 @@ echo   1) Correr Bot de Telegram
 echo   2) Correr API Backend
 echo   3) Correr Dashboard (API + Frontend)
 echo   4) Correr Todo  (Bot + API + Dashboard)
-echo   5) Traer fecha nueva  (option 15 de cli.py)
+echo   5) Traer fecha nueva / rango 5 dias con base manual  (option 15 de cli.py)
 echo   6) Backfill / actualiza datos nuevos
 echo   7) Entrenar modelo V6
 echo   8) Entrenar V2 + V6  (en orden)
