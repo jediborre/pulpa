@@ -36,8 +36,15 @@ Output dict keys:
 
 import re
 import os
+import time
 from datetime import datetime, timezone
 from contextlib import contextmanager
+
+try:
+    import anti_block
+except ImportError:
+    # Fallback if anti_block not available
+    anti_block = None
 
 _node_options = os.environ.get("NODE_OPTIONS", "").strip()
 if "--no-deprecation" not in _node_options:
@@ -52,8 +59,12 @@ STANDARD_UA = (
 
 
 def _normalize_backend(backend: str | None = None) -> str:
-    value = (backend or os.getenv("SOFASCORE_SCRAPER_BACKEND", "traditional")).strip().lower()
-    return "obscura" if value in {"obscura", "cdp"} else "traditional"
+    value = (backend or os.getenv("SOFASCORE_SCRAPER_BACKEND", "chrome")).strip().lower()
+    if value in {"obscura", "cdp"}:
+        return "obscura"
+    if value in {"chrome", "system_chrome"}:
+        return "chrome"
+    return "traditional"
 
 
 def _obscura_cdp_url() -> str:
@@ -72,7 +83,11 @@ def _browser_context(warmup_url: str, backend: str | None = None):
     with sync_playwright() as p:
         if engine == "obscura":
             browser = p.chromium.connect_over_cdp(_obscura_cdp_url())
+        elif engine == "chrome":
+            # Use the real system-installed Google Chrome (harder to fingerprint as bot)
+            browser = p.chromium.launch(channel="chrome", headless=True)
         else:
+            # traditional: Playwright-bundled Chromium headless
             browser = p.chromium.launch(headless=True)
 
         ctx = browser.new_context(user_agent=STANDARD_UA)
@@ -89,7 +104,7 @@ def _browser_context(warmup_url: str, backend: str | None = None):
                 ctx.close()
             except Exception:
                 pass
-            if engine == "traditional":
+            if engine in {"traditional", "chrome"}:
                 try:
                     browser.close()
                 except Exception:
@@ -1190,8 +1205,21 @@ def fetch_event_snapshot(match_id: str) -> dict:
     }
 
 
-def fetch_finished_match_ids_for_date(date_str: str) -> list[dict]:
-    """Return finished basketball matches for a date (YYYY-MM-DD)."""
+def fetch_finished_match_ids_for_date(date_str: str, max_retries: int = 3) -> list[dict]:
+    """Return finished basketball matches for a date (YYYY-MM-DD).
+    
+    Parameters
+    ----------
+    date_str : str
+        Date in YYYY-MM-DD format.
+    max_retries : int
+        Number of times to retry on HTTP 403 (after respecting cooldown).
+    
+    Raises
+    ------
+    RuntimeError
+        If API returns non-OK status after all retries.
+    """
     extra_headers = {
         "Referer": "https://www.sofascore.com/",
         "Accept": "application/json, text/plain, */*",
@@ -1202,42 +1230,110 @@ def fetch_finished_match_ids_for_date(date_str: str) -> list[dict]:
         "https://api.sofascore.com/api/v1/"
         f"sport/basketball/scheduled-events/{date_str}"
     )
+    
+    last_error = None
+    # Retry loop with anti-block protection
+    for attempt in range(max_retries + 1):
+        # Check if we're in cooldown; wait if needed
+        if anti_block and anti_block.get_global_fetch_cooldown_left() > 0:
+            cooldown_left = anti_block.get_global_fetch_cooldown_left()
+            if attempt == 0:
+                raise RuntimeError(
+                    f"Anti-block cooldown active ({cooldown_left:.0f}s remaining). "
+                    f"Retry after approximately {int(cooldown_left) + 1} seconds."
+                )
+        
+        # Apply global request spacing with jitter
+        if anti_block:
+            delay = anti_block.next_global_fetch_delay_secs()
+            if delay > 0:
+                time.sleep(delay)
 
-    with _browser_context("https://www.sofascore.com/basketball") as (_, ctx, _page):
-        resp = ctx.request.get(api_url, headers=extra_headers, timeout=30_000)
-        if not resp.ok:
-            raise RuntimeError(
-                f"Daily events API returned HTTP {resp.status} for {date_str}"
-            )
+        try:
+            with _browser_context("https://www.sofascore.com/basketball") as (_, ctx, _page):
+                resp = ctx.request.get(api_url, headers=extra_headers, timeout=30_000)
+                
+                if not resp.ok:
+                    err_msg = f"Daily events API returned HTTP {resp.status} for {date_str}"
+                    if anti_block:
+                        anti_block.note_fetch_error(err_msg, "fetch_finished_match_ids_for_date")
+                    raise RuntimeError(err_msg)
 
-        body = resp.json() or {}
-        events = body.get("events", []) if isinstance(body, dict) else []
+                body = resp.json() or {}
+                events = body.get("events", []) if isinstance(body, dict) else []
+            
+            # Success: reset error streak and return results
+            if anti_block:
+                anti_block.note_fetch_success()
+            
+            out = []
+            for ev in events:
+                status = (ev.get("status") or {}).get("type", "")
+                if status != "finished":
+                    continue
 
-    out = []
-    for ev in events:
-        status = (ev.get("status") or {}).get("type", "")
-        if status != "finished":
-            continue
+                hs = (ev.get("homeScore") or {}).get("current")
+                as_ = (ev.get("awayScore") or {}).get("current")
+                if hs is None or as_ is None:
+                    continue
 
-        hs = (ev.get("homeScore") or {}).get("current")
-        as_ = (ev.get("awayScore") or {}).get("current")
-        if hs is None or as_ is None:
-            continue
+                out.append({
+                    "match_id": str(ev.get("id", "")),
+                    "event_date": date_str,
+                    "status_type": status,
+                    "home_team": (ev.get("homeTeam") or {}).get("name", ""),
+                    "away_team": (ev.get("awayTeam") or {}).get("name", ""),
+                    "league": ((ev.get("tournament") or {}).get("name", "")),
+                })
 
-        out.append({
-            "match_id": str(ev.get("id", "")),
-            "event_date": date_str,
-            "status_type": status,
-            "home_team": (ev.get("homeTeam") or {}).get("name", ""),
-            "away_team": (ev.get("awayTeam") or {}).get("name", ""),
-            "league": ((ev.get("tournament") or {}).get("name", "")),
-        })
+            return [m for m in out if m["match_id"]]
+        
+        except RuntimeError as e:
+            last_error = str(e)
+            # On last attempt, re-raise with more context
+            if attempt >= max_retries:
+                raise RuntimeError(
+                    f"Failed to fetch SofaScore data for {date_str} after {max_retries + 1} attempts. "
+                    f"Final error: {last_error}"
+                )
+            
+            # On 403, record error and potentially trigger cooldown
+            err_text = str(e).lower()
+            if "403" in err_text and anti_block:
+                anti_block.note_fetch_error(str(e), "fetch_finished_match_ids_for_date")
+                # If cooldown just triggered, raise immediately
+                if anti_block.get_global_fetch_cooldown_left() > 0:
+                    raise
+            
+            # Exponential backoff before retry
+            backoff_secs = 0.5 * (1.5 ** attempt)
+            time.sleep(backoff_secs)
+        except Exception as e:
+            last_error = str(e)
+            # On last attempt, re-raise with context
+            if attempt >= max_retries:
+                raise RuntimeError(
+                    f"Failed to fetch SofaScore data for {date_str} after {max_retries + 1} attempts. "
+                    f"Final error: {last_error}"
+                )
+            # Other errors: exponential backoff and retry
+            backoff_secs = 0.5 * (1.5 ** attempt)
+            time.sleep(backoff_secs)
 
-    return [m for m in out if m["match_id"]]
 
-
-def fetch_live_match_ids() -> list[dict]:
-    """Return currently live basketball matches from SofaScore."""
+def fetch_live_match_ids(max_retries: int = 3) -> list[dict]:
+    """Return currently live basketball matches from SofaScore.
+    
+    Parameters
+    ----------
+    max_retries : int
+        Number of times to retry on HTTP 403.
+    
+    Raises
+    ------
+    RuntimeError
+        If API returns non-OK status after all retries.
+    """
     extra_headers = {
         "Referer": "https://www.sofascore.com/",
         "Accept": "application/json, text/plain, */*",
@@ -1245,40 +1341,95 @@ def fetch_live_match_ids() -> list[dict]:
     }
 
     api_url = "https://api.sofascore.com/api/v1/sport/basketball/events/live"
+    
+    last_error = None
+    # Retry loop with anti-block protection
+    for attempt in range(max_retries + 1):
+        # Check if we're in cooldown
+        if anti_block and anti_block.get_global_fetch_cooldown_left() > 0:
+            cooldown_left = anti_block.get_global_fetch_cooldown_left()
+            if attempt == 0:
+                raise RuntimeError(
+                    f"Anti-block cooldown active ({cooldown_left:.0f}s remaining). "
+                    f"Retry after approximately {int(cooldown_left) + 1} seconds."
+                )
+        
+        # Apply global request spacing with jitter
+        if anti_block:
+            delay = anti_block.next_global_fetch_delay_secs()
+            if delay > 0:
+                time.sleep(delay)
 
-    with _browser_context("https://www.sofascore.com/basketball") as (_, ctx, _page):
-        resp = ctx.request.get(api_url, headers=extra_headers, timeout=30_000)
-        if not resp.ok:
-            raise RuntimeError(
-                f"Live events API returned HTTP {resp.status}"
-            )
+        try:
+            with _browser_context("https://www.sofascore.com/basketball") as (_, ctx, _page):
+                resp = ctx.request.get(api_url, headers=extra_headers, timeout=30_000)
+                if not resp.ok:
+                    err_msg = f"Live events API returned HTTP {resp.status}"
+                    if anti_block:
+                        anti_block.note_fetch_error(err_msg, "fetch_live_match_ids")
+                    raise RuntimeError(err_msg)
 
-        body = resp.json() or {}
-        events = body.get("events", []) if isinstance(body, dict) else []
+                body = resp.json() or {}
+                events = body.get("events", []) if isinstance(body, dict) else []
+            
+            # Success
+            if anti_block:
+                anti_block.note_fetch_success()
 
-    out = []
-    for ev in events:
-        match_id = str(ev.get("id", "") or "")
-        if not match_id:
-            continue
-        status = (ev.get("status") or {})
-        time_info = ev.get("time") or {}
-        hs = (ev.get("homeScore") or {}).get("current")
-        as_ = (ev.get("awayScore") or {}).get("current")
-        out.append({
-            "match_id": match_id,
-            "event_date": "",
-            "status_type": status.get("type", ""),
-            "status_description": status.get("description", ""),
-            "played_seconds": time_info.get("played"),
-            "home_team": (ev.get("homeTeam") or {}).get("name", ""),
-            "away_team": (ev.get("awayTeam") or {}).get("name", ""),
-            "league": ((ev.get("tournament") or {}).get("name", "")),
-            "home_score": hs,
-            "away_score": as_,
-        })
+            out = []
+            for ev in events:
+                match_id = str(ev.get("id", "") or "")
+                if not match_id:
+                    continue
+                status = (ev.get("status") or {})
+                time_info = ev.get("time") or {}
+                hs = (ev.get("homeScore") or {}).get("current")
+                as_ = (ev.get("awayScore") or {}).get("current")
+                out.append({
+                    "match_id": match_id,
+                    "event_date": "",
+                    "status_type": status.get("type", ""),
+                    "status_description": status.get("description", ""),
+                    "played_seconds": time_info.get("played"),
+                    "home_team": (ev.get("homeTeam") or {}).get("name", ""),
+                    "away_team": (ev.get("awayTeam") or {}).get("name", ""),
+                    "league": ((ev.get("tournament") or {}).get("name", "")),
+                    "home_score": hs,
+                    "away_score": as_,
+                })
 
-    return out
+            return out
+        
+        except RuntimeError as e:
+            last_error = str(e)
+            # On last attempt, re-raise with more context
+            if attempt >= max_retries:
+                raise RuntimeError(
+                    f"Failed to fetch live SofaScore data after {max_retries + 1} attempts. "
+                    f"Final error: {last_error}"
+                )
+            
+            # On 403, record and check for cooldown trigger
+            err_text = str(e).lower()
+            if "403" in err_text and anti_block:
+                anti_block.note_fetch_error(str(e), "fetch_live_match_ids")
+                if anti_block.get_global_fetch_cooldown_left() > 0:
+                    raise
+            
+            # Exponential backoff before retry
+            backoff_secs = 0.5 * (1.5 ** attempt)
+            time.sleep(backoff_secs)
+        except Exception as e:
+            last_error = str(e)
+            # On last attempt, re-raise with context
+            if attempt >= max_retries:
+                raise RuntimeError(
+                    f"Failed to fetch live SofaScore data after {max_retries + 1} attempts. "
+                    f"Final error: {last_error}"
+                )
+            # Other errors: exponential backoff and retry
+            backoff_secs = 0.5 * (1.5 ** attempt)
+            time.sleep(backoff_secs)
 
 
 def fetch_matches_by_ids(

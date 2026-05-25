@@ -52,13 +52,15 @@ import argparse
 import importlib
 import json
 import os
+import random
+import re
 import subprocess
 import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-os.environ.setdefault("SOFASCORE_SCRAPER_BACKEND", "obscura")
+os.environ.setdefault("SOFASCORE_SCRAPER_BACKEND", "chrome")
 
 import db as db_mod
 import ml_tools as ml_mod
@@ -66,6 +68,8 @@ import scraper as scraper_mod
 
 DEFAULT_DB = str(Path(__file__).parent / "matches.db")
 DEFAULT_RESUME_KEY = "basketball_ft"
+FETCH_DATE_JITTER_MIN_SECS = 0.20
+FETCH_DATE_JITTER_MAX_SECS = 0.90
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -250,9 +254,18 @@ def _ingest_pending_matches(
     return len(pending), ing_ok, ing_fail, skipped_ft, ingest_error_samples
 
 
-def _prompt_use_obscura() -> bool:
-    ans = input("[fetch-date] Usar Obscura? [s/N]: ").strip().lower()
-    return ans in {"s", "si", "sí", "y", "yes"}
+def _prompt_select_backend() -> str | None:
+    """Prompt user to choose scraper backend. Returns None to use env default."""
+    print("[fetch-date] Backend de scraping:")
+    print("  1) Chrome headless  (recomendado, default)")
+    print("  2) Obscura (CDP)")
+    print("  3) Chromium bundled (Playwright)")
+    ans = input("  Opción [1/2/3, Enter=1]: ").strip()
+    if ans == "2":
+        return "obscura"
+    if ans == "3":
+        return "traditional"
+    return "chrome"
 
 
 # ── command handlers ──────────────────────────────────────────────────────────
@@ -643,9 +656,12 @@ def _print_dual_progress(
     started: bool,
     detail: str = "",
     eta: str = "",
+    last_error_code: str = "",
 ) -> bool:
     done_line = _progress_line(prefix, current, total, detail=detail, eta=eta)
     suffix = f" err={errors}" if errors else ""
+    if errors and last_error_code:
+        suffix += f" last_err={last_error_code}"
     _ = started
     sys.stdout.write(f"\r\x1b[2K{done_line}{suffix}")
     sys.stdout.flush()
@@ -695,6 +711,16 @@ def _short_last(seconds: float | None) -> str:
     if seconds is None or seconds < 0:
         return "?"
     return f"{seconds:.1f}s"
+
+
+def _extract_http_error_code(err_text: str) -> str:
+    """Extract HTTP status code from an error string (e.g. 403, 404)."""
+    text = str(err_text or "")
+    m = re.search(r"(?:http\s*)?(\d{3})", text, flags=re.IGNORECASE)
+    if not m:
+        return ""
+    code = m.group(1)
+    return code if code.startswith(("4", "5")) else ""
 
 
 def _finalize_eval(stats: dict, odds: float) -> dict:
@@ -1629,10 +1655,18 @@ def _ingest_date_with_progress(
     event_date: str,
     limit: int | None,
     backend: str | None = None,
+    force_redownload: bool = False,
 ) -> None:
     """Discover FT match IDs for a date and ingest them with a progress bar."""
     print(f"[fetch-date] Consultando SofaScore para {event_date}...")
-    rows_all = scraper_mod.fetch_finished_match_ids_for_date(event_date)
+    try:
+        rows_all = scraper_mod.fetch_finished_match_ids_for_date(event_date)
+    except Exception as exc:
+        error_reason = str(exc).strip()
+        print(f"[fetch-date] ERROR: No se pudo consultar SofaScore")
+        print(f"[fetch-date] Razón final: {error_reason}")
+        return
+    
     rows = rows_all[:limit] if limit is not None else rows_all
     print(
         f"[fetch-date] finished_found={len(rows_all)}"
@@ -1652,6 +1686,7 @@ def _ingest_date_with_progress(
     run_started = time.perf_counter()
     last_eta = "00:00"
     last_elapsed = None
+    last_error_code = ""
 
     dual_started = False
     if total:
@@ -1666,7 +1701,7 @@ def _ingest_date_with_progress(
 
         existing = db_mod.get_match(conn, match_id)
 
-        if _is_ft_complete(existing):
+        if (not force_redownload) and _is_ft_complete(existing):
             db_mod.mark_discovered_processed(conn, match_id)
             reason = "ya_completo_en_db"
             skip_reasons[reason] = skip_reasons.get(reason, 0) + 1
@@ -1683,6 +1718,7 @@ def _ingest_date_with_progress(
                 detail=f"mid={match_id[:8]} st={_short_state(reason)} last={_short_last(last_elapsed)}"
                        + (f" why={_short_reason(reason)}" if _short_state(reason) != "S" else ""),
                 eta=last_eta,
+                last_error_code=last_error_code,
             )
             continue
 
@@ -1698,7 +1734,12 @@ def _ingest_date_with_progress(
                 started=dual_started,
                 detail=f"mid={match_id[:8]} st=R last={_short_last(last_elapsed)}",
                 eta=last_eta,
+                last_error_code=last_error_code,
             )
+            # Small random spacing between match downloads to avoid rigid request cadence.
+            if idx > 1 and FETCH_DATE_JITTER_MAX_SECS > 0:
+                jitter = random.uniform(FETCH_DATE_JITTER_MIN_SECS, FETCH_DATE_JITTER_MAX_SECS)
+                time.sleep(max(0.0, jitter))
             data = scraper_mod.fetch_match_by_id(match_id, backend=backend)
             elapsed = time.perf_counter() - started_at
             if not _has_usable_data(data):
@@ -1738,6 +1779,9 @@ def _ingest_date_with_progress(
             db_mod.mark_discovered_error(conn, match_id, str(exc))
             ing_fail += 1
             reason = f"error:{str(exc).splitlines()[0][:40]}"
+            code = _extract_http_error_code(str(exc))
+            if code:
+                last_error_code = code
 
         last_elapsed = elapsed if elapsed else last_elapsed
         if idx % 10 == 0 or idx == total:
@@ -1751,6 +1795,7 @@ def _ingest_date_with_progress(
             started=dual_started,
             detail=f"mid={match_id[:8]} last={_short_last(last_elapsed)} r={_short_reason(reason)}",
             eta=last_eta,
+            last_error_code=last_error_code,
         )
 
     if total:
@@ -1770,7 +1815,12 @@ def _ingest_date_with_progress(
 def cmd_fetch_date(args: argparse.Namespace) -> None:
     event_date = args.date
     limit = args.limit
-    _ingest_date_with_progress(args.db, event_date, limit)
+    _ingest_date_with_progress(
+        args.db,
+        event_date,
+        limit,
+        force_redownload=bool(getattr(args, "force_redownload", False)),
+    )
 
 
 def cmd_fetch_date_menu(args: argparse.Namespace) -> None:
@@ -1780,13 +1830,25 @@ def cmd_fetch_date_menu(args: argparse.Namespace) -> None:
         print("[fetch-date-menu] cancelado")
         return
     event_date, limit = result
-    use_obscura = _prompt_use_obscura()
-    backend = "obscura" if use_obscura else None
+    backend = _prompt_select_backend()
+    force_redownload = bool(getattr(args, "force_redownload", False))
     if isinstance(event_date, list):
         for d in event_date:
-            _ingest_date_with_progress(args.db, d, limit, backend=backend)
+            _ingest_date_with_progress(
+                args.db,
+                d,
+                limit,
+                backend=backend,
+                force_redownload=force_redownload,
+            )
     else:
-        _ingest_date_with_progress(args.db, event_date, limit, backend=backend)
+        _ingest_date_with_progress(
+            args.db,
+            event_date,
+            limit,
+            backend=backend,
+            force_redownload=force_redownload,
+        )
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -2123,6 +2185,13 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="N",
         help="Max matches to ingest (default: no limit)",
     )
+    p_fetch.add_argument(
+        "--force-redownload",
+        action="store_true",
+        help=(
+            "Ignore complete matches already in DB and fetch them again"
+        ),
+    )
     p_fetch.set_defaults(func=cmd_fetch_date)
 
     # fetch-date-menu
@@ -2130,6 +2199,13 @@ def _build_parser() -> argparse.ArgumentParser:
         "fetch-date-menu",
         help=(
             "Interactive missing-date selector (same flow as menu option 15)"
+        ),
+    )
+    p_fetch_menu.add_argument(
+        "--force-redownload",
+        action="store_true",
+        help=(
+            "Ignore complete matches already in DB and fetch them again"
         ),
     )
     p_fetch_menu.set_defaults(func=cmd_fetch_date_menu)

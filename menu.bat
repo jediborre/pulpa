@@ -24,9 +24,10 @@ echo              MENU PRINCIPAL
 echo ==================================================
 echo.
 echo   1) Correr Bot de Telegram
-echo   2) Correr API Backend
+echo   2) Correr Monitoreo V2 (Modular)
 echo   3) Correr Dashboard (API + Frontend)
 echo   4) Correr Todo  (Bot + API + Dashboard)
+echo   30) Correr API Backend
 echo   5) Traer fecha nueva / rango 5 dias con base manual  (option 15 de cli.py)
 echo   6) Backfill / actualiza datos nuevos
 echo   7) Entrenar modelo V6
@@ -58,9 +59,10 @@ set /p OPT="  Selecciona: "
 
 if "%OPT%"=="0" goto FIN
 if "%OPT%"=="1" goto BOT
-if "%OPT%"=="2" goto API
+if "%OPT%"=="2" goto RUN_MONITOR_V2
 if "%OPT%"=="3" goto DASHBOARD
 if "%OPT%"=="4" goto TODO
+if "%OPT%"=="30" goto API
 if "%OPT%"=="5" goto FETCH_DATE
 if "%OPT%"=="6" goto BACKFILL
 if "%OPT%"=="7" goto TRAIN_V6
@@ -89,6 +91,13 @@ if "%OPT%"=="29" goto STOP_OBSCURA
 
 echo [ERROR] Opcion invalida.
 timeout /t 2 /nobreak >nul
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:RUN_MONITOR_V2
+cls
+echo [+] Iniciando Monitoreo V2 (Modular)...
+start "Pulpa - Monitoreo V2" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python bet_monitor_v2\main.py"
 goto MENU
 
 :: ─────────────────────────────────────────────────
@@ -130,7 +139,12 @@ goto MENU
 cls
 echo [+] Traer fecha nueva (selector directo de fechas faltantes)...
 echo.
-call .venv\Scripts\activate && python match\cli.py fetch-date-menu
+set "FORCE_FLAG="
+set /p REDOWNLOAD="  Forzar redescarga de partidos ya completos? [s/N]: "
+if /I "%REDOWNLOAD%"=="s" set "FORCE_FLAG= --force-redownload"
+if /I "%REDOWNLOAD%"=="si" set "FORCE_FLAG= --force-redownload"
+if /I "%REDOWNLOAD%"=="y" set "FORCE_FLAG= --force-redownload"
+call .venv\Scripts\activate && python match\cli.py fetch-date-menu!FORCE_FLAG!
 pause
 goto MENU
 
@@ -314,10 +328,8 @@ goto MENU
 :BACKFILL
 cls
 echo [+] Backfill historico de matches...
-echo [+] Comprobando Obscura antes de procesar...
-call start_obscura.bat
 call .venv\Scripts\activate
-python match\scripts\backfill.py match\matches.db --all --backend obscura
+python match\scripts\backfill.py match\matches.db --all --backend chrome --session-rotate 20
 pause
 goto MENU
 

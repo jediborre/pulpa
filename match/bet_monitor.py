@@ -43,6 +43,8 @@ BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
+import anti_block
+
 logger = logging.getLogger(__name__)
 
 # ── Timing constants ────
@@ -63,19 +65,19 @@ MIN_GP_Q4 = 26               # graph_points with minute ≤ 36 required for Q4 c
 SKIP_Q3 = True               # temporarily disable Q3 monitoring to reduce CPU load
 Q4_ONLY_EARLY_WAKE_MINUTE = 27  # when SKIP_Q3, start fetching near this game minute
 Q4_ONLY_WAKE_LEAD_MINUTES = 2   # wake this many game-minutes before target minute
-PRESTART_PROBE_MIN_SECS = 90    # lightweight probe interval when match hasn't started yet
-PRESTART_PROBE_MAX_SECS = 11 * 60
-PRESTART_PROBE_BACKOFF = 1.45
+PRESTART_PROBE_MIN_SECS = 60    # fue 90; reducido para detectar arranque más rápido
+PRESTART_PROBE_MAX_SECS = 5 * 60  # fue 11 min; suficiente backoff sin perder partidos
+PRESTART_PROBE_BACKOFF = 1.25   # fue 1.45; escala más suave
 MAX_FETCH_ERRORS = 4         # consecutive errors before discarding a match
 SCHEDULE_REFRESH_HOURS = 8   # re-fetch schedule this often
-PENDING_RECHECK_SECS = 15 * 60  # periodically backfill pending outcomes
-PENDING_RECHECK_MAX_MATCHES = 40  # cap scrape workload per cycle
+PENDING_RECHECK_SECS = 20 * 60  # fue 15 min; ahora 20 min para evitar spam de checks
+PENDING_RECHECK_MAX_MATCHES = 15  # fue 40; reducido a 15 para no sobrecargar en recheck
 PENDING_SCHEDULE_RECHECK_SECS = 15 * 60  # periodically revisit pending schedule rows
 PENDING_SCHEDULE_MAX_MATCHES = 20  # cap pending-schedule scrape workload
 PENDING_SCHEDULE_MIN_AGE_SECS = 45 * 60  # only recheck matches older than this
 PENDING_RECHECK_MAX_FETCHES_IN_FLIGHT = 2  # skip periodic rechecks only if fetch load is high
 NO_GRAPH_REAL_SECS = 55 * 60 # discard if no graph_points 55 real-min after start
-MAX_CONCURRENT_FETCHES = 6   # max simultaneous Playwright fetches across all watchers
+MAX_CONCURRENT_FETCHES = 2   # fue 6; reducido a 2 para evitar detección de bot con Obscura
 FINAL_FETCH_EXTRA_SECS = 300 # extra real-seconds after estimated end before final save
 FINAL_FETCH_MIN_GP = 8       # legacy threshold kept for diagnostics/logging only
 MONITOR_LOG_DIR = BASE_DIR / "logs"  # daily monitor logs written here
@@ -83,11 +85,8 @@ Q4_TOO_LATE_BET_MINUTE = 33  # discard Q4 bet if minute >= this AND pick is ahea
 Q4_TOO_LATE_HARD_MINUTE = 36 # always discard Q4 bet if minute >= this (hard cutoff)
 Q4_TOO_LATE_SCORE_MARGIN = 5 # q4 margin threshold for score-aware late discard
 Q4_REEVAL_FAST_SECS = 45     # fast re-evaluation tick for uncertain Q4 signals
-GLOBAL_FETCH_MIN_SPACING_SECS = 0.80   # global request spacing to reduce burstiness
-GLOBAL_FETCH_SPACING_JITTER_SECS = 0.35
-GLOBAL_403_STREAK_TRIGGER = 6          # trip anti-block cooldown after this many 403s
-GLOBAL_403_COOLDOWN_SECS = 12 * 60     # global pause when API starts returning 403s
-GLOBAL_COOLDOWN_LOG_EVERY_SECS = 120   # avoid log spam while cooldown is active
+# Anti-block constants imported from shared anti_block module
+# (see anti_block.py for configuration)
 
 # ─ Global state (read by telegram_bot.py) ──────────────────
 MONITOR_STATUS: dict = {
@@ -196,13 +195,53 @@ def set_model_config(config: dict[str, str]) -> None:
     _model_config = {**_model_config, **config}
 
 
-# Lazy semaphore ÔÇö created inside the monitor thread's event loop
+# Lazy semaphore — created inside the monitor thread's event loop
 _fetch_sem: asyncio.Semaphore | None = None
-_fetch_state_lock = threading.Lock()
-_global_403_streak = 0
-_global_fetch_cooldown_until = 0.0
-_global_next_fetch_wall = 0.0
-_last_cooldown_log_wall = 0.0
+
+# ── Monitoring-priority lock ────────────────────────────────────────────────
+# When a live (inprogress) match is detected, this lock is set for 5 minutes.
+# Any finished match that wants to start its full scrape must wait until the
+# lock expires. Each new live-match detection resets the 5-minute countdown.
+# This prevents a burst of finished-match scrapes from competing with live
+# monitoring fetches.
+_MONITORING_LOCK_SECS = 5 * 60   # duration of the priority window
+_monitoring_lock_until: float = 0.0
+_monitoring_lock_lock = threading.Lock()
+
+
+def _set_monitoring_lock() -> None:
+    """Arm / extend the monitoring priority lock for another 5 minutes."""
+    global _monitoring_lock_until
+    with _monitoring_lock_lock:
+        _monitoring_lock_until = time.time() + _MONITORING_LOCK_SECS
+
+
+def _monitoring_lock_left() -> float:
+    """Return seconds remaining on the monitoring priority lock (0 = expired)."""
+    with _monitoring_lock_lock:
+        return max(0.0, _monitoring_lock_until - time.time())
+
+
+# FT scrape slot queue: serializes finished-match downloads so they don't burst.
+# Each finished match claims the next available wall-clock slot spaced at least
+# FT_SCRAPE_SLOT_SPACING seconds apart.
+FT_SCRAPE_SLOT_SPACING = 35.0   # minimum seconds between consecutive FT scrapes
+_ft_scrape_next_slot: float = 0.0
+_ft_scrape_slot_lock = threading.Lock()
+
+
+def _claim_ft_scrape_slot() -> float:
+    """Reserve the next FT scrape slot and return seconds to wait until it.
+
+    Slots are spaced FT_SCRAPE_SLOT_SPACING seconds apart starting from now
+    if the queue is empty, or from the last reserved slot otherwise.
+    """
+    global _ft_scrape_next_slot
+    with _ft_scrape_slot_lock:
+        now = time.time()
+        slot = max(now, _ft_scrape_next_slot)
+        _ft_scrape_next_slot = slot + FT_SCRAPE_SLOT_SPACING
+        return max(0.0, slot - now)
 
 
 def _get_fetch_sem() -> asyncio.Semaphore:
@@ -225,81 +264,54 @@ def _fetches_in_flight() -> int:
     return max(0, in_flight)
 
 
+# Wrapper functions for anti-block module (with logging integration)
+
 def _is_http_403_error(msg: str) -> bool:
-    text = str(msg or "").lower()
-    return " 403" in text or "http 403" in text
+    return anti_block.is_http_403_error(msg)
 
 
 def _get_global_fetch_cooldown_left() -> float:
-    with _fetch_state_lock:
-        return max(0.0, _global_fetch_cooldown_until - time.monotonic())
+    return anti_block.get_global_fetch_cooldown_left()
 
 
 def _next_global_fetch_delay_secs() -> float:
-    """Return delay needed to keep global spacing+jitter between scrapes."""
-    global _global_next_fetch_wall
-    with _fetch_state_lock:
-        now = time.monotonic()
-        due = max(0.0, _global_next_fetch_wall - now)
-        slot_base = max(now, _global_next_fetch_wall)
-        _global_next_fetch_wall = slot_base + GLOBAL_FETCH_MIN_SPACING_SECS
-    return due + random.uniform(0.0, GLOBAL_FETCH_SPACING_JITTER_SECS)
+    return anti_block.next_global_fetch_delay_secs()
 
 
 def _note_fetch_success() -> None:
-    global _global_403_streak
-    with _fetch_state_lock:
-        _global_403_streak = 0
+    anti_block.note_fetch_success()
 
 
 def _note_fetch_error(msg: str, source: str) -> None:
     """Track 403 streaks globally and arm cooldown when blocked."""
-    global _global_403_streak, _global_fetch_cooldown_until
-    now = time.monotonic()
-    tripped = False
-    cooldown_mins = 0.0
-    streak_val = 0
-
-    with _fetch_state_lock:
-        if _is_http_403_error(msg):
-            _global_403_streak += 1
-            streak_val = _global_403_streak
-            if _global_403_streak >= GLOBAL_403_STREAK_TRIGGER:
-                _global_fetch_cooldown_until = max(
-                    _global_fetch_cooldown_until,
-                    now + GLOBAL_403_COOLDOWN_SECS,
-                )
-                _global_403_streak = 0
-                tripped = True
-                cooldown_mins = (
-                    max(0.0, _global_fetch_cooldown_until - now) / 60.0
-                )
-        else:
-            _global_403_streak = 0
-
-    if tripped:
+    # Log the triggered cooldown event through our logger
+    old_left = anti_block.get_global_fetch_cooldown_left()
+    anti_block.note_fetch_error(msg, source)
+    new_left = anti_block.get_global_fetch_cooldown_left()
+    
+    # If cooldown just triggered, log with _log()
+    if new_left > old_left:
         _log(
             "anti-bloqueo activado: pausa global "
-            f"{cooldown_mins:.1f} min tras racha HTTP 403 "
-            f"(source={source}, streak={streak_val})"
+            f"{new_left / 60:.1f} min tras racha HTTP 403 "
+            f"(source={source})"
         )
 
 
+_cooldown_next_log: dict[str, float] = {}  # maps source -> wall time when next log is allowed
+
+
 def _maybe_log_global_cooldown(source: str) -> float:
-    """Return cooldown-left seconds and throttle repeated cooldown logs."""
-    global _last_cooldown_log_wall
-    now = time.monotonic()
-    should_log = False
-    left = 0.0
-
-    with _fetch_state_lock:
-        left = max(0.0, _global_fetch_cooldown_until - now)
-        if left > 0 and (now - _last_cooldown_log_wall) >= GLOBAL_COOLDOWN_LOG_EVERY_SECS:
-            _last_cooldown_log_wall = now
-            should_log = True
-
-    if should_log:
-        _log(f"pausa anti-bloqueo activa ({source}): ~{left / 60:.1f} min")
+    """Return cooldown-left seconds; log once per announced pause duration."""
+    left = anti_block.maybe_log_global_cooldown(source)
+    if left > 0:
+        now = time.monotonic()
+        if now >= _cooldown_next_log.get(source, 0.0):
+            _log(f"pausa anti-bloqueo activa ({source}): ~{left / 60:.1f} min")
+            # next log allowed only after the announced pause has elapsed
+            _cooldown_next_log[source] = now + left
+    else:
+        _cooldown_next_log.pop(source, None)
     return left
 
 
@@ -799,6 +811,22 @@ def _get_pending_rows(conn: sqlite3.Connection, local_date: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def _get_all_pending_rows(conn: sqlite3.Connection, local_date: str) -> list[dict]:
+    """Return ALL pending rows for the given date regardless of league filter.
+    Used to schedule FT downloads for matches in filtered leagues.
+    """
+    rows = conn.execute(
+        """
+        SELECT * FROM bet_monitor_schedule
+        WHERE event_date = ?
+          AND status NOT IN ('done', 'discarded')
+        ORDER BY scheduled_utc_ts ASC
+        """,
+        (local_date,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def _update_row(conn: sqlite3.Connection, match_id: str, **kwargs) -> None:
     if not kwargs:
         return
@@ -1061,7 +1089,7 @@ async def _recheck_pending_outcomes_once(db_path: str) -> dict[str, int]:
                 if delay > 0:
                     time.sleep(delay)
                 try:
-                    fresh = scraper_mod.fetch_match_by_id(mid, backend="obscura")
+                    fresh = scraper_mod.fetch_match_by_id(mid, backend=None)
                     if fresh:
                         db_mod.save_match(save_conn, mid, fresh)
                         _note_fetch_success()
@@ -1069,7 +1097,12 @@ async def _recheck_pending_outcomes_once(db_path: str) -> dict[str, int]:
                     else:
                         fail += 1
                 except Exception as exc:
-                    _note_fetch_error(str(exc), source="recheck_pending")
+                    exc_str = str(exc)
+                    if _is_http_403_error(exc_str):
+                        logger.warning(
+                            "[MONITOR] recheck_pending %s: HTTP 403", mid
+                        )
+                    _note_fetch_error(exc_str, source="recheck_pending")
                     fail += 1
         finally:
             save_conn.close()
@@ -1138,9 +1171,14 @@ async def _recheck_pending_finished_schedule_once(db_path: str) -> dict[str, int
                 if delay > 0:
                     time.sleep(delay)
                 try:
-                    fresh = scraper_mod.fetch_match_by_id(mid, backend="obscura")
+                    fresh = scraper_mod.fetch_match_by_id(mid, backend=None)
                 except Exception as exc:
-                    _note_fetch_error(str(exc), source="recheck_schedule_ft")
+                    exc_str = str(exc)
+                    if _is_http_403_error(exc_str):
+                        logger.warning(
+                            "[MONITOR] recheck_schedule_ft %s: HTTP 403", mid
+                        )
+                    _note_fetch_error(exc_str, source="recheck_schedule_ft")
                     scraped_fail += 1
                     continue
 
@@ -1203,7 +1241,7 @@ def _fetch_all_events_for_date_sync(local_date: str) -> list[dict]:
     utc_dates = [local_dt.isoformat(), (local_dt + timedelta(days=1)).isoformat()]
 
     all_events: list = []
-    with _browser_context("https://www.sofascore.com/basketball", backend="obscura") as (_, ctx, _page):
+    with _browser_context("https://www.sofascore.com/basketball", backend=None) as (_, ctx, _page):
         for utc_date in utc_dates:
             url = (
                 "https://api.sofascore.com/api/v1/"
@@ -1321,6 +1359,7 @@ async def _final_fetch_and_save(
     secs_per_gmin: float,
     stop_event: asyncio.Event,
     sleep_fn,
+    scheduled_ts: int = 0,
 ) -> None:
     """Wait for the estimated end of the match, then scrape and persist
     the final result to the matches DB.
@@ -1332,15 +1371,17 @@ async def _final_fetch_and_save(
     mins_remaining = max(0, GAME_END_MINUTE - (current_minute or GAME_END_MINUTE))
     wait_secs = mins_remaining * secs_per_gmin + FINAL_FETCH_EXTRA_SECS
     _log(
-        f"{home} vs {away}: esperando fin estimado "
+        f"[DESCARGA] {home} vs {away}: esperando fin estimado "
         f"(~{wait_secs / 60:.0f} min) antes de guardar resultado final"
     )
     if await sleep_fn(wait_secs):
         return  # stop_event fired
 
-    # Poll every 90s until status=finished, then save.  Give up after 40 min.
+    # Poll until status=finished, then save.  Give up after 40 min.
+    # POLL_INTERVAL_FF = 150s (was 90s) + jitter [0, 45s] to desync concurrent loops
     MAX_FINISH_WAIT = 40 * 60
-    POLL_INTERVAL = 90
+    POLL_INTERVAL_FF = 150
+    POLL_JITTER_FF = 45
     waited_finish = 0
     last_data: dict | None = None
 
@@ -1349,7 +1390,7 @@ async def _final_fetch_and_save(
             return
         cooldown_left = _maybe_log_global_cooldown("final_fetch")
         if cooldown_left > 0:
-            pause_secs = min(float(POLL_INTERVAL), max(15.0, cooldown_left))
+            pause_secs = min(float(POLL_INTERVAL_FF), max(15.0, cooldown_left))
             if await sleep_fn(pause_secs):
                 return
             waited_finish += pause_secs
@@ -1369,13 +1410,30 @@ async def _final_fetch_and_save(
             exc_short = str(exc).split("\n")[0][:160]
             exc_short = _sanitize_fetch_error_message(exc_short, match_id)
             _note_fetch_error(exc_short, source="final_fetch")
-            logger.warning(
-                "[MONITOR] final_fetch %s error: %s",
-                match_id, exc_short[:120],
+            _ff_sched_label = _format_sched_local_label(scheduled_ts)
+            _ff_min = _get_minute(last_data) if last_data else None
+            _ff_min_str = f" min={_ff_min}" if _ff_min is not None else ""
+            _is_403 = "403" in exc_short
+            _exc_display = (
+                _color_text("HTTP 404", "31")
+                if ("404" in exc_short and "Incidents" in exc_short)
+                else _color_text("HTTP 403", "31")
+                if _is_403
+                else exc_short[:120]
             )
-            if await sleep_fn(POLL_INTERVAL):
+            _err_label = (
+                "Incidentes error" if ("404" in exc_short and "Incidents" in exc_short)
+                else "Event error API" if _is_403
+                else "error"
+            )
+            logger.warning(
+                "[MONITOR] %s vs %s [%s] sched=%s%s | %s: %s",
+                home, away, match_id, _ff_sched_label, _ff_min_str, _err_label, _exc_display,
+            )
+            _poll_sleep = POLL_INTERVAL_FF + random.uniform(0, POLL_JITTER_FF)
+            if await sleep_fn(_poll_sleep):
                 return
-            waited_finish += POLL_INTERVAL
+            waited_finish += _poll_sleep
             continue
 
         if last_data:
@@ -1384,24 +1442,26 @@ async def _final_fetch_and_save(
             ).lower()
             if st == "finished":
                 break
+            _ff_wait_utc = datetime.now(timezone.utc).strftime("%H:%M:%S UTC")
             _log(
-                f"{home} vs {away}: final_fetch esperando fin "
-                f"(status={st}, espera={waited_finish}s)"
+                f"[DESCARGA] {home} vs {away}: final_fetch esperando fin "
+                f"(status={st}, espera={waited_finish:.0f}s, {_ff_wait_utc})"
             )
 
-        if await sleep_fn(POLL_INTERVAL):
+        _poll_sleep = POLL_INTERVAL_FF + random.uniform(0, POLL_JITTER_FF)
+        if await sleep_fn(_poll_sleep):
             return
-        waited_finish += POLL_INTERVAL
+        waited_finish += _poll_sleep
 
     data = last_data
     if not data:
-        _log(f"{home} vs {away}: final_fetch sin datos al finalizar")
+        _log(f"[DESCARGA] {home} vs {away}: final_fetch sin datos al finalizar")
         return
 
     gp_total = len(data.get("graph_points") or [])
     if gp_total < FINAL_FETCH_MIN_GP:
         _log(
-            f"{home} vs {away}: final_fetch con gráfica corta "
+            f"[DESCARGA] {home} vs {away}: final_fetch con gráfica corta "
             f"(gp={gp_total}, ref={FINAL_FETCH_MIN_GP}) — guardando igual"
         )
 
@@ -1416,7 +1476,7 @@ async def _final_fetch_and_save(
             final_fetched=1,
             final_fetch_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         )
-        _log(f"{home} vs {away}: resultado final guardado (gp={gp_total})")
+        _log(f"[DESCARGA] {home} vs {away}: resultado final guardado (gp={gp_total})")
     except Exception as exc:
         logger.warning(
             "[MONITOR] final_fetch save error %s: %s", match_id, exc
@@ -2571,6 +2631,7 @@ async def _check_quarter(
     quarter_label = target.upper()
     _log(f"{home} vs {away}: analizando {quarter_label} (min {current_minute})")
 
+
     # Persist scraped data so infer_match can load from DB
     try:
         tmp = _open_db(db_path)
@@ -2659,6 +2720,7 @@ async def _check_quarter(
         f"  Min scraped: {current_minute}\n"
         f"  GP total={len(_gp_all)} | GP used (≤min{_cutoff})={len(_gp_used)}\n"
         f"{_extra_lines}"
+        f"  SofaScore: {_sofascore_match_url(match_id, result, home, away)}\n"
         f"  Inference JSON:\n{json.dumps(result, ensure_ascii=False, default=str, indent=2)}\n"
         f"{'='*60}",
         flush=True,
@@ -3028,7 +3090,7 @@ async def _check_quarter(
         }
         await _notify(msg, reply_markup=markup, notify_type="bet", quarter=target)
         notified = True
-        _log(f"🟢 BET {quarter_label} [{model_used}]: {home} vs {away} → {pick} ({confidence * 100:.0f}%)")
+        _log(f"🟢 BET {quarter_label} [{model_used}]: {home} vs {away} → {pick} ({confidence * 100:.0f}%) | min={current_minute}")
         # Schedule result check after match finishes
         asyncio.ensure_future(
             _resolve_bet_result(
@@ -3042,7 +3104,7 @@ async def _check_quarter(
         # uncertain reasons wait for confirmation ticks (suppress_no_bet_notify).
         _send_now = not suppress_no_bet_notify or _is_definitive_no_bet(pred)
         _log(
-            f"🔴 NO BET {quarter_label} [{model_used}]: {home} vs {away} | signal={signal}"
+            f"🔴 NO BET {quarter_label} [{model_used}]: {home} vs {away} | signal={signal} | min={current_minute}"
             + ("" if _send_now else " [esperando confirmacion]")
         )
         if _send_now:
@@ -3432,6 +3494,7 @@ async def _watch_match(
     row: dict,
     db_path: str,
     stop_event: asyncio.Event,
+    ft_only: bool = False,
 ) -> None:
     """Watch one match from start to finish, checking Q3 and Q4.
 
@@ -3525,6 +3588,49 @@ async def _watch_match(
         return max(floor, base + jitter)
 
     try:
+        # ── FT-only mode: liga filtrada, solo descarga resultado final ────────
+        if ft_only:
+            _log(
+                f"[FT] {home} vs {away} | LIGA FILTRADA "
+                f"DESCARGA FT | {sched_label}"
+            )
+            now_ts = time.time()
+            if scheduled_ts > now_ts:
+                wait_secs = scheduled_ts - now_ts
+                _log(
+                    f"[FT] {home} vs {away} | esperando inicio "
+                    f"~{wait_secs / 60:.0f}m"
+                )
+                if await _sleep(wait_secs):
+                    return
+                current_minute_ft = 0
+            else:
+                # Match likely in progress; estimate current game minute
+                elapsed_game_secs = now_ts - scheduled_ts
+                current_minute_ft = min(48, int(elapsed_game_secs / secs_per_gmin))
+
+            # Claim a FT scrape slot to avoid bursting when many ft_only matches finish together
+            ft_slot_wait = _claim_ft_scrape_slot()
+            if ft_slot_wait > 1.0:
+                _log(f"[DESCARGA] [FT] {home} vs {away} | — ESPERANDO SLOT ~{ft_slot_wait:.0f}s")
+                if await _sleep(ft_slot_wait):
+                    return
+
+            await _final_fetch_and_save(
+                match_id=match_id,
+                db_path=db_path,
+                conn_sched=conn,
+                home=home,
+                away=away,
+                current_minute=current_minute_ft,
+                secs_per_gmin=secs_per_gmin,
+                stop_event=stop_event,
+                sleep_fn=_sleep,
+                scheduled_ts=scheduled_ts,
+            )
+            _update_row(conn, match_id, status="done")
+            return
+
         # Wait until close to match start (2-min buffer)
         if scheduled_ts > 0:
             start_buffer_secs = _jitter_sleep_secs(120.0, phase="startup")
@@ -3548,9 +3654,15 @@ async def _watch_match(
                 wait_to_wake = wake_wall_ts - time.time()
                 if wait_to_wake > 60:
                     prefetch_sleep = _jitter_sleep_secs(wait_to_wake, phase="q4_far")
+                    _wake_eta_dt = (
+                        datetime.now(timezone.utc)
+                        + timedelta(seconds=prefetch_sleep)
+                        + timedelta(hours=UTC_OFFSET_HOURS)
+                    )
+                    _wake_eta_str = _wake_eta_dt.strftime("%H:%M")
                     _log(
                         f"{home} vs {away}: Q4-only activo, durmiendo ~{prefetch_sleep/60:.0f} min "
-                        f"(wake cerca min {Q4_ONLY_EARLY_WAKE_MINUTE})"
+                        f"(wake ~{_wake_eta_str} UTC-6 cerca min {Q4_ONLY_EARLY_WAKE_MINUTE}, sched={sched_label} UTC-6)"
                     )
                     if await _sleep(prefetch_sleep):
                         break
@@ -3599,15 +3711,70 @@ async def _watch_match(
                     continue
 
                 snap_status = str((snap or {}).get("status_type", "") or "").lower()
-                if snap_status == "finished" or snap_status in {"inprogress", "live"}:
+                snap_desc = str((snap or {}).get("status_description", "") or "")
+                _LIVE_STATUSES = {"inprogress", "live", "1sthalf", "2ndhalf",
+                                  "1stperiod", "2ndperiod", "3rdperiod", "4thperiod",
+                                  "halftime", "pause", "overtime", "ot", "extratime"}
+                if snap_status == "finished" or snap_status in _LIVE_STATUSES:
                     q4_prestart_probe_mode = False
-                    _log(
-                        f"{home} vs {away}: partido detectado en estado={snap_status}, "
-                        "activando scrape completo"
-                    )
+                    actual_drift = max(0.0, time.time() - float(scheduled_ts or 0))
+
+                    if snap_status == "finished":
+                        # Finished match: wait out any active monitoring-priority lock first,
+                        # then claim a FT scrape slot to spread load across many concurrent finishes.
+                        lock_left = _monitoring_lock_left()
+                        if lock_left > 0:
+                            _log(
+                                f"[FINISHED] {home} vs {away}: — ESPERANDO LOCK MON "
+                                f"{lock_left/60:.1f} min"
+                            )
+                            if await _sleep(lock_left):
+                                break
+                        slot_wait = _claim_ft_scrape_slot()
+                        stagger = slot_wait + match_rng.uniform(1.0, 6.0)
+                        _log(
+                            f"[DESCARGA] {home} vs {away} | estado={snap_status!r} "
+                            f"(sched={sched_label} UTC-6, retrasado {actual_drift/60:.0f}m) | "
+                            f"SCRAPE ~{stagger:.0f}s"
+                        )
+                        if await _sleep(stagger):
+                            break
+                    else:
+                        # Live match: set / extend the monitoring priority lock, then proceed fast.
+                        _set_monitoring_lock()
+                        stagger = match_rng.uniform(1.0, 5.0)
+                        _log(
+                            f"[LOCK MON 5 MIN] {home} vs {away} | estado={snap_status!r} "
+                            f"(sched={sched_label} UTC-6, retrasado {actual_drift/60:.0f}m) | "
+                            f"SCRAPE ~{stagger:.0f}s"
+                        )
+                        if await _sleep(stagger):
+                            break
                 else:
+                    # Log raw status on every tick so unexpected values are visible
+                    if snap_status and snap_status != "notstarted":
+                        _log(
+                            f"{home} vs {away}: probe status inesperado={snap_status!r} "
+                            f"desc={snap_desc!r} — no reconocido como live/finished"
+                        )
                     q4_prestart_probe_ticks += 1
                     drift_secs = max(0.0, time.time() - float(scheduled_ts or 0))
+
+                    # If snapshot returns NO status at all (empty string, not "notstarted")
+                    # and drift already past Q4 wake point, the snapshot endpoint is
+                    # unreliable for this match — exit probe mode and do a full fetch.
+                    if (
+                        not snap_status
+                        and snap_status != "notstarted"
+                        and drift_secs >= secs_per_gmin * Q4_ONLY_EARLY_WAKE_MINUTE
+                    ):
+                        _log(
+                            f"{home} vs {away}: snapshot sin status tras drift={drift_secs/60:.0f}m "
+                            f"— saliendo de probe mode para fetch completo"
+                        )
+                        q4_prestart_probe_mode = False
+                        continue
+
                     # If the game is heavily delayed, reduce probe pressure over time.
                     if drift_secs >= 60 * 45:
                         growth = 1.30
@@ -3624,7 +3791,7 @@ async def _watch_match(
                     if q4_prestart_probe_ticks == 1 or q4_prestart_probe_ticks % 3 == 0:
                         _log(
                             f"{home} vs {away}: prestart/delay detectado (status={snap_status or 'unknown'}, "
-                            f"drift={drift_secs/60:.0f}m), próxima sonda en ~{probe_sleep:.0f}s"
+                            f"drift={drift_secs/60:.0f}m, sched={sched_label} UTC-6) | PROXIMO ~{probe_sleep:.0f}s"
                         )
                     if await _sleep(probe_sleep):
                         break
@@ -3643,6 +3810,7 @@ async def _watch_match(
                     secs_per_gmin=secs_per_gmin,
                     stop_event=stop_event,
                     sleep_fn=_sleep,
+                    scheduled_ts=scheduled_ts,
                 )
                 break
 
@@ -3777,7 +3945,7 @@ async def _watch_match(
 
                 if not q4_done:
                     # Game already finished — Q4 window is closed, never notify
-                    _log(f"{home} vs {away}: Q4 no notificado (partido ya terminado)")
+                    _log(f"[FINISHED] {home} vs {away}: Q4 no notificado")
                     _update_row(
                         conn, match_id,
                         q4_checked=1, q4_signal="too_late",
@@ -3792,7 +3960,7 @@ async def _watch_match(
                 if gp_total < FINAL_FETCH_MIN_GP:
                     _log(
                         f"{home} vs {away}: fin detectado con gráfica corta "
-                        f"(gp={gp_total}, ref={FINAL_FETCH_MIN_GP}) — guardando igual"
+                        f"(gp={gp_total}, ref={FINAL_FETCH_MIN_GP}) | GUARDAR"
                     )
                 try:
                     db_conn = __import__("db").get_conn(db_path)
@@ -3980,11 +4148,16 @@ async def _watch_match(
                         else:
                             q4_unavailable_ticks = 0
                             q4_no_bet_ticks += 1
+                            _eta_dt = (
+                                datetime.now(timezone.utc)
+                                + timedelta(seconds=poll_sleep)
+                                + timedelta(hours=UTC_OFFSET_HOURS)
+                            )
                             _log(
                                 f"🟡 {home} vs {away}: Q4 NO BET incierto "
                                 f"(tick {q4_no_bet_ticks}/{NO_BET_CONFIRM_TICKS}, "
                                 f"min={minute}, presupuesto~{budget_secs:.0f}s), "
-                                f"re-evaluando en ~{poll_sleep:.0f}s"
+                                f"re-eval ~{_eta_dt.strftime('%H:%M')} UTC-6 (~{poll_sleep:.0f}s)"
                             )
                             if await _sleep(poll_sleep):
                                 break
@@ -4125,8 +4298,12 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
 
     active_tasks: dict[str, asyncio.Task] = {}
     last_refresh_wall: float = 0.0
-    last_pending_recheck_wall: float = 0.0
-    last_pending_schedule_recheck_wall: float = 0.0
+    # Delay first batch-rechecks by 8 min after startup so watcher tasks
+    # can settle before firing additional burst requests.
+    _STARTUP_RECHECK_GRACE_SECS = 8 * 60
+    _startup_wall = time.monotonic()
+    last_pending_recheck_wall: float = _startup_wall - PENDING_RECHECK_SECS + _STARTUP_RECHECK_GRACE_SECS
+    last_pending_schedule_recheck_wall: float = _startup_wall - PENDING_SCHEDULE_RECHECK_SECS + _STARTUP_RECHECK_GRACE_SECS
     last_date: str = ""
 
     _today_str = _monitor_local_today_str()
@@ -4143,7 +4320,9 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
     # ── Resume: launch watchers for rows already in DB before fetching schedule
     _resume_conn = _open_db(db_path)
     _existing = _get_pending_rows(_resume_conn, _today_str) + _get_pending_rows(_resume_conn, _tomorrow_str)
+    _existing_all = _get_all_pending_rows(_resume_conn, _today_str) + _get_all_pending_rows(_resume_conn, _tomorrow_str)
     _resume_conn.close()
+    _existing_ids = {r["match_id"] for r in _existing}
     if _existing:
         _log(f"Retomando {len(_existing)} partido(s) pendientes de la base")
         for _row in _existing:
@@ -4159,6 +4338,25 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
             _log(
                 f"Retomado: {_row.get('home_team')} vs {_row.get('away_team')} ({_mid}) | "
                 f"{_format_sched_local_label(_sched_ts)}"
+            )
+
+    # ── Resume: also schedule FT downloads for league-filtered pending rows
+    _ft_only_resume = [r for r in _existing_all if r["match_id"] not in _existing_ids]
+    if _ft_only_resume:
+        _log(f"[FT] Retomando {len(_ft_only_resume)} partido(s) liga filtrada")
+        for _row in _ft_only_resume:
+            _mid = _row["match_id"]
+            _sched_ts = int(_row.get("scheduled_utc_ts") or 0)
+            if _sched_ts > 0 and (_sched_ts - time.time()) > 20 * 3600:
+                continue
+            _task = asyncio.create_task(
+                _watch_match(_mid, _row, db_path, stop_event, ft_only=True),
+                name=f"watch_{_mid}",
+            )
+            active_tasks[_mid] = _task
+            _log(
+                f"Retomado [ft_only]: {_row.get('home_team')} vs {_row.get('away_team')} "
+                f"({_mid}) | {_format_sched_local_label(_sched_ts)} | {_row.get('league', '')}"
             )
 
     try:
@@ -4180,7 +4378,11 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
             conn = _open_db(db_path)
             pending_today = _get_pending_rows(conn, today_str)
             pending_tomorrow = _get_pending_rows(conn, tomorrow_str)
+            all_pending_today = _get_all_pending_rows(conn, today_str)
+            all_pending_tomorrow = _get_all_pending_rows(conn, tomorrow_str)
             conn.close()
+
+            monitored_ids = {r["match_id"] for r in pending_today + pending_tomorrow}
 
             for row in pending_today + pending_tomorrow:
                 mid = row["match_id"]
@@ -4207,6 +4409,33 @@ async def run_monitor(db_path: str, stop_event: asyncio.Event) -> None:
                     f"Tarea lanzada: {row.get('home_team')} vs "
                     f"{row.get('away_team')} ({mid}) | "
                     f"{_format_sched_local_label(sched_ts)}"
+                )
+
+            # Launch FT-only watchers for league-filtered pending rows
+            for row in all_pending_today + all_pending_tomorrow:
+                mid = row["match_id"]
+                if mid in monitored_ids:
+                    continue  # already handled above
+
+                existing = active_tasks.get(mid)
+                if existing and not existing.done():
+                    continue
+                if existing and existing.done():
+                    del active_tasks[mid]
+
+                sched_ts = int(row.get("scheduled_utc_ts") or 0)
+                if sched_ts > 0 and (sched_ts - time.time()) > 20 * 3600:
+                    continue
+
+                task = asyncio.create_task(
+                    _watch_match(mid, row, db_path, stop_event, ft_only=True),
+                    name=f"watch_{mid}",
+                )
+                active_tasks[mid] = task
+                _log(
+                    f"Tarea lanzada [ft_only]: {row.get('home_team')} vs "
+                    f"{row.get('away_team')} ({mid}) | "
+                    f"{_format_sched_local_label(sched_ts)} | {row.get('league', '')}"
                 )
 
             # Clean up done tasks

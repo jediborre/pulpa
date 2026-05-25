@@ -21,6 +21,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+# Agregar match/training/ al path para permitir imports directos de scripts
+# de entrenamiento como train_q4_m27_v3 (usados como módulos de features)
+_TRAINING_DIR = ROOT / "training"
+if str(_TRAINING_DIR) not in sys.path:
+    sys.path.insert(0, str(_TRAINING_DIR))
+
 db_mod = importlib.import_module("db")
 scraper_mod = importlib.import_module("scraper")
 

@@ -1,0 +1,33 @@
+# =====================================================================
+# CONFIGURACIÓN DE FILTROS Y RESTRICCIONES DE LIGAS (DIFERENCIACIÓN Q4)
+# =====================================================================
+
+# Ligas que se ignoran por completo (No generan ninguna acción)
+excluded_leagues:
+  patterns:
+    - "Regional Cup"
+    - "Development League"
+    - "Friendly"
+  ids:
+    - 9999
+    - 8888
+
+# Ligas restringidas a Modo Degradado (Modo FT-Only: Solo descarga y guarda marcador final, NO Inferencia ML)
+ft_only_leagues:
+  patterns:
+    - "WNBA"
+    - "Women"
+    - "Femenina"
+    - "Feminina"
+    - "U21"
+    - "U19"
+    - "ABA Liga"
+    - "NBA"
+    - "Lega A"
+    - "Turkish Basketball Super League"
+    - "Playoffs"
+    - "Stoiximan GBL"
+    - "Copas regionales"
+  ids:
+    - 1234
+    - 5678

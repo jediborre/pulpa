@@ -1,12 +1,15 @@
 """
-Backfill: re-fetch existing matches reusing ONE browser session.
+Backfill: re-fetch existing matches with automatic session rotation to avoid bans.
 
 Usage:
     python -m match.scripts.backfill path/to/db.sqlite --all
     python -m match.scripts.backfill path/to/db.sqlite --ids 15935010 --limit 5
+    python -m match.scripts.backfill path/to/db.sqlite --all --force  # ignore cached completed days
+    python -m match.scripts.backfill path/to/db.sqlite --all --session-rotate 30  # rotate every 30 matches
 """
-import sys, json, time
+import sys, json, time, random
 from collections import defaultdict
+from contextlib import ExitStack
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -23,11 +26,25 @@ from tqdm import tqdm
 BASE = "https://api.sofascore.com/api/v1"
 _HEADERS = {"Referer": "https://www.sofascore.com/", "Accept": "application/json, text/plain, */*"}
 
+_PAUSE_403_SECS = 15 * 60       # pause after each 403
+_MAX_CONSECUTIVE_403 = 3        # abort day after this many consecutive 403s
+_SESSION_ROTATE_EVERY = 40      # open a fresh browser context after this many fetched matches
+_SESSION_ROTATE_PAUSE_SECS = 3 * 60  # pause between sessions (+ up to 60s jitter)
+_WARMUP_URL = "https://www.sofascore.com/basketball"
+
+
+class _Http403Error(Exception):
+    """Raised when SofaScore returns HTTP 403 (rate-limited/banned)."""
+
 
 def _fetch_json(ctx, url: str) -> dict | None:
     try:
         resp = ctx.request.get(url, headers=_HEADERS, timeout=20_000)
+        if resp.status == 403:
+            raise _Http403Error(f"HTTP 403: {url}")
         return resp.json() if resp.ok else None
+    except _Http403Error:
+        raise
     except Exception:
         return None
 
@@ -109,6 +126,53 @@ def _group_rows_by_date(rows: list[dict]) -> dict[str, list[dict]]:
     for row in rows:
         grouped[str(row.get("date") or "unknown")].append(row)
     return dict(grouped)
+
+
+def _ensure_backfill_tracker_table(conn) -> None:
+    """Create backfill_days_completed table if it doesn't exist."""
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS backfill_days_completed (
+                day TEXT PRIMARY KEY,
+                completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+    except Exception:
+        pass
+
+
+def _is_day_completed(conn, day: str) -> bool:
+    """Check if a day has been marked as backfill-complete."""
+    try:
+        row = conn.execute(
+            "SELECT 1 FROM backfill_days_completed WHERE day = ?",
+            (day,)
+        ).fetchone()
+        return bool(row)
+    except Exception:
+        return False
+
+
+def _mark_day_completed(conn, day: str) -> None:
+    """Mark a day as backfill-complete."""
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO backfill_days_completed (day) VALUES (?)",
+            (day,)
+        )
+        conn.commit()
+    except Exception:
+        pass
+
+
+def _clear_day_completion_cache(conn) -> None:
+    """Clear all day completion records (used with --force)."""
+    try:
+        conn.execute("DELETE FROM backfill_days_completed")
+        conn.commit()
+    except Exception:
+        pass
 
 
 def _match_refresh_state(conn, match_id: str) -> dict[str, int | bool]:
@@ -213,20 +277,61 @@ def _skip_reason(state: dict[str, int | bool]) -> str:
 def backfill(
     db_path: str,
     match_rows: list[dict],
-    delay: float = 0.5,
+    delay: float = 5.0,
     backend: str | None = None,
+    force: bool = False,
+    session_rotate_every: int = _SESSION_ROTATE_EVERY,
 ) -> None:
     conn = get_conn(db_path)
     init_db(conn)
+    _ensure_backfill_tracker_table(conn)
+    
+    if force:
+        print("[backfill] --force: limpiando cache de días completados")
+        _clear_day_completion_cache(conn)
+    
     grouped = _group_rows_by_date(match_rows)
     day_totals = {day: len(rows) for day, rows in grouped.items()}
     total = sum(day_totals.values())
-    ok = err = skipped = 0
+    ok = err = skipped = deferred_403 = 0
+    skipped_days = 0
+    session_fetched = 0   # matches attempted in current browser session
+    session_num = 1
 
-    with _browser_context("https://www.sofascore.com/basketball", backend=backend) as (_, ctx, _page):
+    def _open_session(stack: ExitStack):
+        """Enter a new browser context into stack, return ctx."""
+        _, ctx, _ = stack.enter_context(
+            _browser_context(_WARMUP_URL, backend=backend)
+        )
+        return ctx
+
+    def _rotate(stack: ExitStack, reason: str):
+        """Close session, pause, return (new_stack, new_ctx)."""
+        nonlocal session_num, session_fetched
+        stack.close()
+        pause = _SESSION_ROTATE_PAUSE_SECS + random.uniform(0, 60)
+        session_num += 1
+        session_fetched = 0
+        print(f"\n  \U0001f504 Rotando sesi\u00f3n #{session_num} ({reason}) \u2014 pausa {pause:.0f}s")
+        time.sleep(pause)
+        new_stack = ExitStack()
+        new_ctx = _open_session(new_stack)
+        return new_stack, new_ctx
+
+    stack = ExitStack()
+    try:
+        ctx = _open_session(stack)
         for day, rows in grouped.items():
-            day_ok = day_err = day_skip = 0
-            print(f"\n[backfill] day={day} matches={len(rows)}")
+            # Check if day is already marked complete
+            if _is_day_completed(conn, day) and not force:
+                print(f"\n[backfill] day={day} matches={len(rows)} [SKIP: already completed]")
+                skipped += len(rows)
+                skipped_days += 1
+                continue
+            
+            day_ok = day_err = day_skip = day_deferred = 0
+            consecutive_403 = 0
+            print(f"\n[backfill] day={day} matches={len(rows)} (sesi\u00f3n #{session_num}, rotate cada {session_rotate_every})")
             with tqdm(total=len(rows), desc=day, unit="match", ncols=140, leave=True) as bar:
                 for row in rows:
                     mid = str(row.get("match_id", ""))
@@ -246,6 +351,11 @@ def backfill(
                         bar.update(1)
                         bar.set_postfix_str(f"ok={day_ok} skip={day_skip} err={day_err} r={reason}")
                         continue
+
+                    # Rotate session if limit reached (scheduled rotation)
+                    if session_fetched > 0 and session_fetched % session_rotate_every == 0:
+                        bar.clear()
+                        stack, ctx = _rotate(stack, f"{session_fetched} partidos en sesi\u00f3n")
 
                     try:
                         event_json, incidents_json, graph_json, h2h_json, statistics_json, lineups_json, odds_json = \
@@ -301,10 +411,39 @@ def backfill(
                             pass
                         day_ok += 1
                         ok += 1
+                        consecutive_403 = 0
                         reason = "saved"
-                        time.sleep(delay)
+                        time.sleep(delay + random.uniform(0, delay * 0.4))
+
+                    except _Http403Error:
+                        consecutive_403 += 1
+                        day_deferred += 1
+                        deferred_403 += 1
+                        reason = "403→pending"
+                        # Keep match as pending (processed=0) so it can be retried later.
+                        try:
+                            from db import mark_discovered_error
+                            mark_discovered_error(conn, mid, "HTTP 403")
+                        except Exception:
+                            pass
+                        bar.update(1)
+                        bar.set_postfix_str(f"ok={day_ok} skip={day_skip} err={day_err} def={day_deferred} r={reason}")
+                        if consecutive_403 >= _MAX_CONSECUTIVE_403:
+                            print(
+                                f"\n  ⛔ {consecutive_403} x HTTP 403 consecutivos en día {day} — "
+                                f"abortando día, pausando {_PAUSE_403_SECS // 60} min"
+                            )
+                            time.sleep(_PAUSE_403_SECS)
+                            break
+                        print(
+                            f"\n  ⚠ HTTP 403 en {mid} ({consecutive_403}/{_MAX_CONSECUTIVE_403}) — "
+                            f"pausando {_PAUSE_403_SECS // 60} min"
+                        )
+                        time.sleep(_PAUSE_403_SECS)
+                        continue
 
                     except Exception as e:
+                        consecutive_403 = 0
                         try:
                             from db import mark_discovered_error
                             mark_discovered_error(conn, mid, str(e))
@@ -317,10 +456,24 @@ def backfill(
                         bar.update(1)
                         if reason == "":
                             reason = "saved" if day_ok + day_err + day_skip else ""
-                        bar.set_postfix_str(f"ok={day_ok} skip={day_skip} err={day_err} r={reason}")
+                        bar.set_postfix_str(f"ok={day_ok} skip={day_skip} err={day_err} def={day_deferred} r={reason}")
+            
+            # Mark day as completed only if no hard errors and no 403 deferrals.
+            if day_err == 0 and day_deferred == 0:
+                _mark_day_completed(conn, day)
+                print(f"  ✓ Día {day} marcado como completado")
+            elif day_deferred > 0:
+                print(f"  ⏳ Día {day} no marcado ({day_deferred} pendientes por 403, {day_err} errores)")
+            else:
+                print(f"  ✗ Día {day} no marcado (tuvo {day_err} errores)")
 
-    print(f"\nDone. OK={ok}, Errors={err}, Total={total}")
-    print(f"Skipped already-complete: {skipped}")
+    finally:
+        stack.close()
+
+    print(f"\nDone. OK={ok}, Errors={err}, Deferred(403)={deferred_403}, Total={total}")
+    print(f"Skipped already-complete: {skipped} (from {skipped_days} day(s))")
+    if deferred_403 > 0:
+        print(f"  → {deferred_403} partido(s) con 403 quedaron como pending en discovered_ft_matches para reintento.")
     conn.close()
 
 
@@ -331,8 +484,11 @@ if __name__ == "__main__":
     parser.add_argument("--ids", nargs="+")
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--limit", type=int, default=0)
-    parser.add_argument("--delay", type=float, default=0.5)
-    parser.add_argument("--backend", choices=["traditional", "obscura"], default="traditional")
+    parser.add_argument("--delay", type=float, default=5.0)
+    parser.add_argument("--backend", choices=["chrome", "traditional", "obscura"], default="chrome")
+    parser.add_argument("--force", action="store_true", help="Ignore cached completed days and reprocess them")
+    parser.add_argument("--session-rotate", type=int, default=_SESSION_ROTATE_EVERY,
+                        help=f"Rotate browser session after this many fetched matches (default: {_SESSION_ROTATE_EVERY})")
     args = parser.parse_args()
 
     conn = get_conn(args.db)
@@ -358,4 +514,5 @@ if __name__ == "__main__":
         match_rows = match_rows[:args.limit]
 
     print(f"Backfilling {len(match_rows)} matches in {args.db}")
-    backfill(args.db, match_rows, delay=args.delay, backend=args.backend)
+    backfill(args.db, match_rows, delay=args.delay, backend=args.backend, force=args.force,
+             session_rotate_every=args.session_rotate)
