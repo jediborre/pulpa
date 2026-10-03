@@ -32,7 +32,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from match.scraper import fetch_match_by_id as ss_fetch_match
-from bet_monitor_v2.scrapers.base_scraper import execute_safe_fetch, claim_ft_scrape_slot, release_ft_scrape_slot
+from bet_monitor_v2.scrapers.base_scraper import execute_safe_fetch, claim_ft_scrape_slot, release_ft_scrape_slot, is_monitoring_locked
 from bet_monitor_v2.config.constants import SOFASCORE_SCRAPER_BACKEND
 
 async def fetch_match_by_id(match_id: str, is_ft: bool = False) -> dict:
@@ -41,18 +41,22 @@ async def fetch_match_by_id(match_id: str, is_ft: bool = False) -> dict:
     la totalidad de las estructuras analíticas del partido, implementando
     la cola serializada si es un cierre de partido (FT).
     """
+    from bet_monitor_v2.config.constants import SOFASCORE_SCRAPER_BACKEND_LIVE, SOFASCORE_SCRAPER_BACKEND_FT
+    
     if is_ft:
-        # Reclamar slot de cola serializada FT
         await claim_ft_scrape_slot()
+        # Esperar si hay monitoreo LIVE activo (no saturar recursos)
+        while is_monitoring_locked():
+            await asyncio.sleep(30)
         
     try:
         async def _fetch():
-            # Estrategia híbrida: las descargas finales de cierre (FT) fuerzan 'traditional',
-            # mientras que el monitoreo activo en vivo utiliza el backend Obscura de constants.py.
-            backend_to_use = "traditional" if is_ft else SOFASCORE_SCRAPER_BACKEND
+            backend_to_use = SOFASCORE_SCRAPER_BACKEND_FT if is_ft else SOFASCORE_SCRAPER_BACKEND_LIVE
             return await asyncio.to_thread(ss_fetch_match, match_id, backend=backend_to_use)
             
         return await execute_safe_fetch(_fetch)
     finally:
         if is_ft:
             await release_ft_scrape_slot()
+            # Espaciado extra de 40s + jitter entre descargas FT
+            await asyncio.sleep(40 + (__import__("random").random() * 10))

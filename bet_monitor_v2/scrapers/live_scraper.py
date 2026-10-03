@@ -34,13 +34,17 @@ if str(ROOT) not in sys.path:
 from match.scraper import fetch_event_snapshot as ss_fetch_snapshot
 from bet_monitor_v2.scrapers.base_scraper import execute_safe_fetch
 
-async def fetch_event_snapshot(match_id: str) -> dict:
+async def fetch_event_snapshot(match_id: str, backend: str | None = None) -> dict:
     """
-    Sondea de forma optimizada el endpoint ligero /event/{id} vía Obscura
+    Sondea de forma optimizada el endpoint ligero /event/{id} vía el backend configurado
     encapsulado dentro del gestor de reintentos y anti-ban seguro.
     """
+    from bet_monitor_v2.config.constants import SOFASCORE_SCRAPER_BACKEND_PROBE
+    
+    backend_to_use = backend or SOFASCORE_SCRAPER_BACKEND_PROBE
+    
     async def _fetch():
         # Ejecutar en hilo separado ya que el cliente de match.scraper usa Playwright síncrono
-        return await asyncio.to_thread(ss_fetch_snapshot, match_id)
+        return await asyncio.to_thread(ss_fetch_snapshot, match_id, backend=backend_to_use)
         
     return await execute_safe_fetch(_fetch)

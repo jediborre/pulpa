@@ -39,6 +39,16 @@ import os
 import time
 from datetime import datetime, timezone
 from contextlib import contextmanager
+from pathlib import Path
+
+# Cargar .env raíz si existe (para standalone)
+_env_path = Path(__file__).resolve().parents[1] / ".env"
+if _env_path.exists():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(str(_env_path), override=False)
+    except ImportError:
+        pass
 
 try:
     import anti_block
@@ -49,6 +59,33 @@ except ImportError:
 _node_options = os.environ.get("NODE_OPTIONS", "").strip()
 if "--no-deprecation" not in _node_options:
     os.environ["NODE_OPTIONS"] = (f"{_node_options} --no-deprecation").strip()
+
+# Proxy rotatorio. Gestionado por base_scraper.py (bet_monitor_v2).
+# NO se carga del .env aquí para evitar que base_scraper lo desactive y esto lo reactive.
+PROXY_URL = None
+_use_proxy = os.environ.get("SOFASCORE_USE_PROXY", "") == "1"
+
+def _proxy_active() -> bool:
+    """Retorna True si hay un proxy configurado por base_scraper en SOFASCORE_PROXY_URL."""
+    return bool(os.environ.get("SOFASCORE_PROXY_URL", "").strip())
+
+def _parse_proxy(url: str) -> dict | None:
+    """Convierte http://user:pass@host:port a dict de Playwright."""
+    if not url:
+        return None
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        result = {"server": f"{parsed.scheme}://{parsed.hostname}:{parsed.port}"}
+        if parsed.username:
+            result["username"] = parsed.username
+        if parsed.password:
+            result["password"] = parsed.password
+        # No proxy para CDNs/assets (ahorra ~60% tráfico)
+        result["bypass"] = "img.sofascore.com,*.gstatic.com,*.googleapis.com,*.doubleclick.net,*.googletagmanager.com,*.google-analytics.com,fonts.gstatic.com"
+        return result
+    except Exception:
+        return {"server": url}
 
 
 STANDARD_UA = (
@@ -72,7 +109,7 @@ def _obscura_cdp_url() -> str:
 
 
 def _match_warmup_url(match_id: str) -> str:
-    return f"https://www.sofascore.com/basketball/match/unknown/unknown#id:{match_id}"
+    return f"https://www.sofascore.com/event/{match_id}"
 
 
 @contextmanager
@@ -80,20 +117,40 @@ def _browser_context(warmup_url: str, backend: str | None = None):
     from playwright.sync_api import sync_playwright
 
     engine = _normalize_backend(backend)
+    _proxy = _parse_proxy(os.environ.get("SOFASCORE_PROXY_URL", "")) if _proxy_active() else None
+    _headless = os.environ.get("SOFASCORE_HEADLESS", "1").strip() in ("1", "true", "yes")
     with sync_playwright() as p:
         if engine == "obscura":
             browser = p.chromium.connect_over_cdp(_obscura_cdp_url())
         elif engine == "chrome":
-            # Use the real system-installed Google Chrome (harder to fingerprint as bot)
-            browser = p.chromium.launch(channel="chrome", headless=True)
+            launch_kwargs = {"channel": "chrome", "headless": _headless}
+            if _proxy:
+                launch_kwargs["proxy"] = _proxy
+            browser = p.chromium.launch(**launch_kwargs)
         else:
-            # traditional: Playwright-bundled Chromium headless
-            browser = p.chromium.launch(headless=True)
+            launch_kwargs = {"headless": _headless}
+            if _proxy:
+                launch_kwargs["proxy"] = _proxy
+            browser = p.chromium.launch(**launch_kwargs)
 
-        ctx = browser.new_context(user_agent=STANDARD_UA)
+        ctx_kwargs = {"user_agent": STANDARD_UA}
+        if _proxy and engine == "obscura":
+            ctx_kwargs["proxy"] = _proxy
+        ctx = browser.new_context(**ctx_kwargs)
         page = ctx.new_page()
+        # Prevenir crash por dialogs de página (alert/confirm/prompt)
+        def _handle_dialog(dialog):
+            try:
+                dialog.dismiss()
+            except Exception:
+                pass
+        page.on("dialog", _handle_dialog)
         try:
-            page.goto(warmup_url, wait_until="networkidle", timeout=45_000)
+            # domcontentloaded es suficiente para establecer cookies de sesión.
+            # networkidle cuelga indefinidamente en páginas de partidos terminados
+            # (SofaScore sigue haciendo requests en background). Timeout corto = las
+            # peticiones API funcionan igual aunque el warmup falle o sea parcial.
+            page.goto(warmup_url, wait_until="domcontentloaded", timeout=6_000)
         except Exception:
             pass
 
@@ -104,11 +161,10 @@ def _browser_context(warmup_url: str, backend: str | None = None):
                 ctx.close()
             except Exception:
                 pass
-            if engine in {"traditional", "chrome"}:
-                try:
-                    browser.close()
-                except Exception:
-                    pass
+            try:
+                browser.close()
+            except Exception:
+                pass
 
 # Basketball: incidentClass / 'from' field values → point value
 # SofaScore uses camelCase for incidentClass ("threePoints") and
@@ -242,7 +298,11 @@ def _parse(event_json: dict, incidents: list, graph_points: list | None = None) 
     incidents  : list from GET /event/{id}/incidents  →  .incidents[]
     graph_points : list from GET /event/{id}/graph → .graphPoints[]
     """
+    if not event_json:
+        raise ValueError("Event JSON payload is empty or None")
     ev = event_json.get("event", event_json)
+    if not ev:
+        raise ValueError("Event details not found in event JSON payload")
 
     home = ev["homeTeam"]["name"]
     away = ev["awayTeam"]["name"]
@@ -397,7 +457,8 @@ def _parse_h2h(match_id: str, h2h_data: list | dict | None) -> list[dict]:
 
     Accepts:
       - list of match dicts (from team events discovery, or future /h2h list)
-      - dict with 'teamDuel' key (from current /event/{id}/h2h aggregate endpoint)
+      - dict with 'events' key (from /event/{customId}/h2h/events endpoint)
+      - dict with 'teamDuel' key (from old /event/{id}/h2h aggregate endpoint)
 
     Returns list of dicts with per-match H2H data including quarter scores.
     """
@@ -406,8 +467,37 @@ def _parse_h2h(match_id: str, h2h_data: list | dict | None) -> list[dict]:
 
     rows: list[dict] = []
 
-    # Case 1: list of individual match dicts (from team events or future H2H endpoint)
-    if isinstance(h2h_data, list):
+    # Case 1: dict with 'events' key (new /h2h/events endpoint)
+    if isinstance(h2h_data, dict) and "events" in h2h_data:
+        events = h2h_data.get("events", [])
+        for entry in events:
+            if not isinstance(entry, dict):
+                continue
+            mid = str(entry.get("id") or "")
+            if not mid:
+                continue
+            hs = entry.get("homeScore") or {}
+            as_ = entry.get("awayScore") or {}
+            ts = entry.get("startTimestamp", 0)
+            dt = datetime.fromtimestamp(ts, tz=timezone.utc) if ts else None
+            rows.append({
+                "match_id": match_id,
+                "h2h_match_id": mid,
+                "date": dt.strftime("%Y-%m-%d") if dt else "",
+                "timestamp": ts or None,
+                "home_team": (entry.get("homeTeam") or {}).get("name", ""),
+                "away_team": (entry.get("awayTeam") or {}).get("name", ""),
+                "home_score": hs.get("current", hs.get("normaltime")),
+                "away_score": as_.get("current", as_.get("normaltime")),
+                "q1_home": hs.get("period1"), "q1_away": as_.get("period1"),
+                "q2_home": hs.get("period2"), "q2_away": as_.get("period2"),
+                "q3_home": hs.get("period3"), "q3_away": as_.get("period3"),
+                "q4_home": hs.get("period4"), "q4_away": as_.get("period4"),
+                "tournament": (entry.get("tournament") or {}).get("name", ""),
+            })
+
+    # Case 2: list of individual match dicts (from team events or future H2H endpoint)
+    elif isinstance(h2h_data, list):
         for entry in h2h_data:
             if not isinstance(entry, dict):
                 continue
@@ -434,7 +524,7 @@ def _parse_h2h(match_id: str, h2h_data: list | dict | None) -> list[dict]:
                 "tournament": (entry.get("tournament") or {}).get("name", ""),
             })
 
-    # Case 2: aggregate dict with teamDuel (current /event/{id}/h2h response)
+    # Case 3: aggregate dict with teamDuel (old /event/{id}/h2h response)
     elif isinstance(h2h_data, dict):
         duel = h2h_data.get("teamDuel") or {}
         if duel:
@@ -1067,7 +1157,7 @@ def fetch_match(
                     home_tid, away_tid, home_name, away_name,
                 )
             except Exception as exc:
-                print(f"[scraper] fetch_team_strength error: {exc}")
+                pass
 
     return parsed
 
@@ -1093,8 +1183,8 @@ def fetch_match_by_id(
 
     parsed = _parse(
         event_json,
-        incidents_json.get("incidents", []),
-        graph_json.get("graphPoints", []),
+        incidents_json.get("incidents", []) if incidents_json else [],
+        graph_json.get("graphPoints", []) if graph_json else [],
     )
 
     # H2H: use aggregate from /event/{id}/h2h as fallback,
@@ -1166,30 +1256,34 @@ def fetch_match_by_id(
                     home_tid, away_tid, home_name, away_name,
                 )
             except Exception as exc:
-                print(f"[scraper] fetch_team_strength error: {exc}")
+                pass
 
     return parsed
 
 
-def fetch_event_snapshot(match_id: str) -> dict:
+def fetch_event_snapshot(match_id: str, backend: str | None = None) -> dict:
     """Fetch lightweight event state for live/FT friendly reporting."""
-    extra_headers = {
-        "Referer": "https://www.sofascore.com/",
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "en-US,en;q=0.9",
-    }
+    warmup_url = f"https://www.sofascore.com/event/{match_id}"
+    with _browser_context(warmup_url, backend=backend) as (_, ctx, page):
+        url = f"https://api.sofascore.com/api/v1/event/{match_id}"
+        js_code = f"""
+        fetch('{url}')
+            .then(res => {{
+                if (!res.ok) return {{ __error: true, status: res.status, statusText: res.statusText }};
+                return res.json().then(data => ({{ __success: true, data: data }}));
+            }})
+            .catch(err => ({{ __error: true, message: err.message || String(err) }}))
+        """
+        res = page.evaluate(js_code)
+        if not res:
+            raise RuntimeError(f"Event API returned empty or null response for match {match_id}")
+        if isinstance(res, dict) and res.get("__error"):
+            status = res.get("status", "unknown")
+            msg = res.get("message", res.get("statusText", ""))
+            raise RuntimeError(f"Event API returned HTTP {status} for match {match_id}: {msg}")
+            
+        body = res["data"] if isinstance(res, dict) and res.get("__success") else res
 
-    with _browser_context("https://www.sofascore.com/basketball") as (_, ctx, _page):
-        resp = ctx.request.get(
-            f"https://api.sofascore.com/api/v1/event/{match_id}",
-            headers=extra_headers,
-            timeout=20_000,
-        )
-        if not resp.ok:
-            raise RuntimeError(
-                f"Event API returned HTTP {resp.status} for match {match_id}"
-            )
-        body = resp.json() or {}
 
     ev = body.get("event", body)
     status = ev.get("status") or {}
@@ -1486,17 +1580,29 @@ def fetch_matches_by_ids(
                     resp_graph.json() if resp_graph.ok else {"graphPoints": []}
                 )
 
-                # H2H (optional)
+                # H2H (optional) - uses custom_id and /h2h/events endpoint
                 h2h_list: list = []
                 if fetch_h2h:
-                    resp_h2h = ctx.request.get(
-                        f"https://api.sofascore.com/api/v1/event/{match_id}/h2h",
-                        headers=extra_headers,
-                        timeout=20_000,
-                    )
-                    if resp_h2h.ok:
-                        h2h_body = resp_h2h.json() or {}
-                        h2h_list = h2h_body.get("h2h") or h2h_body.get("headToHead") or []
+                    custom_id = (event_json.get("event") or {}).get("customId", "")
+                    if custom_id:
+                        resp_h2h = ctx.request.get(
+                            f"https://api.sofascore.com/api/v1/event/{custom_id}/h2h/events",
+                            headers=extra_headers,
+                            timeout=20_000,
+                        )
+                        if resp_h2h.ok:
+                            h2h_body = resp_h2h.json() or {}
+                            h2h_list = h2h_body.get("events", [])
+                    else:
+                        # Fallback to old endpoint
+                        resp_h2h = ctx.request.get(
+                            f"https://api.sofascore.com/api/v1/event/{match_id}/h2h",
+                            headers=extra_headers,
+                            timeout=20_000,
+                        )
+                        if resp_h2h.ok:
+                            h2h_body = resp_h2h.json() or {}
+                            h2h_list = h2h_body.get("h2h") or h2h_body.get("headToHead") or []
 
                 parsed = _parse(
                     event_json,
@@ -1550,84 +1656,103 @@ def _fetch_match_payloads(
         "Accept-Language": "en-US,en;q=0.9",
     }
 
-    with _browser_context(warmup_url, backend=backend) as (_, ctx, _page):
+    with _browser_context(warmup_url, backend=backend) as (_, ctx, page):
+        import time
+        import random
+
+        def _js_fetch(url: str) -> dict:
+            js_code = f"""
+            fetch('{url}')
+                .then(r => {{
+                    if (!r.ok) return {{ __error: true, status: r.status, statusText: r.statusText }};
+                    return r.json().then(data => ({{ __success: true, data: data }}));
+                }})
+                .catch(err => ({{ __error: true, message: err.message || String(err) }}))
+            """
+            res = page.evaluate(js_code)
+            if not res:
+                raise RuntimeError(f"Empty response from browser evaluate for url: {url}")
+            if isinstance(res, dict) and res.get("__error"):
+                status = res.get("status", "unknown")
+                msg = res.get("message", res.get("statusText", ""))
+                raise RuntimeError(f"HTTP {status}: {msg}")
+            return res["data"] if isinstance(res, dict) and res.get("__success") else res
+
+        def _js_fetch_safe(url: str) -> dict | None:
+            try:
+                return _js_fetch(url)
+            except Exception:
+                return None
 
         # 1. Event metadata
-        resp_event = ctx.request.get(
-            f"https://api.sofascore.com/api/v1/event/{match_id}",
-            headers=extra_headers,
-            timeout=15_000,
-        )
-        if not resp_event.ok:
-            raise RuntimeError(
-                f"Event API returned HTTP {resp_event.status} for match {match_id}"
-            )
-        event_json: dict = resp_event.json()
+        url_event = f"https://api.sofascore.com/api/v1/event/{match_id}"
+        try:
+            event_json = _js_fetch(url_event)
+        except Exception as exc:
+            err_msg = str(exc)
+            import re
+            code_match = re.search(r"HTTP\s+(\d+)", err_msg)
+            code = code_match.group(1) if code_match else "404"
+            raise RuntimeError(f"Event API returned HTTP {code} for match {match_id}") from exc
+        
+        # Espaciar peticiones para evitar baneos por saturación
+        time.sleep(random.uniform(0.8, 1.8))
 
         # 2. Incidents (PBP + fouls + timeouts + substitutions + turnovers)
-        resp_inc = ctx.request.get(
-            f"https://api.sofascore.com/api/v1/event/{match_id}/incidents",
-            headers=extra_headers,
-            timeout=30_000,
-        )
-        if not resp_inc.ok:
-            raise RuntimeError(
-                f"Incidents API returned HTTP {resp_inc.status} for match {match_id}"
-            )
-        incidents_json: dict = resp_inc.json()
+        url_inc = f"https://api.sofascore.com/api/v1/event/{match_id}/incidents"
+        try:
+            incidents_json = _js_fetch(url_inc)
+        except Exception as exc:
+            err_msg = str(exc)
+            import re
+            code_match = re.search(r"HTTP\s+(\d+)", err_msg)
+            code = code_match.group(1) if code_match else "404"
+            raise RuntimeError(f"Incidents API returned HTTP {code} for match {match_id}") from exc
+        
+        # Espaciar peticiones para evitar baneos por saturación
+        time.sleep(random.uniform(0.8, 1.8))
 
         # 3. Graph points (pressure/momentum curve)
-        resp_graph = ctx.request.get(
-            f"https://api.sofascore.com/api/v1/event/{match_id}/graph",
-            headers=extra_headers,
-            timeout=30_000,
-        )
-        graph_json: dict = (
-            resp_graph.json() if resp_graph.ok else {"graphPoints": []}
-        )
+        url_graph = f"https://api.sofascore.com/api/v1/event/{match_id}/graph"
+        graph_json = _js_fetch_safe(url_graph) or {"graphPoints": []}
+        
+        # Espaciar peticiones para evitar baneos por saturación
+        time.sleep(random.uniform(0.8, 1.8))
 
-        # 4. H2H history (optional)
+        # 4. H2H history (optional) - uses custom_id and /h2h/events endpoint
         h2h_json: dict | None = None
         if fetch_h2h:
-            resp_h2h = ctx.request.get(
-                f"https://api.sofascore.com/api/v1/event/{match_id}/h2h",
-                headers=extra_headers,
-                timeout=20_000,
-            )
-            if resp_h2h.ok:
-                h2h_json = resp_h2h.json()
+            # Get custom_id from event data
+            custom_id = (event_json.get("event") or {}).get("customId", "")
+            if custom_id:
+                url_h2h = f"https://api.sofascore.com/api/v1/event/{custom_id}/h2h/events"
+                h2h_json = _js_fetch_safe(url_h2h)
+            else:
+                # Fallback to old endpoint if no custom_id
+                url_h2h = f"https://api.sofascore.com/api/v1/event/{match_id}/h2h"
+                h2h_json = _js_fetch_safe(url_h2h)
+            time.sleep(random.uniform(0.8, 1.8))
 
         # 5. Team statistics
         statistics_json: dict | None = None
         if fetch_statistics:
-            resp_stats = ctx.request.get(
-                f"https://api.sofascore.com/api/v1/event/{match_id}/statistics",
-                headers=extra_headers,
-                timeout=20_000,
-            )
-            if resp_stats.ok:
-                statistics_json = resp_stats.json()
+            url_stats = f"https://api.sofascore.com/api/v1/event/{match_id}/statistics"
+            statistics_json = _js_fetch_safe(url_stats)
+            time.sleep(random.uniform(0.8, 1.8))
 
         # 6. Lineups + per-player statistics
         lineups_json: dict | None = None
         if fetch_lineups:
-            resp_lu = ctx.request.get(
-                f"https://api.sofascore.com/api/v1/event/{match_id}/lineups",
-                headers=extra_headers,
-                timeout=20_000,
-            )
-            if resp_lu.ok:
-                lineups_json = resp_lu.json()
+            url_lu = f"https://api.sofascore.com/api/v1/event/{match_id}/lineups"
+            lineups_json = _js_fetch_safe(url_lu)
+            time.sleep(random.uniform(0.8, 1.8))
 
         # 7. Betting odds (pre-match from provider 1)
         odds_json: dict | None = None
         if fetch_odds:
-            resp_odds = ctx.request.get(
-                f"https://api.sofascore.com/api/v1/event/{match_id}/odds/1/all",
-                headers=extra_headers,
-                timeout=20_000,
-            )
-            if resp_odds.ok:
-                odds_json = resp_odds.json()
+            url_odds = f"https://api.sofascore.com/api/v1/event/{match_id}/odds/1/all"
+            odds_json = _js_fetch_safe(url_odds)
+
+
 
     return event_json, incidents_json, graph_json, h2h_json, statistics_json, lineups_json, odds_json

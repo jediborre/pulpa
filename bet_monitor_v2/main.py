@@ -23,11 +23,19 @@
 # =====================================================================
 
 import sys
+import os
 import asyncio
 import time
 import yaml
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
+
+# Configurar SSL_CERT_FILE automáticamente para resolver de manera robusta
+# cualquier error SSL/TLS (como CERTIFICATE_VERIFY_FAILED) en Windows,
+# asegurando que Obscura y Playwright utilicen el paquete de certificados de certifi.
+_cert_file = Path(__file__).resolve().parents[1] / ".venv" / "Lib" / "site-packages" / "certifi" / "cacert.pem"
+if _cert_file.exists():
+    os.environ["SSL_CERT_FILE"] = str(_cert_file)
 
 # Cargar el path del workspace para importar los módulos de match
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,7 +58,9 @@ from bet_monitor_v2.config.constants import (
     ACTIVE_MODELS,
     PRESTART_PROBE_MIN_SECS,
     PRESTART_PROBE_MAX_SECS,
-    PRESTART_PROBE_BACKOFF
+    PRESTART_PROBE_BACKOFF,
+    SOFASCORE_SCRAPER_BACKEND_LIVE,
+    FETCH_TIMEOUT_SECS,
 )
 from bet_monitor_v2.database.connection import get_db_connection
 from bet_monitor_v2.database.repository import (
@@ -124,6 +134,10 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
         gp_total = len(data.get("graph_points") or [])
         
         if gp_total < FINAL_FETCH_MIN_GP:
+            if gp_total == 0:
+                log_info("DESCARGA", f"[FT] Descartado (sin gráfica) | {home} vs {away}")
+                update_schedule_status(match_id, status="done", skip_reason="no_graph")
+                return
             log_warning("DESCARGA", f"[FT] Cierre con gráfica corta (gp={gp_total}) | {home} vs {away}")
             
         # 1. Persistir scores por cuarto en quarter_scores_v2
@@ -169,10 +183,27 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
             """, (match_id,))
             logs = [dict(r) for r in cursor.fetchall()]
             
+            # Deduplicar logs por model_version para evitar duplicados en caso de reinicios
+            # SQLite devuelve por defecto en orden de ID ascendente (orden de inserción),
+            # por lo que el último elemento en el diccionario será el más reciente.
+            deduped_logs = {}
+            for log in logs:
+                model = log["model_version"]
+                deduped_logs[model] = log
+            logs = list(deduped_logs.values())
+            
+            # Omitir notificaciones si el partido es muy antiguo (más de 6 horas desde su inicio programado)
+            # para evitar enviar resultados atrasados que confundan al usuario.
+            is_too_old = False
+            if scheduled_ts:
+                if time.time() - scheduled_ts > 21600:
+                    is_too_old = True
+                    log_info("DESCARGA", f"[FT] Partido muy antiguo (>6h desde inicio) | {home} vs {away}. Se omite confirmación por Telegram.")
+            
             # Filtrar para ver si hay al menos una apuesta operable real
             has_operable_bet = any("BET" in (log["signal_type"] or "") for log in logs)
             
-            if has_operable_bet:
+            if has_operable_bet and not is_too_old:
                 if len(logs) > 1:
                     log0 = logs[0]
                     target_quarter = log0["target_quarter"] or 4
@@ -227,43 +258,82 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
                         confidence=confidence
                     )
                 
-                # Enviar el mensaje consolidado lado-a-lado de stats de los modelos
+                # Enviar el mensaje consolidado lado-a-lado de stats de los modelos cada 5 resultados
                 try:
-                    await send_stats_message()
+                    # Incrementar contador de confirmaciones de resultados en la base de datos
+                    # (settings table de matches.db)
+                    with get_db_connection() as conn:
+                        with conn:
+                            row = conn.execute("SELECT value FROM settings WHERE key = 'settled_matches_count'").fetchone()
+                            current_count = int(row[0]) if (row and row[0] and row[0].isdigit()) else 0
+                            new_count = current_count + 1
+                            conn.execute("""
+                                INSERT INTO settings (key, value, updated_at)
+                                VALUES ('settled_matches_count', ?, datetime('now'))
+                                ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+                            """, (str(new_count),))
+                    
+                    log_info("DESCARGA", f"[FT] Resultados liquidados acumulados: {new_count} (se envía stats cada 5 resultados)")
+                    
+                    if new_count % 5 == 0:
+                        await send_stats_message()
+                        log_info("DESCARGA", f"[FT] Mensaje de estadísticas consolidado transmitido (múltiplo de 5: {new_count})")
+                    else:
+                        log_info("DESCARGA", f"[FT] Mensaje de estadísticas omitido (se enviará en {5 - (new_count % 5)} resultados más)")
                 except Exception as stats_err:
-                    log_error("DESCARGA", f"[FT] Error enviando stats unificadas de Telegram: {stats_err}")
+                    log_error("DESCARGA", f"[FT] Error manejando stats de Telegram: {stats_err}")
 
                 
         update_schedule_status(match_id, status="done")
         log_info("DESCARGA", f"[FT] Final y liquidación de apuestas persistidos | {home} vs {away} (gp={gp_total})")
     except Exception as e:
         err_msg = str(e)
+        import re
+        
+        # Extraer código HTTP de cualquier error
+        code_match = re.search(r"(?:HTTP\s+)?(\d+)", err_msg)
+        http_code = code_match.group(1) if code_match else "?"
+        
+        # Formatear match_display con ID (para todos los errores)
+        try:
+            with get_db_connection() as conn:
+                row = conn.execute("SELECT scheduled_utc_ts FROM bet_monitor_schedule_v2 WHERE match_id = ?", (match_id,)).fetchone()
+                scheduled_ts = row[0] if row else int(time.time())
+        except Exception:
+            scheduled_ts = int(time.time())
+        sched_label = datetime.fromtimestamp(scheduled_ts, tz=timezone(timedelta(hours=UTC_OFFSET_HOURS))).strftime("%H:%M")
+        match_display = format_match_log(sched_label, match_id, home, away)
+        
         if "Incidents API" in err_msg:
             import re
-            # Extraer el código de respuesta HTTP del mensaje del error
             code_match = re.search(r"(?:HTTP\s+)?(\d+)", err_msg)
             http_code = code_match.group(1) if code_match else "404"
-            
-            # Obtener horario del partido desde la base de datos
-            try:
-                with get_db_connection() as conn:
-                    row = conn.execute("SELECT scheduled_utc_ts FROM bet_monitor_schedule_v2 WHERE match_id = ?", (match_id,)).fetchone()
-                    scheduled_ts = row[0] if row else int(time.time())
-            except Exception:
-                scheduled_ts = int(time.time())
-                
-            sched_label = datetime.fromtimestamp(scheduled_ts, tz=timezone(timedelta(hours=UTC_OFFSET_HOURS))).strftime("%H:%M")
-            match_display = format_match_log(sched_label, match_id, home, away)
-            
             red_err = f"{COLOR_BRIGHT_RED}Incidents API HTTP {http_code}{COLOR_RESET}"
-            log_error("DESCARGA", f"[FT] {match_display}: Incidents | {red_err}")
+            log_error("DESCARGA", f"[FT] {match_display}: {red_err}")
+            if http_code == "404":
+                update_schedule_status(match_id, status="done", skip_reason="incidents_api_404")
+                return
         else:
             err_str = str(e)
             if "locked" in err_str.lower():
                 red_locked = f"{COLOR_BRIGHT_RED}DB LOCKED{COLOR_RESET}"
                 log_error("DESCARGA", f"[FT] {home} vs {away} | {red_locked}")
+            elif "timeout" in err_str.lower():
+                import re as _re
+                _ts = _re.search(r"Timeout\s+(\d+)s", err_str, re.I)
+                _tv = _ts.group(1) if _ts else "90"
+                _bs = _re.search(r"back=(\w+)", err_str)
+                _b = _bs.group(1) if _bs else "chrome"
+                yellow_timeout = f"{COLOR_WARNING}TIMEOUT{COLOR_RESET} {_tv}s [back={_b}]"
+                log_error("DESCARGA", f"[FT] {home} vs {away} | {yellow_timeout}")
             else:
-                log_error("DESCARGA", f"[FT] Error en fetch final | {home} vs {away}: {e}")
+                _err_fmt = str(e)
+                _err_fmt = _err_fmt.replace("Event API returned HTTP 403", f"Event API {COLOR_BRIGHT_RED}HTTP 403{COLOR_RESET}")
+                _err_fmt = _err_fmt.replace("Event API returned HTTP 404", f"Event API {COLOR_BRIGHT_RED}HTTP 404{COLOR_RESET}")
+                log_error("DESCARGA", f"[FT] {match_display}: {_err_fmt}")
+                if "Event API" in _err_fmt and "404" in str(e):
+                    update_schedule_status(match_id, status="done", skip_reason="event_api_404")
+                    return
             
         update_schedule_status(match_id, status="pending", skip_reason="final_fetch_failed")
 
@@ -296,7 +366,7 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
     sched_label = datetime.fromtimestamp(scheduled_ts, tz=timezone(timedelta(hours=UTC_OFFSET_HOURS))).strftime("%H:%M")
     
     match_display = format_match_log(sched_label, match_id, home, away)
-    log_info("MONITOREO", f"[WATCHER] Start: {match_display} | ft_only={ft_only}")
+    log_info("MONITOREO", f"[WATCHER] Start: {match_display} | {COLOR_GREEN}SOLO FT{COLOR_RESET}" if ft_only else f"[WATCHER] Start: {match_display}")
     
     watcher_state = GameWatcherState(match_id)
     secs_per_gmin = float(SECS_PER_GAME_MIN)
@@ -308,6 +378,24 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
         update_schedule_status(match_id, status="done", skip_reason="obsoleto_tiempo_superado")
         await _final_fetch_and_save(match_id, home, away)
         return
+        
+    # Si el partido está programado para el futuro (>1 minuto a partir de ahora),
+    # dormimos de forma pasiva y eficiente hasta su hora estimada de inicio sin tocar la API.
+    now = time.time()
+    if now < scheduled_ts - 60:
+        sleep_secs = (scheduled_ts - 60) - now
+        log_info("MONITOREO", f"[PROBE] {match_display} | {COLOR_GREEN}ETA {format_human_time(sleep_secs)}{COLOR_RESET}")
+        
+        # Dormimos en chunks cortos (ej. de 5 min) para soportar señales de parada limpias de asyncio
+        remaining = sleep_secs
+        while remaining > 0 and not stop_event.is_set():
+            chunk = min(300.0, remaining)
+            await asyncio.sleep(chunk)
+            remaining = (scheduled_ts - 60) - time.time()
+            
+        if stop_event.is_set():
+            return
+
         
     # 1. Flujo Degradado (FT-Only)
     if ft_only:
@@ -322,7 +410,32 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
         return
 
     # 2. Modo Sonda Prestart (Probe Mode)
-    in_probe_mode = True
+    from bet_monitor_v2.config.constants import DISABLE_PRESTART_PROBES
+    
+    if DISABLE_PRESTART_PROBES:
+        # Modo Espera Pasiva Absoluta: Dormir hasta la hora estimada del wake-up window (Q4_ONLY_EARLY_WAKE_MINUTE - 5 = min 22)
+        wake_up_min = Q4_ONLY_EARLY_WAKE_MINUTE - 5
+        estimated_wake_ts = scheduled_ts + (wake_up_min * secs_per_gmin)
+        now = time.time()
+        if now < estimated_wake_ts:
+            sleep_secs = estimated_wake_ts - now
+            _eta = format_human_time(sleep_secs).replace("min", " min").replace("h", " h")
+            log_info("MONITOREO", f"[PROBE] {match_display} | SONDA ETA {_eta} para {COLOR_GREEN}MIN {wake_up_min}{COLOR_RESET}")
+            
+            remaining = sleep_secs
+            while remaining > 0 and not stop_event.is_set():
+                chunk = min(300.0, remaining)
+                await asyncio.sleep(chunk)
+                remaining = estimated_wake_ts - time.time()
+                
+        if stop_event.is_set():
+            return
+            
+        in_probe_mode = False
+        _probe_completed_count += 1
+    else:
+        in_probe_mode = True
+        
     probe_delay = float(PRESTART_PROBE_MIN_SECS)
     probe_start_time = time.time()
     is_first_probe = True
@@ -379,7 +492,13 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                 _probe_completed_count += 1
                 is_first_probe = False
             progress_label = f" [{_probe_completed_count}/{_total_watchers_spawned}]"
-            log_warning("MONITOREO", f"[PROBE]{progress_label} Error ligero | {match_display}: {e}")
+            err_msg = str(e)
+            if "Event API" in err_msg or "HTTP" in err_msg:
+                import re
+                code_match = re.search(r"(?:HTTP\s+)?(\d+)", err_msg)
+                http_code = code_match.group(1) if code_match else "403"
+                red_err = f"Event API HTTP {http_code}"
+                log_error("MONITOREO", f"[PROBE]{progress_label} {match_display} | {COLOR_BRIGHT_RED}{red_err}{COLOR_RESET}")
             
         # Dormir con backoff exponencial
         probe_sleep = calculate_jitter_sleep_secs(probe_delay, phase="error_retry")
@@ -434,10 +553,23 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                     pass
 
     # 4. Monitoreo Pesado Activo (Q3/Q4 window)
-    q4_done = {model: False for model in ACTIVE_MODELS}
+    # Recuperar de la base de datos si ya se han registrado evaluaciones en Q4 para este partido (evita duplicados por reinicio)
+    try:
+        with get_db_connection() as conn:
+            existing_logs = conn.execute(
+                "SELECT DISTINCT model_version FROM bet_monitor_log_v2 WHERE match_id = ? AND target_quarter = 4",
+                (match_id,)
+            ).fetchall()
+            existing_models = {row["model_version"] for row in existing_logs}
+    except Exception as db_err:
+        log_error("MONITOREO", f"[WATCHER] Error al consultar logs previos: {db_err}")
+        existing_models = set()
+        
+    q4_done = {model: (model in existing_models) for model in ACTIVE_MODELS}
     last_gmin = None
     last_gmin_wall = 0.0
     consecutive_timeouts = 0  # contador de timeouts consecutivos en fetch pesado
+    consecutive_event_404 = 0  # contador de Event API 404 consecutivos
     
     # Activar candado Live de 5 minutos al haber partidos en ventana
     set_monitoring_lock(300)
@@ -446,6 +578,9 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
     log_info("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Iniciando monitoreo pesado (backend={SOFASCORE_SCRAPER_BACKEND}) | {match_display}")
     
     while not stop_event.is_set():
+        # Refrescar candado LIVE mientras el monitoreo esté activo
+        set_monitoring_lock(300)
+        
         # Validar si el partido ya es obsoleto temporalmente (más de 3.5 horas transcurridas desde su hora teórica de inicio)
         if time.time() - scheduled_ts > 12600:
             log_warning("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Partido obsoleto | {match_display}")
@@ -454,31 +589,30 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
             break
             
         try:
-            snapshot = await fetch_event_snapshot(match_id)
-            status_type = snapshot.get("status_type", "").lower()
-            status_desc = snapshot.get("status_description", "") or ""
-            home_score = snapshot.get("home_score", 0)
-            away_score = snapshot.get("away_score", 0)
-            
-            if status_type == "finished":
-                log_info("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Fin detectado → Derivando a FT | {match_display}")
-                await _final_fetch_and_save(match_id, home, away)
-                break
-            
             # Descarga pesada completa para verificar el minuto exacto del PBP y las gráficas
-            # Si el fetch pesado falla con timeout, usamos los datos del snapshot como fallback mínimo.
             full_data = None
             try:
                 full_data = await fetch_match_by_id(match_id, is_ft=False)
                 consecutive_timeouts = 0  # reset al obtener datos exitosos
             except Exception as fetch_err:
                 fetch_err_msg = str(fetch_err)
-                is_timeout_err = "timeout" in fetch_err_msg.lower() or "50s" in fetch_err_msg
+                is_timeout_err = "timeout" in fetch_err_msg.lower()
                 if is_timeout_err:
                     consecutive_timeouts += 1
                     if consecutive_timeouts >= 3:
-                        # Fallback: construir full_data mínimo desde snapshot para permitir evaluación
-                        q_snap = snapshot.get("status_description", "") or ""
+                        # Fallback: intentar obtener snapshot mínimo para permitir evaluación
+                        try:
+                            snapshot = await fetch_event_snapshot(match_id)
+                            status_type = snapshot.get("status_type", "").lower()
+                            status_desc = snapshot.get("status_description", "") or ""
+                            home_score = snapshot.get("home_score", 0)
+                            away_score = snapshot.get("away_score", 0)
+                        except Exception:
+                            status_type = "inprogress"
+                            status_desc = ""
+                            home_score = 0
+                            away_score = 0
+                            
                         full_data = {
                             "score": {
                                 "home": home_score,
@@ -492,13 +626,43 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                         }
                         log_warning("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} [FALLBACK] {consecutive_timeouts} timeouts consecutivos → usando snapshot para evaluación | {match_display}")
                     else:
-                        log_error("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} {match_display} | {COLOR_WARNING}TIMEOUT{COLOR_RESET} 50s Playwright/Obscura")
+                        log_error("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} {match_display} | {COLOR_WARNING}TIMEOUT{COLOR_RESET} {FETCH_TIMEOUT_SECS}s [back={SOFASCORE_SCRAPER_BACKEND_LIVE}]")
                         await asyncio.sleep(POLL_NEAR_SECS)
                         continue
                 else:
                     # Error no-timeout: re-lanzar para que lo capture el except exterior
                     raise
+            
+            # Resetear contadores de error al tener datos exitosos
+            consecutive_event_404 = 0
+            
+            # Extraer metadatos directamente del full_data
+            if not full_data.get("_snapshot_fallback"):
+                match_meta = full_data.get("match", {})
+                status_type = match_meta.get("status_type", "").lower()
+                status_desc = match_meta.get("status_description", "") or ""
+                score_data = full_data.get("score", {})
+                home_score = score_data.get("home", 0)
+                away_score = score_data.get("away", 0)
+            
+            if status_type == "finished":
+                log_info("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Fin detectado → Derivando a FT | {match_display}")
+                await _final_fetch_and_save(match_id, home, away)
+                break
+                
             minute = _infer_minute_from_pbp(full_data)
+            
+            # Fallback robusto usando la cantidad de puntos en la gráfica de presión (graph_points),
+            # ya que la gráfica se actualiza minuto a minuto en vivo incluso si el Play-by-Play se retrasa.
+            gp_count = len(full_data.get("graph_points", []) or [])
+            if gp_count > 0 and (minute is None or gp_count > minute):
+                minute = gp_count
+            
+            if gp_count == 0 and not full_data.get("_snapshot_fallback"):
+                log_info("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} {match_display} | {COLOR_BRIGHT_RED}DESCARTADO gp=0{COLOR_RESET}")
+                update_schedule_status(match_id, status="done", skip_reason="no_graph")
+                break
+                
             # En modo fallback de snapshot, el PBP está vacío. Si el snapshot indica Q4, fijamos
             # el minuto en 35 para permitir la evaluación dentro de la ventana operable.
             if full_data.get("_snapshot_fallback") and minute is None:
@@ -526,7 +690,12 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                 q_key = "Q4"
             elif "overtime" in period_lower:
                 period_label = "OT"
-                q_key = "OT"
+                q_key = "OT1"
+                # Buscar dinámicamente si hay algún OT activo en quarters_data
+                quarters_data = full_data.get("score", {}).get("quarters", {}) or {}
+                ot_keys = [k for k in quarters_data.keys() if k.startswith("OT")]
+                if ot_keys:
+                    q_key = sorted(ot_keys)[-1]
             elif "pause" in period_lower or "halftime" in period_lower or "intermission" in period_lower:
                 period_label = "Pause"
                 
@@ -566,6 +735,10 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                     if q_home is not None and q_away is not None:
                         q_home_col, q_away_col = colorize_scores(q_home, q_away)
                         bracket_parts.append(f"{q_home_col} - {q_away_col}")
+                elif period_label == "OT":
+                    # Fallback si no hay marcador del OT en quarters_data aún: usar marcador global (que inicialmente estará empatado)
+                    q_home_col, q_away_col = colorize_scores(home_score, away_score)
+                    bracket_parts.append(f"{q_home_col} - {q_away_col}")
             
             bracket_content = " | ".join(bracket_parts)
             bracket_label = f"[{bracket_content} ]" if bracket_content else ""
@@ -573,7 +746,8 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
             # Marcador global coloreado
             home_score_colored, away_score_colored = colorize_scores(home_score, away_score)
             
-            log_info("MONITOREO", f"{format_match_log(sched_label, match_id, home, away)} {bracket_label} Score: {home_score_colored} - {away_score_colored}", q4_orange=True)
+            is_q4_active = q_key == "Q4"  # Solo prefijo Q4 🟠 cuando realmente estamos en Q4
+            log_info("MONITOREO", f"{format_match_log(sched_label, match_id, home, away)} {bracket_label} Score: {home_score_colored} - {away_score_colored}", q4_orange=is_q4_active)
             
             if minute is not None:
                 # Calibrar EMA
@@ -619,6 +793,8 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                 operable_to_send[model] = pred
                             elif sig == "NO_BET":
                                 # Asentamos NO_BET final tras el buffer
+                                inf_json = pred.get("inference_json") or {}
+                                h2h = inf_json.get("q4", {}).get("h2h_available")
                                 save_bet_log(
                                     match_id=match_id,
                                     model_version=model,
@@ -631,7 +807,8 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                     actual_home_score=pred.get("actual_home_score"),
                                     actual_away_score=pred.get("actual_away_score"),
                                     result="push",
-                                    inference_json=pred.get("inference_json")
+                                    inference_json=pred.get("inference_json"),
+                                    h2h_available=h2h
                                 )
                                 q4_done[model] = True
                                 log_info("EVALUACION", f"[EVAL] NO_BET definitivo | Model: {model} | {match_display}", q4_orange=True)
@@ -641,6 +818,8 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                             for model, pred in operable_to_send.items():
                                 picked_side = pred.get("pick")
                                 confidence = pred.get("confidence")
+                                inf_json = pred.get("inference_json") or {}
+                                h2h = inf_json.get("q4", {}).get("h2h_available")
                                 save_bet_log(
                                     match_id=match_id,
                                     model_version=model,
@@ -652,7 +831,8 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                     confidence=confidence,
                                     actual_home_score=pred.get("actual_home_score"),
                                     actual_away_score=pred.get("actual_away_score"),
-                                    inference_json=pred.get("inference_json")
+                                    inference_json=pred.get("inference_json"),
+                                    h2h_available=h2h
                                 )
                             
                             # 2. Despachar Telegram Alert (combinada o individual)
@@ -713,10 +893,32 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                 log_info("EVALUACION", f"[EVAL] Señal operable [{pred.get('signal')}] | Model: {model} | {match_display}", q4_orange=True)
                                 
                         if all_resolved and all(q4_done.values()):
-                            log_info("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Q4 Concluido. Esperando FT | {match_display}")
-                            # Pasamos a espera pasiva hasta finalización
-                            sleep_secs = max(60, (scheduled_ts + 7200) - time.time())
-                            await asyncio.sleep(sleep_secs)
+                            log_info("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Q4 Concluido. Sondeando hasta FT | {match_display}")
+                            # Sondear activamente hasta que status_type == "finished"
+                            # para evitar el bug de mandar resultado con Q4 a medio terminar.
+                            ft_wait_start = time.time()
+                            FT_POLL_INTERVAL = 300.0  # sondeo cada 5 minutos
+                            FT_WAIT_TIMEOUT  = 3600.0 # máximo 60 min esperando FT
+                            ft_detected = False
+                            ft_status = ""
+                            while not stop_event.is_set():
+                                if time.time() - ft_wait_start > FT_WAIT_TIMEOUT:
+                                    if ft_status in ("inprogress", "live"):
+                                        log_warning("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Timeout de 60min alcanzado pero el partido sigue En Progreso. Extendiendo espera... | {match_display}")
+                                        ft_wait_start = time.time()  # Reset del temporizador
+                                    else:
+                                        log_warning("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Timeout esperando FT (60min) → forzando FT | {match_display}")
+                                        break
+                                await asyncio.sleep(FT_POLL_INTERVAL)
+                                try:
+                                    snap_ft = await fetch_event_snapshot(match_id)
+                                    ft_status = snap_ft.get("status_type", "").lower()
+                                    log_info("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Sonda FT: status={ft_status} | {match_display}")
+                                    if ft_status == "finished":
+                                        ft_detected = True
+                                        break
+                                except Exception as snap_err:
+                                    log_warning("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} {match_display} | Event Error HTTP 403")
                             await _final_fetch_and_save(match_id, home, away)
                             break
                             
@@ -725,21 +927,31 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                 await asyncio.sleep(POLL_NEAR_SECS)
             else:
                 mins_to_wake = Q4_ONLY_EARLY_WAKE_MINUTE - minute
-                if mins_to_wake <= 1:
+                
+                # Si el partido está en pausa/halftime antes de llegar al minuto de despertar,
+                # dormimos más tiempo ya que el reloj del partido no avanza en tiempo real.
+                is_paused = (
+                    period_label == "Pause" or 
+                    "halftime" in status_desc.lower() or 
+                    "pause" in status_desc.lower() or 
+                    "intermission" in status_desc.lower()
+                )
+                
+                if mins_to_wake > 0:
+                    if is_paused:
+                        # En pausa/halftime antes del min 27, dormir un bloque largo de 5 min (300s) es óptimo y seguro
+                        sleep_secs = 300.0
+                        phase = "q4_far"
+                    else:
+                        # Cálculo adaptativo basado en la velocidad estimada del juego (secs_per_gmin)
+                        # Dormimos el 50% del tiempo real restante estimado hasta despertar
+                        estimated_real_secs = mins_to_wake * secs_per_gmin
+                        sleep_secs = max(45.0, min(300.0, estimated_real_secs * 0.5))
+                        phase = "q4_window" if mins_to_wake <= 5 else "q4_far"
+                else:
+                    # Ya estamos en/pasado el minuto de despertar, usar sondeo corto estándar de Q4
                     sleep_secs = 45.0
                     phase = "q4_window"
-                elif mins_to_wake <= 2:
-                    sleep_secs = 60.0
-                    phase = "q4_window"
-                elif mins_to_wake <= 5:
-                    sleep_secs = 90.0
-                    phase = "q4_window"
-                elif mins_to_wake > 10:
-                    sleep_secs = 180.0
-                    phase = "q4_far"
-                else:
-                    sleep_secs = 120.0
-                    phase = "q4_far"
                     
                 jitter_sleep = calculate_jitter_sleep_secs(sleep_secs, phase=phase)
                 await asyncio.sleep(jitter_sleep)
@@ -762,8 +974,25 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                 else:
                     red_err = f"{COLOR_BRIGHT_RED}Incidents API HTTP {http_code}{COLOR_RESET}"
                     log_error("MONITOREO", f"{live_label} {match_display}: {red_err}")
+            elif "Event API" in err_msg:
+                import re
+                code_match = re.search(r"(?:HTTP\s+)?(\d+)", err_msg)
+                http_code = code_match.group(1) if code_match else "404"
+                if http_code == "404":
+                    consecutive_event_404 += 1
+                    log_error("MONITOREO", f"{live_label} {match_display} | {COLOR_BRIGHT_RED}Event API HTTP 404 [{consecutive_event_404}/3]{COLOR_RESET}")
+                    if consecutive_event_404 >= 3:
+                        log_error("MONITOREO", f"{live_label} {match_display} | {COLOR_BRIGHT_RED}DESCARTADO por 3 Event API 404{COLOR_RESET}")
+                        update_schedule_status(match_id, status="done", skip_reason="event_api_404_x3")
+                        break
+                else:
+                    red_err = f"Event API HTTP {http_code}"
+                    log_error("MONITOREO", f"{live_label} {match_display} | {COLOR_BRIGHT_RED}{red_err}{COLOR_RESET}")
+            elif "Proxy" in err_msg or "CONNECT" in err_msg:
+                _short = err_msg.split(".")[0] if "." in err_msg else err_msg
+                log_error("MONITOREO", f"{live_label} {match_display} | {COLOR_WARNING}Proxy{COLOR_RESET} {COLOR_BRIGHT_RED}{_short}{COLOR_RESET}")
             else:
-                log_error("MONITOREO", f"{live_label} Error bucle | {match_display}: {e}")
+                log_error("MONITOREO", f"{live_label} {match_display} | {COLOR_BRIGHT_RED}{e}{COLOR_RESET}")
             await asyncio.sleep(POLL_NEAR_SECS)
 
 
@@ -890,6 +1119,10 @@ async def main_loop(stop_event: asyncio.Event) -> None:
             )
             _watcher_tasks[mid] = task
             
+            # Espaciar el arranque de los watchers para evitar saturar de peticiones simultáneas
+            # y prevenir anti-bot bans (HTTP 403). Separamos 20 segundos por cada arranque.
+            await asyncio.sleep(20.0)
+            
         # Limpiar tareas completadas
         finished_ids = [mid for mid, t in _watcher_tasks.items() if t.done()]
         for mid in finished_ids:
@@ -910,6 +1143,101 @@ async def main_loop(stop_event: asyncio.Event) -> None:
 
 if __name__ == "__main__":
     import signal
+    import os
+    import sys
+    
+    # Soporte para emojis/UTF-8 en consola de Windows
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+        
+    print("\n" + "="*60)
+    print("        PULPA - CONFIGURACION DE INICIO DE MONITOREO")
+    print("="*60)
+    
+    # 1. Seleccion de Perfil de Navegadores (Backends)
+    print("\n[1] Selecciona el perfil de Navegadores (Backends):")
+    print("  1) Todo en Chrome (Google Chrome nativo - RECOMENDADO y Estable)")
+    print("  2) Todo en Traditional (Chromium headless)")
+    print("  3) Todo en Obscura (CDP persistente en puerto 9222)")
+    print("  4) Configurar de forma INDEPENDIENTE (Sonda, Monitoreo, FT)")
+    opt_backend = input("\n  Elige una opcion [1-4] (Default: 1): ").strip()
+    
+    backend_probe = "chrome"
+    backend_live = "chrome"
+    backend_ft = "chrome"
+    
+    if opt_backend == "2":
+        backend_probe = "traditional"
+        backend_live = "traditional"
+        backend_ft = "traditional"
+    elif opt_backend == "3":
+        backend_probe = "obscura"
+        backend_live = "obscura"
+        backend_ft = "obscura"
+    elif opt_backend == "4":
+        print("\n  --- CONFIGURACION INDEPENDIENTE ---")
+        
+        # 1.1 Sonda
+        print("  [1.1] Backend para la SONDA PRE-PARTIDO (Probe):")
+        print("    1) chrome,  2) traditional,  3) obscura")
+        sub_sonda = input("    Elige [1-3] (Default: 1): ").strip()
+        if sub_sonda == "2":
+            backend_probe = "traditional"
+        elif sub_sonda == "3":
+            backend_probe = "obscura"
+            
+        # 1.2 Monitoreo Live
+        print("\n  [1.2] Backend para el MONITOREO EN VIVO (Live Q3/Q4):")
+        print("    1) chrome,  2) traditional,  3) obscura")
+        sub_live = input("    Elige [1-3] (Default: 1): ").strip()
+        if sub_live == "2":
+            backend_live = "traditional"
+        elif sub_live == "3":
+            backend_live = "obscura"
+            
+        # 1.3 Descarga FT
+        print("\n  [1.3] Backend para la DESCARGA FINAL (FT):")
+        print("    1) chrome,  2) traditional,  3) obscura")
+        sub_ft = input("    Elige [1-3] (Default: 1): ").strip()
+        if sub_ft == "2":
+            backend_ft = "traditional"
+        elif sub_ft == "3":
+            backend_ft = "obscura"
+        
+    # 2. Habilitar o Deshabilitar Sonda Pre-Partido (Probe Mode)
+    print("\n[2] ¿Deseas deshabilitar la sonda pre-partido (Probe Sonda)?")
+    print("  (Evita consultar a Sofascore antes y durante el inicio del juego)")
+    print("  1) Sí (Recomendado - Espera pasiva absoluta hasta min 22 estimado)")
+    print("  2) No (Sondeo ligero en vivo minuto a minuto)")
+    opt_sonda = input("\n  Elige una opcion [1-2] (Default: 1): ").strip()
+    
+    disable_probe_choice = True
+    if opt_sonda == "2":
+        disable_probe_choice = False
+        
+    print("\n" + "="*60)
+    print("  > CONFIGURACION FINAL APLICADA:")
+    print(f"    - Sonda Backend (Probe):   {backend_probe.upper()}")
+    print(f"    - Monitoreo Backend (Live): {backend_live.upper()}")
+    print(f"    - Cierre Backend (FT):      {backend_ft.upper()}")
+    print(f"    - Sonda Pre-partido:        {'DESHABILITADA (Espera Pasiva)' if disable_probe_choice else 'HABILITADA (Sondeo)'}")
+    print("="*60 + "\n")
+    
+    # Establecer variables de entorno antes de importar modulos de red
+    os.environ["SOFASCORE_SCRAPER_BACKEND"] = backend_live
+    os.environ["SOFASCORE_SCRAPER_BACKEND_PROBE"] = backend_probe
+    os.environ["SOFASCORE_SCRAPER_BACKEND_LIVE"] = backend_live
+    os.environ["SOFASCORE_SCRAPER_BACKEND_FT"] = backend_ft
+    os.environ["DISABLE_PRESTART_PROBES"] = "true" if disable_probe_choice else "false"
+    
+    import bet_monitor_v2.config.constants as constants
+    constants.SOFASCORE_SCRAPER_BACKEND = backend_live
+    constants.SOFASCORE_SCRAPER_BACKEND_PROBE = backend_probe
+    constants.SOFASCORE_SCRAPER_BACKEND_LIVE = backend_live
+    constants.SOFASCORE_SCRAPER_BACKEND_FT = backend_ft
+    constants.DISABLE_PRESTART_PROBES = disable_probe_choice
     
     stop_event = asyncio.Event()
     

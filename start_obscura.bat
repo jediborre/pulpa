@@ -4,6 +4,7 @@ cd /d "%~dp0"
 
 set "OBSCURA_DIR=%~dp0tools\obscura\v0.1.5"
 set "OBSCURA_EXE=%OBSCURA_DIR%\obscura.exe"
+set "SSL_CERT_FILE=%~dp0.venv\Lib\site-packages\certifi\cacert.pem"
 
 if not exist "%OBSCURA_EXE%" (
     echo [ERROR] Obscura no esta instalado.
@@ -18,6 +19,6 @@ if not errorlevel 1 (
     exit /b 0
 )
 
-powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command "Start-Process -WindowStyle Hidden -FilePath '%OBSCURA_EXE%' -ArgumentList @('serve','--port','9222') -WorkingDirectory '%OBSCURA_DIR%'"
-echo [OK] Obscura arrancado ahora en 127.0.0.1:9222
+powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command "$env:SSL_CERT_FILE='%SSL_CERT_FILE%'; Start-Process -WindowStyle Hidden -FilePath '%OBSCURA_EXE%' -ArgumentList @('serve','--port','9222','--stealth') -WorkingDirectory '%OBSCURA_DIR%'"
+echo [OK] Obscura arrancado ahora con stealth y SSL_CERT_FILE habilitado en 127.0.0.1:9222
 endlocal

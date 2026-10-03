@@ -103,8 +103,23 @@ def _log_base(level: str, color: str, component: str, msg: str, q4_orange: bool 
     # Formatear errores de red críticos
     formatted_msg = format_critical_error(msg)
     
+    # Colorizar componentes específicos en la consola
+    fmt_component = f"[{component}]"
+    if component in ("DESCARGA", "EVALUACION"):
+        fmt_component = f"{COLOR_GREEN}[{component}]{COLOR_RESET}"
+    elif component in ("MONITOREO", "TELEGRAM"):
+        fmt_component = f"\033[96m[{component}]\033[0m"
+    elif component == "SYSTEM":
+        fmt_component = f"\033[95m[{component}]\033[0m"
+    
+    # Colorizar pipes (|) y [PROBE] en verde/naranja
+    formatted_msg = formatted_msg.replace(" | ", f" {COLOR_GREEN}|{COLOR_RESET} ")
+    COLOR_ORANGE = "\033[38;5;208m"
+    formatted_msg = formatted_msg.replace("[PROBE]", f"{COLOR_ORANGE}[PROBE]{COLOR_RESET}")
+    formatted_msg = formatted_msg.replace("[WATCHER]", f"{COLOR_ORANGE}[WATCHER]{COLOR_RESET}")
+    
     # Escribir en consola
-    sys.stdout.write(f"{time_str} {color}[{level}]{COLOR_RESET} [{component}] {prefix}{formatted_msg}\n")
+    sys.stdout.write(f"{time_str} {color}[{level}]{COLOR_RESET} {fmt_component} {prefix}{formatted_msg}\n")
     sys.stdout.flush()
     
     # Guardar en archivo

@@ -1890,7 +1890,7 @@ def score_m27_v3(
 
     feat = _build_m27v3_feats(_FakeSample(), match_data)
 
-    # Add H2H features
+    # Add H2H features from quarter_scores (original method)
     h2h_feats = _compute_h2h_for_match(conn, ht, at, sample_dt)
     feat.update(h2h_feats)
 

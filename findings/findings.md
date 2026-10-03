@@ -2,13 +2,13 @@
 
 ## Resumen de modelos
 
-| Modelo | Snapshot | ROC AUC (10m) | Yield (10m) | Apuestas | Estado |
-|--------|----------|:-:|:-:|:-:|:-:|
-| **m27_v1** | 27 | **0.668** | **+4.5%** | 643 | ✅ Mejor |
-| **m27_v2** | 27 | 0.667 | — | — | ✅ Baseline sin H2H |
-| **m27_v3** | 27 | **0.789** | **+13.0%** | 2,414 | ✅ Producción lista |
-| m30_v1 | 30 | 0.576 | -3.6% | 90 | ❌ Ruido |
-| v6.3 m30 | 30 | 0.581 | -19.8% | 2,561 | ❌ Quiebra |
+| Modelo | Snapshot | ROC AUC test | Accuracy test | Yield | Apuestas | Estado |
+|--------|----------|:-:|:-:|:-:|:-:|:-:|
+| **m27_v1** | 27 | **0.670** | **0.626** | **+4.5%** | 643 | ✅ Mejor base |
+| **m27_v2** | 27 | 0.668 / 0.671 (10m) | 0.623 / 0.626 (10m) | — | — | ✅ Baseline sin H2H |
+| **m27_v3** | 27 | **0.789** | **0.705** | **+13.0%** | 2,414 | ✅ Producción lista |
+| m30_v1 | 30 | 0.576 | — | -3.6% | 90 | ❌ Ruido |
+| v6.3 m30 | 30 | 0.581 | — | -19.8% | 2,561 | ❌ Quiebra |
 
 ## Hallazgos clave
 

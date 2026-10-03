@@ -37,7 +37,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Awaitable, Callable, TextIO
 
-os.environ.setdefault("SOFASCORE_SCRAPER_BACKEND", "obscura")
+os.environ.setdefault("SOFASCORE_SCRAPER_BACKEND", "chrome")
 
 BASE_DIR = Path(__file__).resolve().parent
 if str(BASE_DIR) not in sys.path:
@@ -1230,6 +1230,8 @@ def _fetch_all_events_for_date_sync(local_date: str) -> list[dict]:
     games, then filters by startTimestamp converted to local time.
     """
     from scraper import _browser_context
+    import json
+    from pathlib import Path
 
     hdrs = {
         "Referer": "https://www.sofascore.com/",
@@ -1240,20 +1242,82 @@ def _fetch_all_events_for_date_sync(local_date: str) -> list[dict]:
     local_dt = datetime.strptime(local_date, "%Y-%m-%d").date()
     utc_dates = [local_dt.isoformat(), (local_dt + timedelta(days=1)).isoformat()]
 
+    # Cache folder setup
+    cache_dir = Path(__file__).resolve().parent.parent / "api_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    CACHE_TTL_SECS = 2 * 3600  # 2-hour cache TTL
+    
     all_events: list = []
-    with _browser_context("https://www.sofascore.com/basketball", backend=None) as (_, ctx, _page):
-        for utc_date in utc_dates:
-            url = (
-                "https://api.sofascore.com/api/v1/"
-                f"sport/basketball/scheduled-events/{utc_date}"
-            )
+    missing_dates: list[str] = []
+
+    # Check cache for each date
+    for utc_date in utc_dates:
+        cache_file = cache_dir / f"schedule_{utc_date}.json"
+        is_fresh = False
+        if cache_file.exists():
             try:
-                resp = ctx.request.get(url, headers=hdrs, timeout=30_000)
-                if resp.ok:
-                    body = resp.json() or {}
-                    all_events.extend(body.get("events", []))
-            except Exception as exc:
-                logger.warning("[MONITOR] schedule fetch %s: %s", utc_date, str(exc).split("\n")[0][:160])
+                mtime = cache_file.stat().st_mtime
+                age = time.time() - mtime
+                if age < CACHE_TTL_SECS:
+                    with cache_file.open("r", encoding="utf-8") as f:
+                        body = json.load(f)
+                        if isinstance(body, dict) and "events" in body:
+                            all_events.extend(body.get("events", []))
+                            logger.info(f"[MONITOR] Itinerario cargado de cache local para UTC: {utc_date} (edad: {age/60:.1f} min)")
+                            is_fresh = True
+            except Exception as cache_err:
+                logger.warning(f"[MONITOR] Error al leer cache de itinerario {utc_date}: {cache_err}")
+        
+        if not is_fresh:
+            missing_dates.append(utc_date)
+
+    # Fetch missing dates using a single browser context
+    if missing_dates:
+        with _browser_context("https://www.sofascore.com/basketball", backend=None) as (_, ctx, _page):
+            for utc_date in missing_dates:
+                url = (
+                    "https://api.sofascore.com/api/v1/"
+                    f"sport/basketball/scheduled-events/{utc_date}"
+                )
+                try:
+                    # Intentar con page.request.get() primero
+                    try:
+                        resp = _page.request.get(url, headers=hdrs, timeout=15_000)
+                        if resp.ok:
+                            body = resp.json()
+                        else:
+                            raise RuntimeError(f"HTTP {resp.status}")
+                    except Exception as _page_req_err:
+                        # Fallback: evaluate fetch() JS
+                        _page.evaluate(f"""
+                            window.__sf = null; window.__sfd = false;
+                            fetch('{url}', {{ headers: {{ 'Accept': 'application/json', 'Referer': 'https://www.sofascore.com/' }} }})
+                            .then(r => r.ok ? r.json() : Promise.reject('HTTP ' + r.status))
+                            .then(d => {{ window.__sf = d; window.__sfd = true; }})
+                            .catch(e => {{ window.__sf = null; window.__sfd = true; }})
+                        """)
+                        time.sleep(8)
+                        fb = _page.evaluate("window.__sf")
+                        if fb:
+                            body = fb
+                        else:
+                            raise _page_req_err
+                    events = body.get("events", [])
+                    all_events.extend(events)
+                    
+                    # Write cache
+                    cache_file = cache_dir / f"schedule_{utc_date}.json"
+                    try:
+                        with cache_file.open("w", encoding="utf-8") as f:
+                            json.dump(body, f, ensure_ascii=False, indent=2)
+                        logger.info(f"[MONITOR] Itinerario descargado y guardado en cache local para UTC: {utc_date}")
+                    except Exception as cache_write_err:
+                        logger.warning(f"[MONITOR] Error al escribir cache {utc_date}: {cache_write_err}")
+                except Exception as exc:
+                    _err = str(exc).split("\n")[0][:160]
+                    if "403" in _err:
+                        _err = _err.replace("403", "\033[91;1m403\033[0m")
+                    logger.warning("[MONITOR] schedule fetch %s: %s", utc_date, _err)
 
     out: list[dict] = []
     seen: set[str] = set()

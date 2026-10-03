@@ -5,7 +5,10 @@ import sys, io
 # Forzar UTF-8 en stdout para Windows
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
-MATCH_ID = "16067319"
+MATCH_ID = "16208417"
+if len(sys.argv) > 1:
+    MATCH_ID = sys.argv[1].strip()
+
 
 conn = sqlite3.connect("match/matches.db")
 conn.row_factory = sqlite3.Row

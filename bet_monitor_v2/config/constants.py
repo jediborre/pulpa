@@ -38,7 +38,11 @@ except ImportError:
 # --- Variables de Entorno Requeridas ---
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
-SOFASCORE_SCRAPER_BACKEND = os.getenv("SOFASCORE_SCRAPER_BACKEND", "obscura").strip().lower()
+SOFASCORE_SCRAPER_BACKEND = os.getenv("SOFASCORE_SCRAPER_BACKEND", "chrome").strip().lower()
+SOFASCORE_SCRAPER_BACKEND_PROBE = os.getenv("SOFASCORE_SCRAPER_BACKEND_PROBE", SOFASCORE_SCRAPER_BACKEND).strip().lower()
+SOFASCORE_SCRAPER_BACKEND_LIVE = os.getenv("SOFASCORE_SCRAPER_BACKEND_LIVE", SOFASCORE_SCRAPER_BACKEND).strip().lower()
+SOFASCORE_SCRAPER_BACKEND_FT = os.getenv("SOFASCORE_SCRAPER_BACKEND_FT", SOFASCORE_SCRAPER_BACKEND).strip().lower()
+DISABLE_PRESTART_PROBES = os.getenv("DISABLE_PRESTART_PROBES", "true").strip().lower() in ("1", "true", "yes", "on")
 
 # --- Rutas de Archivos de Configuración e infraestructura ---
 DB_FILE_PATH = "/match/matches.db"          # Ubicación absoluta y estricta de la base de datos
@@ -52,6 +56,16 @@ GLOBAL_403_COOLDOWN_SECS = 900     # Tiempo de enfriamiento (15 min) ante bloque
 SESSION_ROTATE_EVERY = 40          # Rotación de sesión/cookies cada N llamadas exitosas
 SESSION_ROTATE_PAUSE_SECS = 45     # Pausa obligatoria al rotar sesión
 MONITORING_LOCK_DURATION_SECS = 300 # Lock de 5 min para pausar tareas secundarias al haber partidos Live
+FETCH_TIMEOUT_SECS = 120           # Timeout máximo por fetch (120s con proxy residencial)
+
+# Proxy rotatorio — prioridad:
+#   1. Local (IP propia, sin proxy)
+#   2. Proxy list (SOCKS5 gratuitos/de oficina)
+#   3. Premium (Smartproxy residencial)
+SOFASCORE_PROXY_URL = os.getenv("SOFASCORE_PROXY_URL", "").strip()
+
+# Lista de proxies HTTP (tier 2). Vacía = deshabilitado, salta directo a premium.
+FREE_PROXY_LIST = []
 
 # --- Ritmo de Juego y Ventana de Monitoreo Q4 ---
 SECS_PER_GAME_MIN = 170            # Estimación inicial de segundos reales por minuto de juego
@@ -70,17 +84,17 @@ PRESTART_PROBE_BACKOFF = 1.25      # Factor multiplicador del temporizador expon
 PROBE_GLOBAL_TIMEOUT_SECS = 21600  # Timeout global (6h) para evitar tareas colgadas en probe mode
 
 # --- Polling y Descarga Final (FT) ---
-POLL_INTERVAL_FF = 150             # Intervalo base para verificar partido finalizado
-POLL_JITTER_FF = 45                # Jitter máximo para desincronizar polling final
+POLL_INTERVAL_FF = 300             # Intervalo base para verificar partido finalizado (150→300)
+POLL_JITTER_FF = 60                # Jitter máximo para desincronizar polling final (45→60)
 FINAL_FETCH_EXTRA_SECS = 300       # Margen de seguridad tras tiempo estimado de fin
 FINAL_FETCH_MIN_GP = 20            # Mínimo de puntos de gráfica requeridos para persistencia válida
-FT_SCRAPE_SLOT_SPACING_BASE = 35.0 # Identificador base en segundos para encolar descargas FT
+FT_SCRAPE_SLOT_SPACING_BASE = 10.0 # Segundos base entre descargas FT (10s + jitter)
 
 # --- Intervalos de Tareas Secundarias ---
 SCHEDULE_REFRESH_HOURS = 8         # Frecuencia de actualización del itinerario
 PENDING_RECHECK_SECS = 3600        # Recheck de resultados cada hora
-POLL_NEAR_SECS = 45                # Polling corto dentro de la ventana de juego activa
-IDLE_POLL_SECS = 180               # Polling largo en periodos de inactividad
+POLL_NEAR_SECS = 120               # Polling en ventana activa (45→120, ahorra ~60% tráfico)
+IDLE_POLL_SECS = 300               # Polling en inactividad (180→300)
 NO_BET_CONFIRM_TICKS = 1           # Confirmaciones consecutivas necesarias para asentar NO_BET (1 = evaluación instantánea)
 UTC_OFFSET_HOURS = -6              # Desfase horario local
 

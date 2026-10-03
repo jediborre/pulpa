@@ -85,6 +85,10 @@ def init_tables() -> None:
                 conn.execute("ALTER TABLE bet_monitor_log_v2 ADD COLUMN inference_json TEXT;")
             except sqlite3.OperationalError:
                 pass
+            try:
+                conn.execute("ALTER TABLE bet_monitor_log_v2 ADD COLUMN h2h_available INTEGER;")
+            except sqlite3.OperationalError:
+                pass
             conn.execute("CREATE INDEX IF NOT EXISTS idx_log_match_model_v2 ON bet_monitor_log_v2 (match_id, model_version);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_log_result_v2 ON bet_monitor_log_v2 (result);")
 
@@ -206,11 +210,18 @@ def update_schedule_status(match_id: str, status: str, skip_reason: str = "") ->
     now = datetime.now().isoformat()
     with get_db_connection() as conn:
         with conn:
-            conn.execute("""
-                UPDATE bet_monitor_schedule_v2
-                SET status = ?, skip_reason = ?, updated_at = ?
-                WHERE match_id = ?
-            """, (status, skip_reason, now, match_id))
+            if status == "done":
+                conn.execute("""
+                    UPDATE bet_monitor_schedule_v2
+                    SET status = ?, skip_reason = ?, final_fetched = 1, final_fetch_at = ?, updated_at = ?
+                    WHERE match_id = ?
+                """, (status, skip_reason, now, now, match_id))
+            else:
+                conn.execute("""
+                    UPDATE bet_monitor_schedule_v2
+                    SET status = ?, skip_reason = ?, updated_at = ?
+                    WHERE match_id = ?
+                """, (status, skip_reason, now, match_id))
 
 
 def get_schedule_matches(event_date: str) -> list[dict]:
@@ -271,7 +282,7 @@ def save_bet_log(
     match_id: str, model_version: str, inference_minute: int, graph_points_count: int,
     raw_json: dict, signal_type: str, picked_side: str, confidence: float,
     actual_home_score: int, actual_away_score: int, result: str = "pending",
-    inference_json: dict | None = None
+    inference_json: dict | None = None, h2h_available: bool | None = None
 ) -> int:
     """
     Registra una inferencia en la tabla bet_monitor_log_v2 de forma persistente.
@@ -286,12 +297,14 @@ def save_bet_log(
                 INSERT INTO bet_monitor_log_v2 (
                     match_id, model_version, target_quarter, inference_minute, graph_points_count,
                     raw_json, signal_type, picked_side, confidence,
-                    actual_home_score, actual_away_score, result, created_at, inference_json
-                ) VALUES (?, ?, 4, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    actual_home_score, actual_away_score, result, created_at, inference_json,
+                    h2h_available
+                ) VALUES (?, ?, 4, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 match_id, model_version, inference_minute, graph_points_count,
                 raw_json_str, signal_type, picked_side, confidence,
-                actual_home_score, actual_away_score, result, now, inf_json_str
+                actual_home_score, actual_away_score, result, now, inf_json_str,
+                1 if h2h_available else (0 if h2h_available is not None else None)
             ))
             return cursor.lastrowid
 

@@ -42,12 +42,33 @@ def ensure_obscura_running() -> bool:
     Determina si el backend requiere Obscura y, si está apagado en el 9222,
     lo enciende automáticamente en segundo plano llamando a start_obscura.bat.
     """
-    backend = str(SOFASCORE_SCRAPER_BACKEND).strip().lower()
-    if backend not in {"obscura", "cdp"}:
+    from bet_monitor_v2.config.constants import (
+        SOFASCORE_SCRAPER_BACKEND,
+        SOFASCORE_SCRAPER_BACKEND_PROBE,
+        SOFASCORE_SCRAPER_BACKEND_LIVE,
+        SOFASCORE_SCRAPER_BACKEND_FT
+    )
+    backends = {
+        str(SOFASCORE_SCRAPER_BACKEND).strip().lower(),
+        str(SOFASCORE_SCRAPER_BACKEND_PROBE).strip().lower(),
+        str(SOFASCORE_SCRAPER_BACKEND_LIVE).strip().lower(),
+        str(SOFASCORE_SCRAPER_BACKEND_FT).strip().lower()
+    }
+    if not ("obscura" in backends or "cdp" in backends):
         return True
 
-    if is_obscura_port_open():
-        return True
+    # Para garantizar que todo inicie fresco, libre de sockets colgados y fugas de memoria,
+    # forzamos el cierre de cualquier proceso residual de obscura.exe antes de reabrirlo.
+    try:
+        subprocess.run(
+            ["taskkill", "/f", "/im", "obscura.exe"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False
+        )
+        time.sleep(0.8)  # Breve pausa para que el sistema operativo libere el puerto 9222
+    except Exception:
+        pass
 
     root_dir = Path(__file__).resolve().parents[2]
     bat_path = root_dir / "start_obscura.bat"

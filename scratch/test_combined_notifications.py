@@ -147,7 +147,7 @@ def test_combined_notifications():
     print("\n[TEST Scenario 5 Combined Final Confirmation Output]:")
     print(full_final_text)
     
-    assert "🟡 APUESTA Q4" in full_final_text
+    assert "🟡 RESULTADO Q4" in full_final_text
     assert "✅ v6_2 22% → 🏠 CD Universitario Concepcion" in full_final_text
     assert "❌ m27_v3 21% → ✈️ Sportiva Italiana" in full_final_text
     assert "Do May 24, 4:40 pm | Q3 6 - 11" in full_final_text
@@ -179,7 +179,7 @@ def test_combined_notifications():
     print("\n[TEST Scenario 6 Combined Final Confirmation with NO_BET Output]:")
     print(full_final_nobet)
     
-    assert "🟡 APUESTA Q4" in full_final_nobet
+    assert "🟡 RESULTADO Q4" in full_final_nobet
     assert "✅ v6_2 22% → 🏠 CD Universitario Concepcion" in full_final_nobet
     assert "🔴 m27_v3 NO BET" in full_final_nobet
     assert "Do May 24, 4:40 pm | Q3 6 - 11" in full_final_nobet

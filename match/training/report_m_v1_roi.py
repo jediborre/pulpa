@@ -1,7 +1,7 @@
-"""Generate an independent Q4 ROI report for M27_V1 and M30_V1.
+"""Generate an independent Q4 ROI report for M27_V1, M27_V3 and M30_V1.
 
 This report intentionally excludes V6.2, V6.3 raw, and the legacy m27/m30
-variants. It only evaluates the independent M_V1 models.
+variants. It evaluates the independent M_V1 models plus m27_v3.
 """
 
 from __future__ import annotations
@@ -26,16 +26,21 @@ import infer_match as infer_live
 import m27_v1_league_policy as m27_v1_policy
 import train_q3_q4_models_v6 as v6
 import train_q4_m27_v1 as m27_v1_train
+import train_q4_m27_v3 as m27_v3_train
 import train_q4_m30_v1 as m30_v1_train
 
 ROOT = Path(__file__).parent.parent.parent
 BASE_M_V1 = ROOT / "match" / "training" / "model_outputs_m_v1"
 BASE_M27_V1 = ROOT / "match" / "training" / "model_outputs_m27_v1"
+BASE_M27_V3 = ROOT / "match" / "training" / "model_outputs_m27_v3"
 BASE_M30_V1 = ROOT / "match" / "training" / "model_outputs_m30_v1"
 OUT_MM = BASE_M_V1 / "Q4_ROI_match_by_match_m_v1.xlsx"
 PRED_CACHE_PATH = BASE_M_V1 / "q4_roi_pred_cache.joblib"
 SPLITS_CACHE_PATH = BASE_M_V1 / "q4_roi_splits_cache.joblib"
 M27_V1_CHAMPION_PATH = BASE_M27_V1 / "q4_m27_v1_champion.joblib"
+M27_V3_VECTORIZER_PATH = BASE_M27_V3 / "m27_v3_vectorizer.joblib"
+M27_V3_XGB_PATH = BASE_M27_V3 / "m27_v3_xgb.joblib"
+M27_V3_HIST_PATH = BASE_M27_V3 / "m27_v3_histgb.joblib"
 M30_V1_CHAMPION_PATH = BASE_M30_V1 / "q4_m30_v1_champion.joblib"
 
 ODDS = 1.4
@@ -117,6 +122,18 @@ def _file_signature(path: Path) -> str:
         return "missing"
     st = path.stat()
     return f"{int(st.st_mtime_ns)}:{int(st.st_size)}"
+
+
+def _load_model_artifact(model_label: str, artifact_path: Path) -> dict:
+    if model_label == "m27_v3":
+        return {
+            "vectorizer": joblib.load(M27_V3_VECTORIZER_PATH),
+            "models": {
+                "xgb": joblib.load(M27_V3_XGB_PATH),
+                "hist_gb": joblib.load(M27_V3_HIST_PATH),
+            },
+        }
+    return joblib.load(artifact_path)
 
 
 def _load_pred_cache(
@@ -635,7 +652,7 @@ def _predict_m_v1_probs_for_snapshot_mode(
     apply_filters=True,
 ):
     rules = _load_league_name_rules() if apply_filters else []
-    artifact = joblib.load(artifact_path)
+    artifact = _load_model_artifact(model_label, artifact_path)
     vectorizer = artifact["vectorizer"]
     models = artifact["models"]
 
@@ -693,7 +710,8 @@ def _predict_m_v1_probs_for_snapshot_mode(
             feature_dict = feature_builder(sample, live_like)
             x_row = vectorizer.transform([feature_dict])
             p_xgb = float(models["xgb"].predict_proba(x_row)[0, 1])
-            p_hist = float(models["hist_gb"].predict_proba(x_row)[0, 1])
+            x_row_hist = x_row.toarray() if model_label == "m27_v3" else x_row
+            p_hist = float(models["hist_gb"].predict_proba(x_row_hist)[0, 1])
             p_home = (p_xgb + p_hist) / 2.0
 
             confidence = abs(p_home - 0.5) * 2.0
@@ -777,7 +795,7 @@ def _predict_m_v1_probs_raw(
     feature_builder,
     snapshot_minute: int,
 ):
-    artifact = joblib.load(artifact_path)
+    artifact = _load_model_artifact(model_label, artifact_path)
     vectorizer = artifact["vectorizer"]
     models = artifact["models"]
 
@@ -809,7 +827,8 @@ def _predict_m_v1_probs_raw(
             feature_dict = feature_builder(sample, live_like)
             x_row = vectorizer.transform([feature_dict])
             p_xgb = float(models["xgb"].predict_proba(x_row)[0, 1])
-            p_hist = float(models["hist_gb"].predict_proba(x_row)[0, 1])
+            x_row_hist = x_row.toarray() if model_label == "m27_v3" else x_row
+            p_hist = float(models["hist_gb"].predict_proba(x_row_hist)[0, 1])
             probs[i] = (p_xgb + p_hist) / 2.0
     finally:
         conn.close()
@@ -1522,26 +1541,35 @@ def _ask_optional_report_date() -> str | None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Q4 ROI report independiente para m27_v1 y m30_v1"
+        description="Q4 ROI report independiente para m27_v1, m27_v3 y m30_v1"
     )
     parser.add_argument("--rebuild-pred-cache", action="store_true")
     parser.add_argument("--rebuild-splits-cache", action="store_true")
     parser.add_argument("--only-m27-v1", action="store_true")
+    parser.add_argument("--only-m27-v3", action="store_true")
     parser.add_argument("--only-m30-v1", action="store_true")
     parser.add_argument("--no-m27-v1", action="store_true")
+    parser.add_argument("--no-m27-v3", action="store_true")
     parser.add_argument("--no-m30-v1", action="store_true")
     args = parser.parse_args()
 
-    if args.only_m27_v1 and args.only_m30_v1:
+    only_flags = [args.only_m27_v1, args.only_m27_v3, args.only_m30_v1]
+    if sum(bool(flag) for flag in only_flags) > 1:
         raise ValueError(
-            "No puedes usar --only-m27-v1 y --only-m30-v1 al mismo tiempo"
+            "No puedes combinar más de un flag --only-m* al mismo tiempo"
         )
 
     if args.only_m27_v1:
         run_m27_v1 = True
+        run_m27_v3 = False
+        run_m30_v1 = False
+    elif args.only_m27_v3:
+        run_m27_v1 = False
+        run_m27_v3 = True
         run_m30_v1 = False
     elif args.only_m30_v1:
         run_m27_v1 = False
+        run_m27_v3 = False
         run_m30_v1 = True
     else:
         run_m27_v1 = (
@@ -1549,14 +1577,19 @@ def main():
             if args.no_m27_v1
             else _ask_yes_no("¿Incluir m27_v1?", default_yes=True)
         )
+        run_m27_v3 = (
+            False
+            if args.no_m27_v3
+            else _ask_yes_no("¿Incluir m27_v3?", default_yes=True)
+        )
         run_m30_v1 = (
             False
             if args.no_m30_v1
             else _ask_yes_no("¿Incluir m30_v1?", default_yes=True)
         )
 
-    if not any([run_m27_v1, run_m30_v1]):
-        raise ValueError("Debes incluir al menos un modelo m_v1")
+    if not any([run_m27_v1, run_m27_v3, run_m30_v1]):
+        raise ValueError("Debes incluir al menos un modelo")
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_mm_path = BASE_M_V1 / f"Q4_ROI_match_by_match_m_v1_{ts}.xlsx"
@@ -1582,10 +1615,16 @@ def main():
         "report": "q4_roi_m_v1",
         "pred_logic_version": "m30_qdur_alignment_v2_raw_compare",
         "run_m27_v1": bool(run_m27_v1),
+        "run_m27_v3": bool(run_m27_v3),
         "run_m30_v1": bool(run_m30_v1),
         "league_name_filters_disabled": bool(LEAGUE_NAME_FILTERS_DISABLED),
         "test_fp": _rows_fingerprint(test_rows),
         "m27_v1_model_sig": _file_signature(M27_V1_CHAMPION_PATH),
+        "m27_v3_model_sig": "|".join([
+            _file_signature(M27_V3_VECTORIZER_PATH),
+            _file_signature(M27_V3_XGB_PATH),
+            _file_signature(M27_V3_HIST_PATH),
+        ]),
         "m30_v1_model_sig": _file_signature(M30_V1_CHAMPION_PATH),
     }
     pred_cache = _load_pred_cache(
@@ -1601,6 +1640,12 @@ def main():
             excl_m27_v1_reasons = pred_cache["excl_m27_v1_reasons"]
             snap_m27_v1 = pred_cache["snap_m27_v1"]
             p_m27_v1_raw = pred_cache["p_m27_v1_raw"]
+        if run_m27_v3:
+            p_m27_v3 = pred_cache["p_m27_v3"]
+            excl_m27_v3_flags = pred_cache["excl_m27_v3_flags"]
+            excl_m27_v3_reasons = pred_cache["excl_m27_v3_reasons"]
+            snap_m27_v3 = pred_cache["snap_m27_v3"]
+            p_m27_v3_raw = pred_cache["p_m27_v3_raw"]
         if run_m30_v1:
             p_m30_v1 = pred_cache["p_m30_v1"]
             excl_m30_v1_flags = pred_cache["excl_m30_v1_flags"]
@@ -1627,6 +1672,26 @@ def main():
                 M27_V1_CHAMPION_PATH,
                 m27_v1_train._build_m27_v1_features,
                 int(m27_v1_train.SNAPSHOT_MINUTE),
+            )
+        if run_m27_v3:
+            print("[M_V1_ROI] predicciones m27_v3...")
+            p_m27_v3, excl_m27_v3_flags, excl_m27_v3_reasons, snap_m27_v3 = (
+                _predict_m_v1_probs_for_snapshot_mode(
+                    test_rows,
+                    "m27_v3",
+                    BASE_M27_V3,
+                    m27_v3_train._build_m27_v3_features,
+                    int(m27_v3_train.SNAPSHOT_MINUTE),
+                    apply_filters=(not LEAGUE_NAME_FILTERS_DISABLED),
+                )
+            )
+            print("[M_V1_ROI] predicciones raw m27_v3...")
+            p_m27_v3_raw = _predict_m_v1_probs_raw(
+                test_rows,
+                "m27_v3",
+                BASE_M27_V3,
+                m27_v3_train._build_m27_v3_features,
+                int(m27_v3_train.SNAPSHOT_MINUTE),
             )
         if run_m30_v1:
             print("[M_V1_ROI] predicciones m30_v1...")
@@ -1657,6 +1722,16 @@ def main():
                     "excl_m27_v1_flags": excl_m27_v1_flags,
                     "excl_m27_v1_reasons": excl_m27_v1_reasons,
                     "snap_m27_v1": snap_m27_v1,
+                }
+            )
+        if run_m27_v3:
+            pred_payload.update(
+                {
+                    "p_m27_v3": p_m27_v3,
+                    "p_m27_v3_raw": p_m27_v3_raw,
+                    "excl_m27_v3_flags": excl_m27_v3_flags,
+                    "excl_m27_v3_reasons": excl_m27_v3_reasons,
+                    "snap_m27_v3": snap_m27_v3,
                 }
             )
         if run_m30_v1:
@@ -1705,6 +1780,30 @@ def main():
         league_dfs.append(m27_v1_df)
         sheets_extra.append(("m27_v1_matches", m27_v1_df))
         sheets_extra.append(("m27_v1_policy", m27_v1_policy_df))
+    if run_m27_v3:
+        m27_v3_details, m27_v3_summary = _simulate(
+            "m27_v3",
+            test_rows,
+            p_m27_v3,
+            int(m27_v3_train.SNAPSHOT_MINUTE),
+            excl_m27_v3_flags,
+            excl_m27_v3_reasons,
+            MODE,
+            KELLY_MULT,
+            KELLY_CAP,
+            MIN_CONF_PROB,
+            STAKE_STEP,
+            MIN_STAKE,
+            MAX_STAKE,
+            teams_map,
+            q4_scores_map,
+            q3_score_maps,
+            snap_m27_v3,
+        )
+        m27_v3_df = pd.DataFrame(m27_v3_details)
+        summaries.append(m27_v3_summary)
+        league_dfs.append(m27_v3_df)
+        sheets_extra.append(("m27_v3_matches", m27_v3_df))
     if run_m30_v1:
         m30_v1_details, m30_v1_summary = _simulate(
             "m30_v1",

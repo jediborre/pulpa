@@ -25,7 +25,7 @@ echo ==================================================
 echo.
 echo   1) Correr Bot de Telegram
 echo   2) Correr Monitoreo V2 (Modular)
-echo   3) Correr Dashboard (API + Frontend)
+echo   3) Mostrar Estadisticas de Modelos / Exportar Excel (CLI)
 echo   4) Correr Todo  (Bot + API + Dashboard)
 echo   30) Correr API Backend
 echo   5) Traer fecha nueva / rango 5 dias con base manual  (option 15 de cli.py)
@@ -51,8 +51,11 @@ echo   23) M27_V1: Solo probe
 echo   24) Backfill historico (matches.db)
 echo   25) Comparar tradicional vs obscura
 echo   26) Instalar Obscura
-echo   27) Iniciar Obscura (CDP)
+echo   27) Iniciar Obscura (CDP) - liviano, NO sirve con SofaScore
 echo   29) Apagar Obscura
+echo   31) M27_V3: Solo reporte
+echo   32) Correr Dashboard (API + Frontend)
+echo   33) Backfill masivo H2H (SofaScore - priorizado por liga)
 echo   0) Salir
 echo.
 set /p OPT="  Selecciona: "
@@ -60,7 +63,7 @@ set /p OPT="  Selecciona: "
 if "%OPT%"=="0" goto FIN
 if "%OPT%"=="1" goto BOT
 if "%OPT%"=="2" goto RUN_MONITOR_V2
-if "%OPT%"=="3" goto DASHBOARD
+if "%OPT%"=="3" goto VIEW_STATS_CLI
 if "%OPT%"=="4" goto TODO
 if "%OPT%"=="30" goto API
 if "%OPT%"=="5" goto FETCH_DATE
@@ -88,6 +91,9 @@ if "%OPT%"=="26" goto INSTALL_OBSCURA
 if "%OPT%"=="27" goto START_OBSCURA
 if "%OPT%"=="28" goto TRAIN_V2
 if "%OPT%"=="29" goto STOP_OBSCURA
+if "%OPT%"=="31" goto REPORT_M27_V3_ONLY
+if "%OPT%"=="32" goto DASHBOARD
+if "%OPT%"=="33" goto BACKFILL_H2H_MASIVO
 
 echo [ERROR] Opcion invalida.
 timeout /t 2 /nobreak >nul
@@ -96,7 +102,20 @@ goto MENU
 :: ─────────────────────────────────────────────────
 :RUN_MONITOR_V2
 cls
-echo [+] Iniciando Monitoreo V2 (Modular)...
+echo.
+echo ===============================================
+echo  Iniciando Monitoreo V2
+echo ===============================================
+echo.
+echo [1/3] Matando procesos residuales de Chrome...
+taskkill /IM chrome.exe /F >nul 2>&1
+timeout /t 2 /nobreak >nul
+
+echo [2/3] Iniciando Monitoreo V2 (backend=chrome)...
+echo.
+echo  NOTA: Cada scrape lanza Chrome temporal (se cierra al terminar).
+echo  Si ves demora, es normal: Playwright gestiona los procesos.
+echo.
 start "Pulpa - Monitoreo V2" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python bet_monitor_v2\main.py"
 goto MENU
 
@@ -370,6 +389,50 @@ goto MENU
 :INSTALAR
 cls
 call instalar.bat
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:REPORT_M27_V3_ONLY
+cls
+echo [+] M27_V3: Solo reporte...
+call .venv\Scripts\activate
+python match\training\report_m_v1_roi.py --only-m27-v3
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:VIEW_STATS_CLI
+cls
+call .venv\Scripts\activate
+python tools\stats_cli.py
+pause
+goto MENU
+
+:: ─────────────────────────────────────────────────
+:BACKFILL_H2H_MASIVO
+cls
+echo.
+echo ===============================================
+echo  Backfill Masivo H2H (SofaScore)
+echo ===============================================
+echo.
+echo  Descarga H2H para los ~23k partidos restantes.
+echo  Prioriza ligas con mas datos, excluye mujeres.
+echo  Espera: 40s + jitter entre partidos.
+echo.
+echo  [!] Esto tomara varias horas/dias.
+echo  [!] Si ves errores 403 consecutivos, el script
+echo      se pausara para que reinicies internet.
+echo.
+set /p CONFIRM="  Continuar? [s/N]: "
+if /I "%CONFIRM%"=="n" goto MENU
+if /I "%CONFIRM%"=="no" goto MENU
+if not defined CONFIRM goto MENU
+if /I not "%CONFIRM%"=="s" if /I not "%CONFIRM%"=="si" if /I not "%CONFIRM%"=="y" if /I not "%CONFIRM%"=="yes" goto MENU
+
+call .venv\Scripts\activate
+python temp_scripts\backfill_h2h_masivo.py
+pause
 goto MENU
 
 :: ─────────────────────────────────────────────────

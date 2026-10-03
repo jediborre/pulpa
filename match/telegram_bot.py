@@ -15,7 +15,7 @@ import time
 import unicodedata
 from pathlib import Path
 
-os.environ.setdefault("SOFASCORE_SCRAPER_BACKEND", "obscura")
+os.environ.setdefault("SOFASCORE_SCRAPER_BACKEND", "chrome")
 
 from dotenv import load_dotenv
 from telegram import (

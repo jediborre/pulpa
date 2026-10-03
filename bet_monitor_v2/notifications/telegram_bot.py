@@ -31,7 +31,7 @@ import asyncio
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
-from bet_monitor_v2.config.constants import TELEGRAM_BOT_TOKEN
+from bet_monitor_v2.config.constants import TELEGRAM_BOT_TOKEN, UTC_OFFSET_HOURS
 from bet_monitor_v2.database.connection import get_real_db_path
 from bet_monitor_v2.utils.logger import log_info, log_warning, log_error, COLOR_GREEN, COLOR_RESET
 
@@ -408,10 +408,10 @@ def format_combined_final_message(logs: list, home_team: str, away_team: str) ->
     
     if is_late:
         prefix = "🟡⚪️" if is_low_conf else "⚪️"
-        title = f"{prefix} APUESTA TARDIA Q4"
+        title = f"{prefix} RESULTADO TARDIO Q4"
     else:
         prefix = "🟡" if is_low_conf else "🟢"
-        title = f"{prefix} APUESTA Q4"
+        title = f"{prefix} RESULTADO Q4"
         
     lines = [title]
     for log in logs:
@@ -503,10 +503,10 @@ async def send_final_confirmation(
     is_late = "LATE" in signal
     if is_late:
         prefix = "🟡⚪️" if is_low_conf else "⚪️"
-        title = f"{prefix} APUESTA TARDIA Q4"
+        title = f"{prefix} RESULTADO TARDIO Q4"
     else:
         prefix = "🟡" if is_low_conf else "🟢"
-        title = f"{prefix} APUESTA Q4"
+        title = f"{prefix} RESULTADO Q4"
         
     conf_pct_str = ""
     if confidence is not None:
@@ -557,14 +557,17 @@ def _get_model_stats_dict(model: str) -> dict:
         return empty
 
     try:
+        tz = timezone(timedelta(hours=UTC_OFFSET_HOURS))
+        today_str = datetime.now(tz).strftime("%Y-%m-%d")
+        
         with sqlite3.connect(db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT signal_type, confidence, result
                 FROM bet_monitor_log_v2
-                WHERE model_version = ?
-            """, (model,))
+                WHERE model_version = ? AND created_at >= ?
+            """, (model, today_str))
             rows = cursor.fetchall()
 
         for r in rows:
