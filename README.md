@@ -8,11 +8,12 @@ Sistema automatizado cuantitativo de monitoreo en tiempo real, predicción estad
 
 Toda la documentación técnica, científica y operativa del proyecto ha sido consolidada en la carpeta [`docs/`](file:///C:/Users/App/Desktop/pulpa/docs):
 
-### 🌟 Visión General y Estado Actual
+### 🌟 Visión General, Estado y Reglas
 | Archivo en `docs/` | Ubicación Original | Contenido Principal |
 |---|---|---|
 | [`docs/ESTADO_DEL_PROYECTO.md`](file:///C:/Users/App/Desktop/pulpa/docs/ESTADO_DEL_PROYECTO.md) | `ESTADO_DEL_PROYECTO.md (Raíz)` | Visión integral del sistema, arquitectura completa, catálogo de features F0-F15 y G1-G9, comparativa de los 24 modelos, investigación de scraping, últimos avances y guía rápida. |
-| [`docs/modelos.md`](file:///C:/Users/App/Desktop/pulpa/docs/modelos.md) | `findings/modelos.md` | Documento enciclopédico de todos los modelos (V1 a V17, m27_v1/v2/v3, m30_v1), hiperparámetros, snapshots de corte, métricas ROC AUC/Accuracy/Yield y catálogo técnico de features. *(También disponible en raíz como [`modelos.md`](file:///C:/Users/App/Desktop/pulpa/modelos.md))*. |
+| [`docs/modelos.md`](file:///C:/Users/App/Desktop/pulpa/docs/modelos.md) | `findings/modelos.md` | Documento enciclopédico de todos los modelos (V1 a V17, m27_v1/v2/v3, m30_v1), hiperparámetros, snapshots de corte, métricas ROC AUC/Accuracy/Yield y catálogo técnico de features. *(Disponible en raíz como [`modelos.md`](file:///C:/Users/App/Desktop/pulpa/modelos.md))*. |
+| [`docs/AGENTS.md`](file:///C:/Users/App/Desktop/pulpa/docs/AGENTS.md) | `AGENTS.md (Raíz)` | Reglas operativas obligatorias para agentes de IA (commit descriptivo en español y push inmediato tras cada cambio) y mapa del repositorio. *(Disponible en raíz como [`AGENTS.md`](file:///C:/Users/App/Desktop/pulpa/AGENTS.md))*. |
 | [`docs/findings.md`](file:///C:/Users/App/Desktop/pulpa/docs/findings.md) | `findings/findings.md` | Resumen ejecutivo de hallazgos estadísticos clave: por qué el snapshot 27 supera al 30, impacto cuantitativo del H2H (+0.122 AUC), correlaciones y feature importance. |
 
 ### 🧠 Modelado Predictivo, Roadmaps y Features
@@ -53,9 +54,9 @@ Toda la documentación técnica, científica y operativa del proyecto ha sido co
 
 ## 🤖 Guía Obligatoria para Agentes de IA
 
-Si eres un asistente de IA trabajando en este repositorio, consulta obligatoriamente [`AGENTS.md`](file:///C:/Users/App/Desktop/pulpa/AGENTS.md):
+Si eres un asistente de IA trabajando en este repositorio, consulta obligatoriamente [`AGENTS.md`](file:///C:/Users/App/Desktop/pulpa/AGENTS.md) (y [`docs/AGENTS.md`](file:///C:/Users/App/Desktop/pulpa/docs/AGENTS.md)):
 - **Regla mandatoria:** Cada cambio debe terminar con un `git commit -m "mensaje en español"` y un `git push` inmediato a `origin/main`.
-- **Mapa de navegación:** Ubicación de la base de datos `matches.db`, scrapers, evaluadores y menú de control.
+- **Mapa de navegación:** Ubicación de la base de datos `matches.db`, scrapers, evaluadores, menú de control y carpeta `docs/`.
 
 ---
 
@@ -64,13 +65,13 @@ Si eres un asistente de IA trabajando en este repositorio, consulta obligatoriam
 ```text
 pulpa/
 ├── AGENTS.md               # Reglas obligatorias para agentes de IA y mapa de navegación
-├── README.md               # Este archivo — índice y guía principal
+├── README.md               # Este archivo — índice y guía principal (solo en raíz)
 ├── modelos.md              # Documento maestro con stats y features de todos los modelos
 ├── menu.bat                # Menú interactivo por lotes con 33 opciones operativas
 ├── iniciar_monitor_cdp.bat # Script de arranque directo del monitor en modo Chrome CDP
 ├── api.py                  # API REST en FastAPI para servir inferencias al dashboard
 │
-├── docs/                   # 📚 Hub central de documentación (21 archivos .md)
+├── docs/                   # 📚 Hub central de documentación (22 archivos .md)
 │
 ├── bet_monitor_v2/         # Daemon asíncrono modular de monitoreo en tiempo real
 │   ├── config/             # Constantes y leagues.yaml (filtros de ligas)
