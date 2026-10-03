@@ -12,6 +12,18 @@ set "OBSCURA_ZIP=%OBSCURA_DIR%\obscura-x86_64-windows.zip"
 set "OBSCURA_URL=https://github.com/h4ckf0r0day/obscura/releases/download/%OBSCURA_VERSION%/obscura-x86_64-windows.zip"
 
 :: ── Parametros directos por linea de comandos (para scripts y automatizacion) ──
+if /i "%~1"=="help" goto CLI_HELP
+if /i "%~1"=="/?" goto CLI_HELP
+if /i "%~1"=="-h" goto CLI_HELP
+if /i "%~1"=="--help" goto CLI_HELP
+if /i "%~1"=="v1" goto RUN_MONITOR_V1_CLI
+if /i "%~1"=="monitor_v1" goto RUN_MONITOR_V1_CLI
+if /i "%~1"=="v2" goto RUN_MONITOR_V2_CLI
+if /i "%~1"=="monitor_v2" goto RUN_MONITOR_V2_CLI
+if /i "%~1"=="v2_cdp" goto RUN_MONITOR_CDP_CLI
+if /i "%~1"=="monitor_v2_cdp" goto RUN_MONITOR_CDP_CLI
+if /i "%~1"=="todo_v1" goto DO_TODO_V1_CLI
+if /i "%~1"=="todo_v2" goto DO_TODO_V2_CLI
 if /i "%~1"=="obscura" goto MENU_OBSCURA
 if /i "%~1"=="obscura_start" goto DO_START_OBSCURA_CLI
 if /i "%~1"=="obscura_stop" goto DO_STOP_OBSCURA_CLI
@@ -25,7 +37,7 @@ if /i "%~1"=="status" goto DO_STATUS_OBSCURA_CLI
 :: ── Verificar .venv ───────────────────────────────
 if not exist ".venv\Scripts\activate.bat" (
     echo [AVISO] Entorno virtual .venv no encontrado.
-    echo         Puedes crearlo seleccionando la opcion 24 de instalacion.
+    echo         Puedes crearlo seleccionando la opcion 25 de instalacion.
     echo.
 )
 
@@ -44,38 +56,39 @@ echo                  CENTRO DE CONTROL PRINCIPAL
 echo ==================================================================
 echo.
 echo  [1] OPERACION EN VIVO Y SERVICIOS
-echo    1) Iniciar Monitoreo V2 (Modular interactivo)
-echo    2) Iniciar Monitoreo V2 (Modo CDP directo)
-echo    3) Iniciar Bot de Telegram (Monitor V1)
+echo    1) Iniciar Monitor V1 (Telegram Bot + Bet Monitor)
+echo    2) Iniciar Monitor V2 (Daemon Asincrono - Interactivo)
+echo    3) Iniciar Monitor V2 (Modo CDP directo)
 echo    4) Iniciar API Backend (FastAPI)
 echo    5) Iniciar Dashboard Web (API + Frontend Vite)
-echo    6) Iniciar Todo (All-in-One: Bot + API + Dashboard)
+echo    6) Iniciar Todo con V1 (All-in-One: Monitor V1 + API + Dashboard)
+echo    7) Iniciar Todo con V2 (All-in-One: Monitor V2 + API + Dashboard)
 echo.
 echo  [2] ANALISIS, ESTADISTICAS Y CONSENSO
-echo    7) Estadisticas de Modelos / Fusion Consensus / Excel (CLI)
-echo    8) M27_V3: Reporte ROI y Yield (Modelo Campeon con H2H)
+echo    8) Estadisticas de Modelos / Fusion Consensus / Excel (CLI)
+echo    9) M27_V3: Reporte ROI y Yield (Modelo Campeon con H2H)
 echo.
 echo  [3] INGESTA, SCRAPING Y BACKFILL DE DATOS
-echo    9) Traer fecha nueva / descargar dias faltantes
-echo   10) Backfill historico general (matches.db)
-echo   11) Backfill masivo H2H (SofaScore - priorizado por ligas)
-echo   12) Comparar scraper tradicional vs obscura
+echo   10) Traer fecha nueva / descargar dias faltantes
+echo   11) Backfill historico general (matches.db)
+echo   12) Backfill masivo H2H (SofaScore - priorizado por ligas)
+echo   13) Comparar scraper tradicional vs obscura
 echo.
 echo  [4] MODELOS MACHINE LEARNING (ENTRENAMIENTO Y REPORTES)
-echo   13) M27_V1: Entrenar modelo
-echo   14) M27_V1: Solo reporte ROI
-echo   15) M27_V1: Solo probe
-echo   16) V6.2: Entrenar modelo
-echo   17) V6.2: Generar reporte Q4 ROI
-echo   18) V6.2: Entrenar + Reporte completo
-echo   19) V6.3: Menu de reportes (interactivo, m27, m30, probe)
-echo   20) Entrenar V2 (clasificador base)
-echo   21) Entrenar V6 (clasificador base)
-echo   22) Entrenar V2 + V6 (en orden)
+echo   14) M27_V1: Entrenar modelo
+echo   15) M27_V1: Solo reporte ROI
+echo   16) M27_V1: Solo probe
+echo   17) V6.2: Entrenar modelo
+echo   18) V6.2: Generar reporte Q4 ROI
+echo   19) V6.2: Entrenar + Reporte completo
+echo   20) V6.3: Menu de reportes (interactivo, m27, m30, probe)
+echo   21) Entrenar V2 (clasificador base)
+echo   22) Entrenar V6 (clasificador base)
+echo   23) Entrenar V2 + V6 (en orden)
 echo.
 echo  [5] MANTENIMIENTO, OBSCURA Y SISTEMA
-echo   23) Menu Obscura (Iniciar / Apagar / Instalar / Estado)
-echo   24) Instalar / Reparar dependencias (.venv, pip, playwright, npm)
+echo   24) Menu Obscura (Iniciar / Apagar / Instalar / Estado)
+echo   25) Instalar / Reparar dependencias (.venv, pip, playwright, npm)
 echo.
 echo    0) Salir
 echo ==================================================================
@@ -85,47 +98,49 @@ set /p OPT="  Selecciona una opcion: "
 if "%OPT%"=="0" goto FIN
 
 :: [1] Servicios en Vivo
-if "%OPT%"=="1" goto RUN_MONITOR_V2
-if "%OPT%"=="2" goto RUN_MONITOR_CDP
-if "%OPT%"=="3" goto BOT
+if "%OPT%"=="1" goto RUN_MONITOR_V1
+if /i "%OPT%"=="v1" goto RUN_MONITOR_V1
+if "%OPT%"=="2" goto RUN_MONITOR_V2
+if /i "%OPT%"=="v2" goto RUN_MONITOR_V2
+if "%OPT%"=="3" goto RUN_MONITOR_CDP
 if "%OPT%"=="4" goto API
 if "%OPT%"=="30" goto API
 if "%OPT%"=="5" goto DASHBOARD
 if "%OPT%"=="32" goto DASHBOARD
-if "%OPT%"=="6" goto TODO
+if "%OPT%"=="6" goto TODO_V1
+if "%OPT%"=="7" goto TODO_V2
 
 :: [2] Analisis y Consenso
-if "%OPT%"=="7" goto VIEW_STATS_CLI
-if "%OPT%"=="8" goto REPORT_M27_V3_ONLY
+if "%OPT%"=="8" goto VIEW_STATS_CLI
+if "%OPT%"=="9" goto REPORT_M27_V3_ONLY
 if "%OPT%"=="31" goto REPORT_M27_V3_ONLY
 
 :: [3] Ingesta y Backfill
-if "%OPT%"=="9" goto FETCH_DATE
-if "%OPT%"=="10" goto BACKFILL
-if "%OPT%"=="11" goto BACKFILL_H2H_MASIVO
+if "%OPT%"=="10" goto FETCH_DATE
+if "%OPT%"=="11" goto BACKFILL
+if "%OPT%"=="12" goto BACKFILL_H2H_MASIVO
 if "%OPT%"=="33" goto BACKFILL_H2H_MASIVO
-if "%OPT%"=="12" goto COMPARE_SCRAPER
-if "%OPT%"=="25" goto COMPARE_SCRAPER
+if "%OPT%"=="13" goto COMPARE_SCRAPER
 
 :: [4] Machine Learning
-if "%OPT%"=="13" goto TRAIN_M27_V1
-if "%OPT%"=="14" goto REPORT_M27_V1_ONLY
-if "%OPT%"=="15" goto REPORT_M27_V1_PROBE
-if "%OPT%"=="16" goto TRAIN_V62_ONLY
-if "%OPT%"=="17" goto REPORT_V62_ONLY
-if "%OPT%"=="18" goto TRAIN_AND_REPORT_V62
-if "%OPT%"=="19" goto MENU_V63
-if "%OPT%"=="20" goto TRAIN_V2
+if "%OPT%"=="14" goto TRAIN_M27_V1
+if "%OPT%"=="15" goto REPORT_M27_V1_ONLY
+if "%OPT%"=="16" goto REPORT_M27_V1_PROBE
+if "%OPT%"=="17" goto TRAIN_V62_ONLY
+if "%OPT%"=="18" goto REPORT_V62_ONLY
+if "%OPT%"=="19" goto TRAIN_AND_REPORT_V62
+if "%OPT%"=="20" goto MENU_V63
+if "%OPT%"=="21" goto TRAIN_V2
 if "%OPT%"=="28" goto TRAIN_V2
-if "%OPT%"=="21" goto TRAIN_V6
-if "%OPT%"=="22" goto TRAIN_ALL
+if "%OPT%"=="22" goto TRAIN_V6
+if "%OPT%"=="23" goto TRAIN_ALL
 
 :: [5] Mantenimiento y Sistema
-if "%OPT%"=="23" goto MENU_OBSCURA
+if "%OPT%"=="24" goto MENU_OBSCURA
 if "%OPT%"=="26" goto MENU_OBSCURA
 if "%OPT%"=="27" goto START_OBSCURA_DIRECT
 if "%OPT%"=="29" goto STOP_OBSCURA_DIRECT
-if "%OPT%"=="24" goto INSTALAR
+if "%OPT%"=="25" goto INSTALAR
 if "%OPT%"=="99" goto INSTALAR
 
 echo [ERROR] Opcion invalida.
@@ -136,18 +151,32 @@ goto MENU
 :: [1] OPERACION EN VIVO Y SERVICIOS
 :: ─────────────────────────────────────────────────
 
+:RUN_MONITOR_V1
+cls
+echo.
+echo ===============================================
+echo  Iniciando Monitor V1 (Telegram Bot + Bet Monitor)
+echo ===============================================
+echo.
+echo [+] Levantando Monitor V1 en una nueva ventana...
+start "Pulpa - Monitor V1" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v1\main.py"
+goto MENU
+
+:BOT
+goto RUN_MONITOR_V1
+
 :RUN_MONITOR_V2
 cls
 echo.
 echo ===============================================
-echo  Iniciando Monitoreo V2 (Interactivo)
+echo  Iniciando Monitor V2 (Interactivo)
 echo ===============================================
 echo.
 echo [1/3] Matando procesos residuales de Chrome...
 taskkill /IM chrome.exe /F >nul 2>&1
 timeout /t 2 /nobreak >nul
 
-echo [2/3] Iniciando Monitoreo V2...
+echo [2/3] Iniciando Monitor V2 en una nueva ventana...
 echo.
 echo  NOTA: Cada scrape lanza Chrome temporal (se cierra al terminar).
 echo  Si ves demora, es normal: Playwright gestiona los procesos.
@@ -157,9 +186,8 @@ goto MENU
 
 :RUN_MONITOR_CDP
 cls
-echo.
 echo ===============================================
-echo  Iniciando Monitoreo V2 (Modo CDP Forzado)
+echo  Iniciando Monitor V2 (Modo CDP Forzado)
 echo ===============================================
 echo.
 set "SSL_CERT_FILE=%~dp0.venv\Lib\site-packages\certifi\cacert.pem"
@@ -169,12 +197,6 @@ set "SOFASCORE_SCRAPER_BACKEND_PROBE=obscura"
 set "SOFASCORE_SCRAPER_BACKEND_LIVE=obscura"
 set "SOFASCORE_SCRAPER_BACKEND_FT=obscura"
 start "Pulpa - Monitoreo V2 (CDP)" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v2\main.py"
-goto MENU
-
-:BOT
-cls
-echo [+] Iniciando Telegram Bot...
-start "Pulpa - Telegram Bot" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v1\telegram_bot.py"
 goto MENU
 
 :API
@@ -192,14 +214,45 @@ echo [+] Iniciando Dashboard Web (Vite/React)...
 start "Pulpa - Dashboard" cmd /k "cd /d %~dp0\dashboard && npm run dev"
 goto MENU
 
-:TODO
+:TODO_V1
 cls
-echo [+] Iniciando Suite Completa (Bot + API + Dashboard)...
-start "Pulpa - Telegram Bot"  cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v1\telegram_bot.py"
-start "Pulpa - API Backend"   cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python api.py"
+echo.
+echo =========================================================
+echo  Iniciando Suite Completa con Monitor V1 (All-in-One)
+echo  (Monitor V1 + API Backend + Dashboard Web)
+echo =========================================================
+echo.
+echo [1/3] Iniciando Monitor V1 (Telegram Bot)...
+start "Pulpa - Monitor V1" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v1\main.py"
+echo [2/3] Iniciando API Backend (FastAPI)...
+start "Pulpa - API Backend" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python api.py"
 timeout /t 3 /nobreak >nul
-start "Pulpa - Dashboard"     cmd /k "cd /d %~dp0\dashboard && npm run dev"
+echo [3/3] Iniciando Dashboard Web (Vite/React)...
+start "Pulpa - Dashboard" cmd /k "cd /d %~dp0\dashboard && npm run dev"
 goto MENU
+
+:TODO_V2
+cls
+echo.
+echo =========================================================
+echo  Iniciando Suite Completa con Monitor V2 (All-in-One)
+echo  (Monitor V2 + API Backend + Dashboard Web)
+echo =========================================================
+echo.
+echo [1/4] Matando procesos residuales de Chrome...
+taskkill /IM chrome.exe /F >nul 2>&1
+timeout /t 2 /nobreak >nul
+echo [2/4] Iniciando Monitor V2 (Daemon Asincrono)...
+start "Pulpa - Monitoreo V2" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v2\main.py"
+echo [3/4] Iniciando API Backend (FastAPI)...
+start "Pulpa - API Backend" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python api.py"
+timeout /t 3 /nobreak >nul
+echo [4/4] Iniciando Dashboard Web (Vite/React)...
+start "Pulpa - Dashboard" cmd /k "cd /d %~dp0\dashboard && npm run dev"
+goto MENU
+
+:TODO
+goto TODO_V1
 
 :: ─────────────────────────────────────────────────
 :: [2] ANALISIS, ESTADISTICAS Y CONSENSO
@@ -513,6 +566,60 @@ goto MENU
 call :DO_STOP_OBSCURA
 pause
 goto MENU
+
+:: ── Rutas CLI de Monitores y Servicios (retorno directo) ──
+:RUN_MONITOR_V1_CLI
+echo [+] Iniciando Monitor V1 (Telegram Bot + Bet Monitor) desde CLI...
+call .venv\Scripts\activate
+python monitor_v1\main.py
+exit /b %errorlevel%
+
+:RUN_MONITOR_V2_CLI
+echo [+] Iniciando Monitor V2 desde CLI...
+call .venv\Scripts\activate
+python monitor_v2\main.py
+exit /b %errorlevel%
+
+:RUN_MONITOR_CDP_CLI
+echo [+] Iniciando Monitor V2 (Modo CDP Forzado) desde CLI...
+set "SSL_CERT_FILE=%~dp0.venv\Lib\site-packages\certifi\cacert.pem"
+set "OBSCURA_CDP_URL=http://127.0.0.1:9222"
+set "SOFASCORE_SCRAPER_BACKEND=obscura"
+set "SOFASCORE_SCRAPER_BACKEND_PROBE=obscura"
+set "SOFASCORE_SCRAPER_BACKEND_LIVE=obscura"
+set "SOFASCORE_SCRAPER_BACKEND_FT=obscura"
+call .venv\Scripts\activate
+python monitor_v2\main.py
+exit /b %errorlevel%
+
+:DO_TODO_V1_CLI
+call :TODO_V1
+exit /b 0
+
+:DO_TODO_V2_CLI
+call :TODO_V2
+exit /b 0
+
+:CLI_HELP
+echo ==================================================================
+echo                      SISTEMA PULPA - AYUDA CLI
+echo ==================================================================
+echo Uso: menu.bat [comando]
+echo.
+echo Comandos disponibles:
+echo   v1 / monitor_v1         Inicia Monitor V1 (Telegram Bot + Bet Monitor)
+echo   v2 / monitor_v2         Inicia Monitor V2 (Daemon Asincrono interactivo)
+echo   v2_cdp / monitor_v2_cdp Inicia Monitor V2 en modo CDP directo
+echo   todo_v1                 Inicia Todo con Monitor V1 (Bot + API + Dashboard)
+echo   todo_v2                 Inicia Todo con Monitor V2 (Daemon + API + Dashboard)
+echo   obscura_start / start   Inicia el servicio Obscura en puerto 9222
+echo   obscura_stop / stop     Detiene el servicio Obscura
+echo   obscura_status / status Verifica estado de Obscura
+echo   obscura_install         Instala o actualiza Obscura v0.1.5
+echo.
+echo Sin argumentos abre el Centro de Control interactivo.
+echo ==================================================================
+exit /b 0
 
 :: ── Rutas CLI Obscura (retorno directo sin pause) ───
 :DO_START_OBSCURA_CLI
