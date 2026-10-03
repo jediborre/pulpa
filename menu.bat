@@ -3,6 +3,25 @@ setlocal enabledelayedexpansion
 title SISTEMA PULPA - Centro de Control
 cd /d "%~dp0"
 
+:: ── Variables Globales y Obscura ───────────────────
+set "OBSCURA_DIR=%~dp0tools\obscura\v0.1.5"
+set "OBSCURA_EXE=%OBSCURA_DIR%\obscura.exe"
+set "SSL_CERT_FILE=%~dp0.venv\Lib\site-packages\certifi\cacert.pem"
+set "OBSCURA_VERSION=v0.1.5"
+set "OBSCURA_ZIP=%OBSCURA_DIR%\obscura-x86_64-windows.zip"
+set "OBSCURA_URL=https://github.com/h4ckf0r0day/obscura/releases/download/%OBSCURA_VERSION%/obscura-x86_64-windows.zip"
+
+:: ── Parametros directos por linea de comandos (para scripts y automatizacion) ──
+if /i "%~1"=="obscura" goto MENU_OBSCURA
+if /i "%~1"=="obscura_start" goto DO_START_OBSCURA_CLI
+if /i "%~1"=="obscura_stop" goto DO_STOP_OBSCURA_CLI
+if /i "%~1"=="obscura_install" goto DO_INSTALL_OBSCURA_CLI
+if /i "%~1"=="obscura_status" goto DO_STATUS_OBSCURA_CLI
+if /i "%~1"=="start" goto DO_START_OBSCURA_CLI
+if /i "%~1"=="stop" goto DO_STOP_OBSCURA_CLI
+if /i "%~1"=="install" goto DO_INSTALL_OBSCURA_CLI
+if /i "%~1"=="status" goto DO_STATUS_OBSCURA_CLI
+
 :: ── Verificar .venv ───────────────────────────────
 if not exist ".venv\Scripts\activate.bat" (
     echo [AVISO] Entorno virtual .venv no encontrado.
@@ -444,20 +463,162 @@ goto MENU
 :: ─────────────────────────────────────────────────
 
 :MENU_OBSCURA
-call menu_obscura.bat
-goto MENU
+cls
+echo.
+echo ==================================================================
+echo                  CONTROL DE OBSCURA (%OBSCURA_VERSION%)
+echo ==================================================================
+echo.
+echo   1) Iniciar Obscura (CDP en 127.0.0.1:9222 con stealth)
+echo   2) Detener Obscura (Cerrar procesos activos)
+echo   3) Instalar / Reinstalar Obscura (%OBSCURA_VERSION%)
+echo   4) Verificar Estado del Puerto (127.0.0.1:9222)
+echo   0) Volver al Menu Principal
+echo.
+echo ==================================================================
+set /p OBS_OPT="  Selecciona una opcion: "
+
+if "%OBS_OPT%"=="1" (
+    call :DO_START_OBSCURA
+    pause
+    goto MENU_OBSCURA
+)
+if "%OBS_OPT%"=="2" (
+    call :DO_STOP_OBSCURA
+    pause
+    goto MENU_OBSCURA
+)
+if "%OBS_OPT%"=="3" (
+    call :DO_INSTALL_OBSCURA
+    pause
+    goto MENU_OBSCURA
+)
+if "%OBS_OPT%"=="4" (
+    call :DO_STATUS_OBSCURA
+    pause
+    goto MENU_OBSCURA
+)
+if "%OBS_OPT%"=="0" goto MENU
+
+echo [ERROR] Opcion invalida.
+timeout /t 2 /nobreak >nul
+goto MENU_OBSCURA
 
 :START_OBSCURA_DIRECT
-cls
-call menu_obscura.bat start
+call :DO_START_OBSCURA
 pause
 goto MENU
 
 :STOP_OBSCURA_DIRECT
-cls
-call menu_obscura.bat stop
+call :DO_STOP_OBSCURA
 pause
 goto MENU
+
+:: ── Rutas CLI Obscura (retorno directo sin pause) ───
+:DO_START_OBSCURA_CLI
+call :DO_START_OBSCURA
+exit /b %errorlevel%
+
+:DO_STOP_OBSCURA_CLI
+call :DO_STOP_OBSCURA
+exit /b %errorlevel%
+
+:DO_INSTALL_OBSCURA_CLI
+call :DO_INSTALL_OBSCURA
+exit /b %errorlevel%
+
+:DO_STATUS_OBSCURA_CLI
+call :DO_STATUS_OBSCURA
+exit /b %errorlevel%
+
+:: ── Funciones Core de Obscura ────────────────────────
+:DO_START_OBSCURA
+echo.
+echo [+] Verificando instalacion de Obscura...
+if not exist "%OBSCURA_EXE%" (
+    echo [ERROR] Obscura no esta instalado en: %OBSCURA_EXE%
+    echo         Selecciona la opcion 3 en el menu de Obscura para instalarlo.
+    exit /b 1
+)
+
+echo [+] Verificando si el puerto 9222 ya esta en uso...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $c = New-Object Net.Sockets.TcpClient('127.0.0.1', 9222); $c.Close(); exit 0 } catch { exit 1 }"
+if not errorlevel 1 (
+    echo [OK] Obscura ya esta corriendo en 127.0.0.1:9222
+    exit /b 0
+)
+
+echo [+] Iniciando Obscura CDP en puerto 9222 con stealth y SSL cert...
+powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command "$env:SSL_CERT_FILE='%SSL_CERT_FILE%'; Start-Process -WindowStyle Hidden -FilePath '%OBSCURA_EXE%' -ArgumentList @('serve','--port','9222','--stealth') -WorkingDirectory '%OBSCURA_DIR%'"
+
+:: Breve comprobacion
+timeout /t 2 /nobreak >nul
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $c = New-Object Net.Sockets.TcpClient('127.0.0.1', 9222); $c.Close(); exit 0 } catch { exit 1 }"
+if not errorlevel 1 (
+    echo [OK] Obscura iniciado exitosamente en 127.0.0.1:9222
+    exit /b 0
+) else (
+    echo [ADVERTENCIA] El proceso fue lanzado, pero el puerto 9222 aun no responde.
+    exit /b 0
+)
+
+:DO_STOP_OBSCURA
+echo.
+echo [+] Deteniendo proceso obscura.exe...
+taskkill /IM obscura.exe /F >nul 2>&1
+if errorlevel 1 (
+    echo [OK] No habia ningun proceso de Obscura activo.
+) else (
+    echo [OK] Proceso obscura.exe detenido exitosamente.
+)
+exit /b 0
+
+:DO_STATUS_OBSCURA
+echo.
+echo [+] Comprobando conexion a 127.0.0.1:9222...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $c = New-Object Net.Sockets.TcpClient('127.0.0.1', 9222); $c.Close(); Write-Host '[ACTIVO] Obscura esta respondiendo en 127.0.0.1:9222' -ForegroundColor Green; exit 0 } catch { Write-Host '[INACTIVO] No hay servicio respondiendo en el puerto 9222' -ForegroundColor Yellow; exit 1 }"
+exit /b 0
+
+:DO_INSTALL_OBSCURA
+echo.
+echo ==================================================
+echo         DESCARGA E INSTALACION DE OBSCURA
+echo ==================================================
+echo.
+
+where powershell >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] PowerShell no encontrado en el sistema.
+    exit /b 1
+)
+
+if not exist "tools\obscura" mkdir "tools\obscura"
+if not exist "%OBSCURA_DIR%" mkdir "%OBSCURA_DIR%"
+
+echo [+] Descargando Obscura %OBSCURA_VERSION% desde GitHub...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -Uri '%OBSCURA_URL%' -OutFile '%OBSCURA_ZIP%'"
+if errorlevel 1 (
+    echo [ERROR] Fallo la descarga de Obscura. Revisa tu conexion a Internet.
+    exit /b 1
+)
+
+echo [+] Descomprimiendo binarios...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -LiteralPath '%OBSCURA_ZIP%' -DestinationPath '%OBSCURA_DIR%' -Force"
+if errorlevel 1 (
+    echo [ERROR] No se pudo descomprimir el archivo ZIP.
+    exit /b 1
+)
+
+if not exist "%OBSCURA_EXE%" (
+    echo [ERROR] No se encontro obscura.exe tras la descompresion.
+    exit /b 1
+)
+
+echo.
+echo [OK] Obscura instalado correctamente en: %OBSCURA_DIR%
+echo [OK] Ejecutable listo: %OBSCURA_EXE%
+exit /b 0
+
 
 :INSTALAR
 cls

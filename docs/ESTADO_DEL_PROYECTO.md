@@ -78,8 +78,7 @@ Contiene análisis estadísticos exhaustivos de por qué funcionan (o fallan) lo
 - **`dashboard/`**: SPA en React + Vite + TypeScript con tablas dinámicas y métricas visuales.
 
 ### 📄 Archivos de Automatización
-- **`menu.bat`**: Menú interactivo por consola organizado en 5 bloques operativos (Operación en Vivo, Análisis/Consenso, Ingesta/Backfill, Modelos ML y Mantenimiento) que cubre todo el flujo de trabajo sin necesidad de scripts dispersos.
-- **`menu_obscura.bat`**: Menú unificado para el control del navegador headless Obscura (iniciar, detener, instalar y verificar estado).
+- **`menu.bat`**: Centro de control interactivo por consola organizado en 5 bloques operativos (Operación en Vivo, Análisis/Consenso, Ingesta/Backfill, Modelos ML y Mantenimiento, con soporte CLI para automatización) que cubre todo el flujo de trabajo sin necesidad de scripts dispersos.
 
 ---
 

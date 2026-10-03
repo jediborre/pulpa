@@ -73,8 +73,7 @@ Base de datos SQLite (~737 MB) con almacenamiento histórico masivo:
 - **`tools/obscura-src/`:** Código fuente en Rust del navegador headless Obscura con parches para cookies cross-origin y tiempos de promesa.
 
 ### 6. Interfaz y Operación
-- **`menu.bat`:** Menú interactivo por lotes reestructurado en 5 bloques temáticos (1-24 opciones): Operación en Vivo, Análisis/Consenso, Ingesta/Backfill, Modelos ML y Mantenimiento.
-- **`menu_obscura.bat`:** Menú unificado para arrancar, detener, instalar o consultar el estado de Obscura.
+- **`menu.bat`:** Centro de control unificado y único script por lotes del sistema. Organizado en 5 bloques temáticos (1-24 opciones y soporte CLI): Operación en Vivo, Análisis/Consenso, Ingesta/Backfill, Modelos ML y Mantenimiento (incluyendo control total de Obscura).
 - **`api.py`:** Backend en FastAPI.
 - **`dashboard/`:** Frontend en React + Vite + TypeScript.
 

@@ -40,7 +40,7 @@ def is_obscura_port_open() -> bool:
 def ensure_obscura_running() -> bool:
     """
     Determina si el backend requiere Obscura y, si está apagado en el 9222,
-    lo enciende automáticamente en segundo plano llamando a menu_obscura.bat.
+    lo enciende automáticamente en segundo plano llamando a menu.bat obscura_start.
     """
     from bet_monitor_v2.config.constants import (
         SOFASCORE_SCRAPER_BACKEND,
@@ -71,14 +71,14 @@ def ensure_obscura_running() -> bool:
         pass
 
     root_dir = Path(__file__).resolve().parents[2]
-    bat_path = root_dir / "menu_obscura.bat"
+    bat_path = root_dir / "menu.bat"
     if not bat_path.exists():
         return False
 
     try:
-        # Ejecutar menu_obscura.bat start de forma totalmente desacoplada en Windows
+        # Ejecutar menu.bat obscura_start de forma totalmente desacoplada en Windows
         subprocess.Popen(
-            [str(bat_path), "start"],
+            [str(bat_path), "obscura_start"],
             shell=True,
             cwd=str(root_dir),
             stdout=subprocess.DEVNULL,

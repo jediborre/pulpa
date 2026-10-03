@@ -67,8 +67,7 @@ pulpa/
 ├── AGENTS.md               # Reglas obligatorias para agentes de IA y mapa de navegación
 ├── README.md               # Este archivo — índice y guía principal (solo en raíz)
 ├── modelos.md              # Documento maestro con stats y features de todos los modelos
-├── menu.bat                # Menú interactivo principal organizado en 5 bloques operativos
-├── menu_obscura.bat        # Menú unificado de Obscura (iniciar, detener, instalar, estado)
+├── menu.bat                # Centro de control principal (5 bloques operativos y CLI integrado)
 ├── api.py                  # API REST en FastAPI para servir inferencias al dashboard
 │
 ├── docs/                   # 📚 Hub central de documentación (22 archivos .md)
@@ -126,4 +125,4 @@ menu.bat
 | **[2] Análisis y Consenso** | `7`, `8` | Estadísticas de Modelos / Fusion Consensus / Excel (`tools/stats_cli.py`) y Reporte ROI M27_V3 (`8`). |
 | **[3] Ingesta y Backfill** | `9`, `10`, `11`, `12` | Descarga de fechas faltantes, backfill general, backfill masivo H2H SofaScore y comparador de scrapers. |
 | **[4] Modelos ML** | `13`-`22` | Entrenamiento y reportes ROI para la serie M27 (v1, v2, v3) y V6 (v6.2, v6.3, base v2/v6). |
-| **[5] Mantenimiento** | `23`, `24` | Menú Obscura (`menu_obscura.bat`) e Instalador / Reparador de dependencias (.venv, pip, playwright, npm). |
+| **[5] Mantenimiento** | `23`, `24` | Control integrado de Obscura (opción 23) e Instalador / Reparador de dependencias (.venv, pip, playwright, npm). |
