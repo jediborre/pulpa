@@ -34,7 +34,7 @@ flowchart LR
 
 El proyecto se divide en módulos claramente delimitados:
 
-### 📁 `bet_monitor_v2/` (Daemon Asíncrono de Monitoreo Modular)
+### 📁 `monitor_v2/` (Daemon Asíncrono de Monitoreo Modular)
 Reemplaza la versión monolítica anterior por una arquitectura desacoplada basada en `asyncio`:
 - **`main.py`**: Event loop principal. Gestiona el ciclo de vida de los partidos (`_watch_match`), espaciado anti-baneos (20s entre watchers), sondeo adaptativo según el ritmo (`secs_per_gmin`) y menú de arranque interactivo.
 - **`config/`**: Constantes operativas (`constants.py`) y reglas declarativas de ligas (`leagues.yaml`: ligas excluidas y ligas `ft_only` para solo guardar resultado sin apostar).
@@ -44,8 +44,16 @@ Reemplaza la versión monolítica anterior por una arquitectura desacoplada basa
 - **`notifications/telegram_bot.py`**: Despacho de alertas inmediatas con emojis de estado (🟢 Bettable, 🟡 No Bettable, ⚪ Tardía, ✅ Ganada, ❌ Perdida).
 - **`utils/`**: Logger coloreado ANSI (`logger.py`) y estimadores de tiempo adaptativo (`helpers.py`).
 
-### 📁 `match/` (Núcleo Tradicional, Modelos y Base de Datos)
-- **`matches.db`**: Base de datos SQLite central (~737 MB) que contiene:
+### 📁 `monitor_v1/` (Monitor Clásico y Bot de Telegram V1)
+Módulo legacy para monitoreo en vivo y bot interactivo de Telegram:
+- **`main.py`**: Entry point para lanzar el bot / monitor V1.
+- **`telegram_bot.py`**: Bot de interacción con menú completo (stats, búsqueda por ID, reportes mensuales y envío de Excels).
+- **`bet_monitor.py`**: Monitor en vivo V1 con caching local de itinerarios de 2 horas en `api_cache/`.
+- **`test_keyboard_functions.py`**: Suite de pruebas para teclados interactivos de Telegram.
+- **`FILTROS_LIGAS.md`**: Reglas y documentación de ligas para V1.
+
+### 📁 `match/` (Núcleo Tradicional, Scraping, CLI y Entrenamiento ML)
+- **`matches.db`**: Ubicada en la raíz del proyecto (`matches.db`, ~737 MB):
   - **39,988** partidos analizados.
   - **154,003** marcadores de cuartos individuales (`quarter_scores`).
   - **2,972,729** eventos play-by-play (`play_by_play`).
@@ -53,8 +61,6 @@ Reemplaza la versión monolítica anterior por una arquitectura desacoplada basa
   - **354,829** registros de enfrentamientos directos (`match_h2h`).
   - **10,000+** señales históricas registradas y evaluadas (`bet_monitor_log` y `bet_monitor_log_v2`).
 - **`scraper.py`**: Módulo de scraping robusto. Utiliza conexión CDP a Chrome con llamadas internas JavaScript (`page.evaluate(fetch(...))`) que superan la protección Cloudflare de SofaScore.
-- **`bet_monitor.py`**: Monitor en vivo V1 con caching local de itinerarios de 2 horas en `api_cache/`.
-- **`telegram_bot.py`**: Bot de interacción con menú completo (stats, búsqueda por ID, reportes mensuales y envío de Excels).
 - **`cli.py`**: Interfaz de línea de comandos para ingestión por fechas, reentrenamiento y reportes comparativos.
 - **`training/`**: Pipeline de Machine Learning completo (ver Sección 3).
 
@@ -323,13 +329,13 @@ En el último periodo (hasta el commit `b0c6583` de octubre 2026), se implementa
 - Implementación de `tmp/backfill_h2h_masivo.py` (Opción 11 / 33 en `menu.bat`), diseñado para descargar el historial H2H de los más de 23,000 partidos pendientes en la base de datos, priorizado por el tamaño/relevancia de la liga y descartando ligas de exhibición o de mujeres.
 - Scripts de auditoría y comparación: `compare_h2h_sources.py` y `validate_h2h_features.py` (ahora en `tmp/`) para cotejar datos calculados localmente vs. API SofaScore.
 
-### 3. Fortalecimiento de `bet_monitor_v2/main.py`
+### 3. Fortalecimiento de `monitor_v2/main.py`
 - **Menú interactivo al arrancar**: Permite elegir perfil de navegadores (Chrome nativo, Traditional o Obscura, o configuración independiente por fase).
 - **Modo Sonda Pasiva**: Opción de deshabilitar la sonda pre-partido (`DISABLE_PRESTART_PROBES=true`), manteniendo reposo absoluto hasta el minuto estimado 22 de juego, eliminando cientos de peticiones innecesarias.
 - **Espaciado anti-bloqueo**: Se introdujo un delay de 20 segundos entre el arranque de cada watcher individual al iniciar el monitor.
 - **Descarte inteligente de partidos fantasma**: Detección de errores 404 consecutivos en la API de eventos; al tercer 404 se descarta automáticamente el partido sin bloquear el hilo.
 
-### 4. Actualización y Caching en `match/scraper.py` y `match/bet_monitor.py`
+### 4. Actualización y Caching en `match/scraper.py` y `monitor_v1/bet_monitor.py`
 - Sustitución de `ctx.request.get()` por `page.evaluate(fetch(...))` para asegurar transmisión transparente de credenciales y cookies en subdominios de SofaScore.
 - Sistema de caché en disco para itinerarios diarios (`api_cache/schedule_*.json`) con TTL de 2 horas.
 - Endpoint moderno `/h2h/events` utilizando el campo `customId` del evento.

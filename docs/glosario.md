@@ -32,7 +32,7 @@ Cada línea de log sigue este formato estricto y colorizado en consola:
 Para hacer los logs increíblemente legibles y compactos, cada acción utiliza un tag o prefijo temático de categoría entre corchetes:
 
 ### ⚙️ `[SYSTEM]` - Ciclo de Vida del Daemon
-*   `SYSTEM Iniciando bet_monitor_v2...`
+*   `SYSTEM Iniciando monitor_v2...`
     *   *Significado:* El daemon se está iniciando e inicializando las tablas SQLite `_v2`, sincronizando la configuración y limpiando pendientes.
 *   `SYSTEM Descargando itinerario: YYYY-MM-DD | YYYY-MM-DD`
     *   *Significado:* Conexión al backend de Sofascore para descargar el listado de partidos programados del día de hoy y de mañana.

@@ -46,7 +46,7 @@ echo.
 echo  [1] OPERACION EN VIVO Y SERVICIOS
 echo    1) Iniciar Monitoreo V2 (Modular interactivo)
 echo    2) Iniciar Monitoreo V2 (Modo CDP directo)
-echo    3) Iniciar Bot de Telegram
+echo    3) Iniciar Bot de Telegram (Monitor V1)
 echo    4) Iniciar API Backend (FastAPI)
 echo    5) Iniciar Dashboard Web (API + Frontend Vite)
 echo    6) Iniciar Todo (All-in-One: Bot + API + Dashboard)
@@ -152,7 +152,7 @@ echo.
 echo  NOTA: Cada scrape lanza Chrome temporal (se cierra al terminar).
 echo  Si ves demora, es normal: Playwright gestiona los procesos.
 echo.
-start "Pulpa - Monitoreo V2" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python bet_monitor_v2\main.py"
+start "Pulpa - Monitoreo V2" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v2\main.py"
 goto MENU
 
 :RUN_MONITOR_CDP
@@ -168,13 +168,13 @@ set "SOFASCORE_SCRAPER_BACKEND=obscura"
 set "SOFASCORE_SCRAPER_BACKEND_PROBE=obscura"
 set "SOFASCORE_SCRAPER_BACKEND_LIVE=obscura"
 set "SOFASCORE_SCRAPER_BACKEND_FT=obscura"
-start "Pulpa - Monitoreo V2 (CDP)" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python bet_monitor_v2\main.py"
+start "Pulpa - Monitoreo V2 (CDP)" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v2\main.py"
 goto MENU
 
 :BOT
 cls
 echo [+] Iniciando Telegram Bot...
-start "Pulpa - Telegram Bot" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python match\telegram_bot.py"
+start "Pulpa - Telegram Bot" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v1\telegram_bot.py"
 goto MENU
 
 :API
@@ -195,7 +195,7 @@ goto MENU
 :TODO
 cls
 echo [+] Iniciando Suite Completa (Bot + API + Dashboard)...
-start "Pulpa - Telegram Bot"  cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python match\telegram_bot.py"
+start "Pulpa - Telegram Bot"  cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v1\telegram_bot.py"
 start "Pulpa - API Backend"   cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python api.py"
 timeout /t 3 /nobreak >nul
 start "Pulpa - Dashboard"     cmd /k "cd /d %~dp0\dashboard && npm run dev"

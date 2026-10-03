@@ -72,14 +72,18 @@ Toda la documentación conceptual, histórica y técnica del proyecto ha sido co
 - **`docs/OBSCURA_*.md`:** Investigación de evasión anti-bot, bugs corregidos en Rust y comparativa de scraping.
 - **`docs/ligas_10min.md` y `docs/ligas_12min.md`:** Clasificación de ligas por duración de cuartos reglamentarios (FIBA vs NBA).
 
-### 2. Monitoreo en Vivo (`bet_monitor_v2/`)
-La versión modular moderna del monitor en tiempo real:
-- **`bet_monitor_v2/main.py`:** Event loop de `asyncio`. Controla la sonda pre-partido, el bucle en vivo de Q4 y la liquidación final FT.
-- **`bet_monitor_v2/config/constants.py` y `leagues.yaml`:** Configuración declarativa de umbrales y filtrado de ligas (excluidas vs. `ft_only`).
-- **`bet_monitor_v2/database/repository.py`:** Transacciones SQLite para tablas `_v2`.
-- **`bet_monitor_v2/models/evaluator.py`:** Ejecución de inferencias cargando en caché `v6_2` y `m27_v3`.
-- **`bet_monitor_v2/scrapers/browser_client.py`:** Conexión CDP a Google Chrome para extracción robusta sin bloqueos.
-- **`bet_monitor_v2/notifications/telegram_bot.py`:** Despacho de mensajes y señales operables a Telegram.
+### 2. Monitoreo en Vivo (`monitor_v2/` y `monitor_v1/`)
+- **`monitor_v2/` (Versión Moderna y Asíncrona):** Daemon modular de alto rendimiento basado en `asyncio`:
+  - **`monitor_v2/main.py`:** Event loop de `asyncio`. Controla la sonda pre-partido, el bucle en vivo de Q4 y la liquidación final FT.
+  - **`monitor_v2/config/constants.py` y `leagues.yaml`:** Configuración declarativa de umbrales y filtrado de ligas (excluidas vs. `ft_only`).
+  - **`monitor_v2/database/repository.py`:** Transacciones SQLite para tablas `_v2`.
+  - **`monitor_v2/models/evaluator.py`:** Ejecución de inferencias cargando en caché `v6_2` y `m27_v3`.
+  - **`monitor_v2/scrapers/browser_client.py`:** Conexión CDP a Google Chrome para extracción robusta sin bloqueos.
+  - **`monitor_v2/notifications/telegram_bot.py`:** Despacho de mensajes y señales operables a Telegram.
+- **`monitor_v1/` (Versión Original / Telegram):** Monitor interactivo guiado por bot de Telegram:
+  - **`monitor_v1/telegram_bot.py`:** Bot interactivo con teclado inline, selección de modelos (V1 a V11) y reportes.
+  - **`monitor_v1/bet_monitor.py`:** Daemon en hilo secundario para sondeo y alertas en vivo.
+  - **`monitor_v1/main.py`:** Punto de entrada ejecutable.
 
 ### 3. Base de Datos Central (`matches.db` en Raíz)
 Base de datos SQLite (~737 MB, excluida en `.gitignore`) con almacenamiento histórico masivo:

@@ -36,10 +36,10 @@ Toda la documentación técnica, científica y operativa del proyecto ha sido co
 | [`docs/ligas_10min.md`](file:///C:/Users/App/Desktop/pulpa/docs/ligas_10min.md) | `findings/ligas_10min.md` | Listado oficial de **1,185 ligas** con cuartos reglamentarios de 10 minutos (FIBA / Europa / Latinoamérica). |
 | [`docs/ligas_12min.md`](file:///C:/Users/App/Desktop/pulpa/docs/ligas_12min.md) | `findings/ligas_12min.md` | Listado de **16 ligas** con cuartos de 12 minutos (NBA, CBA, PBA, etc.). |
 
-### ⚡ Monitoreo en Vivo V2 (`bet_monitor_v2`)
+### ⚡ Monitoreo en Vivo (`monitor_v2` y `monitor_v1`)
 | Archivo en `docs/` | Ubicación Original | Contenido Principal |
 |---|---|---|
-| [`docs/monitoreo_v2.md`](file:///C:/Users/App/Desktop/pulpa/docs/monitoreo_v2.md) | `monitoreo_v2.md (Raíz)` | Especificación formal del daemon asíncrono `bet_monitor_v2`, arquitectura desacoplada, control de red y ciclos de vida. |
+| [`docs/monitoreo_v2.md`](file:///C:/Users/App/Desktop/pulpa/docs/monitoreo_v2.md) | `monitoreo_v2.md (Raíz)` | Especificación formal del daemon asíncrono `monitor_v2`, arquitectura desacoplada, control de red y ciclos de vida. |
 | [`docs/monitor_arquitectura.md`](file:///C:/Users/App/Desktop/pulpa/docs/monitor_arquitectura.md) | `findings/monitor_arquitectura.md` | Diagramas de flujo y arquitectura interna del sistema de monitoreo en tiempo real. |
 | [`docs/glosario.md`](file:///C:/Users/App/Desktop/pulpa/docs/glosario.md) | `glosario.md (Raíz)` | Glosario de mensajes de log coloreados (`[SYSTEM]`, `[WATCHER]`, `[PROBE]`, `[LIVE]`, `[EVAL]`, `[FT]`). |
 
@@ -72,7 +72,7 @@ pulpa/
 │
 ├── docs/                   # 📚 Hub central de documentación (22 archivos .md)
 │
-├── bet_monitor_v2/         # Daemon asíncrono modular de monitoreo en tiempo real
+├── monitor_v2/             # Daemon asíncrono modular de monitoreo en tiempo real
 │   ├── config/             # Constantes y leagues.yaml (filtros de ligas)
 │   ├── database/           # Capa de datos SQLite (tablas _v2)
 │   ├── scrapers/           # Clientes Playwright / Chrome CDP
@@ -80,12 +80,17 @@ pulpa/
 │   ├── notifications/      # Bot despachador de alertas y resultados a Telegram
 │   └── main.py             # Event loop principal con asyncio
 │
-├── match/                  # Almacenamiento histórico, scraping e inferencia
-│   ├── matches.db          # Base de datos SQLite (~737 MB, ~40,000 partidos, ~3M jugadas PBP)
-│   ├── scraper.py          # Scraper con CDP e inyección JS (_js_fetch)
+├── monitor_v1/             # Monitor original / Telegram Bot interactivo
 │   ├── telegram_bot.py     # Bot interactivo de Telegram con teclado y reportes
+│   ├── bet_monitor.py      # Daemon de monitoreo en hilo
+│   └── main.py             # Punto de entrada ejecutable
+│
+├── match/                  # Almacenamiento histórico, scraping e inferencia
+│   ├── scraper.py          # Scraper con CDP e inyección JS (_js_fetch)
 │   ├── cli.py              # CLI para descarga de fechas y reentrenamiento
 │   └── training/           # Scripts de entrenamiento de modelos (m27_v3, v6_2, etc.)
+│
+├── matches.db              # Base de datos SQLite central (~737 MB, excluida en .gitignore)
 │
 ├── tools/                  # Suite analítica y consenso
 │   ├── stats_cli.py        # Herramienta analítica (3,144 líneas) con FusionConsensusEngine

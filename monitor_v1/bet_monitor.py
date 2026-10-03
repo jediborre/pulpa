@@ -40,6 +40,9 @@ from typing import Awaitable, Callable, TextIO
 os.environ.setdefault("SOFASCORE_SCRAPER_BACKEND", "chrome")
 
 BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+if str(PROJECT_ROOT / "match") not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT / "match"))
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 

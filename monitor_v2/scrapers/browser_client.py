@@ -1,0 +1,62 @@
+# =====================================================================
+# REGLAS DE ARQUITECTURA, FORMATEO Y LOGGING DE PRODUCCIÓN (MANTENER):
+# 1. ESTRUCTURA: Estrictamente modularizado (config, database, scrapers, 
+#    models, notifications, utils) coordinados asíncronamente por main.py.
+#    Cualquier aproximación monolítica de archivo único viola esta especificación.
+# 2. INFRAESTRUCTURA DB: El archivo base SQLite se localiza exclusivamente en 
+#    /matches.db (en la raíz del proyecto) y todas las tablas sin excepción finalizan con el sufijo '_v2'.
+# 3. TABLA DE LOGS: 'bet_monitor_log_v2' se particiona por modelo y contiene 
+#    obligatoriamente los campos 'raw_json' (TEXT), 'inference_minute' (INT), 
+#    y 'graph_points_count' (INT) junto con marcadores reales del juego.
+# 4. CONFIGURACIÓN DE LIGAS: Prohibido hardcodear filtros o patrones de texto 
+#    en las consultas SQL o lógica directa. Debe consumirse declarativamente 
+#    desde config/leagues.yaml o cargarse dinámicamente desde la BD SQLite.
+# 5. Formato Log: {Fecha Hora} [INFO/WARNING/ERROR] [COMPONENTE]
+#    - Colores ANSI: INFO=Azul, WARNING=Amarillo, ERROR=Rojo.
+# 6. Formato Matches en Log: {horario_match} {match_id} {home} vs {away}
+#    - horario_match en Amarillo, match_id en Azul (sin texto UTC-6).
+# 7. Errores de red críticos: Imprimir explícitamente "HTTP 403/404" en ROJO.
+# 8. Monitoreo avanzado en progreso de cuarto final: Usar obligatoriamente "Q4 🟠".
+# 9. Telegram Prefijos de Apuestas: 🟢 (Bettable), 🟡 (No Bettable), ⚪ (Tardía).
+# 10. Telegram Resultados FT: Prefijar con ✅ (Ganada) o ❌ (Perdida) manteniendo emoji base.
+# 11. Conversión de tiempos siempre legibles en formato humano (ej. 1 dia 2h 15min / 45s).
+# =====================================================================
+
+import sys
+import asyncio
+from pathlib import Path
+
+# Agregar el directorio raíz del proyecto al sys.path para poder importar match
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from match.scraper import fetch_match_by_id as ss_fetch_match
+from monitor_v2.scrapers.base_scraper import execute_safe_fetch, claim_ft_scrape_slot, release_ft_scrape_slot, is_monitoring_locked
+from monitor_v2.config.constants import SOFASCORE_SCRAPER_BACKEND
+
+async def fetch_match_by_id(match_id: str, is_ft: bool = False) -> dict:
+    """
+    Realiza una ráfaga secuencial controlada de peticiones para compilar
+    la totalidad de las estructuras analíticas del partido, implementando
+    la cola serializada si es un cierre de partido (FT).
+    """
+    from monitor_v2.config.constants import SOFASCORE_SCRAPER_BACKEND_LIVE, SOFASCORE_SCRAPER_BACKEND_FT
+    
+    if is_ft:
+        await claim_ft_scrape_slot()
+        # Esperar si hay monitoreo LIVE activo (no saturar recursos)
+        while is_monitoring_locked():
+            await asyncio.sleep(30)
+        
+    try:
+        async def _fetch():
+            backend_to_use = SOFASCORE_SCRAPER_BACKEND_FT if is_ft else SOFASCORE_SCRAPER_BACKEND_LIVE
+            return await asyncio.to_thread(ss_fetch_match, match_id, backend=backend_to_use)
+            
+        return await execute_safe_fetch(_fetch)
+    finally:
+        if is_ft:
+            await release_ft_scrape_slot()
+            # Espaciado extra de 40s + jitter entre descargas FT
+            await asyncio.sleep(40 + (__import__("random").random() * 10))

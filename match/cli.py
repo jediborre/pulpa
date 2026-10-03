@@ -1048,7 +1048,7 @@ def cmd_run_bot(args: argparse.Namespace) -> None:
     if args.db and not os.getenv("MATCH_DB_PATH"):
         os.environ["MATCH_DB_PATH"] = args.db
 
-    bot_mod = importlib.import_module("telegram_bot")
+    bot_mod = importlib.import_module("monitor_v1.telegram_bot")
     bot_mod.main()
 
 

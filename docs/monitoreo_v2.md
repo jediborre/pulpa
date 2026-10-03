@@ -2,10 +2,10 @@
 
 ---
 
-# Especificación de Arquitectura de Producción: Monitor de Apuestas Modular — `bet_monitor_v2.py`
+# Especificación de Arquitectura de Producción: Monitor de Apuestas Modular — `monitor_v2`
 
 ## Propósito General
-`bet_monitor_v2.py` es un daemon asíncrono de alto rendimiento optimizado con `asyncio` que gestiona el ciclo de vida completo del monitoreo de baloncesto en SofaScore, la ejecución de inferencias predictivas en paralelo para la ventana del último cuarto (Q4) y la persistencia transaccional. El sistema opera bajo la zona horaria **UTC-6 (America/Mexico_City)**, está sujeto al cumplimiento estricto de la norma **Flake8** y se distribuye en una arquitectura modular desacoplada, con un sistema dinámico de control de ligas externa y un almacenamiento de datos relacional auditivo.
+`monitor_v2` es un daemon asíncrono de alto rendimiento optimizado con `asyncio` que gestiona el ciclo de vida completo del monitoreo de baloncesto en SofaScore, la ejecución de inferencias predictivas en paralelo para la ventana del último cuarto (Q4) y la persistencia transaccional. El sistema opera bajo la zona horaria **UTC-6 (America/Mexico_City)**, está sujeto al cumplimiento estricto de la norma **Flake8** y se distribuye en una arquitectura modular desacoplada, con un sistema dinámico de control de ligas externa y un almacenamiento de datos relacional auditivo.
 
 ---
 
@@ -13,7 +13,7 @@
 Queda estrictamente prohibido compilar el daemon en un único archivo. El sistema se estructurará obligatoriamente bajo el siguiente árbol jerárquico de paquetes:
 
 ```text
-bet_monitor_v2/
+monitor_v2/
 │
 ├── config/
 │   ├── __init__.py
