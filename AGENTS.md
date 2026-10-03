@@ -40,6 +40,15 @@ Cada vez que realices cualquier cambio, corrección, refactorización o adición
   DB_PATH = Path(__file__).resolve().parents[...] / "match" / "matches.db"
   ```
 
+### 4. CREACIÓN DE ARCHIVOS AUXILIARES Y EXPERIMENTALES (ESTRICTAMENTE EN /tmp)
+- **UBICACIÓN MANDATORIA:** Cada vez que vayas a crear un archivo auxiliar, script de apoyo, prueba de concepto (PoC), análisis puntual o diagnóstico temporal, **DEBE crearse obligatoriamente dentro de la carpeta `tmp/` en la raíz**.
+- **PROHIBIDO:** Crear scripts de prueba, archivos temporales, logs o volcados sueltos en la raíz (`./`), en `match/`, en `tools/` o en cualquier otra carpeta de producción del proyecto.
+- **SUBDIRECTORIOS TEMÁTICOS POR TAREA:** Para mantener el orden y la trazabilidad dentro de `tmp/`, se debe crear una subcarpeta interna alusiva a la funcionalidad, modelo o tema en el que se esté trabajando:
+  - *Ejemplo nuevo modelo:* Si se trabaja en el modelo 100, la ruta debe ser `tmp/modelo_100/` y allí van todos sus scripts temporales, datos JSON y pruebas auxiliares.
+  - *Ejemplo mejoras de scraping:* Si se prueba una variante de extracción, usar `tmp/scraper_cdp/`.
+  - *Ejemplo auditoría o backfill:* Si se auditan enfrentamientos directos, usar `tmp/h2h_audit/`.
+- **CABECERA DOCUMENTADA OBLIGATORIA:** Todo archivo que se cree en `tmp/` debe incluir al inicio un comentario/docstring explicando claramente qué hace, para qué se usa y qué hipótesis o problema aborda.
+
 ---
 
 ## 🗺️ Mapa del Repositorio: Dónde Encontrar Todo
@@ -93,10 +102,12 @@ Base de datos SQLite (~737 MB) con almacenamiento histórico masivo:
 ### 7. Scripts Temporales y Experimentales (`tmp/`)
 - Todos los scripts auxiliares de diagnóstico, pruebas de concepto, inspecciones de base de datos y experimentos puntuales han sido consolidados en `tmp/` en la raíz.
 - Cada archivo en `tmp/` cuenta con un encabezado descriptivo indicando su propósito y ubicación original.
+- **Creación de nuevas pruebas:** Deben ubicarse obligatoriamente en `tmp/<nombre_tarea>/` (por ejemplo: `tmp/modelo_100/`) y documentar en la cabecera del código su propósito y qué problema resuelven.
 
 ---
 
 ## 📌 Resumen de Directrices Técnicas
+- **Archivos Temporales y Auxiliares:** Crear siempre dentro de `tmp/<nombre_tema>/` (ej. `tmp/modelo_100/`). PROHIBIDO dejar scripts o archivos sueltos en la raíz o en los paquetes de producción.
 - **Base de Datos matches.db:** Se ubica estrictamente en `match/matches.db`. PROHIBIDO crear copias o buscarla en la raíz.
 - **Entorno Virtual (.venv):** Obligatorio. Siempre activar `.venv\Scripts\activate` o ejecutar `.venv\Scripts\python.exe`. NUNCA usar Python global.
 - **Codificación en Windows:** Al imprimir a consola, configurar salida UTF-8 (`sys.stdout.reconfigure(encoding='utf-8')`).
