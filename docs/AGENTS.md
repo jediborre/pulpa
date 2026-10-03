@@ -1,4 +1,4 @@
-> **Ubicación original:** AGENTS.md (Raíz)
+> **Ubicación original:** `AGENTS.md (Raíz)`
 
 ---
 
@@ -8,10 +8,10 @@
 
 ---
 
-## ⚠️ REGLA DE ORO DE FLUJO DE TRABAJO (MANDATORIA)
+## ⚠️ REGLAS MANDATORIAS DE FLUJO DE TRABAJO
 
+### 1. REGLA DE ORO DE GIT (COMMIT Y PUSH INMEDIATOS)
 Cada vez que realices cualquier cambio, corrección, refactorización o adición en el código o documentación:
-
 1. **COMMIT INMEDIATO:** Debes realizar un `git commit` con un **mensaje corto, claro y descriptivo en ESPAÑOL**.
    - *Ejemplos válidos:* 
      - `git commit -m "agrega filtros de ligas en monitor v2"`
@@ -21,6 +21,15 @@ Cada vez que realices cualquier cambio, corrección, refactorización o adición
    ```bash
    git push
    ```
+
+### 2. USO OBLIGATORIO DEL ENTORNO VIRTUAL (.venv)
+- **SIEMPRE** se debe utilizar el entorno virtual de Python ubicado en `.venv`.
+- Al ejecutar comandos de Python en consola, activa antes el entorno con `.venv\Scripts\activate` o invoca directamente el ejecutable del entorno:
+  ```powershell
+  .venv\Scripts\python.exe <script.py>
+  ```
+- **NUNCA** ejecutes scripts ni instales librerías usando el Python global del sistema para evitar incompatibilidades de dependencias o rotura de paquetes.
+- Si se añaden dependencias con pip, hazlo exclusivamente dentro del entorno virtual (`.venv\Scripts\pip.exe install ...`).
 
 ---
 
@@ -68,15 +77,15 @@ Base de datos SQLite (~737 MB) con almacenamiento histórico masivo:
 - **`tools/obscura-src/`:** Código fuente en Rust del navegador headless Obscura con parches para cookies cross-origin y tiempos de promesa.
 
 ### 6. Interfaz y Operación
-- **`menu.bat`:** Menú interactivo por lotes con 33 opciones ejecutables.
-- **`menu_obscura.bat`:** Menú unificado para arrancar, detener o instalar Obscura.
+- **`menu.bat`:** Menú interactivo por lotes reestructurado en 5 bloques temáticos (1-24 opciones): Operación en Vivo, Análisis/Consenso, Ingesta/Backfill, Modelos ML y Mantenimiento.
+- **`menu_obscura.bat`:** Menú unificado para arrancar, detener, instalar o consultar el estado de Obscura.
 - **`api.py`:** Backend en FastAPI.
 - **`dashboard/`:** Frontend en React + Vite + TypeScript.
 
 ---
 
 ## 📌 Resumen de Directrices Técnicas
-- **Entorno Virtual:** Siempre activar `.venv\Scripts\activate` antes de ejecutar scripts de Python.
+- **Entorno Virtual (.venv):** Obligatorio. Siempre activar `.venv\Scripts\activate` o ejecutar `.venv\Scripts\python.exe`. NUNCA usar Python global.
 - **Codificación en Windows:** Al imprimir a consola, configurar salida UTF-8 (`sys.stdout.reconfigure(encoding='utf-8')`).
 - **Scraping:** Usar siempre Google Chrome Headless vía CDP e inyectar llamadas con `page.evaluate(fetch(...))` para respetar la sesión y evitar baneos Cloudflare (HTTP 403).
 - **Al finalizar cualquier tarea:** ¡No olvides realizar el **commit con mensaje corto en español** y el **git push**!

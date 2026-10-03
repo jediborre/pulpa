@@ -67,9 +67,8 @@ pulpa/
 ├── AGENTS.md               # Reglas obligatorias para agentes de IA y mapa de navegación
 ├── README.md               # Este archivo — índice y guía principal (solo en raíz)
 ├── modelos.md              # Documento maestro con stats y features de todos los modelos
-├── menu.bat                # Menú interactivo por lotes con 33 opciones operativas
+├── menu.bat                # Menú interactivo principal organizado en 5 bloques operativos
 ├── menu_obscura.bat        # Menú unificado de Obscura (iniciar, detener, instalar, estado)
-├── iniciar_monitor_cdp.bat # Script de arranque directo del monitor en modo Chrome CDP
 ├── api.py                  # API REST en FastAPI para servir inferencias al dashboard
 │
 ├── docs/                   # 📚 Hub central de documentación (22 archivos .md)
@@ -107,26 +106,24 @@ pulpa/
 - Cuenta y Token de Telegram (`match/.env`)
 
 ```bat
-# Instalar entorno y dependencias
-instalar.bat
+# Instalar / reparar entorno y dependencias (.venv, pip, playwright, npm)
+menu.bat   # Seleccionar la opción 24
 ```
 
 ---
 
 ## 🚀 Uso Rápido — Menú Principal
 
-Ejecuta el menú interactivo para acceder a todas las funciones:
+Ejecuta el menú interactivo para acceder a todas las funciones organizadas en 5 bloques operativos:
 
 ```bat
 menu.bat
 ```
 
-| Opción | Acción |
-|:---:|---|
-| **`2`** | **Correr Monitoreo V2 (Modular)**: Inicia la vigilancia asíncrona de partidos en juego con los modelos `v6_2` y `m27_v3`. |
-| **`3`** | **Estadísticas de Modelos / Exportar Excel**: Ejecuta `tools/stats_cli.py`, evalúa el consenso y genera reportes en Excel. |
-| **`1`** | **Correr Bot de Telegram**: Inicia el bot interactivo para consultas y alertas en tiempo real. |
-| **`4`** | **Correr Todo**: Bot + API + Dashboard en paralelo. |
-| **`5`** | **Traer fecha nueva**: Descarga partidos e historial de fechas faltantes. |
-| **`31`** | **M27_V3: Solo reporte**: Simula el ROI y rendimiento del modelo campeón con features H2H. |
-| **`33`** | **Backfill masivo H2H**: Enriquecimiento masivo de enfrentamientos directos en `matches.db`. |
+| Bloque | Opciones Clave | Descripción |
+|:---|:---:|---|
+| **[1] Operación en Vivo** | `1`, `2`, `3`, `4`, `5`, `6` | Monitor V2 (interactivo o CDP), Bot de Telegram, API FastAPI, Dashboard Web y All-in-One (`6`). |
+| **[2] Análisis y Consenso** | `7`, `8` | Estadísticas de Modelos / Fusion Consensus / Excel (`tools/stats_cli.py`) y Reporte ROI M27_V3 (`8`). |
+| **[3] Ingesta y Backfill** | `9`, `10`, `11`, `12` | Descarga de fechas faltantes, backfill general, backfill masivo H2H SofaScore y comparador de scrapers. |
+| **[4] Modelos ML** | `13`-`22` | Entrenamiento y reportes ROI para la serie M27 (v1, v2, v3) y V6 (v6.2, v6.3, base v2/v6). |
+| **[5] Mantenimiento** | `23`, `24` | Menú Obscura (`menu_obscura.bat`) e Instalador / Reparador de dependencias (.venv, pip, playwright, npm). |
