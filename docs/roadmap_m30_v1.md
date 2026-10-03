@@ -87,9 +87,9 @@ La comparacion justa es m30_v1 pre-momentum vs con-momentum: +0.007 ROC AUC.
 - `match/training/model_outputs_m30_v1/q4_metrics.csv` — metricas modelo mixto con momentum
 - `match/training/model_outputs_m30_v1/q4_10m_only/q4_metrics.csv` — metricas 10m-only con momentum
 - `match/training/model_outputs_m30_v1/q4_10m_only/run_summary.json` — features finales (93)
-- `temp_scripts/explore_db_schema.py` — explorador de esquema DB
-- `temp_scripts/explore_game_patterns.py` — patrones de juego (momentum exhaustion, lead erosion)
-- `temp_scripts/explore_comebacks.py` — analisis de remontadas
+- `tmp/explore_db_schema.py` — explorador de esquema DB
+- `tmp/explore_game_patterns.py` — patrones de juego (momentum exhaustion, lead erosion)
+- `tmp/explore_comebacks.py` — analisis de remontadas
 
 ## Opciones para continuar
 

@@ -267,7 +267,7 @@ if not defined CONFIRM goto MENU
 if /I not "%CONFIRM%"=="s" if /I not "%CONFIRM%"=="si" if /I not "%CONFIRM%"=="y" if /I not "%CONFIRM%"=="yes" goto MENU
 
 call .venv\Scripts\activate
-python temp_scripts\backfill_h2h_masivo.py
+python tmp\backfill_h2h_masivo.py
 pause
 goto MENU
 

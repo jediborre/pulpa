@@ -484,7 +484,7 @@ En este punto, la siguiente exploracion con mejor ROI de trabajo parece ser `cur
 
 ## Medición exhaustiva de candidatas (17 May 2026)
 
-Se corrio un analisis completo sobre 4144 filas test midiendo ~22 features candidatas nuevas. Resultados en `temp_scripts/measure_m30_candidate_signal.py`.
+Se corrio un analisis completo sobre 4144 filas test midiendo ~22 features candidatas nuevas. Resultados en `tmp/measure_m30_candidate_signal.py`.
 
 ### Composicion del dataset
 

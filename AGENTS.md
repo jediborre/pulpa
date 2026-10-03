@@ -27,6 +27,19 @@ Cada vez que realices cualquier cambio, corrección, refactorización o adición
 - **NUNCA** ejecutes scripts ni instales librerías usando el Python global del sistema para evitar incompatibilidades de dependencias o rotura de paquetes.
 - Si se añaden dependencias con pip, hazlo exclusivamente dentro del entorno virtual (`.venv\Scripts\pip.exe install ...`).
 
+### 3. UBICACIÓN OBLIGATORIA DE LA BASE DE DATOS (matches.db)
+- **UBICACIÓN ÚNICA Y EXCLUSIVA:** La base de datos SQLite histórica y en vivo de todo el sistema se encuentra **estrictamente en**:
+  ```
+  match/matches.db
+  ```
+  *(Ruta relativa desde la raíz del proyecto: `match/matches.db`)*.
+- **PROHIBIDO** buscar, instanciar o crear bases de datos `matches.db` en la raíz (`./matches.db`) o en cualquier otro subdirectorio.
+- Cualquier script, consulta SQLite, endpoint de API, modelo de inferencia o tarea de backfill debe conectarse obligatoriamente a esta ruta canónica:
+  ```python
+  from pathlib import Path
+  DB_PATH = Path(__file__).resolve().parents[...] / "match" / "matches.db"
+  ```
+
 ---
 
 ## 🗺️ Mapa del Repositorio: Dónde Encontrar Todo
@@ -77,9 +90,14 @@ Base de datos SQLite (~737 MB) con almacenamiento histórico masivo:
 - **`api.py`:** Backend en FastAPI.
 - **`dashboard/`:** Frontend en React + Vite + TypeScript.
 
+### 7. Scripts Temporales y Experimentales (`tmp/`)
+- Todos los scripts auxiliares de diagnóstico, pruebas de concepto, inspecciones de base de datos y experimentos puntuales han sido consolidados en `tmp/` en la raíz.
+- Cada archivo en `tmp/` cuenta con un encabezado descriptivo indicando su propósito y ubicación original.
+
 ---
 
 ## 📌 Resumen de Directrices Técnicas
+- **Base de Datos matches.db:** Se ubica estrictamente en `match/matches.db`. PROHIBIDO crear copias o buscarla en la raíz.
 - **Entorno Virtual (.venv):** Obligatorio. Siempre activar `.venv\Scripts\activate` o ejecutar `.venv\Scripts\python.exe`. NUNCA usar Python global.
 - **Codificación en Windows:** Al imprimir a consola, configurar salida UTF-8 (`sys.stdout.reconfigure(encoding='utf-8')`).
 - **Scraping:** Usar siempre Google Chrome Headless vía CDP e inyectar llamadas con `page.evaluate(fetch(...))` para respetar la sesión y evitar baneos Cloudflare (HTTP 403).

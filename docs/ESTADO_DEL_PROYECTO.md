@@ -320,8 +320,8 @@ En el último periodo (hasta el commit `b0c6583` de octubre 2026), se implementa
 - Exportación del estado global del Meta-Modelo a `MetaModel_ALL.txt` y `MetaModel_ALL_2026-06-10.txt`.
 
 ### 2. Backfill Masivo y Validación de Head-to-Head (H2H)
-- Implementación de `temp_scripts/backfill_h2h_masivo.py` (Opción 33 en `menu.bat`), diseñado para descargar el historial H2H de los más de 23,000 partidos pendientes en la base de datos, priorizado por el tamaño/relevancia de la liga y descartando ligas de exhibición o de mujeres.
-- Scripts de auditoría y comparación: `compare_h2h_sources.py` y `validate_h2h_features.py` para cotejar datos calculados localmente vs. API SofaScore.
+- Implementación de `tmp/backfill_h2h_masivo.py` (Opción 11 / 33 en `menu.bat`), diseñado para descargar el historial H2H de los más de 23,000 partidos pendientes en la base de datos, priorizado por el tamaño/relevancia de la liga y descartando ligas de exhibición o de mujeres.
+- Scripts de auditoría y comparación: `compare_h2h_sources.py` y `validate_h2h_features.py` (ahora en `tmp/`) para cotejar datos calculados localmente vs. API SofaScore.
 
 ### 3. Fortalecimiento de `bet_monitor_v2/main.py`
 - **Menú interactivo al arrancar**: Permite elegir perfil de navegadores (Chrome nativo, Traditional o Obscura, o configuración independiente por fase).

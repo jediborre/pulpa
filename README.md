@@ -92,6 +92,7 @@ pulpa/
 │   └── obscura-src/        # Código fuente en Rust del navegador stealth Obscura
 │
 ├── dashboard/              # Frontend Web SPA (React + Vite + TypeScript)
+├── tmp/                    # 🗄️ Repositorio central de scripts temporales, pruebas y diagnóstico
 └── api_cache/              # Caché local de itinerarios y respuestas API
 ```
 
