@@ -127,7 +127,7 @@ menu.bat
 
 | Bloque | Opciones Clave | Descripción |
 |:---|:---:|---|
-| **[1] Operación en Vivo** | `1`-`7` | Monitor V1 (`1`), Monitor V2 (`2` interactivo, `3` CDP), API FastAPI (`4`), Dashboard Web (`5`) y All-in-One (`6` con V1, `7` con V2). |
+| **[1] Operación en Vivo** | `1`-`7` | Monitor V2 Chrome sin proxy (`1`), Monitor V1 (`2`), Monitor V2 CDP (`3`), API FastAPI (`4`), Dashboard Web (`5`) y All-in-One (`6` con V2, `7` con V1). |
 | **[2] Análisis y Consenso** | `8`, `9` | Estadísticas de Modelos / Fusion Consensus / Excel (`tools/stats_cli.py`, `8`) y Reporte ROI M27_V3 (`9`). |
 | **[3] Ingesta y Backfill** | `10`-`13` | Descarga de fechas faltantes (`10`), backfill general (`11`), backfill masivo H2H SofaScore (`12`) y comparador de scrapers (`13`). |
 | **[4] Modelos ML** | `14`-`23` | Entrenamiento y reportes ROI para la serie M27 (v1, v2, v3) y V6 (v6.2, v6.3, base v2/v6). |

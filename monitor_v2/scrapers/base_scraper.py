@@ -61,12 +61,20 @@ _premium_proxy_url = os.environ.get("SOFASCORE_PROXY_URL", "")
 os.environ.pop("SOFASCORE_PROXY_URL_SMARTPROXY", None)
 os.environ["SOFASCORE_PROXY_URL"] = ""
 
+def _proxy_disabled() -> bool:
+    return os.environ.get("SOFASCORE_USE_PROXY", "").strip() in ("0", "false", "no")
+
 def _set_proxy_env(url: str) -> None:
     """Actualiza SOFASCORE_PROXY_URL para que el scraper lo lea."""
+    if _proxy_disabled():
+        os.environ["SOFASCORE_PROXY_URL"] = ""
+        return
     os.environ["SOFASCORE_PROXY_URL"] = url or ""
 
 def _current_proxy_label() -> str:
     """Retorna label legible del proxy actual."""
+    if _proxy_disabled():
+        return "deshabilitado (directo)"
     global _proxy_tier, _free_idx
     if _proxy_tier == 0:
         return "local"
@@ -76,6 +84,10 @@ def _current_proxy_label() -> str:
 
 def _rotate_proxy(force_tier=None) -> None:
     """Avanza al siguiente proxy disponible según prioridad."""
+    if _proxy_disabled():
+        _set_proxy_env(None)
+        return
+
     global _proxy_tier, _free_idx
 
     if force_tier is not None:
@@ -133,7 +145,9 @@ async def wait_if_cooldown() -> None:
         await asyncio.sleep(sleep_time)
 
 async def _proxy_timer_check() -> None:
-    """Activa tier 1 si hay proxies configurados. No hace nada si solo hay local."""
+    """Activa tier 1 si hay proxies configurados. No hace nada si solo hay local o proxies deshabilitados."""
+    if _proxy_disabled():
+        return
     global _proxy_tier
     if _proxy_tier != 0:
         return
@@ -159,9 +173,9 @@ async def check_403_streak(status_code: int) -> None:
             await asyncio.to_thread(input)
             _403_streak = 0
         
-        # Rotar proxy solo tras 3 403 consecutivos (evita quemar proxies por glitches)
+        # Rotar proxy solo tras 3 403 consecutivos si proxies habilitados
         if _403_streak >= 3:
-            if FREE_PROXY_LIST or os.environ.get("SOFASCORE_PROXY_URL_SMARTPROXY", ""):
+            if not _proxy_disabled() and (FREE_PROXY_LIST or os.environ.get("SOFASCORE_PROXY_URL_SMARTPROXY", "")):
                 _rotate_proxy()
             _403_streak = 0
         

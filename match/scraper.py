@@ -66,7 +66,9 @@ PROXY_URL = None
 _use_proxy = os.environ.get("SOFASCORE_USE_PROXY", "") == "1"
 
 def _proxy_active() -> bool:
-    """Retorna True si hay un proxy configurado por base_scraper en SOFASCORE_PROXY_URL."""
+    """Retorna True si hay un proxy configurado y habilitado por base_scraper."""
+    if os.environ.get("SOFASCORE_USE_PROXY", "").strip() in ("0", "false", "no"):
+        return False
     return bool(os.environ.get("SOFASCORE_PROXY_URL", "").strip())
 
 def _parse_proxy(url: str) -> dict | None:

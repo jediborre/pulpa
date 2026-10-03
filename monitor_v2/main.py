@@ -1219,10 +1219,12 @@ if __name__ == "__main__":
         
     print("\n" + "="*60)
     print("  > CONFIGURACION FINAL APLICADA:")
-    print(f"    - Sonda Backend (Probe):   {backend_probe.upper()}")
+    print(f"    - Sonda Backend (Probe):    {backend_probe.upper()}")
     print(f"    - Monitoreo Backend (Live): {backend_live.upper()}")
-    print(f"    - Cierre Backend (FT):      {backend_ft.upper()}")
-    print(f"    - Sonda Pre-partido:        {'DESHABILITADA (Espera Pasiva)' if disable_probe_choice else 'HABILITADA (Sondeo)'}")
+    print(f"    - Cierre Backend (FT):       {backend_ft.upper()}")
+    print(f"    - Sonda Pre-partido:         {'DESHABILITADA (Espera Pasiva)' if disable_probe_choice else 'HABILITADA (Sondeo)'}")
+    _proxy_off = os.environ.get("SOFASCORE_USE_PROXY", "").strip() in ("0", "false", "no")
+    print(f"    - Proxy:                     {'DESHABILITADO (Conexion Directa)' if _proxy_off else 'HABILITADO'}")
     print("="*60 + "\n")
     
     # Establecer variables de entorno antes de importar modulos de red

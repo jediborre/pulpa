@@ -56,13 +56,13 @@ echo                  CENTRO DE CONTROL PRINCIPAL
 echo ==================================================================
 echo.
 echo  [1] OPERACION EN VIVO Y SERVICIOS
-echo    1) Iniciar Monitor V1 (Telegram Bot + Bet Monitor)
-echo    2) Iniciar Monitor V2 (Daemon Asincrono - Interactivo)
+echo    1) Iniciar Monitor V2 (Chrome nativo - Recomendado, Sin Proxy)
+echo    2) Iniciar Monitor V1 (Telegram Bot + Bet Monitor)
 echo    3) Iniciar Monitor V2 (Modo CDP directo)
 echo    4) Iniciar API Backend (FastAPI)
 echo    5) Iniciar Dashboard Web (API + Frontend Vite)
-echo    6) Iniciar Todo con V1 (All-in-One: Monitor V1 + API + Dashboard)
-echo    7) Iniciar Todo con V2 (All-in-One: Monitor V2 + API + Dashboard)
+echo    6) Iniciar Todo con V2 (All-in-One: Monitor V2 + API + Dashboard)
+echo    7) Iniciar Todo con V1 (All-in-One: Monitor V1 + API + Dashboard)
 echo.
 echo  [2] ANALISIS, ESTADISTICAS Y CONSENSO
 echo    8) Estadisticas de Modelos / Fusion Consensus / Excel (CLI)
@@ -98,17 +98,17 @@ set /p OPT="  Selecciona una opcion: "
 if "%OPT%"=="0" goto FIN
 
 :: [1] Servicios en Vivo
-if "%OPT%"=="1" goto RUN_MONITOR_V1
-if /i "%OPT%"=="v1" goto RUN_MONITOR_V1
-if "%OPT%"=="2" goto RUN_MONITOR_V2
+if "%OPT%"=="1" goto RUN_MONITOR_V2
 if /i "%OPT%"=="v2" goto RUN_MONITOR_V2
+if "%OPT%"=="2" goto RUN_MONITOR_V1
+if /i "%OPT%"=="v1" goto RUN_MONITOR_V1
 if "%OPT%"=="3" goto RUN_MONITOR_CDP
 if "%OPT%"=="4" goto API
 if "%OPT%"=="30" goto API
 if "%OPT%"=="5" goto DASHBOARD
 if "%OPT%"=="32" goto DASHBOARD
-if "%OPT%"=="6" goto TODO_V1
-if "%OPT%"=="7" goto TODO_V2
+if "%OPT%"=="6" goto TODO_V2
+if "%OPT%"=="7" goto TODO_V1
 
 :: [2] Analisis y Consenso
 if "%OPT%"=="8" goto VIEW_STATS_CLI
@@ -168,20 +168,29 @@ goto RUN_MONITOR_V1
 :RUN_MONITOR_V2
 cls
 echo.
-echo ===============================================
-echo  Iniciando Monitor V2 (Interactivo)
-echo ===============================================
+echo ========================================================
+echo  Iniciando Monitor V2 (Google Chrome Nativo - Sin Proxy)
+echo ========================================================
 echo.
 echo [1/3] Matando procesos residuales de Chrome...
 taskkill /IM chrome.exe /F >nul 2>&1
 timeout /t 2 /nobreak >nul
 
-echo [2/3] Iniciando Monitor V2 en una nueva ventana...
+echo [2/3] Configurando conexion directa (Sin Proxy)...
+set "SOFASCORE_USE_PROXY=0"
+set "SOFASCORE_PROXY_URL="
+set "SOFASCORE_PROXY_URL_SMARTPROXY="
+set "SOFASCORE_SCRAPER_BACKEND=chrome"
+set "SOFASCORE_SCRAPER_BACKEND_PROBE=chrome"
+set "SOFASCORE_SCRAPER_BACKEND_LIVE=chrome"
+set "SOFASCORE_SCRAPER_BACKEND_FT=chrome"
+
+echo [3/3] Iniciando Monitor V2 en una nueva ventana...
 echo.
 echo  NOTA: Cada scrape lanza Chrome temporal (se cierra al terminar).
 echo  Si ves demora, es normal: Playwright gestiona los procesos.
 echo.
-start "Pulpa - Monitoreo V2" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v2\main.py"
+start "Pulpa - Monitor V2 (Chrome)" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v2\main.py"
 goto MENU
 
 :RUN_MONITOR_CDP
@@ -236,18 +245,26 @@ cls
 echo.
 echo =========================================================
 echo  Iniciando Suite Completa con Monitor V2 (All-in-One)
-echo  (Monitor V2 + API Backend + Dashboard Web)
+echo  (Monitor V2 Chrome Sin Proxy + API Backend + Dashboard)
 echo =========================================================
 echo.
 echo [1/4] Matando procesos residuales de Chrome...
 taskkill /IM chrome.exe /F >nul 2>&1
 timeout /t 2 /nobreak >nul
-echo [2/4] Iniciando Monitor V2 (Daemon Asincrono)...
-start "Pulpa - Monitoreo V2" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v2\main.py"
-echo [3/4] Iniciando API Backend (FastAPI)...
+echo [2/4] Configurando conexion directa (Sin Proxy)...
+set "SOFASCORE_USE_PROXY=0"
+set "SOFASCORE_PROXY_URL="
+set "SOFASCORE_PROXY_URL_SMARTPROXY="
+set "SOFASCORE_SCRAPER_BACKEND=chrome"
+set "SOFASCORE_SCRAPER_BACKEND_PROBE=chrome"
+set "SOFASCORE_SCRAPER_BACKEND_LIVE=chrome"
+set "SOFASCORE_SCRAPER_BACKEND_FT=chrome"
+echo [3/4] Iniciando Monitor V2 (Chrome)...
+start "Pulpa - Monitor V2 (Chrome)" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v2\main.py"
+echo [4/4] Iniciando API Backend (FastAPI)...
 start "Pulpa - API Backend" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python api.py"
 timeout /t 3 /nobreak >nul
-echo [4/4] Iniciando Dashboard Web (Vite/React)...
+echo [+] Iniciando Dashboard Web (Vite/React)...
 start "Pulpa - Dashboard" cmd /k "cd /d %~dp0\dashboard && npm run dev"
 goto MENU
 
@@ -575,7 +592,14 @@ python monitor_v1\main.py
 exit /b %errorlevel%
 
 :RUN_MONITOR_V2_CLI
-echo [+] Iniciando Monitor V2 desde CLI...
+echo [+] Iniciando Monitor V2 (Chrome - Sin Proxy) desde CLI...
+set "SOFASCORE_USE_PROXY=0"
+set "SOFASCORE_PROXY_URL="
+set "SOFASCORE_PROXY_URL_SMARTPROXY="
+set "SOFASCORE_SCRAPER_BACKEND=chrome"
+set "SOFASCORE_SCRAPER_BACKEND_PROBE=chrome"
+set "SOFASCORE_SCRAPER_BACKEND_LIVE=chrome"
+set "SOFASCORE_SCRAPER_BACKEND_FT=chrome"
 call .venv\Scripts\activate
 python monitor_v2\main.py
 exit /b %errorlevel%
