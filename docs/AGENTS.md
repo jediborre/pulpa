@@ -69,6 +69,7 @@ Base de datos SQLite (~737 MB) con almacenamiento histórico masivo:
 
 ### 6. Interfaz y Operación
 - **`menu.bat`:** Menú interactivo por lotes con 33 opciones ejecutables.
+- **`menu_obscura.bat`:** Menú unificado para arrancar, detener o instalar Obscura.
 - **`api.py`:** Backend en FastAPI.
 - **`dashboard/`:** Frontend en React + Vite + TypeScript.
 

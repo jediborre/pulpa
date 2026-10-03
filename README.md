@@ -68,6 +68,7 @@ pulpa/
 ├── README.md               # Este archivo — índice y guía principal (solo en raíz)
 ├── modelos.md              # Documento maestro con stats y features de todos los modelos
 ├── menu.bat                # Menú interactivo por lotes con 33 opciones operativas
+├── menu_obscura.bat        # Menú unificado de Obscura (iniciar, detener, instalar, estado)
 ├── iniciar_monitor_cdp.bat # Script de arranque directo del monitor en modo Chrome CDP
 ├── api.py                  # API REST en FastAPI para servir inferencias al dashboard
 │

@@ -50,9 +50,7 @@ echo   22) M27_V1: Solo reporte
 echo   23) M27_V1: Solo probe
 echo   24) Backfill historico (matches.db)
 echo   25) Comparar tradicional vs obscura
-echo   26) Instalar Obscura
-echo   27) Iniciar Obscura (CDP) - liviano, NO sirve con SofaScore
-echo   29) Apagar Obscura
+echo   26) Menu Obscura (Iniciar / Apagar / Instalar / Estado)
 echo   31) M27_V3: Solo reporte
 echo   32) Correr Dashboard (API + Frontend)
 echo   33) Backfill masivo H2H (SofaScore - priorizado por liga)
@@ -87,7 +85,7 @@ if "%OPT%"=="22" goto REPORT_M27_V1_ONLY
 if "%OPT%"=="23" goto REPORT_M27_V1_PROBE
 if "%OPT%"=="24" goto BACKFILL
 if "%OPT%"=="25" goto COMPARE_SCRAPER
-if "%OPT%"=="26" goto INSTALL_OBSCURA
+if "%OPT%"=="26" goto MENU_OBSCURA
 if "%OPT%"=="27" goto START_OBSCURA
 if "%OPT%"=="28" goto TRAIN_V2
 if "%OPT%"=="29" goto STOP_OBSCURA
@@ -362,15 +360,21 @@ pause
 goto MENU
 
 :: ─────────────────────────────────────────────────
+:MENU_OBSCURA
+call menu_obscura.bat
+goto MENU
+
+:: ─────────────────────────────────────────────────
 :INSTALL_OBSCURA
 cls
-call instalar_obscura.bat
+call menu_obscura.bat install
+pause
 goto MENU
 
 :: ─────────────────────────────────────────────────
 :START_OBSCURA
 cls
-call start_obscura.bat
+call menu_obscura.bat start
 if errorlevel 1 (
     echo [ERROR] Obscura no esta instalado.
     echo         Ejecuta la opcion 26 primero.
@@ -381,7 +385,7 @@ goto MENU
 :: ─────────────────────────────────────────────────
 :STOP_OBSCURA
 cls
-call stop_obscura.bat
+call menu_obscura.bat stop
 pause
 goto MENU
 
