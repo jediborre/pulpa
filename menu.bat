@@ -138,7 +138,7 @@ echo [+] Iniciando API Backend...
 start "Pulpa - API Backend" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python api.py"
 timeout /t 3 /nobreak >nul
 echo [+] Iniciando Dashboard (Vite)...
-start "Pulpa - Dashboard" cmd /k "cd /d %~dp0\v13_dashboard && npm run dev"
+start "Pulpa - Dashboard" cmd /k "cd /d %~dp0\dashboard && npm run dev"
 goto MENU
 
 :: ─────────────────────────────────────────────────
@@ -148,7 +148,7 @@ echo [+] Iniciando Bot + API + Dashboard...
 start "Pulpa - Telegram Bot"  cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python match\telegram_bot.py"
 start "Pulpa - API Backend"   cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python api.py"
 timeout /t 3 /nobreak >nul
-start "Pulpa - Dashboard"     cmd /k "cd /d %~dp0\v13_dashboard && npm run dev"
+start "Pulpa - Dashboard"     cmd /k "cd /d %~dp0\dashboard && npm run dev"
 goto MENU
 
 :: ─────────────────────────────────────────────────

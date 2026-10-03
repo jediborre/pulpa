@@ -60,15 +60,15 @@ echo [OK] Playwright listo.
 
 :: ── Instalar dependencias Node (dashboard) ────────
 echo.
-echo [+] Instalando dependencias Node.js (v13_dashboard)...
+echo [+] Instalando dependencias Node.js (dashboard)...
 where npm >nul 2>&1
 if errorlevel 1 (
     echo [AVISO] npm no encontrado. Omitiendo dashboard.
 ) else (
-    cd v13_dashboard
+    cd dashboard
     npm install
     if errorlevel 1 (
-        echo [AVISO] npm install fallo en v13_dashboard.
+        echo [AVISO] npm install fallo en dashboard.
     ) else (
         echo [OK] Dependencias Node instaladas.
     )

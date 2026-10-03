@@ -24,7 +24,7 @@ timeout /t 3 /nobreak > nul
 
 :: 2. Iniciar Dashboard Frontend
 echo [+] Iniciando Dashboard (Vite/React)...
-cd v13_dashboard
+cd dashboard
 npm run dev
 
 endlocal

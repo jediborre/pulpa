@@ -25,7 +25,7 @@ start "Pulpa Telegram Bot" cmd /c "call .venv\Scripts\activate && python match/t
 :: 3. Iniciar Frontend Dashboard
 echo [+] Iniciando Dashboard Web...
 timeout /t 2 /nobreak > nul
-cd v13_dashboard
+cd dashboard
 npm run dev
 
 endlocal
