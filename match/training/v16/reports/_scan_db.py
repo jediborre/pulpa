@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-DB = Path(__file__).parent.parent.parent.parent / "matches.db"
+DB = Path(__file__).parent.parent.parent.parent.parent / "matches.db"
 conn = sqlite3.connect(str(DB))
 cur = conn.cursor()
 

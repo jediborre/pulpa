@@ -7,7 +7,7 @@ Diagnóstico específico del partido y datos del equipo Zenit.
 import sqlite3
 
 def main():
-    conn = sqlite3.connect('match/matches.db')
+    conn = sqlite3.connect('matches.db')
     conn.row_factory = sqlite3.Row
     
     r = conn.execute("""

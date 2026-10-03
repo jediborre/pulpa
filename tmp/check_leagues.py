@@ -8,7 +8,7 @@ import sqlite3
 import json
 
 def main():
-    conn = sqlite3.connect('match/matches.db')
+    conn = sqlite3.connect('matches.db')
     cur = conn.cursor()
     cur.execute('SELECT DISTINCT league FROM matches WHERE date LIKE "2026-04-17%"')
     db_leagues = {r[0] for r in cur.fetchall()}

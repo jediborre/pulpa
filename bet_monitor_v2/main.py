@@ -4,7 +4,7 @@
 #    models, notifications, utils) coordinados asíncronamente por main.py.
 #    Cualquier aproximación monolítica de archivo único viola esta especificación.
 # 2. INFRAESTRUCTURA DB: El archivo base SQLite se localiza exclusivamente en 
-#    /match/matches.db y todas las tablas sin excepción finalizan con el sufijo '_v2'.
+#    /matches.db (en la raíz del proyecto) y todas las tablas sin excepción finalizan con el sufijo '_v2'.
 # 3. TABLA DE LOGS: 'bet_monitor_log_v2' se particiona por modelo y contiene 
 #    obligatoriamente los campos 'raw_json' (TEXT), 'inference_minute' (INT), 
 #    y 'graph_points_count' (INT) junto con marcadores reales del juego.
@@ -148,7 +148,7 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
         # 2. Guardar también en la base histórica legacy si db.py está disponible
         try:
             db_mod = __import__("db")
-            legacy_conn = db_mod.get_conn(str(ROOT / "match" / "matches.db"))
+            legacy_conn = db_mod.get_conn(str(ROOT / "matches.db"))
             db_mod.init_db(legacy_conn)
             db_mod.save_match(legacy_conn, match_id, data)
             legacy_conn.close()

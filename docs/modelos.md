@@ -105,7 +105,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | 36 (final Q3) |
 | **Algoritmo** | LogReg + RandomForest + GradientBoosting (avg ensemble) |
-| **Script** | `train_q3_q4_models.py` |
+| **Script entrenamiento** | `train_q3_q4_models.py` |
+| **Script evaluación / ROI** | `report_model_comparison.py`, `report_db_results.py` |
 | **Hiperparams** | LogReg(solver=liblinear, max_iter=4000); RF(n_est=300, min_samples_leaf=4); GB(n_est=250, lr=0.05, max_depth=3) |
 | **Target** | Q3 y Q4 |
 | **Split** | 80/20 temporal |
@@ -123,7 +124,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | 36 |
 | **Algoritmo** | LogReg + RF + GB |
-| **Script** | `train_q3_q4_models_v2.py` |
+| **Script entrenamiento** | `train_q3_q4_models_v2.py` |
+| **Script evaluación / ROI** | `report_model_comparison.py` |
 | **Hiperparams** | LogReg(max_iter=5000); RF(n_est=400, min_samples_leaf=3); GB(n_est=350, lr=0.04, max_depth=3) |
 | **Target** | Q3 y Q4 |
 | **Split** | 80/20 |
@@ -141,7 +143,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q4: 24, 30, 36 (múltiples por partido) |
 | **Algoritmo** | LogReg + GB (sin RF) |
-| **Script** | `train_q3_q4_models_v3.py` |
+| **Script entrenamiento** | `train_q3_q4_models_v3.py` |
+| **Script evaluación / ROI** | `report_model_comparison.py` |
 | **Hiperparams** | LogReg(max_iter=5000); GB(n_est=350, lr=0.04, max_depth=3) |
 | **Target** | Q3 y Q4 |
 | **Champion** | `model_outputs_v3/q4_m24_gb.joblib`, `q4_m30_gb.joblib`, `q4_m36_gb.joblib` |
@@ -158,7 +161,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | 36 (vuelve a single snapshot) |
 | **Algoritmo** | LogReg + RF + GB |
-| **Script** | `train_q3_q4_models_v4.py` |
+| **Script entrenamiento** | `train_q3_q4_models_v4.py` |
+| **Script evaluación / ROI** | `report_model_comparison.py` |
 | **Hiperparams** | LogReg(max_iter=5000); RF(n_est=400, min_samples_leaf=3); GB(n_est=350, lr=0.04, max_depth=3) |
 | **Target** | Q3 y Q4 |
 | **Champion** | `model_outputs_v4/q4_ensemble.joblib` |
@@ -175,7 +179,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 24; Q4: 36 |
 | **Algoritmo** | **XGBoost + HistGradientBoosting + MLP** |
-| **Script** | `train_q3_q4_models_v5.py` |
+| **Script entrenamiento** | `train_q3_q4_models_v5.py` |
+| **Script evaluación / ROI** | `report_model_comparison.py` |
 | **Hiperparams** | XGB(n_est=300, lr=0.05, max_depth=4); HistGB(max_iter=300, lr=0.05, max_depth=5); MLP(hidden=(64,32), max_iter=500) |
 | **Target** | Q3 y Q4 |
 | **Ensemble** | Avg prob |
@@ -193,7 +198,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 24; Q4: 36 |
 | **Algoritmo** | XGBoost + HistGB + MLP |
-| **Script** | `train_q3_q4_models_v6.py` |
+| **Script entrenamiento** | `train_q3_q4_models_v6.py` |
+| **Script evaluación / ROI** | `report_model_comparison.py`, `report_db_results.py` |
 | **Hiperparams** | XGB(n_est=v6.n_est, lr=0.05, max_depth=4); HistGB(max_iter=v6.max_it, lr=0.05, max_depth=5); MLP(max_iter=mlp_it) |
 | **Target** | Q3 y Q4 |
 | **Ensemble** | Avg + `xgb_plus_mc` |
@@ -212,7 +218,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 24; Q4: 36 |
 | **Algoritmo** | XGBoost + HistGB + MLP |
-| **Script** | `train_q3_q4_models_v6_1.py` |
+| **Script entrenamiento** | `train_q3_q4_models_v6_1.py` |
+| **Script evaluación / ROI** | `test_v6_1_league_filter.py`, `report_model_comparison.py` |
 | **Hiperparams** | XGB(n_est=500, lr=0.03, max_depth=5, subsample=0.85, colsample=0.85, min_child_weight=3, reg_alpha=0.1, reg_lambda=1.5); HistGB(max_iter=400, lr=0.03, max_depth=5); MLP(hidden=(64,32)) |
 | **Target** | Q3 y Q4 |
 | **Ensemble** | **AUC-weighted** + isotonic calibration |
@@ -231,7 +238,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 24; Q4: 36 |
 | **Algoritmo** | XGBoost + HistGB (sin MLP) |
-| **Script** | `train_q3_q4_models_v6_2.py` |
+| **Script entrenamiento** | `train_q3_q4_models_v6_2.py` |
+| **Script evaluación / ROI** | `report_v62_q4_roi.py`, `report_model_comparison.py` |
 | **Hiperparams** | XGB(n_est=300, lr=0.05, max_depth=4); HistGB(max_iter=300, lr=0.05, max_depth=5) |
 | **Target** | Q3 y Q4 |
 | **Ensemble** | **Blend: 0.6 * XGB + 0.4 * HistGB** |
@@ -250,7 +258,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 24; Q4: 36 |
 | **Algoritmo** | XGBoost + HistGB + MLP |
-| **Script** | `train_q3_q4_models_v6_2b.py` |
+| **Script entrenamiento** | `train_q3_q4_models_v6_2b.py` |
+| **Script evaluación / ROI** | `report_v62_q4_roi.py` |
 | **Hiperparams** | XGB(n_est=300, lr=0.05, max_depth=4); HistGB(max_iter=300, lr=0.05, max_depth=5); MLP(max_iter=500) |
 | **Target** | Q3 y Q4 |
 | **Ensemble** | Avg simple |
@@ -269,7 +278,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | **Dual: 27 y 30** (dinámico por partido) |
 | **Algoritmo** | XGBoost + HistGB (sin MLP) |
-| **Script** | `train_q4_models_v6_3.py` |
+| **Script entrenamiento** | `train_q4_models_v6_3.py` |
+| **Script evaluación / ROI** | `report_v63_q4_roi.py`, `compare_model_versions.py` |
 | **Hiperparams** | XGB(n_est=300, lr=0.05, max_depth=4); HistGB(max_iter=300, lr=0.05, max_depth=5) |
 | **Target** | **Solo Q4** (descarta Q3) |
 | **Ensemble** | Avg simple (champion = `avg_prob(xgb, hist_gb)`) + isotonic |
@@ -293,7 +303,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 24; Q4: 36 |
 | **Algoritmo** | **CatBoost** + **XGBoost (enable_categorical=True)** |
-| **Script** | `train_q3_q4_models_v7.py` |
+| **Script entrenamiento** | `train_q3_q4_models_v7.py` |
+| **Script evaluación / ROI** | `report_model_comparison.py` |
 | **Hiperparams** | CatBoost(iterations=500, lr=0.05, depth=6); XGB(n_est=500, lr=0.05, max_depth=4, enable_categorical=True) |
 | **Target** | Q3 y Q4 |
 | **Ensemble** | No ensemble (modelos independientes) |
@@ -311,7 +322,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 24; Q4: 36 |
 | **Algoritmo** | **LSTM + Dense (PyTorch)** |
-| **Script** | `train_q3_q4_models_v8.py` |
+| **Script entrenamiento** | `train_q3_q4_models_v8.py` |
+| **Script evaluación / ROI** | `report_model_comparison.py` |
 | **Arquitectura** | LSTM(hidden=24) + Tabular(64→32) → FC(56→16→1, Sigmoid). Adam, 25 epochs, lr=0.005, batch=64 |
 | **Target** | Q3 y Q4 |
 | **Ensemble** | Standalone PyTorch |
@@ -329,7 +341,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 24; Q4: 36 |
 | **Algoritmo** | **LogReg + GB** (sin XGB, sin HistGB, sin DL) |
-| **Script** | `train_q3_q4_models_v9.py` |
+| **Script entrenamiento** | `train_q3_q4_models_v9.py` (`train_v9_fast.py`, `populate_v9.py`) |
+| **Script evaluación / ROI** | `report_model_comparison.py` |
 | **Hiperparams** | LogReg(C=0.5, max_iter=500); GB(n_est=50, max_depth=3, lr=0.15, min_samples_split=30, min_samples_leaf=15) |
 | **Target** | Q3 y Q4 |
 | **Ensemble** | Weighted (Q4: 0.5LR + 0.5GB) |
@@ -347,7 +360,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 24; Q4: 36 |
 | **Algoritmo** | **Ridge + GBR + XGBoost (regression)** |
-| **Script** | `train_q3_q4_regression_v10.py` |
+| **Script entrenamiento** | `train_q3_q4_regression_v10.py` (`train_v10_fast.py`, `train_v10_simple.py`) |
+| **Script evaluación / ROI** | `batch_populate_evals.py` |
 | **Hiperparams** | GBR(n_est=80, max_depth=3, lr=0.1); XGB(n_est=80, max_depth=3, lr=0.1) |
 | **Target** | **Puntos totales Q3/Q4** (regresión, no clasificación) |
 | **Ensemble** | Avg, weighted, stacking |
@@ -365,7 +379,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 24; Q4: 36 |
 | **Algoritmo** | Ridge + GBR + XGBoost |
-| **Script** | `train_q3_q4_regression_v11.py` |
+| **Script entrenamiento** | `train_q3_q4_regression_v11.py` |
+| **Script evaluación / ROI** | `predict_v11.py` |
 | **Hiperparams** | GBR(n_est=80, max_depth=3, lr=0.1); XGB(n_est=80, max_depth=3, lr=0.1) |
 | **Target** | Puntos totales (**gender-separated**: men vs women) |
 | **Ensemble** | Avg, weighted, stacking |
@@ -383,7 +398,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 22; Q4: **31** |
 | **Algoritmo** | XGB + LightGBM + CatBoost + LogReg + GB + **Stacking meta-learner** |
-| **Script** | `v12/train_v12.py` |
+| **Script entrenamiento** | `v12/train_v12.py` |
+| **Script evaluación / ROI** | `v12/eval_v12.py`, `v12/validate_v12.py`, `report_v12_v13.py` |
 | **Hiperparams** | Múltiples algoritmos. Risk: loss 2x reward. |
 | **Target** | Q3 y Q4 + regression confirmation |
 | **Ensemble** | **Stacking** meta-learner |
@@ -402,7 +418,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 22; Q4: 31 |
 | **Algoritmo** | XGB + LightGBM + CatBoost + LogReg + GB + stacking |
-| **Script** | `v13/train_v13.py` |
+| **Script entrenamiento** | `v13/train_v13.py` (`v13/train_clf.py`, `v13/train_reg.py`) |
+| **Script evaluación / ROI** | `v13/eval_v13.py`, `v13/walk_forward.py`, `report_v12_v13.py` |
 | **Hiperparams** | GB(n_est=100, max_depth=3, lr=0.1); XGB(n_est=150, max_depth=4, lr=0.08); LGB(n_est=150, max_depth=5, lr=0.08); CatBoost(iterations=200, depth=5, lr=0.08); Stacking meta-learner |
 | **Target** | Q3 y Q4 + totals |
 | **Ensemble** | Stacking + calibración per-league |
@@ -424,7 +441,8 @@ Todos los modelos comparten:
 | Campo | Valor |
 |-------|-------|
 | **Notas** | Solo existe `PLAN_V14.md`. Sin script de entrenamiento. Planeaba integrar TimesFM como regresor complementario. |
-| **Script** | — |
+| **Script entrenamiento** | — (Solo planificación en `PLAN_V14.md`) |
+| **Script evaluación / ROI** | — |
 | **Features** | G1 (score), G2 (graph), **G3** (trajectory v14) |
 | **Plan** | Fase 1: TimesFM ⇒ regresión; Fase 2: Refactor feature pipeline; Fase 3: Gates dinámicos |
 
@@ -436,7 +454,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 22; Q4: **31** (train snaps: Q3 [18-23], Q4 [28-32]) |
 | **Algoritmo** | **Per-league**: LogReg + GB + XGB + CatBoost (selección por n) |
-| **Script** | `v15/train.py` |
+| **Script entrenamiento** | `v15/train.py` |
+| **Script evaluación / ROI** | `v15/evaluate.py`, `v15/test_roi.py` |
 | **Hiperparams** | LogReg(C=0.3); GB(n_est=80, max_depth=3, lr=0.06, min_samples_leaf=20, subsample=0.8); XGB(n_est=80, max_depth=3, lr=0.06, min_child_weight=10, reg_lambda=3.0, reg_alpha=0.5) |
 | **Target** | Q3, Q4 winner + regression |
 | **Ensemble** | **Inverse-error weighted** (F1 para clf, 1/MAE para reg) + isotonic |
@@ -458,7 +477,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 22; Q4: 31 |
 | **Algoritmo** | Per-league + **TimesFM** + **Chronos** (time-series foundation models) |
-| **Script** | `v16/train.py` |
+| **Script entrenamiento** | `v16/train.py` |
+| **Script evaluación / ROI** | `v16/evaluate.py`, `v16/test_roi.py`, `v16/test_roi_cli.py`, `v16/ab_compare.py` |
 | **Hiperparams** | LogReg(C=0.3); GB(n_est=80, max_depth=3, lr=0.06, min_samples_leaf=20, subsample=0.8); XGB(n_est=80, max_depth=3, lr=0.06, min_child_weight=10, reg_lambda=3.0, reg_alpha=0.5); + TimesFM/Chronos forecast features |
 | **Target** | Q3, Q4 winner + regression |
 | **Ensemble** | Inverse-error weighted + isotonic |
@@ -479,7 +499,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | Q3: 22; Q4: 31 |
 | **Algoritmo** | Per-league + TimesFM/Chronos |
-| **Script** | `v17/train.py` |
+| **Script entrenamiento** | `v17/train.py` |
+| **Script evaluación / ROI** | `v17/evaluate.py`, `v17/test_roi.py`, `v17/test_roi_cli.py`, `v17/ab_compare.py` |
 | **Hiperparams** | LogReg(C=0.3); GB(n_est=80, max_depth=3, lr=0.06, min_samples_leaf=20, subsample=0.8); XGB(n_est=80, max_depth=3, lr=0.06, min_child_weight=10, reg_lambda=3.0, reg_alpha=0.5); + TimesFM/Chronos + Legacy Hybrid (pressure, clutch, MC) |
 | **Target** | Q3, Q4 winner + regression |
 | **Ensemble** | Inverse-error weighted + isotonic |
@@ -500,7 +521,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | **27** |
 | **Algoritmo** | XGBoost + HistGradientBoosting |
-| **Script** | `train_q4_m27_v1.py` |
+| **Script entrenamiento** | `train_q4_m27_v1.py` |
+| **Script evaluación / ROI** | `report_m_v1_roi.py`, `m27_v1_league_policy.py`, `compare_model_versions.py` |
 | **Hiperparams** | XGB(n_est=300, lr=0.05, max_depth=4); HistGB(max_iter=300, lr=0.05, max_depth=5) |
 | **Target** | **Solo Q4** |
 | **Ensemble** | Avg simple + isotonic |
@@ -524,7 +546,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | **27** |
 | **Algoritmo** | XGBoost + HistGradientBoosting |
-| **Script** | `train_q4_m27_v2.py` |
+| **Script entrenamiento** | `train_q4_m27_v2.py` |
+| **Script evaluación / ROI** | `report_m_v1_roi.py`, `compare_model_versions.py` |
 | **Hiperparams** | XGB(n_est=300, lr=0.05, max_depth=4); HistGB(max_iter=300, lr=0.05, max_depth=5) |
 | **Target** | **Solo Q4** |
 | **Ensemble** | AUC-weighted (XGB 48% / HistGB 52%) + isotonic |
@@ -549,7 +572,9 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | **27** |
 | **Algoritmo** | XGBoost + HistGradientBoosting |
-| **Script** | `train_q4_m27_v3.py` |
+| **Script entrenamiento** | `train_q4_m27_v3.py` |
+| **Script evaluación / ROI** | `report_m_v1_roi.py`, `compare_model_versions.py` |
+| **Script inferencia** | `infer_match.py` (`score_m27_v3`) |
 | **Hiperparams** | XGB(n_est=300, lr=0.05, max_depth=4); HistGB(max_iter=300, lr=0.05, max_depth=5) |
 | **Target** | **Solo Q4** |
 | **Ensemble** | AUC-weighted (XGB + HistGB) + isotonic |
@@ -613,7 +638,8 @@ Todos los modelos comparten:
 |-------|-------|
 | **Snapshot** | **30** |
 | **Algoritmo** | XGBoost + HistGradientBoosting |
-| **Script** | `train_q4_m30_v1.py` |
+| **Script entrenamiento** | `train_q4_m30_v1.py` |
+| **Script evaluación / ROI** | `compare_q4_min30_models.py`, `report_m_v1_roi.py` |
 | **Hiperparams** | XGB(n_est=300, lr=0.05, max_depth=4); HistGB(max_iter=300, lr=0.05, max_depth=5) |
 | **Target** | **Solo Q4** |
 | **Ensemble** | Avg simple + isotonic |
@@ -658,6 +684,7 @@ Todos los modelos comparten:
 | V17 | 31 | Acc only | 0.595 val / 0.609 hold | 7,488 / 5,518 | Snapshot 31. 67/150 ligas. Holdout 17k grande. **Holdout con sesgo de gates**. | +G9 legacy hybrid |
 | **m27_v1** | **27** | **0.668** | 0.626 | 3,713 | **Snapshot 27 (3m Q4 real)**. Sin filtro. Match-level. | **Señal real pre-Q4** |
 | **m27_v2** | **27** | **0.668** / 0.671\* | 0.623 / 0.626 | 4,132 | \*10m filter. 86 feat (7 podadas). Match-level. | Idéntico a v1. Recent windows dominan. Features nuevas no suman |
+| **m27_v3** | **27** | **0.789** | **0.705** | 4,132 | Snapshot 27. **+H2H features (28.5% imp)**. 99% test cov. Match-level. | **Campeón actual (+13% a +29% Yield)** |
 | **m30_v1** | **30** | 0.585 | 0.562 | 4,144 | **Snapshot 30 (sin Q4 real)**. Sin filtro. Match-level. | Límite ~0.59 |
 
 ---

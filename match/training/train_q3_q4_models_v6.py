@@ -45,7 +45,7 @@ if str(ROOT) not in sys.path:
 
 db_mod = importlib.import_module("db")
 
-DB_PATH = ROOT / "matches.db"
+DB_PATH = ROOT.parent / "matches.db"
 OUT_DIR = ROOT / "training" / "model_outputs_v6"
 TOP_LEAGUES = 20
 TOP_TEAMS = 120

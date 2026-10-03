@@ -33,7 +33,7 @@ import match.scraper as scraper
 import match.db as db_mod
 import infer_match
 
-DB_PATH = str(ROOT / "match" / "matches.db")
+DB_PATH = str(ROOT / "matches.db")
 
 WAIT_BASE_SECS = 60
 WAIT_JITTER_SECS = 30

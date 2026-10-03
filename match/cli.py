@@ -66,7 +66,7 @@ import db as db_mod
 import ml_tools as ml_mod
 import scraper as scraper_mod
 
-DEFAULT_DB = str(Path(__file__).parent / "matches.db")
+DEFAULT_DB = str(Path(__file__).resolve().parents[1] / "matches.db")
 DEFAULT_RESUME_KEY = "basketball_ft"
 FETCH_DATE_JITTER_MIN_SECS = 0.20
 FETCH_DATE_JITTER_MAX_SECS = 0.90

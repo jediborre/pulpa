@@ -4,7 +4,7 @@
 #    models, notifications, utils) coordinados asíncronamente por main.py.
 #    Cualquier aproximación monolítica de archivo único viola esta especificación.
 # 2. INFRAESTRUCTURA DB: El archivo base SQLite se localiza exclusivamente en 
-#    /match/matches.db y todas las tablas sin excepción finalizan con el sufijo '_v2'.
+#    /matches.db (en la raíz del proyecto) y todas las tablas sin excepción finalizan con el sufijo '_v2'.
 # 3. TABLA DE LOGS: 'bet_monitor_log_v2' se particiona por modelo y contiene 
 #    obligatoriamente los campos 'raw_json' (TEXT), 'inference_minute' (INT), 
 #    y 'graph_points_count' (INT) junto con marcadores reales del juego.
@@ -41,7 +41,7 @@ _SUBSCRIBERS_SETTING_KEY = "monitor_subscribers"
 
 def _get_subscribers_from_db() -> dict[int, dict]:
     """
-    Lee los chat IDs suscritos desde la tabla `settings` de match/matches.db.
+    Lee los chat IDs suscritos desde la tabla `settings` de matches.db en raíz.
     Retorna un dict {chat_id: {"signal_type": ..., "quarters": [...]}} o vacío si no hay.
     """
     try:
@@ -127,7 +127,7 @@ async def _send_to_chat(chat_id: int, text: str, match_url: str | None = None) -
 
 async def broadcast_message(text: str, signal_type_filter: str = "all", match_url: str | None = None) -> list[dict]:
     """
-    Envía `text` a todos los chat IDs suscritos en match/matches.db.
+    Envía `text` a todos los chat IDs suscritos en matches.db en raíz.
     - signal_type_filter: 'all' envía a todos; 'bet_only' solo a quienes tienen señal operable.
     Retorna lista de respuestas (una por suscriptor).
     """

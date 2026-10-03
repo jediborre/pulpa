@@ -64,7 +64,7 @@ if str(ROOT) not in sys.path:
 
 db_mod = __import__("db")
 
-DB_PATH = ROOT / "matches.db"
+DB_PATH = ROOT.parent / "matches.db"
 OUT_DIR = ROOT / "training" / "v12" / "model_outputs"
 LEAGUE_STATS_FILE = OUT_DIR / "league_stats.json"
 

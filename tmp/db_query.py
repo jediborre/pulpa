@@ -7,7 +7,7 @@ Script interactivo para ejecutar consultas SQL rápidas en matches.db.
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(r"C:\Users\borre\OneDrive\OLD\Escritorio\pulpa\match\matches.db")
+DB_PATH = Path(r"C:\Users\borre\OneDrive\OLD\Escritorio\pulpa\matches.db")
 conn = sqlite3.connect(str(DB_PATH))
 cursor = conn.cursor()
 

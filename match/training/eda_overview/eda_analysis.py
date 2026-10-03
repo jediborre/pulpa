@@ -10,7 +10,7 @@ from collections import Counter, defaultdict
 import json
 
 ROOT = Path(__file__).resolve().parents[2]
-DB_PATH = ROOT / "matches.db"
+DB_PATH = ROOT.parent.parent / "matches.db"
 
 
 def get_conn():

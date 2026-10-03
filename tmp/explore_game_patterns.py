@@ -10,7 +10,7 @@ import json
 import numpy as np
 from collections import Counter
 
-DB = r"C:\Users\borre\OneDrive\OLD\Escritorio\pulpa\match\matches.db"
+DB = r"C:\Users\borre\OneDrive\OLD\Escritorio\pulpa\matches.db"
 conn = sqlite3.connect(DB)
 cur = conn.cursor()
 

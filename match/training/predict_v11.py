@@ -19,7 +19,7 @@ if str(ROOT) not in sys.path:
 
 db_mod = importlib.import_module("db")
 
-DB_PATH = ROOT / "matches.db"
+DB_PATH = ROOT.parent / "matches.db"
 MODEL_DIR = ROOT / "training" / "model_outputs_v11"
 
 ODDS = 1.91

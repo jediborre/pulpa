@@ -40,7 +40,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 db_mod = __import__("db")
 
-DB_PATH = PROJECT_ROOT / "matches.db"
+DB_PATH = PROJECT_ROOT.parent / "matches.db"
 MODEL_DIR = ROOT / "model_outputs"
 LIVE_DIR = Path(__file__).parent
 LIVE_DIR.mkdir(parents=True, exist_ok=True)

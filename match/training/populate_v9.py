@@ -47,7 +47,7 @@ def predict_ensemble(vec, scaler, models, features):
 
 
 def main():
-    conn = db_mod.get_conn(str(ROOT / "matches.db"))
+    conn = db_mod.get_conn(str(ROOT.parent / "matches.db"))
     db_mod.init_db(conn)
     
     # Clear V9 columns only
@@ -59,7 +59,7 @@ def main():
     print("[v9] Cleared existing V9 predictions")
     
     print("[v9] Building samples...")
-    samples = v6._build_samples(ROOT / "matches.db")
+    samples = v6._build_samples(ROOT.parent / "matches.db")
     print(f"[v9] Built {len(samples)} samples")
     
     # Load V9 models

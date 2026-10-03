@@ -50,7 +50,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 db_mod = __import__("db")
 
-DB_PATH = PROJECT_ROOT / "matches.db"
+DB_PATH = PROJECT_ROOT.parent / "matches.db"
 FIX_DIR = Path(__file__).parent
 FIX_DIR.mkdir(parents=True, exist_ok=True)
 

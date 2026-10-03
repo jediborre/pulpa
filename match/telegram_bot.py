@@ -67,9 +67,9 @@ BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 _raw_db_path = os.getenv("MATCH_DB_PATH", "").strip()
 if _raw_db_path:
     _db_p = Path(_raw_db_path)
-    DB_PATH = str(_db_p if _db_p.is_absolute() else BASE_DIR / _db_p)
+    DB_PATH = str(_db_p if _db_p.is_absolute() else PROJECT_ROOT / _db_p)
 else:
-    DB_PATH = str(BASE_DIR / "matches.db")
+    DB_PATH = str(PROJECT_ROOT / "matches.db")
 ALLOWED_CHAT_IDS_RAW = os.getenv("TELEGRAM_ALLOWED_CHAT_IDS", "").strip()
 
 logging.basicConfig(

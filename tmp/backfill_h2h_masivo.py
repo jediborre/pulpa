@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT / "match" / "training"))
 import match.scraper as scraper
 import match.db as db_mod
 
-DB_PATH = str(ROOT / "match" / "matches.db")
+DB_PATH = str(ROOT / "matches.db")
 
 WAIT_BASE_SECS = 30
 WAIT_JITTER_SECS = 15

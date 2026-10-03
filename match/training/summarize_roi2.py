@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DB_PATH = ROOT / "matches.db"
+DB_PATH = ROOT.parent / "matches.db"
 
 def main():
     conn = sqlite3.connect(DB_PATH)

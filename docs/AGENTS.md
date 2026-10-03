@@ -32,16 +32,19 @@ Cada vez que realices cualquier cambio, corrección, refactorización o adición
 - Si se añaden dependencias con pip, hazlo exclusivamente dentro del entorno virtual (`.venv\Scripts\pip.exe install ...`).
 
 ### 3. UBICACIÓN OBLIGATORIA DE LA BASE DE DATOS (matches.db)
-- **UBICACIÓN ÚNICA Y EXCLUSIVA:** La base de datos SQLite histórica y en vivo de todo el sistema se encuentra **estrictamente en**:
+- **UBICACIÓN ÚNICA Y EXCLUSIVA:** La base de datos SQLite histórica y en vivo de todo el sistema se encuentra **estrictamente en la raíz del proyecto**:
   ```
-  match/matches.db
+  matches.db
   ```
-  *(Ruta relativa desde la raíz del proyecto: `match/matches.db`)*.
-- **PROHIBIDO** buscar, instanciar o crear bases de datos `matches.db` en la raíz (`./matches.db`) o en cualquier otro subdirectorio.
-- Cualquier script, consulta SQLite, endpoint de API, modelo de inferencia o tarea de backfill debe conectarse obligatoriamente a esta ruta canónica:
+  *(Ruta relativa desde la raíz del proyecto: `matches.db`)*.
+- **EXCLUSIÓN DE GIT:** El archivo `matches.db` (junto con sus auxiliares `-journal`, `-shm`, `-wal` y copias de respaldo) se encuentra estrictamente ignorado en `.gitignore` para salvaguardar el tamaño del repositorio.
+- **PROHIBIDO** instanciar, buscar o crear bases de datos `matches.db` dentro de `match/` o en cualquier otro subdirectorio.
+- Cualquier script, consulta SQLite, endpoint de API, modelo de inferencia o tarea de backfill debe conectarse obligatoriamente a esta ruta canónica en la raíz:
   ```python
   from pathlib import Path
-  DB_PATH = Path(__file__).resolve().parents[...] / "match" / "matches.db"
+  DB_PATH = Path(__file__).resolve().parents[...] / "matches.db"
+  # O si se ejecuta directamente desde la raíz:
+  DB_PATH = Path("matches.db")
   ```
 
 ### 4. CREACIÓN DE ARCHIVOS AUXILIARES Y EXPERIMENTALES (ESTRICTAMENTE EN /tmp)
@@ -52,6 +55,10 @@ Cada vez que realices cualquier cambio, corrección, refactorización o adición
   - *Ejemplo mejoras de scraping:* Si se prueba una variante de extracción, usar `tmp/scraper_cdp/`.
   - *Ejemplo auditoría o backfill:* Si se auditan enfrentamientos directos, usar `tmp/h2h_audit/`.
 - **CABECERA DOCUMENTADA OBLIGATORIA:** Todo archivo que se cree en `tmp/` debe incluir al inicio un comentario/docstring explicando claramente qué hace, para qué se usa y qué hipótesis o problema aborda.
+
+### 5. CLARIFICACIÓN OBLIGATORIA DE REQUERIMIENTOS (PREGUNTAR ANTES DE ASUMIR)
+- **CERO ASUNCIONES:** Si una solicitud o instrucción del usuario no está 100% clara, es ambigua, incompleta o deja dudas sobre su alcance o implementación, **ESTÁ ESTRICTAMENTE PROHIBIDO ASUMIR** o adivinar lo que el usuario quiso decir.
+- **PREGUNTAS PROACTIVAS:** El agente debe formular al usuario todas las preguntas necesarias, estructuradas y precisas para clarificar y elaborar correctamente la solicitud antes de actuar o tomar decisiones de diseño por su cuenta.
 
 ---
 
@@ -78,8 +85,8 @@ La versión modular moderna del monitor en tiempo real:
 - **`bet_monitor_v2/scrapers/browser_client.py`:** Conexión CDP a Google Chrome para extracción robusta sin bloqueos.
 - **`bet_monitor_v2/notifications/telegram_bot.py`:** Despacho de mensajes y señales operables a Telegram.
 
-### 3. Base de Datos Central (`match/matches.db`)
-Base de datos SQLite (~737 MB) con almacenamiento histórico masivo:
+### 3. Base de Datos Central (`matches.db` en Raíz)
+Base de datos SQLite (~737 MB, excluida en `.gitignore`) con almacenamiento histórico masivo:
 - `matches`: Metadatos de ~40,000 partidos (equipos, liga, fecha).
 - `quarter_scores` y `quarter_scores_v2`: Marcadores individuales por cuarto (Q1 a Q4).
 - `play_by_play`: Casi 3 millones de eventos jugada a jugada.
@@ -112,7 +119,8 @@ Base de datos SQLite (~737 MB) con almacenamiento histórico masivo:
 
 ## 📌 Resumen de Directrices Técnicas
 - **Archivos Temporales y Auxiliares:** Crear siempre dentro de `tmp/<nombre_tema>/` (ej. `tmp/modelo_100/`). PROHIBIDO dejar scripts o archivos sueltos en la raíz o en los paquetes de producción.
-- **Base de Datos matches.db:** Se ubica estrictamente en `match/matches.db`. PROHIBIDO crear copias o buscarla en la raíz.
+- **Base de Datos matches.db:** Se ubica estrictamente en la raíz (`matches.db`) y está excluida por `.gitignore`. PROHIBIDO buscarla o crear copias en `match/` u otros subdirectorios.
+- **Clarificación de Requerimientos:** Ante solicitudes ambiguas, incompletas o dudosas, formular de inmediato preguntas estructuradas al usuario; nunca asumir intenciones.
 - **Entorno Virtual (.venv):** Obligatorio. Siempre activar `.venv\Scripts\activate` o ejecutar `.venv\Scripts\python.exe`. NUNCA usar Python global.
 - **Codificación en Windows:** Al imprimir a consola, configurar salida UTF-8 (`sys.stdout.reconfigure(encoding='utf-8')`).
 - **Scraping:** Usar siempre Google Chrome Headless vía CDP e inyectar llamadas con `page.evaluate(fetch(...))` para respetar la sesión y evitar baneos Cloudflare (HTTP 403).

@@ -21,6 +21,11 @@ __pycache__/
 # ============================================================
 # Bases de datos SQLite del match (locales, regenerables)
 # ============================================================
+/matches.db
+/matches.db-journal
+/matches.db-shm
+/matches.db-wal
+/matches.db.bak*
 /match/matches.db
 /match/matches.db-journal
 /match/matches.db-shm

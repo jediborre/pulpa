@@ -24,7 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 ROOT = Path(__file__).resolve().parent
 MATCH_DIR = ROOT / "match"
-DB_PATH = MATCH_DIR / "matches.db"
+DB_PATH = ROOT / "matches.db"
 CACHE_DIR = ROOT / "api_cache"   # JSON files: api_cache/v13_2026-04-17.json
 CACHE_DIR.mkdir(exist_ok=True)
 sys.path.insert(0, str(MATCH_DIR))

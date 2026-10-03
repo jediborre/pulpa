@@ -29,7 +29,7 @@ from tqdm import tqdm
 from training.v17 import config
 
 
-DB_PATH = Path(__file__).parents[2] / "matches.db"
+DB_PATH = Path(__file__).parents[3] / "matches.db"
 MODEL_OUTPUTS_DIR = Path(__file__).parent / "model_outputs"
 CACHE_PATH = MODEL_OUTPUTS_DIR / "samples_cache_v17.json"
 

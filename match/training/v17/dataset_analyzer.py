@@ -29,7 +29,7 @@ from typing import Optional
 
 from training.v17 import config
 
-DB_PATH = Path(__file__).resolve().parent.parent.parent / "matches.db"
+DB_PATH = Path(__file__).resolve().parent.parent.parent.parent / "matches.db"
 OUT_DIR = config.V17_DIR / "model_outputs"
 
 

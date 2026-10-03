@@ -7,7 +7,7 @@ Búsqueda y normalización de nombres de equipos en la base de datos.
 import sqlite3
 
 dbs = {
-    "matches": r"c:\Users\App\Desktop\pulpa\match\matches.db",
+    "matches": r"c:\Users\App\Desktop\pulpa\matches.db",
     "schedule": r"c:\Users\App\Desktop\pulpa\match\bet_monitor_schedule.db"
 }
 

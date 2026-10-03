@@ -39,7 +39,7 @@ except ImportError:
 
 db_mod = importlib.import_module("db")
 
-DB_PATH = ROOT / "matches.db"
+DB_PATH = ROOT.parent / "matches.db"
 REPORTS_DIR = ROOT / "reports"
 
 # ── Excel styles ──────────────────────────────────────────────────────────────

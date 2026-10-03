@@ -8,7 +8,7 @@ Análisis de remontadas y cambios de momentum entre Q3 y Q4 para identificar pat
 import sqlite3
 import numpy as np
 
-DB = r"C:\Users\borre\OneDrive\OLD\Escritorio\pulpa\match\matches.db"
+DB = r"C:\Users\borre\OneDrive\OLD\Escritorio\pulpa\matches.db"
 conn = sqlite3.connect(DB)
 cur = conn.cursor()
 

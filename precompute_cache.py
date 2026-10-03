@@ -6,8 +6,8 @@ import time
 import sys
 from pathlib import Path
 
-ROOTDIR = Path(__file__).resolve().parent.parent
-DB_PATH = ROOTDIR / "match" / "matches.db"
+ROOTDIR = Path(__file__).resolve().parent
+DB_PATH = ROOTDIR / "matches.db"
 BASE_URL = "http://127.0.0.1:8000"
 VERSIONS = ['v2', 'v4', 'v6', 'v9', 'v12', 'v13', 'v15', 'v16', 'v17']
 

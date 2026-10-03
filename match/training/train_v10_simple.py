@@ -22,7 +22,7 @@ except ImportError:
     HAS_XGB = False
 
 ROOT = Path(__file__).resolve().parents[1]
-DB_PATH = ROOT / "matches.db"
+DB_PATH = ROOT.parent / "matches.db"
 OUT_DIR = ROOT / "training" / "model_outputs_v10"
 
 

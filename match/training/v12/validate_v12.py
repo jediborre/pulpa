@@ -48,7 +48,7 @@ if str(ROOT) not in sys.path:
 
 db_mod = __import__("db")
 
-DB_PATH = ROOT / "matches.db"
+DB_PATH = ROOT.parent / "matches.db"
 MODEL_DIR = ROOT / "training" / "v12" / "model_outputs"
 EVAL_DIR = ROOT / "training" / "v12" / "eval_outputs"
 VALIDATION_DIR = ROOT / "training" / "v12" / "validation"

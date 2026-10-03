@@ -23,7 +23,7 @@ RESET = "\033[0m"
 
 # Buscar base de datos
 ROOT = Path(__file__).resolve().parents[1]
-DB_PATH = ROOT / "match" / "matches.db"
+DB_PATH = ROOT / "matches.db"
 
 @dataclass
 class Prediction:

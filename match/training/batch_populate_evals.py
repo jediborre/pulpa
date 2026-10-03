@@ -106,7 +106,7 @@ def predict_ensemble(vec, models, features, version=None):
     return sum(probs) / len(probs)
 
 def main():
-    conn = db.get_conn(str(ROOT / "matches.db"))
+    conn = db.get_conn(str(ROOT.parent / "matches.db"))
     
     # 1. Clear eval_match_results
     conn.execute("DELETE FROM eval_match_results")
@@ -133,7 +133,7 @@ def main():
     
     for v_name, v_mod in versions:
         print(f"Building samples and features for {v_name}...")
-        samples = v_mod._build_samples(ROOT / "matches.db")
+        samples = v_mod._build_samples(ROOT.parent / "matches.db")
         print(f"Loaded {len(samples)} samples. Loading models...")
         
         vec_q3, models_q3 = load_ensemble(v_name, "q3")

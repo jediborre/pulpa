@@ -16,7 +16,7 @@ if len(sys.argv) > 1:
     MATCH_ID = sys.argv[1].strip()
 
 
-conn = sqlite3.connect("match/matches.db")
+conn = sqlite3.connect("matches.db")
 conn.row_factory = sqlite3.Row
 cur = conn.cursor()
 

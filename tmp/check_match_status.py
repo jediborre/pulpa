@@ -6,7 +6,7 @@ Comprobación del estado en vivo de partidos monitoreados.
 
 import sqlite3
 
-db_path = r"c:\Users\App\Desktop\pulpa\match\matches.db"
+db_path = r"c:\Users\App\Desktop\pulpa\matches.db"
 conn = sqlite3.connect(db_path)
 conn.row_factory = sqlite3.Row
 cursor = conn.cursor()

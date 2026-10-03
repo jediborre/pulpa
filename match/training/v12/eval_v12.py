@@ -24,7 +24,7 @@ if str(ROOT) not in sys.path:
 db_mod = __import__("db")
 infer_mod = __import__("training.v12.infer_match_v12", fromlist=["run_inference", "prediction_to_dict"])
 
-DB_PATH = ROOT / "matches.db"
+DB_PATH = ROOT.parent / "matches.db"
 MODEL_DIR = ROOT / "training" / "v12" / "model_outputs"
 EVAL_DIR = ROOT / "training" / "v12" / "eval_outputs"
 

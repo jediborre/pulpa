@@ -20,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-DB_PATH = Path(__file__).resolve().parent / "matches.db"
+DB_PATH = Path(__file__).resolve().parents[1] / "matches.db"
 
 
 def _conn() -> sqlite3.Connection:

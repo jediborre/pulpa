@@ -20,7 +20,7 @@ import json
 
 from training.v13 import config
 
-DB_PATH = Path(__file__).parents[2] / "matches.db"
+DB_PATH = Path(__file__).parents[3] / "matches.db"
 
 
 @dataclass

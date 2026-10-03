@@ -4,7 +4,7 @@
 #    models, notifications, utils) coordinados asíncronamente por main.py.
 #    Cualquier aproximación monolítica de archivo único viola esta especificación.
 # 2. INFRAESTRUCTURA DB: El archivo base SQLite se localiza exclusivamente en 
-#    /match/matches.db y todas las tablas sin excepción finalizan con el sufijo '_v2'.
+#    /matches.db (en la raíz del proyecto) y todas las tablas sin excepción finalizan con el sufijo '_v2'.
 # 3. TABLA DE LOGS: 'bet_monitor_log_v2' se particiona por modelo y contiene 
 #    obligatoriamente los campos 'raw_json' (TEXT), 'inference_minute' (INT), 
 #    y 'graph_points_count' (INT) junto con marcadores reales del juego.
@@ -30,19 +30,17 @@ from bet_monitor_v2.config.constants import DB_FILE_PATH
 def get_real_db_path() -> str:
     """
     Normaliza y resuelve la ruta de la base de datos para asegurar compatibilidad
-    entre Windows y Unix. Si la ruta absoluta /match/matches.db no es escribible,
-    o está vacía/incompleta, hace fallback al directorio match/ del workspace.
+    entre Windows y Unix. Ubica matches.db en la raíz del proyecto.
     """
-    p = Path(DB_FILE_PATH)
-    workspace_db = Path(__file__).resolve().parents[2] / "match" / "matches.db"
-    
-    # Comprobar si el archivo /match/matches.db ya existe y tiene tamaño real (los 600MB)
-    if p.exists() and p.stat().st_size > 1000000:
-        return str(p.resolve())
-        
-    # Si existe en el workspace local con el tamaño de 600MB, usar la de local workspace
+    workspace_db = Path(__file__).resolve().parents[2] / "matches.db"
     if workspace_db.exists() and workspace_db.stat().st_size > 1000000:
         return str(workspace_db.resolve())
+
+    p = Path(DB_FILE_PATH)
+    if not p.is_absolute():
+        p = Path(__file__).resolve().parents[2] / p
+    if p.exists() and p.stat().st_size > 1000000:
+        return str(p.resolve())
         
     # Fallback genérico resolviendo rutas
     if os.name == 'nt':

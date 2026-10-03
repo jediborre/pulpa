@@ -4,7 +4,7 @@
 #    models, notifications, utils) coordinados asíncronamente por main.py.
 #    Cualquier aproximación monolítica de archivo único viola esta especificación.
 # 2. INFRAESTRUCTURA DB: El archivo base SQLite se localiza exclusivamente en 
-#    /match/matches.db y todas las tablas sin excepción finalizan con el sufijo '_v2'.
+#    /matches.db (en la raíz del proyecto) y todas las tablas sin excepción finalizan con el sufijo '_v2'.
 # 3. TABLA DE LOGS: 'bet_monitor_log_v2' se particiona por modelo y contiene 
 #    obligatoriamente los campos 'raw_json' (TEXT), 'inference_minute' (INT), 
 #    y 'graph_points_count' (INT) junto con marcadores reales del juego.
@@ -45,7 +45,7 @@ SOFASCORE_SCRAPER_BACKEND_FT = os.getenv("SOFASCORE_SCRAPER_BACKEND_FT", SOFASCO
 DISABLE_PRESTART_PROBES = os.getenv("DISABLE_PRESTART_PROBES", "true").strip().lower() in ("1", "true", "yes", "on")
 
 # --- Rutas de Archivos de Configuración e infraestructura ---
-DB_FILE_PATH = "/match/matches.db"          # Ubicación absoluta y estricta de la base de datos
+DB_FILE_PATH = "matches.db"                  # Ubicación de la base de datos central en la raíz
 LEAGUES_CONFIG_PATH = "config/leagues.yaml"  # Ruta del archivo dinámico de ligas
 
 # --- Configuración de Red y Anti-Ban ---

@@ -106,7 +106,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--ids", nargs="+")
     parser.add_argument("--all", action="store_true")
-    parser.add_argument("--db", default=str(ROOT / "match" / "matches.db"))
+    parser.add_argument("--db", default=str(ROOT / "matches.db"))
     parser.add_argument("--limit", type=int, default=5)
     parser.add_argument("--no-h2h", action="store_true")
     parser.add_argument("--no-statistics", action="store_true")

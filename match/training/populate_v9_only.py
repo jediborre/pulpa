@@ -71,7 +71,7 @@ def predict_v9(features, ensemble_data):
 
 
 def main():
-    conn = db_mod.get_conn(str(ROOT / "matches.db"))
+    conn = db_mod.get_conn(str(ROOT.parent / "matches.db"))
     db_mod.init_db(conn)
     
     # Load V9 ensembles
@@ -84,7 +84,7 @@ def main():
     
     # Build samples using V6 module (same features)
     print("[V9] Building samples...")
-    samples = v6._build_samples(ROOT / "matches.db")
+    samples = v6._build_samples(ROOT.parent / "matches.db")
     print(f"[V9] Built {len(samples)} samples")
     
     # Populate predictions

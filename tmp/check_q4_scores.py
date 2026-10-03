@@ -8,7 +8,7 @@ import sys, io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 import sqlite3
 
-conn = sqlite3.connect('match/matches.db')
+conn = sqlite3.connect('matches.db')
 conn.row_factory = sqlite3.Row
 cur = conn.cursor()
 

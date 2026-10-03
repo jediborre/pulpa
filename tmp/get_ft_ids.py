@@ -8,7 +8,7 @@ import sqlite3
 import sys, io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-conn = sqlite3.connect('match/matches.db')
+conn = sqlite3.connect('matches.db')
 conn.row_factory = sqlite3.Row
 
 # Tomar los primeros 5 partidos fallidos del 27 con su match_id

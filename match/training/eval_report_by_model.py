@@ -12,7 +12,7 @@ import argparse
 from pathlib import Path
 from collections import defaultdict
 
-DB_PATH = Path(__file__).resolve().parents[1] / "matches.db"
+DB_PATH = Path(__file__).resolve().parents[2] / "matches.db"
 ODDS = 1.91
 
 

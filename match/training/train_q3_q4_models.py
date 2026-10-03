@@ -22,7 +22,7 @@ if str(ROOT) not in sys.path:
 
 import db as db_mod
 
-DB_PATH = ROOT / "matches.db"
+DB_PATH = ROOT.parent / "matches.db"
 OUT_DIR = ROOT / "training" / "model_outputs"
 
 

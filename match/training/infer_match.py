@@ -68,7 +68,7 @@ GATE_CONFIG = ROOT / "training" / "model_outputs_v2" / "gate_config.json"
 #   set _CLIP_DATA_TO_CUTOFF = False
 # ---------------------------------------------------------------------------
 _CLIP_DATA_TO_CUTOFF: bool = True
-DB_PATH = ROOT / "matches.db"
+DB_PATH = ROOT.parent / "matches.db"
 _GATE_CACHE: dict | None | bool = None
 
 

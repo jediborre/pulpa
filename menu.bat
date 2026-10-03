@@ -241,7 +241,7 @@ goto MENU
 cls
 echo [+] Backfill historico de matches (matches.db)...
 call .venv\Scripts\activate
-python match\scripts\backfill.py match\matches.db --all --backend chrome --session-rotate 20
+python match\scripts\backfill.py matches.db --all --backend chrome --session-rotate 20
 pause
 goto MENU
 

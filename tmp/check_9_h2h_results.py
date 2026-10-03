@@ -7,7 +7,7 @@ Inspección forense de 9 partidos evaluados por m27_v3 con datos completos de H2
 import sqlite3
 from pathlib import Path
 
-conn = sqlite3.connect("match/matches.db")
+conn = sqlite3.connect("matches.db")
 conn.row_factory = sqlite3.Row
 
 # Get matches evaluated by m27_v3 that have COMPLETE H2H

@@ -8,7 +8,7 @@ import sqlite3
 from tools.stats_cli import Prediction, FusionBorregoEngine, FusionConsensusEngine, get_actual_winner
 
 def main():
-    conn = sqlite3.connect('match/matches.db')
+    conn = sqlite3.connect('matches.db')
     conn.row_factory = sqlite3.Row
     
     matches = conn.execute("""

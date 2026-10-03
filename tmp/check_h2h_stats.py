@@ -5,7 +5,7 @@ Calcula el número total de partidos con datos H2H completos en la base de datos
 """
 
 import sqlite3
-conn = sqlite3.connect('match/matches.db')
+conn = sqlite3.connect('matches.db')
 conn.row_factory = sqlite3.Row
 
 # Total de partidos con H2H

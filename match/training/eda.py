@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DB_PATH = ROOT / "matches.db"
+DB_PATH = ROOT.parent / "matches.db"
 OUT_DIR = ROOT / "training" / "eda_outputs"
 
 

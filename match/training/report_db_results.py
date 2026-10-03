@@ -56,7 +56,7 @@ try:
 except ImportError:
     _HAS_OPENPYXL = False
 
-DB_PATH = ROOT / "matches.db"
+DB_PATH = ROOT.parent / "matches.db"
 REPORTS_DIR = ROOT / "reports"
 QUARTERS = ["q3", "q4"]
 

@@ -50,7 +50,7 @@ except ImportError:
 db_mod = importlib.import_module("db")
 
 TRAINING_DIR = ROOT / "training"
-DB_PATH = ROOT / "matches.db"
+DB_PATH = ROOT.parent / "matches.db"
 REPORTS_DIR = ROOT / "reports"
 
 ODDS = 1.40
