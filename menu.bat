@@ -357,7 +357,7 @@ goto MENU
 cls
 echo [+] M27_V1: Entrenando modelo...
 call .venv\Scripts\activate
-python match\training\train_q4_m27_v1.py
+python models\m27_v1\train.py
 pause
 goto MENU
 
@@ -381,7 +381,7 @@ goto MENU
 cls
 echo [+] V6.2: Entrenando modelo con poda de ligas...
 call .venv\Scripts\activate
-python match\training\train_q3_q4_models_v6_2.py
+python models\v6_2\train.py
 pause
 goto MENU
 
@@ -397,7 +397,7 @@ goto MENU
 cls
 echo [+] V6.2: Entrenando y generando reporte completo...
 call .venv\Scripts\activate
-python match\training\train_q3_q4_models_v6_2.py
+python models\v6_2\train.py
 if errorlevel 1 (
     echo [ERROR] Entrenamiento V6.2 fallo.
     pause
@@ -484,7 +484,7 @@ goto MENU_V63
 cls
 echo [+] Entrenando modelo V2...
 call .venv\Scripts\activate
-python match\training\train_q3_q4_models_v2.py
+python models\v2\train.py
 if errorlevel 1 (
     echo [ERROR] Entrenamiento V2 fallo.
 ) else (
@@ -497,7 +497,7 @@ goto MENU
 cls
 echo [+] Entrenando modelo V6...
 call .venv\Scripts\activate
-python match\training\train_q3_q4_models_v6.py
+python models\v6\train.py
 if errorlevel 1 (
     echo [ERROR] Entrenamiento V6 fallo.
 ) else (
@@ -510,7 +510,7 @@ goto MENU
 cls
 echo [+] Entrenando V2...
 call .venv\Scripts\activate
-python match\training\train_q3_q4_models_v2.py
+python models\v2\train.py
 if errorlevel 1 (
     echo [ERROR] V2 fallo. Abortando.
     pause
@@ -519,7 +519,7 @@ if errorlevel 1 (
 echo [OK] V2 completado.
 echo.
 echo [+] Entrenando V6...
-python match\training\train_q3_q4_models_v6.py
+python models\v6\train.py
 if errorlevel 1 (
     echo [ERROR] V6 fallo.
 ) else (

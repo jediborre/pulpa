@@ -1,0 +1,20 @@
+{
+  "odds": 1.83,
+  "initial_bankroll": 1000,
+  "final_bankroll": 1814987.62,
+  "total_profit": 1813987.62,
+  "roi": 1813.9876,
+  "total_bets": 275,
+  "wins": 235,
+  "losses": 40,
+  "hit_rate": 0.8545,
+  "max_drawdown": 0.1165,
+  "max_consecutive_losses": 2,
+  "skipped_low_confidence": 1268,
+  "skipped_volatility": 0,
+  "skipped_league": 457,
+  "avg_stake": 11218.56,
+  "avg_win": 9455.29,
+  "avg_loss": -10200.12,
+  "sample_size": 1000
+}

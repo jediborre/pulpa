@@ -1,0 +1,1393 @@
+"""Train V6 multi-model predictors for quarter winners (Q3, Q4).
+
+V6 adds Monte Carlo Simulations predicting the rest of the game
+possession by possession using current efficiencies and normal variance.
+"""
+
+from __future__ import annotations
+
+import csv
+import importlib
+import json
+import sys
+from collections import Counter, defaultdict
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+
+import joblib
+import numpy as np
+from tqdm import tqdm
+import xgboost as xgb
+from sklearn.ensemble import HistGradientBoostingClassifier
+from sklearn.isotonic import IsotonicRegression
+from sklearn.neural_network import MLPClassifier
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.metrics import (
+    accuracy_score,
+    brier_score_loss,
+    f1_score,
+    log_loss,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
+import warnings
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.inspection import permutation_importance as sklearn_perm_importance
+from sklearn.exceptions import ConvergenceWarning
+from scipy import stats as scipy_stats
+from scipy.stats import ConstantInputWarning
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+db_mod = importlib.import_module("db")
+
+DB_PATH = ROOT.parent / "matches.db"
+OUT_DIR = ROOT / "training" / "model_outputs_v6"
+TOP_LEAGUES = 20
+TOP_TEAMS = 120
+TEAM_HISTORY_WINDOW = 12
+
+
+@dataclass
+class MatchSample:
+    match_id: str
+    dt: datetime
+    features_q3: dict
+    target_q3: int | None
+    features_q4: dict
+    target_q4: int | None
+
+
+def _quarter_points(data: dict, quarter: str) -> tuple[int | None, int | None]:
+    q = data.get("score", {}).get("quarters", {}).get(quarter)
+    if not q:
+        return None, None
+    return int(q.get("home", 0)), int(q.get("away", 0))
+
+
+def _monte_carlo_win_prob(
+    score_home: int,
+    score_away: int,
+    pbp_home_plays: int,
+    pbp_away_plays: int,
+    pbp_home_pts: float,
+    pbp_away_pts: float,
+    elapsed_minutes: float,
+    minutes_left: float,
+    num_sims: int = 5000,
+) -> dict:
+    home_ppm = _safe_rate(pbp_home_pts, elapsed_minutes)
+    away_ppm = _safe_rate(pbp_away_pts, elapsed_minutes)
+    
+    if home_ppm <= 0 and away_ppm <= 0:
+        if score_home == score_away:
+            return {"mc_home_win_prob": 0.5}
+        return {"mc_home_win_prob": 1.0 if score_home > score_away else 0.0}
+
+    var_home = max(0.01, home_ppm * 1.3)
+    var_away = max(0.01, away_ppm * 1.3)
+
+    sim_home = np.random.normal(score_home + home_ppm * minutes_left, np.sqrt(var_home * minutes_left), num_sims)
+    sim_away = np.random.normal(score_away + away_ppm * minutes_left, np.sqrt(var_away * minutes_left), num_sims)
+
+    home_wins = np.sum(sim_home > sim_away)
+    ties = np.sum(np.abs(sim_home - sim_away) < 0.5)
+    
+    return {"mc_home_win_prob": float(home_wins + 0.5 * ties) / float(num_sims)}
+
+
+def _safe_rate(num: float, den: float) -> float:
+    return float(num / den) if den else 0.0
+
+
+def _count_sign_swings(values: list[int]) -> int:
+    swings = 0
+    prev_sign = 0
+    for value in values:
+        sign = 1 if value > 0 else (-1 if value < 0 else 0)
+        if sign == 0:
+            continue
+        if prev_sign != 0 and sign != prev_sign:
+            swings += 1
+        prev_sign = sign
+    return swings
+
+
+def _infer_gender(league: str, home_team: str, away_team: str) -> str:
+    text = f"{league} {home_team} {away_team}".lower()
+    markers = [
+        "women", "woman", "female", "femen", "fem.", " ladies ",
+        "(w)", " w ", "wnba", "girls",
+    ]
+    for marker in markers:
+        if marker in text:
+            return "women"
+    return "men_or_open"
+
+
+def _graph_stats_upto(graph_points: list[dict], max_minute: int) -> dict:
+    points = [p for p in graph_points if int(p.get("minute", 0)) <= max_minute]
+    values = [int(p.get("value", 0)) for p in points]
+    if not values:
+        return {
+            "gp_count": 0,
+            "gp_last": 0,
+            "gp_peak_home": 0,
+            "gp_peak_away": 0,
+            "gp_area_home": 0,
+            "gp_area_away": 0,
+            "gp_area_diff": 0,
+            "gp_mean_abs": 0.0,
+            "gp_swings": 0,
+            "gp_slope_3m": 0,
+            "gp_slope_5m": 0,
+        }
+
+    area_home = sum(max(v, 0) for v in values)
+    area_away = sum(max(-v, 0) for v in values)
+    mean_abs = sum(abs(v) for v in values) / len(values)
+    
+    slope_3m = values[-1] - values[-4] if len(values) >= 4 else values[-1] - values[0]
+    slope_5m = values[-1] - values[-6] if len(values) >= 6 else (values[-1] - values[0])
+
+    return {
+        "gp_count": len(values),
+        "gp_last": values[-1],
+        "gp_peak_home": max(values),
+        "gp_peak_away": abs(min(values)),
+        "gp_area_home": area_home,
+        "gp_area_away": area_away,
+        "gp_area_diff": area_home - area_away,
+        "gp_mean_abs": mean_abs,
+        "gp_swings": _count_sign_swings(values),
+        "gp_slope_3m": slope_3m,
+        "gp_slope_5m": slope_5m,
+    }
+
+
+def _pbp_stats_upto(pbp: dict, quarters: list[str]) -> dict:
+    home_plays = 0
+    away_plays = 0
+    home_3pt = 0
+    away_3pt = 0
+    home_pts = 0
+    away_pts = 0
+    for quarter in quarters:
+        for play in pbp.get(quarter, []):
+            team = play.get("team")
+            pts = int(play.get("points", 0))
+            if team == "home":
+                home_plays += 1
+                home_pts += pts
+                if pts == 3:
+                    home_3pt += 1
+            elif team == "away":
+                away_plays += 1
+                away_pts += pts
+                if pts == 3:
+                    away_3pt += 1
+
+    total_plays = home_plays + away_plays
+    total_3pt = home_3pt + away_3pt
+    return {
+        "pbp_home_pts_per_play": _safe_rate(home_pts, home_plays),
+        "pbp_away_pts_per_play": _safe_rate(away_pts, away_plays),
+        "pbp_pts_per_play_diff": _safe_rate(home_pts, home_plays) - _safe_rate(away_pts, away_plays),
+        "pbp_home_plays": home_plays,
+        "pbp_away_plays": away_plays,
+        "pbp_plays_diff": home_plays - away_plays,
+        "pbp_home_3pt": home_3pt,
+        "pbp_away_3pt": away_3pt,
+        "pbp_3pt_diff": home_3pt - away_3pt,
+        "pbp_home_plays_share": _safe_rate(home_plays, total_plays),
+        "pbp_home_3pt_share": _safe_rate(home_3pt, total_3pt),
+    }
+
+
+def _quarter_index(label: str) -> int | None:
+    if label.startswith("Q"):
+        try:
+            return int(label[1:])
+        except ValueError:
+            return None
+    return None
+
+
+def _clock_to_seconds(clock: str) -> int | None:
+    if not clock or ":" not in clock:
+        return None
+    try:
+        mm, ss = clock.split(":", 1)
+        return int(mm) * 60 + int(ss)
+    except ValueError:
+        return None
+
+
+def _pbp_events_upto_minute(pbp: dict, cutoff_minute: float) -> list[dict]:
+    events = []
+    for quarter_label, plays in pbp.items():
+        q_idx = _quarter_index(quarter_label)
+        if q_idx is None or q_idx < 1 or q_idx > 4:
+            continue
+
+        q_start = (q_idx - 1) * 12.0
+        for play in plays:
+            rem_sec = _clock_to_seconds(str(play.get("time", "")))
+            if rem_sec is None:
+                continue
+            elapsed_in_q = 12.0 - (rem_sec / 60.0)
+            global_min = q_start + elapsed_in_q
+            if global_min <= cutoff_minute + 1e-9:
+                e = dict(play)
+                e["_global_min"] = global_min
+                events.append(e)
+
+    events.sort(key=lambda e: float(e.get("_global_min", 0.0)))
+    return events
+
+
+def _max_scoring_run(events: list[dict], team_name: str) -> int:
+    best = 0
+    run = 0
+    for event in events:
+        team = event.get("team")
+        pts = int(event.get("points", 0) or 0)
+        if team == team_name and pts > 0:
+            run += pts
+            if run > best:
+                best = run
+        elif team in ("home", "away"):
+            run = 0
+    return best
+
+
+def _pbp_recent_window_features(
+    pbp: dict,
+    cutoff_minute: float,
+    window_minutes: float,
+) -> dict:
+    events_upto = _pbp_events_upto_minute(pbp, cutoff_minute)
+    start_min = max(0.0, cutoff_minute - window_minutes)
+    events = [
+        e
+        for e in events_upto
+        if float(e.get("_global_min", 0.0)) >= start_min
+    ]
+
+    home_points = 0
+    away_points = 0
+    home_events = 0
+    away_events = 0
+    last_scoring = "none"
+    for event in events:
+        team = event.get("team")
+        pts = int(event.get("points", 0) or 0)
+        if team == "home" and pts > 0:
+            home_points += pts
+            home_events += 1
+            last_scoring = "home"
+        elif team == "away" and pts > 0:
+            away_points += pts
+            away_events += 1
+            last_scoring = "away"
+
+    scoring_events = home_events + away_events
+    home_run = _max_scoring_run(events, "home")
+    away_run = _max_scoring_run(events, "away")
+
+    return {
+        "clutch_window_minutes": window_minutes,
+        "clutch_scoring_events": scoring_events,
+        "clutch_home_points": home_points,
+        "clutch_away_points": away_points,
+        "clutch_points_diff": home_points - away_points,
+        "clutch_home_event_share": _safe_rate(home_events, scoring_events),
+        "clutch_home_max_run_pts": home_run,
+        "clutch_away_max_run_pts": away_run,
+        "clutch_run_diff": home_run - away_run,
+        "clutch_last_scoring_home": int(last_scoring == "home"),
+        "clutch_last_scoring_away": int(last_scoring == "away"),
+    }
+
+
+def _score_pressure_features(
+    *,
+    score_home: int,
+    score_away: int,
+    pbp_home_plays: int,
+    pbp_away_plays: int,
+    pbp_home_3pt: int,
+    pbp_away_3pt: int,
+    elapsed_minutes: float,
+    minutes_left: float,
+) -> dict:
+    diff = score_home - score_away
+    abs_diff = abs(diff)
+
+    if diff > 0:
+        trailing_side = "away"
+        trailing_score = score_away
+        trailing_plays = pbp_away_plays
+        trailing_3pt = pbp_away_3pt
+        leading_score = score_home
+    elif diff < 0:
+        trailing_side = "home"
+        trailing_score = score_home
+        trailing_plays = pbp_home_plays
+        trailing_3pt = pbp_home_3pt
+        leading_score = score_away
+    else:
+        trailing_side = "tied"
+        trailing_score = max(score_home, score_away)
+        trailing_plays = max(pbp_home_plays, pbp_away_plays)
+        trailing_3pt = max(pbp_home_3pt, pbp_away_3pt)
+        leading_score = trailing_score
+
+    points_to_tie = abs_diff
+    points_to_lead = abs_diff + (0 if trailing_side == "tied" else 1)
+
+    total_plays = pbp_home_plays + pbp_away_plays
+    pace_events_per_min = _safe_rate(total_plays, elapsed_minutes)
+    trailing_play_share = _safe_rate(trailing_plays, total_plays)
+    trailing_plays_per_min = _safe_rate(trailing_plays, elapsed_minutes)
+
+    trailing_points_per_min = _safe_rate(trailing_score, elapsed_minutes)
+    leading_points_per_min = _safe_rate(leading_score, elapsed_minutes)
+    trailing_points_per_play = _safe_rate(trailing_score, trailing_plays)
+
+    required_ppm_tie = _safe_rate(points_to_tie, minutes_left)
+    required_ppm_lead = _safe_rate(points_to_lead, minutes_left)
+
+    exp_total_events_left = pace_events_per_min * minutes_left
+    exp_trailing_events_left = exp_total_events_left * trailing_play_share
+    req_pts_per_trailing_event = _safe_rate(
+        points_to_tie,
+        exp_trailing_events_left,
+    )
+
+    pressure_ratio_tie = _safe_rate(required_ppm_tie, trailing_points_per_min)
+    pressure_ratio_lead = _safe_rate(
+        required_ppm_lead,
+        trailing_points_per_min,
+    )
+    scoring_gap_per_min = trailing_points_per_min - leading_points_per_min
+    urgency_index = _safe_rate(points_to_lead, minutes_left) * (
+        1.0 + max(0.0, -scoring_gap_per_min)
+    )
+
+    return {
+        "global_diff": diff,
+        "global_abs_diff": abs_diff,
+        "is_tied": int(diff == 0),
+        "trailing_is_home": int(trailing_side == "home"),
+        "trailing_is_away": int(trailing_side == "away"),
+        "trailing_points_to_tie": points_to_tie,
+        "trailing_points_to_lead": points_to_lead,
+        "remaining_minutes_target": minutes_left,
+        "required_ppm_tie": required_ppm_tie,
+        "required_ppm_lead": required_ppm_lead,
+        "trailing_points_per_min": trailing_points_per_min,
+        "leading_points_per_min": leading_points_per_min,
+        "trailing_points_per_play": trailing_points_per_play,
+        "trailing_play_share": trailing_play_share,
+        "trailing_plays_per_min": trailing_plays_per_min,
+        "req_pts_per_trailing_event": req_pts_per_trailing_event,
+        "pressure_ratio_tie": pressure_ratio_tie,
+        "pressure_ratio_lead": pressure_ratio_lead,
+        "scoring_gap_per_min": scoring_gap_per_min,
+        "urgency_index": urgency_index,
+        "trailing_3pt_rate": _safe_rate(trailing_3pt, trailing_plays),
+    }
+
+
+def _is_complete_match(data: dict) -> bool:
+    quarters = data.get("score", {}).get("quarters", {})
+    required = {"Q1", "Q2", "Q3", "Q4"}
+    if not required.issubset(quarters.keys()):
+        return False
+        
+    gp = data.get("graph_points", [])
+    if not gp or len(gp) < 20:
+        return False
+        
+    pbp = data.get("play_by_play", {})
+    if not pbp or not required.issubset(pbp.keys()):
+        return False
+        
+    for q in required:
+        if len(pbp[q]) == 0:
+            return False
+            
+    return True
+
+
+def _collect_top_buckets(conn, top_leagues: int, top_teams: int):
+    league_rows = conn.execute(
+        "SELECT league, COUNT(*) AS n "
+        "FROM matches GROUP BY league ORDER BY n DESC"
+    ).fetchall()
+    team_counter: Counter[str] = Counter()
+    team_rows = conn.execute(
+        "SELECT home_team, away_team FROM matches"
+    ).fetchall()
+    for home_team, away_team in team_rows:
+        if home_team:
+            team_counter[str(home_team)] += 1
+        if away_team:
+            team_counter[str(away_team)] += 1
+
+    top_league_set = {
+        str(r[0]) if r[0] else ""
+        for r in league_rows[:top_leagues]
+    }
+    top_team_set = {team for team, _ in team_counter.most_common(top_teams)}
+    return top_league_set, top_team_set
+
+
+def _bucket(value: str, top_set: set[str], prefix: str) -> str:
+    if value in top_set:
+        return value
+    return f"{prefix}_OTHER"
+
+
+def _build_samples(db_path: Path, date_gte: str | None = None) -> list[MatchSample]:
+    """Build MatchSample list from DB.
+
+    If *date_gte* is given (YYYY-MM-DD string), only matches with date >= that
+    value are loaded via get_match().  team_history is initialised from scratch
+    for that window so prior-win-rate features may be slightly inaccurate for
+    the first few matches; this is acceptable for report/evaluation use-cases
+    where a 3x speed-up matters more than perfect feature fidelity.
+    """
+    conn = db_mod.get_conn(str(db_path))
+    db_mod.init_db(conn)
+
+    top_leagues, top_teams = _collect_top_buckets(
+        conn,
+        top_leagues=TOP_LEAGUES,
+        top_teams=TOP_TEAMS,
+    )
+
+    if date_gte is not None:
+        rows = conn.execute(
+            "SELECT match_id, date, time FROM matches "
+            "WHERE date >= ? "
+            "ORDER BY date, time, match_id",
+            (date_gte,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT match_id, date, time FROM matches "
+            "ORDER BY date, time, match_id"
+        ).fetchall()
+
+    team_history: dict[str, list[int]] = defaultdict(list)
+    samples: list[MatchSample] = []
+
+    for row in tqdm(rows, desc="[v6] Procesando partidos", unit="partido"):
+        match_id = str(row["match_id"])
+        dt = datetime.strptime(
+            f"{row['date']} {row['time']}",
+            "%Y-%m-%d %H:%M",
+        )
+        data = db_mod.get_match(conn, match_id)
+        if data is None or not _is_complete_match(data):
+            continue
+
+        match_info = data["match"]
+        score = data["score"]
+        pbp = data.get("play_by_play", {})
+        graph_points = data.get("graph_points", [])
+
+        q1h, q1a = _quarter_points(data, "Q1")
+        q2h, q2a = _quarter_points(data, "Q2")
+        q3h, q3a = _quarter_points(data, "Q3")
+        q4h, q4a = _quarter_points(data, "Q4")
+        if None in (q1h, q1a, q2h, q2a, q3h, q3a, q4h, q4a):
+            continue
+
+        home_team = match_info.get("home_team", "")
+        away_team = match_info.get("away_team", "")
+        league = match_info.get("league", "")
+
+        home_hist = team_history[home_team][-TEAM_HISTORY_WINDOW:]
+        away_hist = team_history[away_team][-TEAM_HISTORY_WINDOW:]
+        home_prior_wr = _safe_rate(sum(home_hist), len(home_hist))
+        away_prior_wr = _safe_rate(sum(away_hist), len(away_hist))
+
+        base = {
+            "league": league,
+            "league_bucket": _bucket(league, top_leagues, "LEAGUE"),
+            "gender_bucket": _infer_gender(league, home_team, away_team),
+            "home_team_bucket": _bucket(home_team, top_teams, "TEAM"),
+            "away_team_bucket": _bucket(away_team, top_teams, "TEAM"),
+            "home_prior_wr": home_prior_wr,
+            "away_prior_wr": away_prior_wr,
+            "prior_wr_diff": home_prior_wr - away_prior_wr,
+            "prior_wr_sum": home_prior_wr + away_prior_wr,
+            "q1_diff": q1h - q1a,
+            "q2_diff": q2h - q2a,
+        }
+
+        ht_home = q1h + q2h
+        ht_away = q1a + q2a
+
+        features_q3 = dict(base)
+        features_q3.update({
+            "ht_home": ht_home,
+            "ht_away": ht_away,
+            "ht_diff": ht_home - ht_away,
+            "ht_total": ht_home + ht_away,
+        })
+        q3_pbp_stats = _pbp_stats_upto(pbp, ["Q1", "Q2"])
+        features_q3.update(_graph_stats_upto(graph_points, 24))
+        features_q3.update(q3_pbp_stats)
+        features_q3.update(
+            _score_pressure_features(
+                score_home=ht_home,
+                score_away=ht_away,
+                pbp_home_plays=q3_pbp_stats["pbp_home_plays"],
+                pbp_away_plays=q3_pbp_stats["pbp_away_plays"],
+                pbp_home_3pt=q3_pbp_stats["pbp_home_3pt"],
+                pbp_away_3pt=q3_pbp_stats["pbp_away_3pt"],
+                elapsed_minutes=24.0,
+                minutes_left=12.0,
+            )
+        )
+        features_q3.update(
+            _pbp_recent_window_features(
+                pbp,
+                cutoff_minute=24.0,
+                window_minutes=6.0,
+            )
+        )
+        features_q3.update(
+            _monte_carlo_win_prob(
+                score_home=ht_home,
+                score_away=ht_away,
+                pbp_home_plays=q3_pbp_stats["pbp_home_plays"],
+                pbp_away_plays=q3_pbp_stats["pbp_away_plays"],
+                pbp_home_pts=q3_pbp_stats["pbp_home_pts_per_play"] * q3_pbp_stats["pbp_home_plays"],
+                pbp_away_pts=q3_pbp_stats["pbp_away_pts_per_play"] * q3_pbp_stats["pbp_away_plays"],
+                elapsed_minutes=24.0,
+                minutes_left=12.0,
+            )
+        )
+
+        features_q4 = dict(base)
+        score_3q_home = ht_home + q3h
+        score_3q_away = ht_away + q3a
+        features_q4.update({
+            "q3_diff": q3h - q3a,
+            "q3_total": q3h + q3a,
+            "score_3q_home": score_3q_home,
+            "score_3q_away": score_3q_away,
+            "score_3q_diff": score_3q_home - score_3q_away,
+        })
+        q4_pbp_stats = _pbp_stats_upto(pbp, ["Q1", "Q2", "Q3"])
+        features_q4.update(_graph_stats_upto(graph_points, 36))
+        features_q4.update(q4_pbp_stats)
+        features_q4.update(
+            _score_pressure_features(
+                score_home=score_3q_home,
+                score_away=score_3q_away,
+                pbp_home_plays=q4_pbp_stats["pbp_home_plays"],
+                pbp_away_plays=q4_pbp_stats["pbp_away_plays"],
+                pbp_home_3pt=q4_pbp_stats["pbp_home_3pt"],
+                pbp_away_3pt=q4_pbp_stats["pbp_away_3pt"],
+                elapsed_minutes=36.0,
+                minutes_left=12.0,
+            )
+        )
+        features_q4.update(
+            _pbp_recent_window_features(
+                pbp,
+                cutoff_minute=36.0,
+                window_minutes=6.0,
+            )
+        )
+        features_q4.update(
+            _monte_carlo_win_prob(
+                score_home=score_3q_home,
+                score_away=score_3q_away,
+                pbp_home_plays=q4_pbp_stats["pbp_home_plays"],
+                pbp_away_plays=q4_pbp_stats["pbp_away_plays"],
+                pbp_home_pts=q4_pbp_stats["pbp_home_pts_per_play"] * q4_pbp_stats["pbp_home_plays"],
+                pbp_away_pts=q4_pbp_stats["pbp_away_pts_per_play"] * q4_pbp_stats["pbp_away_plays"],
+                elapsed_minutes=36.0,
+                minutes_left=12.0,
+            )
+        )
+
+        target_q3 = None if q3h == q3a else int(q3h > q3a)
+        target_q4 = None if q4h == q4a else int(q4h > q4a)
+
+        samples.append(
+            MatchSample(
+                match_id=match_id,
+                dt=dt,
+                features_q3=features_q3,
+                target_q3=target_q3,
+                features_q4=features_q4,
+                target_q4=target_q4,
+            )
+        )
+
+        home_win = int(score["home"] > score["away"])
+        away_win = 1 - home_win
+        team_history[home_team].append(home_win)
+        team_history[away_team].append(away_win)
+
+    conn.close()
+    return samples
+
+
+def _write_csv(path: Path, rows: list[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not rows:
+        with path.open("w", encoding="utf-8", newline="") as f:
+            f.write("")
+        return
+
+    fieldnames = list(rows[0].keys())
+    with path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _make_models(fast: bool = False) -> dict:
+    n_est = 100 if fast else 300
+    max_it = 100 if fast else 300
+    mlp_it = 200 if fast else 500
+    return {
+        "xgb": xgb.XGBClassifier(
+            n_estimators=n_est,
+            learning_rate=0.05,
+            max_depth=4,
+            random_state=42,
+            n_jobs=-1,
+        ),
+        "hist_gb": HistGradientBoostingClassifier(
+            max_iter=max_it,
+            learning_rate=0.05,
+            max_depth=5,
+            random_state=42,
+        ),
+        "mlp": MLPClassifier(
+            hidden_layer_sizes=(64, 32),
+            activation="relu",
+            solver="adam",
+            max_iter=mlp_it,
+            n_iter_no_change=20,
+            early_stopping=True,
+            validation_fraction=0.1,
+            random_state=42,
+        ),
+    }
+
+
+def _timeseries_cv_metrics(
+    target_name: str,
+    x_all: np.ndarray,
+    y: list[int],
+    n_splits: int = 5,
+) -> list[dict]:
+    tss = TimeSeriesSplit(n_splits=n_splits)
+    rows = []
+    for fold_idx, (train_idx, test_idx) in enumerate(
+        tqdm(list(tss.split(x_all)), desc=f"[v6] CV {target_name.upper()}", unit="fold")
+    ):
+        x_tr = x_all[train_idx]
+        x_te = x_all[test_idx]
+        y_tr = [y[i] for i in train_idx]
+        y_te = [y[i] for i in test_idx]
+        if len(set(y_te)) < 2:
+            continue
+        fold_models = _make_models(fast=True)
+        fold_proba: dict[str, list[float]] = {}
+        for model_name, model in fold_models.items():
+            model.fit(x_tr, y_tr)
+            probs = list(model.predict_proba(x_te)[:, 1])
+            fold_proba[model_name] = probs
+            preds = [1 if p >= 0.5 else 0 for p in probs]
+            row: dict = {
+                "target": target_name,
+                "model": model_name,
+                "fold": fold_idx,
+                "n_train": len(train_idx),
+                "n_test": len(test_idx),
+                "accuracy": round(float(accuracy_score(y_te, preds)), 6),
+                "f1": round(float(f1_score(y_te, preds, zero_division=0)), 6),
+                "log_loss": round(float(log_loss(y_te, probs, labels=[0, 1])), 6),
+                "brier": round(float(brier_score_loss(y_te, probs)), 6),
+            }
+            auc = _safe_auc(y_te, probs)
+            row["roc_auc"] = None if auc is None else round(auc, 6)
+            rows.append(row)
+        ens = [
+            sum(fold_proba[nm][i] for nm in fold_models) / len(fold_models)
+            for i in range(len(y_te))
+        ]
+        preds_ens = [1 if p >= 0.5 else 0 for p in ens]
+        ens_row: dict = {
+            "target": target_name,
+            "model": "ensemble_avg_prob",
+            "fold": fold_idx,
+            "n_train": len(train_idx),
+            "n_test": len(test_idx),
+            "accuracy": round(float(accuracy_score(y_te, preds_ens)), 6),
+            "f1": round(float(f1_score(y_te, preds_ens, zero_division=0)), 6),
+            "log_loss": round(float(log_loss(y_te, ens, labels=[0, 1])), 6),
+            "brier": round(float(brier_score_loss(y_te, ens)), 6),
+        }
+        auc = _safe_auc(y_te, ens)
+        ens_row["roc_auc"] = None if auc is None else round(auc, 6)
+        rows.append(ens_row)
+    return rows
+
+
+def _multi_split_metrics(
+    target_name: str,
+    x_all: np.ndarray,
+    y: list[int],
+    ratios: tuple = (0.60, 0.70, 0.75, 0.80),
+) -> list[dict]:
+    rows = []
+    n_total = len(y)
+    for ratio in tqdm(ratios, desc=f"[v6] MultiSplit {target_name.upper()}", unit="split"):
+        n_train = int(n_total * ratio)
+        x_tr, x_te = x_all[:n_train], x_all[n_train:]
+        y_tr, y_te = y[:n_train], y[n_train:]
+        if len(set(y_te)) < 2 or n_train < 100:
+            continue
+        split_models = _make_models(fast=False)
+        split_proba: dict[str, list[float]] = {}
+        for model_name, model in split_models.items():
+            model.fit(x_tr, y_tr)
+            probs = list(model.predict_proba(x_te)[:, 1])
+            split_proba[model_name] = probs
+            preds = [1 if p >= 0.5 else 0 for p in probs]
+            row: dict = {
+                "target": target_name,
+                "train_ratio": ratio,
+                "n_train": n_train,
+                "n_test": len(y_te),
+                "model": model_name,
+                "accuracy": round(float(accuracy_score(y_te, preds)), 6),
+                "f1": round(float(f1_score(y_te, preds, zero_division=0)), 6),
+                "log_loss": round(float(log_loss(y_te, probs, labels=[0, 1])), 6),
+                "brier": round(float(brier_score_loss(y_te, probs)), 6),
+            }
+            auc = _safe_auc(y_te, probs)
+            row["roc_auc"] = None if auc is None else round(auc, 6)
+            rows.append(row)
+        ens = [
+            sum(split_proba[nm][i] for nm in split_models) / len(split_models)
+            for i in range(len(y_te))
+        ]
+        preds_ens = [1 if p >= 0.5 else 0 for p in ens]
+        ens_row: dict = {
+            "target": target_name,
+            "train_ratio": ratio,
+            "n_train": n_train,
+            "n_test": len(y_te),
+            "model": "ensemble_avg_prob",
+            "accuracy": round(float(accuracy_score(y_te, preds_ens)), 6),
+            "f1": round(float(f1_score(y_te, preds_ens, zero_division=0)), 6),
+            "log_loss": round(float(log_loss(y_te, ens, labels=[0, 1])), 6),
+            "brier": round(float(brier_score_loss(y_te, ens)), 6),
+        }
+        auc = _safe_auc(y_te, ens)
+        ens_row["roc_auc"] = None if auc is None else round(auc, 6)
+        rows.append(ens_row)
+    return rows
+
+
+def _permutation_importance_rows(
+    target_name: str,
+    model_name: str,
+    model,
+    x_test: np.ndarray,
+    y_test: list[int],
+    feature_names: list[str],
+    n_repeats: int = 10,
+) -> list[dict]:
+    result = sklearn_perm_importance(
+        model,
+        x_test,
+        np.array(y_test),
+        n_repeats=n_repeats,
+        random_state=42,
+        scoring="roc_auc",
+        n_jobs=-1,
+    )
+    rows = []
+    for i, (mean_imp, std_imp) in enumerate(
+        zip(result.importances_mean, result.importances_std)
+    ):
+        rows.append({
+            "target": target_name,
+            "model": model_name,
+            "feature": feature_names[i],
+            "perm_importance_mean": round(float(mean_imp), 6),
+            "perm_importance_std": round(float(std_imp), 6),
+        })
+    rows.sort(key=lambda r: -r["perm_importance_mean"])
+    return rows
+
+
+def _feature_correlation_rows(
+    target_name: str,
+    x_all: np.ndarray,
+    y: list[int],
+    feature_names: list[str],
+) -> list[dict]:
+    y_arr = np.array(y)
+    rows = []
+    for i, fname in enumerate(feature_names):
+        col = x_all[:, i]
+        if np.std(col) == 0.0:
+            corr, pval = 0.0, 1.0
+        else:
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", ConstantInputWarning)
+                    corr, pval = scipy_stats.pointbiserialr(y_arr, col)
+            except Exception:
+                corr, pval = 0.0, 1.0
+        rows.append({
+            "target": target_name,
+            "feature": fname,
+            "pointbiserial_corr": round(float(corr), 6),
+            "pvalue": round(float(pval), 6),
+            "abs_corr": round(abs(float(corr)), 6),
+            "significant_p05": int(float(pval) < 0.05),
+        })
+    rows.sort(key=lambda r: -r["abs_corr"])
+    return rows
+
+
+def _print_cv_summary(cv_rows: list[dict], target_name: str) -> None:
+    by_model: dict[str, dict[str, list[float]]] = {}
+    for row in cv_rows:
+        if row["target"] != target_name:
+            continue
+        m = row["model"]
+        if m not in by_model:
+            by_model[m] = {"accuracy": [], "roc_auc": [], "log_loss": [], "brier": []}
+        for metric in ("accuracy", "roc_auc", "log_loss", "brier"):
+            val = row.get(metric)
+            if val is not None:
+                by_model[m][metric].append(float(val))
+
+    print(f"\n{'=' * 72}")
+    print(f"  CV Summary (TimeSeriesSplit, 5 folds) — {target_name.upper()}")
+    print(f"{'=' * 72}")
+    print(f"  {'Model':<22} {'AUC':>14} {'Accuracy':>14} {'LogLoss':>12} {'Brier':>10}")
+    print(f"  {'-' * 70}")
+    for mn in ("xgb", "hist_gb", "mlp", "ensemble_avg_prob"):
+        if mn not in by_model:
+            continue
+        d = by_model[mn]
+
+        def fmt(key: str) -> str:
+            vals = d.get(key, [])
+            if not vals:
+                return "       N/A"
+            mean = sum(vals) / len(vals)
+            std = (sum((v - mean) ** 2 for v in vals) / len(vals)) ** 0.5
+            return f"{mean:.3f}±{std:.3f}"
+
+        print(f"  {mn:<22} {fmt('roc_auc'):>14} {fmt('accuracy'):>14} {fmt('log_loss'):>12} {fmt('brier'):>10}")
+    print()
+
+
+def _print_multi_split_summary(multi_rows: list[dict], target_name: str) -> None:
+    print(f"\n{'=' * 72}")
+    print(f"  Multi-Split — {target_name.upper()} | model: ensemble_avg_prob")
+    print(f"{'=' * 72}")
+    print(f"  {'ratio':>6} {'n_train':>9} {'n_test':>8} {'AUC':>8} {'Acc':>8} {'LogLoss':>10} {'Brier':>8}")
+    print(f"  {'-' * 65}")
+    for row in multi_rows:
+        if row["target"] != target_name or row["model"] != "ensemble_avg_prob":
+            continue
+        auc = row.get("roc_auc")
+        auc_s = f"{auc:.4f}" if auc is not None else "   N/A"
+        print(
+            f"  {row['train_ratio']:>6.2f}"
+            f" {row['n_train']:>9}"
+            f" {row['n_test']:>8}"
+            f" {auc_s:>8}"
+            f" {row['accuracy']:>8.4f}"
+            f" {row['log_loss']:>10.4f}"
+            f" {row['brier']:>8.4f}"
+        )
+    print()
+
+
+def _metric_row(
+    target: str,
+    model_name: str,
+    n_total: int,
+    n_train: int,
+    n_test: int,
+    y_true: list[int],
+    probs: list[float],
+) -> dict:
+    preds = [1 if p >= 0.5 else 0 for p in probs]
+
+    metric = {
+        "target": target,
+        "model": model_name,
+        "samples_total": n_total,
+        "samples_train": n_train,
+        "samples_test": n_test,
+        "accuracy": round(float(accuracy_score(y_true, preds)), 6),
+        "f1": round(float(f1_score(y_true, preds)), 6),
+        "precision": round(float(precision_score(y_true, preds)), 6),
+        "recall": round(float(recall_score(y_true, preds)), 6),
+        "log_loss": round(float(log_loss(y_true, probs)), 6),
+        "brier": round(float(brier_score_loss(y_true, probs)), 6),
+    }
+
+    try:
+        metric["roc_auc"] = round(float(roc_auc_score(y_true, probs)), 6)
+    except ValueError:
+        metric["roc_auc"] = None
+
+    return metric
+
+
+def _safe_auc(y_true: list[int], probs: list[float]) -> float | None:
+    try:
+        return float(roc_auc_score(y_true, probs))
+    except ValueError:
+        return None
+
+
+def _split_label_v6(index: int, n_train: int) -> str:
+    return "train" if index < n_train else "test"
+
+
+def _new_support_record(key: str) -> dict:
+    return {
+        "key": key,
+        "total_rows": 0,
+        "train_rows": 0,
+        "test_rows": 0,
+        "positive_rows": 0,
+        "first_date": None,
+        "last_date": None,
+        "train_first_date": None,
+        "train_last_date": None,
+        "test_first_date": None,
+        "test_last_date": None,
+    }
+
+
+def _update_date_range(record: dict, prefix: str, date_value: str) -> None:
+    first_key = f"{prefix}_first_date" if prefix else "first_date"
+    last_key = f"{prefix}_last_date" if prefix else "last_date"
+    if record[first_key] is None or date_value < record[first_key]:
+        record[first_key] = date_value
+    if record[last_key] is None or date_value > record[last_key]:
+        record[last_key] = date_value
+
+
+def _support_by_key(rows: list[dict], key_name: str, target_col: str) -> dict[str, dict]:
+    support: dict[str, dict] = {}
+    for row in rows:
+        key = str(row.get(key_name, ""))
+        record = support.setdefault(key, _new_support_record(key))
+        split = row["support_split"]
+        date_value = str(row["datetime"])[:10]
+        record["total_rows"] += 1
+        record[f"{split}_rows"] += 1
+        record["positive_rows"] += int(row[target_col])
+        _update_date_range(record, "", date_value)
+        _update_date_range(record, split, date_value)
+    for record in support.values():
+        record["target_positive_rate"] = round(
+            _safe_rate(record["positive_rows"], record["total_rows"]), 6
+        )
+        for k, v in list(record.items()):
+            if v is None:
+                record[k] = ""
+    return support
+
+
+def _support_rows(
+    target_name: str, support: dict[str, dict], key_name: str
+) -> list[dict]:
+    rows = []
+    for key, record in sorted(
+        support.items(), key=lambda item: (-int(item[1]["total_rows"]), item[0])
+    ):
+        row = {"target": target_name, key_name: key}
+        for field, value in record.items():
+            if field != "key":
+                row[field] = value
+        rows.append(row)
+    return rows
+
+
+def _add_support_columns(
+    rows: list[dict], support: dict[str, dict], row_key: str, prefix: str
+) -> None:
+    for row in rows:
+        record = support[str(row.get(row_key, ""))]
+        row[f"{prefix}_total_rows"] = record["total_rows"]
+        row[f"{prefix}_train_rows"] = record["train_rows"]
+        row[f"{prefix}_test_rows"] = record["test_rows"]
+        row[f"{prefix}_target_positive_rate"] = record["target_positive_rate"]
+        row[f"{prefix}_first_date"] = record["first_date"]
+        row[f"{prefix}_last_date"] = record["last_date"]
+
+
+def _dataset_rows_with_support(
+    samples: list[MatchSample], target_name: str
+) -> tuple[list[dict], dict[str, list[dict]]]:
+    if target_name == "q3":
+        target_rows = [s for s in samples if s.target_q3 is not None]
+        feature_attr = "features_q3"
+        target_attr = "target_q3"
+        target_col = "target_q3_home_win"
+    else:
+        target_rows = [s for s in samples if s.target_q4 is not None]
+        feature_attr = "features_q4"
+        target_attr = "target_q4"
+        target_col = "target_q4_home_win"
+
+    target_rows = sorted(target_rows, key=lambda item: item.dt)
+    n_total = len(target_rows)
+    n_train = int(n_total * 0.8)
+
+    rows = []
+    for idx, sample in enumerate(target_rows):
+        row = {
+            "match_id": sample.match_id,
+            "datetime": sample.dt.isoformat(),
+            "support_split": _split_label_v6(idx, n_train),
+        }
+        row.update(getattr(sample, feature_attr))
+        row[target_col] = getattr(sample, target_attr)
+        rows.append(row)
+
+    league_support = _support_by_key(rows, "league", target_col)
+    league_bucket_support = _support_by_key(rows, "league_bucket", target_col)
+    home_bucket_support = _support_by_key(rows, "home_team_bucket", target_col)
+    away_bucket_support = _support_by_key(rows, "away_team_bucket", target_col)
+
+    _add_support_columns(rows, league_support, "league", "support_league")
+    _add_support_columns(rows, league_bucket_support, "league_bucket", "support_league_bucket")
+    for row in rows:
+        hs = home_bucket_support[str(row.get("home_team_bucket", ""))]
+        as_ = away_bucket_support[str(row.get("away_team_bucket", ""))]
+        row["support_home_team_bucket_total_rows"] = hs["total_rows"]
+        row["support_home_team_bucket_first_date"] = hs["first_date"]
+        row["support_home_team_bucket_last_date"] = hs["last_date"]
+        row["support_away_team_bucket_total_rows"] = as_["total_rows"]
+        row["support_away_team_bucket_first_date"] = as_["first_date"]
+        row["support_away_team_bucket_last_date"] = as_["last_date"]
+
+    support_exports = {
+        "league": _support_rows(target_name, league_support, "league"),
+        "league_bucket": _support_rows(target_name, league_bucket_support, "league_bucket"),
+        "home_team_bucket": _support_rows(target_name, home_bucket_support, "home_team_bucket"),
+        "away_team_bucket": _support_rows(target_name, away_bucket_support, "away_team_bucket"),
+    }
+    return rows, support_exports
+
+
+def _calibration_diagnostics(
+    target: str,
+    model_name: str,
+    model,
+    x_train,
+    y_train: list[int],
+    x_test,
+    y_test: list[int],
+) -> dict:
+    """Post-hoc isotonic calibration: fitted on training outputs, evaluated on test."""
+    raw_train_probs = model.predict_proba(x_train)[:, 1]
+    raw_test_probs = model.predict_proba(x_test)[:, 1]
+    try:
+        iso = IsotonicRegression(out_of_bounds="clip")
+        iso.fit(raw_train_probs, y_train)
+        calibrated_test_probs = iso.predict(raw_test_probs)
+    except Exception:
+        calibrated_test_probs = raw_test_probs
+
+    raw_ll = round(float(log_loss(y_test, raw_test_probs, labels=[0, 1])), 6)
+    cal_ll = round(float(log_loss(y_test, calibrated_test_probs, labels=[0, 1])), 6)
+    raw_brier = round(float(brier_score_loss(y_test, raw_test_probs)), 6)
+    cal_brier = round(float(brier_score_loss(y_test, calibrated_test_probs)), 6)
+    raw_auc = _safe_auc(list(y_test), list(raw_test_probs))
+    cal_auc = _safe_auc(list(y_test), list(calibrated_test_probs))
+    return {
+        "target": target,
+        "model": model_name,
+        "calibration_method": "isotonic_fitted_on_train",
+        "raw_test_log_loss": raw_ll,
+        "calibrated_test_log_loss": cal_ll,
+        "log_loss_delta_cal_minus_raw": round(cal_ll - raw_ll, 6),
+        "raw_test_brier": raw_brier,
+        "calibrated_test_brier": cal_brier,
+        "raw_test_auc": None if raw_auc is None else round(raw_auc, 6),
+        "calibrated_test_auc": None if cal_auc is None else round(cal_auc, 6),
+    }
+
+
+def _training_period_rows(
+    target_name: str, target_rows: list[MatchSample], n_train: int
+) -> list[dict]:
+    train_set = target_rows[:n_train]
+    test_set = target_rows[n_train:]
+    rows = []
+    for split_name, split_set in [("train", train_set), ("test", test_set)]:
+        if split_set:
+            dates = [s.dt.date().isoformat() for s in split_set]
+            rows.append({
+                "target": target_name,
+                "split": split_name,
+                "n_rows": len(split_set),
+                "first_date": min(dates),
+                "last_date": max(dates),
+            })
+    return rows
+
+
+def _train_target(samples: list[MatchSample], target_name: str) -> dict:
+    if target_name == "q3":
+        target_rows = [s for s in samples if s.target_q3 is not None]
+        target_rows = sorted(target_rows, key=lambda item: item.dt)
+        x_dict = [s.features_q3 for s in target_rows]
+        y = [int(s.target_q3) for s in target_rows]
+    else:
+        target_rows = [s for s in samples if s.target_q4 is not None]
+        target_rows = sorted(target_rows, key=lambda item: item.dt)
+        x_dict = [s.features_q4 for s in target_rows]
+        y = [int(s.target_q4) for s in target_rows]
+
+    n_total = len(target_rows)
+    if n_total < 200:
+        raise RuntimeError(
+            f"Not enough rows for {target_name}. Need >=200, got {n_total}."
+        )
+
+    n_train = int(n_total * 0.8)
+    n_test = n_total - n_train
+
+    vec = DictVectorizer(sparse=False)
+    x_all = vec.fit_transform(x_dict)
+    x_train = x_all[:n_train]
+    x_test = x_all[n_train:]
+    y_train = y[:n_train]
+    y_test = y[n_train:]
+
+    models = _make_models()
+
+    print(f"\n[v6] TimeSeriesSplit CV ({target_name.upper()}) ...")
+    cv_rows = _timeseries_cv_metrics(target_name, x_all, y)
+
+    print(f"[v6] Multi-split metrics ({target_name.upper()}) ...")
+    multi_rows = _multi_split_metrics(target_name, x_all, y)
+
+    print(f"[v6] Feature-target correlation ({target_name.upper()}) ...")
+    correlation_rows = _feature_correlation_rows(target_name, x_all, y, list(vec.feature_names_))
+
+    metrics_rows = []
+    proba_map = {}
+    calibration_rows = []
+    feature_importance_rows = []
+    perm_importance_rows = []
+
+    for model_name, model in tqdm(models.items(), desc=f"[v6] Entrenando {target_name.upper()}", unit="modelo"):
+        model.fit(x_train, y_train)
+        probs = model.predict_proba(x_test)[:, 1]
+        proba_map[model_name] = list(probs)
+
+        metrics_rows.append(
+            _metric_row(
+                target=target_name,
+                model_name=model_name,
+                n_total=n_total,
+                n_train=n_train,
+                n_test=n_test,
+                y_true=y_test,
+                probs=list(probs),
+            )
+        )
+
+        calibration_rows.append(
+            _calibration_diagnostics(
+                target=target_name,
+                model_name=model_name,
+                model=model,
+                x_train=x_train,
+                y_train=y_train,
+                x_test=x_test,
+                y_test=y_test,
+            )
+        )
+
+        if model_name in ("xgb", "hist_gb"):
+            importances = getattr(model, "feature_importances_", None)
+            if importances is not None:
+                for feature, importance in sorted(
+                    zip(vec.feature_names_, importances),
+                    key=lambda item: float(item[1]),
+                    reverse=True,
+                ):
+                    feature_importance_rows.append({
+                        "target": target_name,
+                        "model": model_name,
+                        "feature": feature,
+                        "importance": float(importance),
+                    })
+
+            perm_importance_rows.extend(
+                _permutation_importance_rows(
+                    target_name, model_name, model, x_test, y_test, list(vec.feature_names_)
+                )
+            )
+
+        artifact = {
+            "version": "v6",
+            "target": target_name,
+            "model_name": model_name,
+            "vectorizer": vec,
+            "model": model,
+            "trained_rows": n_total,
+            "feature_count": len(vec.feature_names_),
+        }
+        joblib.dump(artifact, OUT_DIR / f"{target_name}_{model_name}.joblib")
+
+    ensemble_probs = []
+    for idx in range(len(y_test)):
+        vals = [proba_map[name][idx] for name in models]
+        ensemble_probs.append(sum(vals) / len(vals))
+
+    metrics_rows.append(
+        _metric_row(
+            target=target_name,
+            model_name="ensemble_avg_prob",
+            n_total=n_total,
+            n_train=n_train,
+            n_test=n_test,
+            y_true=y_test,
+            probs=ensemble_probs,
+        )
+    )
+
+    agreement = sum(
+        1
+        for idx in range(len(y_test))
+        if len(
+            {
+                int(proba_map["xgb"][idx] >= 0.5),
+                int(proba_map["hist_gb"][idx] >= 0.5),
+                int(proba_map["mlp"][idx] >= 0.5),
+            }
+        )
+        == 1
+    )
+
+    consensus = {
+        "version": "v6",
+        "target": target_name,
+        "n_test": len(y_test),
+        "agreement_rate_all_models": round(agreement / len(y_test), 6),
+    }
+
+    return {
+        "metrics": metrics_rows,
+        "consensus": consensus,
+        "n_rows": n_total,
+        "calibration": calibration_rows,
+        "feature_importance": feature_importance_rows,
+        "period": _training_period_rows(target_name, target_rows, n_train),
+        "cv_metrics": cv_rows,
+        "multi_split": multi_rows,
+        "feature_correlation": correlation_rows,
+        "permutation_importance": perm_importance_rows,
+    }
+
+
+def main() -> None:
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    samples = _build_samples(DB_PATH)
+
+    q3_rows, q3_support = _dataset_rows_with_support(samples, "q3")
+    q4_rows, q4_support = _dataset_rows_with_support(samples, "q4")
+
+    _write_csv(OUT_DIR / "q3_dataset.csv", q3_rows)
+    _write_csv(OUT_DIR / "q4_dataset.csv", q4_rows)
+    _write_csv(OUT_DIR / "league_support_q3.csv", q3_support["league"])
+    _write_csv(OUT_DIR / "league_support_q4.csv", q4_support["league"])
+    _write_csv(OUT_DIR / "league_bucket_support_q3.csv", q3_support["league_bucket"])
+    _write_csv(OUT_DIR / "league_bucket_support_q4.csv", q4_support["league_bucket"])
+    _write_csv(OUT_DIR / "home_team_bucket_support_q3.csv", q3_support["home_team_bucket"])
+    _write_csv(OUT_DIR / "home_team_bucket_support_q4.csv", q4_support["home_team_bucket"])
+    _write_csv(OUT_DIR / "away_team_bucket_support_q3.csv", q3_support["away_team_bucket"])
+    _write_csv(OUT_DIR / "away_team_bucket_support_q4.csv", q4_support["away_team_bucket"])
+
+    q3_result = _train_target(samples, "q3")
+    q4_result = _train_target(samples, "q4")
+
+    _print_cv_summary(q3_result["cv_metrics"], "q3")
+    _print_multi_split_summary(q3_result["multi_split"], "q3")
+    _print_cv_summary(q4_result["cv_metrics"], "q4")
+    _print_multi_split_summary(q4_result["multi_split"], "q4")
+
+    _write_csv(OUT_DIR / "q3_metrics.csv", q3_result["metrics"])
+    _write_csv(OUT_DIR / "q4_metrics.csv", q4_result["metrics"])
+    _write_csv(
+        OUT_DIR / "calibration_diagnostics.csv",
+        q3_result["calibration"] + q4_result["calibration"],
+    )
+    _write_csv(
+        OUT_DIR / "tree_feature_importance.csv",
+        q3_result["feature_importance"] + q4_result["feature_importance"],
+    )
+    _write_csv(
+        OUT_DIR / "training_period.csv",
+        q3_result["period"] + q4_result["period"],
+    )
+    _write_csv(
+        OUT_DIR / "cv_metrics.csv",
+        q3_result["cv_metrics"] + q4_result["cv_metrics"],
+    )
+    _write_csv(
+        OUT_DIR / "multi_split_metrics.csv",
+        q3_result["multi_split"] + q4_result["multi_split"],
+    )
+    _write_csv(
+        OUT_DIR / "feature_target_correlation.csv",
+        q3_result["feature_correlation"] + q4_result["feature_correlation"],
+    )
+    _write_csv(
+        OUT_DIR / "permutation_importance.csv",
+        q3_result["permutation_importance"] + q4_result["permutation_importance"],
+    )
+
+    with (OUT_DIR / "q3_consensus.json").open("w", encoding="utf-8") as f:
+        json.dump(q3_result["consensus"], f, indent=2, ensure_ascii=False)
+    with (OUT_DIR / "q4_consensus.json").open("w", encoding="utf-8") as f:
+        json.dump(q4_result["consensus"], f, indent=2, ensure_ascii=False)
+
+    print("[train-v6] done")
+    print(f"[train-v6] samples_complete={len(samples)}")
+    print(f"[train-v6] q3_rows={q3_result['n_rows']}")
+    print(f"[train-v6] q4_rows={q4_result['n_rows']}")
+    print(f"[train-v6] outputs={OUT_DIR}")
+
+
+if __name__ == "__main__":
+    main()

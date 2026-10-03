@@ -94,12 +94,15 @@ Base de datos SQLite (~737 MB, excluida en `.gitignore`) con almacenamiento hist
 - `match_h2h`: Historial cara a cara entre equipos (354k+ registros).
 - `bet_monitor_log_v2`: Registro auditado de cada predicción en vivo (señal, confianza, resultado win/loss).
 
-### 4. Pipeline de Machine Learning (`match/training/`)
-- **`train_q4_m27_v3.py`:** Script de entrenamiento del modelo **campeón actual (`m27_v3`)** con features de Head-to-Head (AUC 0.789, Yield +13% a +29%).
-- **`train_q4_m27_v1.py` y `train_q4_m27_v2.py`:** Versiones baseline del snapshot 27.
-- **`train_q3_q4_models_v6_2.py`:** Modelo champion v6 con poda de ligas.
-- **`report_m_v1_roi.py`:** Simulador de rentabilidad y ROI con criterio de Kelly.
-- **`infer_match.py`:** Inferencia en vivo reutilizada por el monitor y el bot.
+### 4. Subsistema Unificado de Modelos de Machine Learning (`models/`)
+Toda la suite de ML se organiza bajo el directorio raíz `models/`:
+- **`models/registry.py` e `__init__.py`:** Interfaz universal (`predict`, `predict_all`, `get_available_models`) que desacopla el ML de los monitores.
+- **`models/common/`:** Módulos transversales compartidos (`schema.py` para `PredictionResult`, `data_loader.py` conectado a la raíz, `persistence.py` para `eval_match_results_v2`, `pbp_utils.py`, `time_clip.py`, `h2h.py`, `monte_carlo.py`).
+- **`models/m27_v3/`:** Directorio del modelo **campeón actual (`m27_v3`)** con `train.py`, `predict.py`, `evaluate.py`, `features.py` y `model_outputs/`.
+- **`models/v6_2/`:** Directorio del modelo **campeón Q3/Q4 (`v6_2`)** con poda de ligas.
+- **`models/v6_3/`:** Modelo Q4 con blacklist manual y snapshots tempranos.
+- **`models/v1/` a `models/v17/`:** Versiones históricas y experimentales homologadas.
+- **`match/training/infer_match.py`:** Adaptador retrocompatible preservado para llamadas heredadas.
 
 ### 5. Suite Analítica y Motor de Consenso (`tools/`)
 - **`tools/stats_cli.py` (3,144 líneas):** Contiene el `FusionConsensusEngine` que combina `v6_2` y `m27_v3`, genera reportes a Excel multi-hoja y exporta resúmenes sintéticos (`MetaModel_ALL.txt`).

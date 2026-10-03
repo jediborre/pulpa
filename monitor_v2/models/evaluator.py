@@ -40,8 +40,8 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# Importar el motor de inferencia original
-import match.training.infer_match as infer_live
+# Importar el paquete unificado de modelos
+import models
 
 # Singleton caché de motores analíticos
 _ENGINE_CACHE = {}
@@ -57,19 +57,18 @@ def load_models_to_cache() -> None:
     global _ENGINE_CACHE
     try:
         # Cargar metadatos del campeón v6_2
-        champ_path = ROOT / "match" / "training" / "model_outputs_v6_2" / "q4_champion.joblib"
+        champ_path = ROOT / "models" / "v6_2" / "model_outputs" / "q4_champion.joblib"
         if champ_path.exists():
             _ENGINE_CACHE["v6_2"] = joblib.load(champ_path)
             
         # Cargar artefactos de m27_v3
-        m27_dir = ROOT / "match" / "training" / "model_outputs_m27_v3"
+        m27_dir = ROOT / "models" / "m27_v3" / "model_outputs"
         if m27_dir.exists():
             _ENGINE_CACHE["m27_v3"] = {
                 "xgb": joblib.load(m27_dir / "m27_v3_xgb.joblib"),
                 "hist": joblib.load(m27_dir / "m27_v3_histgb.joblib")
             }
-    except Exception as e:
-        # Silenciar fallos si los archivos no existen aún en local (se construirán o cargarán al inferir)
+    except Exception:
         pass
 
 
@@ -117,9 +116,12 @@ async def evaluate_match_q4(match_id: str, match_payload: dict, watcher_state: G
     try:
         import match.db as db_mod
         db_path = str(ROOT / "matches.db")
-        with db_mod.get_conn(db_path) as db_conn:
+        db_conn = db_mod.get_conn(db_path)
+        try:
             db_mod.init_db(db_conn)
             db_mod.save_match(db_conn, match_id, match_payload)
+        finally:
+            db_conn.close()
     except Exception:
         pass
 
@@ -140,56 +142,47 @@ async def evaluate_match_q4(match_id: str, match_payload: dict, watcher_state: G
     if forced_minute is not None:
         minute_est = forced_minute
     else:
-        minute_est = infer_live._infer_minute_from_pbp(match_payload) or 36
+        from models.common.pbp_utils import infer_minute_from_pbp
+        minute_est = infer_minute_from_pbp(match_payload) or 36
     
     # Ejecutar inferencias en paralelo utilizando asyncio.to_thread
     predictions = {}
     
     async def run_model_inference(model_version: str):
         try:
-            # Ejecutar inferencia a través de la capa entrenada y probada de infer_live
-            res = await asyncio.to_thread(
-                infer_live.run_inference,
+            pred = await asyncio.to_thread(
+                models.predict,
                 match_id=match_id,
-                metric="f1",
-                fetch_missing=False,
-                force_version=model_version,
-                refresh=False,
-                target_only="q4"
+                model_version=model_version,
+                target="q4",
+                match_data=match_payload,
             )
-            return model_version, res
+            return model_version, pred
         except Exception as e:
-            return model_version, {"ok": False, "reason": str(e)}
+            return model_version, models.PredictionResult.unavailable(
+                model_version=model_version,
+                target="q4",
+                reason=str(e),
+            )
 
     # Lanzar tareas concurrentes para cada modelo activo
     tasks = [run_model_inference(m) for m in ACTIVE_MODELS]
     results = await asyncio.gather(*tasks)
     
-    for model_version, res in results:
-        if not res.get("ok"):
-            predictions[model_version] = {
-                "signal": "ERROR",
-                "reason": res.get("reason", "unknown_error")
-            }
-            continue
-
-        q4_pred = res.get("predictions", {}).get("q4", {})
-        if not q4_pred.get("available"):
+    for model_version, pred in results:
+        if not pred.available:
             predictions[model_version] = {
                 "signal": "UNAVAILABLE",
-                "reason": q4_pred.get("reason", "no_data")
+                "reason": pred.reason or "no_data",
             }
             continue
             
         # Extraer probabilidades y pick arrojado por el modelo
-        p_home = q4_pred.get("p_home_win", 0.5)
-        p_away = q4_pred.get("p_away_win", 0.5)
-        predicted_winner = q4_pred.get("predicted_winner") # 'home' o 'away'
-        confidence = q4_pred.get("confidence", 0.0)
-        
-        # Clasificar la señal inicial en base a umbrales ordinarios del modelo
-        # (Si el modelo original emite señal operable o no)
-        bet_signal = q4_pred.get("bet_signal", "NO BET")
+        p_home = pred.p_home_win
+        p_away = pred.p_away_win
+        predicted_winner = pred.pick.lower() # 'home' o 'away'
+        confidence = pred.confidence
+        bet_signal = pred.signal
         
         # Aplicar Reglas de Guardia Temporal y Filtros de Marcador en Q4
         final_signal = "NO_BET"
@@ -244,7 +237,7 @@ async def evaluate_match_q4(match_id: str, match_payload: dict, watcher_state: G
             "actual_home_score": home_score,
             "actual_away_score": away_score,
             "raw_payload": match_payload,
-            "inference_json": res.get("predictions", {})
+            "inference_json": pred.to_dict()
         }
         
     return {"ok": True, "predictions": predictions}

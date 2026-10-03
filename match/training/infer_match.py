@@ -39,18 +39,25 @@ _v6_3_blacklist = None
 COMPARE_JSON = (
     ROOT / "training" / "model_comparison" / "version_comparison.json"
 )
-MODEL_DIR_V1 = ROOT / "training" / "model_outputs"
-MODEL_DIR_V2 = ROOT / "training" / "model_outputs_v2"
-MODEL_DIR_V3 = ROOT / "training" / "model_outputs_v3"
-MODEL_DIR_V4 = ROOT / "training" / "model_outputs_v4"
-MODEL_DIR_V6 = ROOT / "training" / "model_outputs_v6"
-MODEL_DIR_V6_1 = ROOT / "training" / "model_outputs_v6_1"
-MODEL_DIR_V6_2 = ROOT / "training" / "model_outputs_v6_2"
-MODEL_DIR_V6_3 = ROOT / "training" / "model_outputs_v6_3"
-MODEL_DIR_V9 = ROOT / "training" / "model_outputs_v9"
-MODEL_DIR_V10 = ROOT / "training" / "model_outputs_v10"
-MODEL_DIR_M27_V3 = ROOT / "training" / "model_outputs_m27_v3"
-GATE_CONFIG = ROOT / "training" / "model_outputs_v2" / "gate_config.json"
+REPO_ROOT = ROOT.parent
+def _resolve_model_dir(model_name: str, legacy_subpath: str) -> Path:
+    new_path = REPO_ROOT / "models" / model_name / "model_outputs"
+    if new_path.exists():
+        return new_path
+    return ROOT / "training" / legacy_subpath
+
+MODEL_DIR_V1 = _resolve_model_dir("v1", "model_outputs")
+MODEL_DIR_V2 = _resolve_model_dir("v2", "model_outputs_v2")
+MODEL_DIR_V3 = _resolve_model_dir("v3", "model_outputs_v3")
+MODEL_DIR_V4 = _resolve_model_dir("v4", "model_outputs_v4")
+MODEL_DIR_V6 = _resolve_model_dir("v6", "model_outputs_v6")
+MODEL_DIR_V6_1 = _resolve_model_dir("v6_1", "model_outputs_v6_1")
+MODEL_DIR_V6_2 = _resolve_model_dir("v6_2", "model_outputs_v6_2")
+MODEL_DIR_V6_3 = _resolve_model_dir("v6_3", "model_outputs_v6_3")
+MODEL_DIR_V9 = _resolve_model_dir("v9", "model_outputs_v9")
+MODEL_DIR_V10 = _resolve_model_dir("v10", "model_outputs_v10")
+MODEL_DIR_M27_V3 = _resolve_model_dir("m27_v3", "model_outputs_m27_v3")
+GATE_CONFIG = MODEL_DIR_V2 / "gate_config.json"
 
 # ---------------------------------------------------------------------------
 # Feature flag: clip match data to the prediction-window cutoff before
@@ -1863,59 +1870,17 @@ def score_m27_v3(
     conn,
     match_id: str,
 ) -> dict:
-    from train_q4_m27_v3 import _build_m27_v3_features as _build_m27v3_feats
-
-    sample_dt = (match_data.get("match") or {}).get("date", "")
-    ht = (match_data.get("match") or {}).get("home_team", "")
-    at = (match_data.get("match") or {}).get("away_team", "")
-    if not ht or not at:
-        return {"available": False, "reason": "missing_team_info"}
-
-    # Compute prior_wr from DB (same as training pipeline)
-    sample_time = (match_data.get("match") or {}).get("time", "23:59")
-    home_prior_wr = _team_prior_wr(conn, ht, sample_dt, sample_time, window=12)
-    away_prior_wr = _team_prior_wr(conn, at, sample_dt, sample_time, window=12)
-
-    # Build a minimal sample-like object
-    class _FakeSample:
-        features_q4 = {
-            "gender_bucket": _infer_gender(
-                (match_data.get("match") or {}).get("league", ""), ht, at
-            ),
-            "home_prior_wr": home_prior_wr,
-            "away_prior_wr": away_prior_wr,
-            "prior_wr_diff": home_prior_wr - away_prior_wr,
-            "prior_wr_sum": home_prior_wr + away_prior_wr,
-        }
-
-    feat = _build_m27v3_feats(_FakeSample(), match_data)
-
-    # Add H2H features from quarter_scores (original method)
-    h2h_feats = _compute_h2h_for_match(conn, ht, at, sample_dt)
-    feat.update(h2h_feats)
-
-    # Load model (cached singleton)
-    arts = _load_m27_v3_artifacts()
-    x_mat = arts["vec"].transform([feat])
-
-    xgb_p = arts["xgb"].predict_proba(x_mat)[0, 1]
-    hist_p = arts["hist"].predict_proba(
-        x_mat.toarray() if hasattr(x_mat, "toarray") else x_mat
-    )[0, 1]
-
-    import numpy as np
-    ens_p = float(arts["w_xgb"] * xgb_p + arts["w_hist"] * hist_p)
-    cal_p = float(np.clip(arts["cal"].transform(np.clip([[ens_p]], 0.0, 1.0))[0], 0.0, 1.0))
-
-    confidence = max(cal_p, 1.0 - cal_p)
-
+    from models.m27_v3.predict import predict as m27_predict
+    res = m27_predict(match_id=match_id, target="q4", match_data=match_data, conn=conn)
+    if not res.available:
+        return {"available": False, "reason": res.reason}
     return {
         "available": True,
         "version": "m27_v3",
-        "p_home_win": round(cal_p, 6),
-        "p_away_win": round(1.0 - cal_p, 6),
-        "predicted_winner": "home" if cal_p >= 0.5 else "away",
-        "confidence": round(confidence, 6),
+        "p_home_win": res.p_home_win,
+        "p_away_win": res.p_away_win,
+        "predicted_winner": res.pick.lower(),
+        "confidence": res.confidence,
     }
 
 

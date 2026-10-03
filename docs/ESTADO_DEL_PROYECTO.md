@@ -52,7 +52,16 @@ Módulo legacy para monitoreo en vivo y bot interactivo de Telegram:
 - **`test_keyboard_functions.py`**: Suite de pruebas para teclados interactivos de Telegram.
 - **`FILTROS_LIGAS.md`**: Reglas y documentación de ligas para V1.
 
-### 📁 `match/` (Núcleo Tradicional, Scraping, CLI y Entrenamiento ML)
+### 📁 `models/` (Arquitectura Homologada y Centralizada de Machine Learning)
+Nuevo estándar modular donde cada versión de modelo cuenta con su propia subcarpeta autocontenida:
+- **`models/__init__.py` y `registry.py`**: Interfaz unificada (`predict`, `predict_all`, `get_available_models`) con persistencia automática en base de datos.
+- **`models/common/`**: Núcleo transversal compartido (`schema.py`, `data_loader.py`, `persistence.py`, `pbp_utils.py`, `time_clip.py`, `h2h.py`, `monte_carlo.py`).
+- **`models/m27_v3/`**: Modelo campeón actual para Q4 (snapshot 27 + H2H).
+- **`models/v6_2/`**: Modelo campeón para Q3 y Q4 con poda de ligas.
+- **`models/v6_3/`**: Variante con lista negra manual y snapshots tempranos.
+- **`models/v1/` a `models/v17/`**: Histórico completo de versiones homologadas con sus respectivos `train.py`, `predict.py`, `evaluate.py` y `model_outputs/`.
+
+### 📁 `match/` (Núcleo Tradicional, Scraping y CLI)
 - **`matches.db`**: Ubicada en la raíz del proyecto (`matches.db`, ~737 MB):
   - **39,988** partidos analizados.
   - **154,003** marcadores de cuartos individuales (`quarter_scores`).

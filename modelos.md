@@ -11,6 +11,33 @@ Todos los modelos comparten:
 
 ---
 
+## 🏛️ Estructura Homologada del Subsistema de Modelos (`models/`)
+
+Todos los modelos se encuentran centralizados y desacoplados en el directorio raíz `models/` bajo una interfaz universal:
+
+```
+models/
+├── __init__.py                # Exporta predict(), predict_all(), get_available_models()
+├── registry.py                # Despachador dinámico y catálogo de modelos
+├── common/                    # Módulos transversales compartidos
+│   ├── schema.py              # Dataclass PredictionResult
+│   ├── data_loader.py         # Conexión única a matches.db y carga de partidos
+│   ├── persistence.py         # Escritura en eval_match_results_v2 y bet_monitor_log_v2
+│   ├── pbp_utils.py           # Reloj, estimación de minutos, scoring runs y PBP
+│   ├── time_clip.py           # Truncado temporal estricto (min 24 Q3 / min 36 Q4)
+│   ├── h2h.py                 # Extracción de métricas cara a cara (Head-to-Head)
+│   └── monte_carlo.py         # Motor de simulación y presión de posesiones
+└── <nombre_modelo>/           # ej: m27_v3, v6_2, v6_3, v12, v16...
+    ├── train.py               # Entrenamiento del modelo
+    ├── predict.py             # Inferencia retornando PredictionResult
+    ├── evaluate.py            # Evaluación sobre partidos históricos
+    ├── features.py            # Extracción de features específicas
+    ├── model_outputs/         # Artefactos serializados (.joblib, .json)
+    └── README.md              # Documentación individual
+```
+
+---
+
 ## Catálogo de features
 
 ### F0 — Quarter Scores (core)
