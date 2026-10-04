@@ -1,25 +1,25 @@
 ﻿# =====================================================================
-# REGLAS DE ARQUITECTURA, FORMATEO Y LOGGING DE PRODUCCIÃ“N (MANTENER):
+# REGLAS DE ARQUITECTURA, FORMATEO Y LOGGING DE PRODUCCIÓN (MANTENER):
 # 1. ESTRUCTURA: Estrictamente modularizado (config, database, scrapers, 
-#    models, notifications, utils) coordinados asÃ­ncronamente por main.py.
-#    Cualquier aproximaciÃ³n monolÃ­tica de archivo Ãºnico viola esta especificaciÃ³n.
+#    models, notifications, utils) coordinados asíncronamente por main.py.
+#    Cualquier aproximación monolítica de archivo único viola esta especificación.
 # 2. INFRAESTRUCTURA DB: El archivo base SQLite se localiza exclusivamente en 
-#    /matches.db (en la raÃ­z del proyecto) y todas las tablas sin excepciÃ³n finalizan con el sufijo '_v2'.
+#    /matches.db (en la raíz del proyecto) y todas las tablas sin excepción finalizan con el sufijo '_v2'.
 # 3. TABLA DE LOGS: 'bet_monitor_log_v2' se particiona por modelo y contiene 
 #    obligatoriamente los campos 'raw_json' (TEXT), 'inference_minute' (INT), 
 #    y 'graph_points_count' (INT) junto con marcadores reales del juego.
-# 4. CONFIGURACIÃ“N DE LIGAS: Prohibido hardcodear filtros o patrones de texto 
-#    en las consultas SQL o lÃ³gica directa. Debe consumirse declarativamente 
-#    desde config/leagues.yaml o cargarse dinÃ¡micamente desde la BD SQLite.
+# 4. CONFIGURACIÓN DE LIGAS: Prohibido hardcodear filtros o patrones de texto 
+#    en las consultas SQL o lógica directa. Debe consumirse declarativamente 
+#    desde config/leagues.yaml o cargarse dinámicamente desde la BD SQLite.
 # 5. Formato Log: {Fecha Hora} [INFO/WARNING/ERROR] [COMPONENTE]
 #    - Colores ANSI: INFO=Azul, WARNING=Amarillo, ERROR=Rojo.
 # 6. Formato Matches en Log: {horario_match} {match_id} {home} vs {away}
 #    - horario_match en Amarillo, match_id en Azul (sin texto UTC-6).
-# 7. Errores de red crÃ­ticos: Imprimir explÃ­citamente "HTTP 403/404" en ROJO.
-# 8. Monitoreo avanzado en progreso de cuarto final: Usar obligatoriamente "Q4 ðŸŸ ".
-# 9. Telegram Prefijos de Apuestas: ðŸŸ¢ (Bettable), ðŸŸ¡ (No Bettable), âšª (TardÃ­a).
-# 10. Telegram Resultados FT: Prefijar con âœ… (Ganada) o âŒ (Perdida) manteniendo emoji base.
-# 11. ConversiÃ³n de tiempos siempre legibles en formato humano (ej. 1 dia 2h 15min / 45s).
+# 7. Errores de red críticos: Imprimir explícitamente "HTTP 403/404" en ROJO.
+# 8. Monitoreo avanzado en progreso de cuarto final: Usar obligatoriamente "Q4 🟠".
+# 9. Telegram Prefijos de Apuestas: 🟢 (Bettable), 🟡 (No Bettable), ⚪ (Tardía).
+# 10. Telegram Resultados FT: Prefijar con ✅ (Ganada) o ❌ (Perdida) manteniendo emoji base.
+# 11. Conversión de tiempos siempre legibles en formato humano (ej. 1 dia 2h 15min / 45s).
 # =====================================================================
 
 import json
@@ -41,8 +41,8 @@ _SUBSCRIBERS_SETTING_KEY = "monitor_subscribers"
 
 def _get_subscribers_from_db() -> dict[int, dict]:
     """
-    Lee los chat IDs suscritos desde la tabla `settings` de matches.db en raÃ­z.
-    Retorna un dict {chat_id: {"signal_type": ..., "quarters": [...]}} o vacÃ­o si no hay.
+    Lee los chat IDs suscritos desde la tabla `settings` de matches.db en raíz.
+    Retorna un dict {chat_id: {"signal_type": ..., "quarters": [...]}} o vacío si no hay.
     """
     try:
         db_path = Path(get_real_db_path())
@@ -85,7 +85,7 @@ def _get_subscribers_from_db() -> dict[int, dict]:
 
 
 def _send_request(url: str, payload: dict) -> dict:
-    """Ejecuta una peticiÃ³n sÃ­ncrona a la API de Telegram."""
+    """Ejecuta una petición síncrona a la API de Telegram."""
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         url,
@@ -101,7 +101,7 @@ def _send_request(url: str, payload: dict) -> dict:
 
 
 async def _send_to_chat(chat_id: int, text: str, match_url: str | None = None) -> dict:
-    """EnvÃ­a un mensaje a un chat_id especÃ­fico."""
+    """Envía un mensaje a un chat_id específico."""
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": chat_id,
@@ -113,7 +113,7 @@ async def _send_to_chat(chat_id: int, text: str, match_url: str | None = None) -
             "inline_keyboard": [
                 [
                     {
-                        "text": "ðŸ“± Sofascore",
+                        "text": "📱 Sofascore",
                         "url": match_url
                     }
                 ]
@@ -127,8 +127,8 @@ async def _send_to_chat(chat_id: int, text: str, match_url: str | None = None) -
 
 async def broadcast_message(text: str, signal_type_filter: str = "all", match_url: str | None = None) -> list[dict]:
     """
-    EnvÃ­a `text` a todos los chat IDs suscritos en matches.db en raÃ­z.
-    - signal_type_filter: 'all' envÃ­a a todos; 'bet_only' solo a quienes tienen seÃ±al operable.
+    Envía `text` a todos los chat IDs suscritos en matches.db en raíz.
+    - signal_type_filter: 'all' envía a todos; 'bet_only' solo a quienes tienen señal operable.
     Retorna lista de respuestas (una por suscriptor).
     """
     if not TELEGRAM_BOT_TOKEN:
@@ -141,7 +141,7 @@ async def broadcast_message(text: str, signal_type_filter: str = "all", match_ur
         log_warning("TELEGRAM", "[SKIP] Sin suscriptores en monitor_subscribers (DB settings)")
         return [{"ok": False, "description": "Sin suscriptores"}]
 
-    # Filtrar destinatarios reales segÃºn las preferencias de seÃ±al
+    # Filtrar destinatarios reales según las preferencias de señal
     active_chat_ids = []
     for chat_id, prefs in subscribers.items():
         sub_signal = prefs.get("signal_type", "all")
@@ -169,7 +169,7 @@ async def broadcast_message(text: str, signal_type_filter: str = "all", match_ur
 
 async def send_telegram_message(text: str) -> dict:
     """
-    Compatibilidad: envÃ­a a todos los suscriptores y retorna el primer resultado.
+    Compatibilidad: envía a todos los suscriptores y retorna el primer resultado.
     """
     results = await broadcast_message(text)
     return results[0] if results else {"ok": False, "description": "Sin suscriptores"}
@@ -177,8 +177,8 @@ async def send_telegram_message(text: str) -> dict:
 
 async def edit_telegram_message(message_id: int, new_text: str) -> dict:
     """
-    Edita un mensaje existente. Solo aplica al primer suscriptor (el que originÃ³ el msg).
-    Para alertas de monitoreo automÃ¡tico se usa send en lugar de edit.
+    Edita un mensaje existente. Solo aplica al primer suscriptor (el que originó el msg).
+    Para alertas de monitoreo automático se usa send en lugar de edit.
     """
     if not TELEGRAM_BOT_TOKEN:
         return {"ok": False, "description": "Sin token"}
@@ -187,7 +187,7 @@ async def edit_telegram_message(message_id: int, new_text: str) -> dict:
     if not subscribers:
         return {"ok": False, "description": "Sin suscriptores"}
 
-    # Editar solo en el primer chat (el mensaje_id es especÃ­fico por chat)
+    # Editar solo en el primer chat (el mensaje_id es específico por chat)
     first_chat_id = next(iter(subscribers))
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/editMessageText"
     payload = {
@@ -203,7 +203,7 @@ def format_bet_message(model: str, picked_team: str, is_home: bool, signal: str,
     """
     Formatea el mensaje base de Telegram de acuerdo con las especificaciones.
     """
-    side_emoji = "ðŸ " if is_home else "âœˆï¸"
+    side_emoji = "🏠" if is_home else "✈️"
     
     if confidence is not None and confidence > 0:
         # Normalize in case confidence is expressed as a percentage > 1 (e.g. 29.0 instead of 0.29)
@@ -218,14 +218,14 @@ def format_bet_message(model: str, picked_team: str, is_home: bool, signal: str,
         is_low_conf = False
 
     if "LATE" in signal:
-        prefix = "ðŸŸ¡âšªï¸" if is_low_conf else "âšªï¸"
-        return f"{prefix} APUESTA TARDIA Q4 {model_str} â†’ {side_emoji} {picked_team}"
+        prefix = "🟡⚪️" if is_low_conf else "⚪️"
+        return f"{prefix} APUESTA TARDIA Q4 {model_str} → {side_emoji} {picked_team}"
     elif "BET" in signal:
-        prefix = "ðŸŸ¡" if is_low_conf else "ðŸŸ¢"
-        return f"{prefix} APUESTA Q4 {model_str} â†’ {side_emoji} {picked_team}"
+        prefix = "🟡" if is_low_conf else "🟢"
+        return f"{prefix} APUESTA Q4 {model_str} → {side_emoji} {picked_team}"
     else:
-        prefix = "ðŸŸ¡" if is_low_conf else "ðŸŸ¢"
-        return f"{prefix} APUESTA Q4 {model_str} â†’ {side_emoji} {picked_team}"
+        prefix = "🟡" if is_low_conf else "🟢"
+        return f"{prefix} APUESTA Q4 {model_str} → {side_emoji} {picked_team}"
 
 
 
@@ -299,7 +299,7 @@ async def send_bet_alert(
     if match_id:
         match_url = _sofascore_match_url(match_id, match_data=match_data, home_team=home_team, away_team=away_team)
 
-    # Las apuestas solo van a suscriptores que quieren seÃ±ales operable (todos excepto info_only)
+    # Las apuestas solo van a suscriptores que quieren señales operable (todos excepto info_only)
     results = await broadcast_message(text, signal_type_filter="bet", match_url=match_url)
     res = dict(results[0]) if results else {"ok": False, "description": "Sin suscriptores"}
     res["match_url"] = match_url
@@ -308,7 +308,7 @@ async def send_bet_alert(
 
 def format_combined_bet_message(predictions: dict, home_team: str, away_team: str) -> str:
     """
-    Formatea el mensaje base de Telegram para seÃ±ales mÃºltiples combinadas.
+    Formatea el mensaje base de Telegram para señales múltiples combinadas.
     """
     is_late = any("LATE" in pred.get("signal", "") for pred in predictions.values())
     
@@ -325,10 +325,10 @@ def format_combined_bet_message(predictions: dict, home_team: str, away_team: st
     is_low_conf = not has_high_conf
     
     if is_late:
-        prefix = "ðŸŸ¡âšªï¸" if is_low_conf else "âšªï¸"
+        prefix = "🟡⚪️" if is_low_conf else "⚪️"
         title = f"{prefix} APUESTA TARDIA Q4"
     else:
-        prefix = "ðŸŸ¡" if is_low_conf else "ðŸŸ¢"
+        prefix = "🟡" if is_low_conf else "🟢"
         title = f"{prefix} APUESTA Q4"
         
     lines = [title]
@@ -344,10 +344,10 @@ def format_combined_bet_message(predictions: dict, home_team: str, away_team: st
             
         picked_side = pred.get("pick")
         is_home_pick = (picked_side == "HOME")
-        side_emoji = "ðŸ " if is_home_pick else "âœˆï¸"
+        side_emoji = "🏠" if is_home_pick else "✈️"
         picked_team_name = home_team if is_home_pick else away_team
         
-        lines.append(f"{model_conf_str} â†’ {side_emoji} {picked_team_name}")
+        lines.append(f"{model_conf_str} → {side_emoji} {picked_team_name}")
         
     return "\n".join(lines)
 
@@ -385,11 +385,11 @@ async def send_combined_bet_alert(
 
 def format_combined_final_message(logs: list, home_team: str, away_team: str) -> str:
     """
-    Formatea el mensaje base de Telegram para confirmaciones finales de mÃºltiples modelos,
-    homologÃ¡ndolo al formato de las apuestas combinadas (sin prefijar âœ…/âŒ al tÃ­tulo general,
-    sino colocÃ¡ndolo al inicio de la lÃ­nea de cada modelo, y mostrando 'ðŸ”´ model NO BET' para no operables).
+    Formatea el mensaje base de Telegram para confirmaciones finales de múltiples modelos,
+    homologándolo al formato de las apuestas combinadas (sin prefijar ✅/❌ al título general,
+    sino colocándolo al inicio de la línea de cada modelo, y mostrando '🔴 model NO BET' para no operables).
     """
-    # Determinar si alguna apuesta es tardÃ­a o de alta confianza para el prefijo
+    # Determinar si alguna apuesta es tardía o de alta confianza para el prefijo
     is_late = any("LATE" in (log.get("signal_type") or "") for log in logs)
     
     has_high_conf = False
@@ -407,10 +407,10 @@ def format_combined_final_message(logs: list, home_team: str, away_team: str) ->
     is_low_conf = not has_high_conf
     
     if is_late:
-        prefix = "ðŸŸ¡âšªï¸" if is_low_conf else "âšªï¸"
+        prefix = "🟡⚪️" if is_low_conf else "⚪️"
         title = f"{prefix} RESULTADO TARDIO Q4"
     else:
-        prefix = "ðŸŸ¡" if is_low_conf else "ðŸŸ¢"
+        prefix = "🟡" if is_low_conf else "🟢"
         title = f"{prefix} RESULTADO Q4"
         
     lines = [title]
@@ -420,7 +420,7 @@ def format_combined_final_message(logs: list, home_team: str, away_team: str) ->
         
         if "BET" not in sig or "NO_BET" in sig:
             # Es NO_BET!
-            lines.append(f"ðŸ”´ {model} NO BET")
+            lines.append(f"🔴 {model} NO BET")
         else:
             conf = log.get("confidence")
             if conf is not None:
@@ -433,13 +433,13 @@ def format_combined_final_message(logs: list, home_team: str, away_team: str) ->
                 
             picked_side = log.get("picked_side")
             is_home_pick = (picked_side == "HOME")
-            side_emoji = "ðŸ " if is_home_pick else "âœˆï¸"
+            side_emoji = "🏠" if is_home_pick else "✈️"
             picked_team_name = home_team if is_home_pick else away_team
             
             result = log.get("result")
-            res_emoji = "âœ…" if result == "win" else "âŒ"
+            res_emoji = "✅" if result == "win" else "❌"
             
-            lines.append(f"{res_emoji} {model_conf_str} â†’ {side_emoji} {picked_team_name}")
+            lines.append(f"{res_emoji} {model_conf_str} → {side_emoji} {picked_team_name}")
         
     return "\n".join(lines)
 
@@ -458,7 +458,7 @@ async def send_combined_final_confirmation(
     scheduled_ts: int | None = None
 ) -> dict:
     """
-    Consolida la verificaciÃ³n final del partido para mÃºltiples modelos en un solo mensaje.
+    Consolida la verificación final del partido para múltiples modelos en un solo mensaje.
     """
     base_text = format_combined_final_message(logs, home_team, away_team)
     text = _format_telegram_details(
@@ -491,9 +491,9 @@ async def send_final_confirmation(
     confidence: float | None = None
 ) -> dict:
     """
-    Consolida la verificaciÃ³n final del partido, homologando el formato
-    con el de las apuestas combinadas (sin prefijar âœ…/âŒ al tÃ­tulo general,
-    sino colocÃ¡ndolo al inicio de la lÃ­nea de cada modelo, y sin MIN).
+    Consolida la verificación final del partido, homologando el formato
+    con el de las apuestas combinadas (sin prefijar ✅/❌ al título general,
+    sino colocándolo al inicio de la línea de cada modelo, y sin MIN).
     """
     is_low_conf = False
     if confidence is not None:
@@ -502,10 +502,10 @@ async def send_final_confirmation(
         
     is_late = "LATE" in signal
     if is_late:
-        prefix = "ðŸŸ¡âšªï¸" if is_low_conf else "âšªï¸"
+        prefix = "🟡⚪️" if is_low_conf else "⚪️"
         title = f"{prefix} RESULTADO TARDIO Q4"
     else:
-        prefix = "ðŸŸ¡" if is_low_conf else "ðŸŸ¢"
+        prefix = "🟡" if is_low_conf else "🟢"
         title = f"{prefix} RESULTADO Q4"
         
     conf_pct_str = ""
@@ -513,9 +513,9 @@ async def send_final_confirmation(
         conf_val = confidence / 100.0 if confidence > 1.0 else confidence
         conf_pct_str = f" {int(round(conf_val * 100))}%"
         
-    side_emoji = "ðŸ " if is_home else "âœˆï¸"
-    res_emoji = "âœ…" if outcome == "win" else "âŒ"
-    model_line = f"{res_emoji} {model}{conf_pct_str} â†’ {side_emoji} {picked_team}"
+    side_emoji = "🏠" if is_home else "✈️"
+    res_emoji = "✅" if outcome == "win" else "❌"
+    model_line = f"{res_emoji} {model}{conf_pct_str} → {side_emoji} {picked_team}"
     
     base_text = f"{title}\n{model_line}"
     
@@ -535,22 +535,22 @@ async def send_final_confirmation(
 
 def _get_model_stats_dict(model: str) -> dict:
     """
-    Consulta bet_monitor_log_v2 y retorna estadÃ­sticas crudas del modelo como dict.
+    Consulta bet_monitor_log_v2 y retorna estadísticas crudas del modelo como dict.
     Estructura retornada:
     {
-      "ðŸŸ¢":   {"win": N, "loss": N},
-      "ðŸŸ¡":   {"win": N, "loss": N},
-      "âšªï¸":  {"win": N, "loss": N},
-      "ðŸŸ¡âšªï¸":{"win": N, "loss": N},
-      "ðŸ”´":   {"count": N},          # NO_BET
+      "🟢":   {"win": N, "loss": N},
+      "🟡":   {"win": N, "loss": N},
+      "⚪️":  {"win": N, "loss": N},
+      "🟡⚪️":{"win": N, "loss": N},
+      "🔴":   {"count": N},          # NO_BET
     }
     """
     empty = {
-        "ðŸŸ¢":    {"win": 0, "loss": 0},
-        "ðŸŸ¡":    {"win": 0, "loss": 0},
-        "âšªï¸":   {"win": 0, "loss": 0},
-        "ðŸŸ¡âšªï¸": {"win": 0, "loss": 0},
-        "ðŸ”´":    {"count": 0},
+        "🟢":    {"win": 0, "loss": 0},
+        "🟡":    {"win": 0, "loss": 0},
+        "⚪️":   {"win": 0, "loss": 0},
+        "🟡⚪️": {"win": 0, "loss": 0},
+        "🔴":    {"count": 0},
     }
     db_path = Path(get_real_db_path())
     if not db_path.exists():
@@ -579,15 +579,15 @@ def _get_model_stats_dict(model: str) -> dict:
             if conf > 1.0:
                 conf = conf / 100.0
 
-            # â”€â”€ NO_BET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # ── NO_BET ──────────────────────────────────
             if "NO_BET" in sig or "BET" not in sig:
-                empty["ðŸ”´"]["count"] += 1
+                empty["🔴"]["count"] += 1
                 continue
 
             is_late     = "LATE" in sig
             is_low_conf = round(conf, 4) < 0.30
 
-            cat = ("ðŸŸ¡âšªï¸" if is_low_conf else "âšªï¸") if is_late else ("ðŸŸ¡" if is_low_conf else "ðŸŸ¢")
+            cat = ("🟡⚪️" if is_low_conf else "⚪️") if is_late else ("🟡" if is_low_conf else "🟢")
 
             # win/loss: acepta tanto 'win/loss' como 'hit/miss'
             if res in ("win", "hit"):
@@ -604,7 +604,7 @@ def _get_model_stats_dict(model: str) -> dict:
 
 def _visual_len(s: str) -> int:
     """Calcula la longitud visual considerando emojis como 2 espacios de ancho."""
-    emojis = ["âœ…", "âŒ", "ðŸŸ¢", "ðŸŸ¡", "âšª", "ðŸ”´"]
+    emojis = ["✅", "❌", "🟢", "🟡", "⚪", "🔴"]
     clean_s = s.replace("\ufe0f", "")
     length = 0
     for char in clean_s:
@@ -616,7 +616,7 @@ def _visual_len(s: str) -> int:
 
 
 def _pad_cell(text: str, target_width: int) -> str:
-    """Rellena la celda con espacios basÃ¡ndose en su longitud visual."""
+    """Rellena la celda con espacios basándose en su longitud visual."""
     v_len = _visual_len(text)
     padding_needed = max(0, target_width - v_len)
     return text + (" " * padding_needed)
@@ -624,8 +624,8 @@ def _pad_cell(text: str, target_width: int) -> str:
 
 def build_all_models_stats_message(active_models: list | None = None) -> str:
     """
-    Construye un mensaje de texto con las estadÃ­sticas lado-a-lado de todos los modelos activos.
-    Se formatea usando <pre>...</pre> para garantizar alineaciÃ³n de columnas perfecta.
+    Construye un mensaje de texto con las estadísticas lado-a-lado de todos los modelos activos.
+    Se formatea usando <pre>...</pre> para garantizar alineación de columnas perfecta.
     """
     from monitor_v3.config.constants import ACTIVE_MODELS as _DEFAULT_MODELS
     models = list(active_models or _DEFAULT_MODELS)
@@ -633,7 +633,7 @@ def build_all_models_stats_message(active_models: list | None = None) -> str:
     # Recopilar stats de cada modelo
     all_stats = {m: _get_model_stats_dict(m) for m in models}
 
-    BET_CATS = ["ðŸŸ¢", "ðŸŸ¡", "âšªï¸", "ðŸŸ¡âšªï¸"]
+    BET_CATS = ["🟢", "🟡", "⚪️", "🟡⚪️"]
     COL_W = 24   # ancho visual de cada columna
 
     # Encabezados de columnas (ej. "v6_2 Stats            m27_v3 Stats")
@@ -643,14 +643,14 @@ def build_all_models_stats_message(active_models: list | None = None) -> str:
     table_lines = [header]
 
     for cat in BET_CATS:
-        for outcome, emoji in (("win", "âœ…"), ("loss", "âŒ")):
+        for outcome, emoji in (("win", "✅"), ("loss", "❌")):
             cells = []
             for m in models:
                 st  = all_stats[m][cat]
                 n   = st["win"] if outcome == "win" else st["loss"]
                 tot = st["win"] + st["loss"]
                 
-                # Ajustar espacio tras los emojis para alinear correctamente los nÃºmeros
+                # Ajustar espacio tras los emojis para alinear correctamente los números
                 clean_cat = cat.replace("\ufe0f", "")
                 emoji_spacing = " " if len(clean_cat) > 1 else "  "
                 
@@ -662,10 +662,10 @@ def build_all_models_stats_message(active_models: list | None = None) -> str:
                 cells.append(_pad_cell(cell, COL_W))
             table_lines.append("    ".join(cells).rstrip())
 
-    # â”€â”€ fila NO_BET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── fila NO_BET ────────────────────────────────────────────────────────
     nobet_cells = []
     for m in models:
-        count = all_stats[m]["ðŸ”´"]["count"]
+        count = all_stats[m]["🔴"]["count"]
         # Calcular total de todos los logs del modelo
         total_all = count
         for cat in BET_CATS:
@@ -673,20 +673,20 @@ def build_all_models_stats_message(active_models: list | None = None) -> str:
         
         if total_all > 0:
             pct = int(round(count * 100.0 / total_all))
-            cell = f"ðŸ”´ {count}   {pct}%"
+            cell = f"🔴 {count}   {pct}%"
         else:
-            cell = f"ðŸ”´ 0   0%"
+            cell = f"🔴 0   0%"
         nobet_cells.append(_pad_cell(cell, COL_W))
     table_lines.append("    ".join(nobet_cells).rstrip())
 
     table_content = "\n".join(table_lines)
-    return f"ðŸ“Š <b>EstadÃ­sticas de Modelos</b>\n<pre>{table_content}</pre>"
+    return f"📊 <b>Estadísticas de Modelos</b>\n<pre>{table_content}</pre>"
 
 
 def _get_model_stats_text(model: str) -> str:
-    """Retorna un bloque de texto de stats para un Ãºnico modelo (compatibilidad legada)."""
+    """Retorna un bloque de texto de stats para un único modelo (compatibilidad legada)."""
     stats = _get_model_stats_dict(model)
-    BET_CATS = ["ðŸŸ¢", "ðŸŸ¡", "âšªï¸", "ðŸŸ¡âšªï¸"]
+    BET_CATS = ["🟢", "🟡", "⚪️", "🟡⚪️"]
     lines = [f"\n{model} Stats"]
 
     for cat in BET_CATS:
@@ -694,24 +694,24 @@ def _get_model_stats_text(model: str) -> str:
         miss = stats[cat]["loss"]
         tot  = hit + miss
         if tot > 0:
-            lines.append(f"âœ…{cat}  {hit}   {int(round(hit * 100.0 / tot))}%")
-            lines.append(f"âŒ{cat}  {miss}   {int(round(miss * 100.0 / tot))}%")
+            lines.append(f"✅{cat}  {hit}   {int(round(hit * 100.0 / tot))}%")
+            lines.append(f"❌{cat}  {miss}   {int(round(miss * 100.0 / tot))}%")
 
-    nobet = stats["ðŸ”´"]["count"]
+    nobet = stats["🔴"]["count"]
     if nobet > 0:
-        lines.append(f"ðŸ”´ {nobet}")
+        lines.append(f"🔴 {nobet}")
 
     return "\n".join(lines) if len(lines) > 1 else ""
 
 
 async def send_stats_message(active_models: list | None = None) -> dict:
     """
-    Construye y transmite el mensaje de estadÃ­sticas de todos los modelos activos
-    a todos los suscriptores configurados. Se envÃ­a como mensaje independiente.
+    Construye y transmite el mensaje de estadísticas de todos los modelos activos
+    a todos los suscriptores configurados. Se envía como mensaje independiente.
     """
     text = await asyncio.to_thread(build_all_models_stats_message, active_models)
     if not text:
-        return {"ok": False, "description": "Sin datos de stats aÃºn"}
+        return {"ok": False, "description": "Sin datos de stats aún"}
     results = await broadcast_message(text, signal_type_filter="bet")
     return dict(results[0]) if results else {"ok": False, "description": "Sin suscriptores"}
 
