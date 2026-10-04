@@ -90,6 +90,43 @@ def _result_emoji(result: str) -> str:
     return "⏳"
 
 
+def _day_summary_lines(rows: list[dict]) -> list[str]:
+    """Resumen del día: ganadas/perdidas/push/pendientes, no-bet y por categoría."""
+    win = loss = push = pending = nobet = 0
+    cats = {"🟢": [0, 0], "🟡": [0, 0], "⚪️": [0, 0], "🟡⚪️": [0, 0]}
+    for r in rows:
+        sig = r.get("signal_type") or ""
+        if "NO_BET" in sig or "BET" not in sig:
+            nobet += 1
+            continue
+        cat = _signal_emoji(sig, r.get("confidence"))
+        res = (r.get("result") or "").lower()
+        if res in ("win", "hit"):
+            win += 1
+            cats.setdefault(cat, [0, 0])[0] += 1
+        elif res in ("loss", "miss"):
+            loss += 1
+            cats.setdefault(cat, [0, 0])[1] += 1
+        elif res == "push":
+            push += 1
+        else:
+            pending += 1
+
+    bets = win + loss + push + pending
+    resolved = win + loss
+    acc = f"{int(round(win * 100 / resolved))}%" if resolved else "—"
+
+    out = ["", "📊 <b>Resumen del día</b>"]
+    out.append(f"Apuestas: <b>{bets}</b> | ✅ {win}  ❌ {loss}  ➖ {push}  ⏳ {pending}")
+    out.append(f"No bet: <b>{nobet}</b> | Acierto (resueltas): <b>{acc}</b>")
+    out.append("Por categoría:")
+    for cat in ("🟢", "🟡", "⚪️", "🟡⚪️"):
+        w, l = cats.get(cat, [0, 0])
+        if w + l:
+            out.append(f"  {cat}: ✅ {w}  ❌ {l}")
+    return out
+
+
 def fetch_today_signals() -> list[dict]:
     """Señales de hoy desde bet_monitor_log_v3 + datos del partido."""
     db = _db_path()
@@ -196,6 +233,7 @@ def build_signals_text() -> str:
             lines.append(f"  {sig} {res} {_esc(model)} {conf_pct}% → {side} {_esc(team)}")
         lines.append("")
 
+    lines.extend(_day_summary_lines(rows))
     return "\n".join(lines).rstrip()
 
 
