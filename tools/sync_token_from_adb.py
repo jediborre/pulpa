@@ -1,14 +1,15 @@
 """
-Sincronizador de Token JWT directo desde Android vía ADB
+Sincronizador y Generador por Lotes de Tokens JWT directo desde Android vía ADB
 
 Propósito:
 - Conectarse al teléfono vía ADB con 'run-as com.sofascore.results'.
-- Leer el archivo de preferencias com.sofascore.results_preferences.xml.
-- Extraer el AUTH_TOKEN (JWT oficial emitido directamente por SofaScore al teléfono).
-- Decodificar los metadatos del JWT (fecha de emisión, expiración de 6 meses).
-- Guardar el token en monitor_v3/config/tokens.json sin intermediarios ni proxies.
+- Automatizar el ciclo de generación: resetear datos de la app, abrirla, esperar
+  interacción del usuario (12s), extraer el nuevo AUTH_TOKEN y acumularlo en el pool.
+- Permitir generar N tokens consecutivos de forma guiada y desatendida.
+- Mostrar una tabla resumen con todos los tokens disponibles, expiración y UUIDs.
 """
 
+import argparse
 import base64
 import json
 import os
@@ -42,12 +43,16 @@ def find_adb() -> Path | None:
     return None
 
 
+def run_adb(adb: Path, args: list[str], timeout: int = 30) -> subprocess.CompletedProcess:
+    cmd = [str(adb)] + args
+    return subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout)
+
+
 def decode_jwt_payload(token: str) -> dict:
     try:
         parts = token.split(".")
         if len(parts) >= 2:
             payload_b64 = parts[1]
-            # Padding
             payload_b64 += "=" * ((4 - len(payload_b64) % 4) % 4)
             data = base64.urlsafe_b64decode(payload_b64)
             return json.loads(data.decode("utf-8"))
@@ -56,99 +61,192 @@ def decode_jwt_payload(token: str) -> dict:
     return {}
 
 
-def extract_token_from_device() -> str | None:
-    adb = find_adb()
-    if not adb:
-        print("[ERROR] No se encontró el ejecutable 'adb.exe'.")
-        return None
-
-    cmd = [str(adb), "shell", "run-as", PACKAGE_NAME, "cat", PREFS_FILE]
-    proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
-
-    if proc.returncode != 0:
-        print(f"[ERROR] Error al leer preferencias del paquete: {proc.stderr.strip()}")
-        return None
-
-    content = proc.stdout
-    # Buscar tag AUTH_TOKEN
-    match = re.search(r'name=["\']AUTH_TOKEN["\']>([^<]+)<', content)
-    if not match:
-        print("[AVISO] No se encontró la clave AUTH_TOKEN en las preferencias.")
-        return None
-
-    return match.group(1).strip()
-
-
-def sync_adb():
-    print("=" * 65)
-    print("EXTRACTOR DIRECTO DE JWT SOFASCORE VIA ADB (USB)")
-    print("=" * 65)
-
-    token = extract_token_from_device()
-    if not token:
-        print("\n[!] No se pudo extraer el token. Asegúrate de:")
-        print("    1. Tener el teléfono conectado por USB con Depuración activada.")
-        print("    2. Tener abierta la app SofaScore en el teléfono.")
-        return False
-
-    print(f"\n[+] ¡Token JWT extraído exitosamente de la memoria del teléfono!")
-    print(f"    Longitud: {len(token)} caracteres")
-    print(f"    Prefijo:  {token[:35]}...")
-    print(f"    Sufijo:   ...{token[-25:]}")
-
-    payload_info = decode_jwt_payload(token)
-    if payload_info:
-        iat = payload_info.get("iat")
-        exp = payload_info.get("exp")
-        device_id = payload_info.get("id")
-        if iat:
-            print(f"    Emitido:  {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(iat))}")
-        if exp:
-            exp_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(exp))
-            dias = int((exp - time.time()) / 86400)
-            print(f"    Expira:   {exp_str} (dentro de ~{dias} días)")
-        if device_id:
-            print(f"    ID Disp:  {device_id}")
-
-    # Guardar en tokens.json
-    TOKENS_JSON.parent.mkdir(parents=True, exist_ok=True)
-    
-    # Cargar tokens existentes para acumular si hay otros válidos
-    existing_tokens = []
+def load_pool() -> list[dict]:
     if TOKENS_JSON.exists():
         try:
             with open(TOKENS_JSON, "r", encoding="utf-8") as f:
                 d = json.load(f)
-                existing_tokens = [t for t in d.get("tokens", []) if t.get("token") != token]
+                return d.get("tokens", [])
         except Exception:
             pass
+    return []
 
-    new_item = {
-        "token": token,
-        "created_at": time.time(),
-        "device_uuid": payload_info.get("id", "android-direct"),
-        "advertising_id": "direct-adb",
-        "failures": 0,
-        "last_used": time.time(),
-    }
-    
-    all_tokens = [new_item] + existing_tokens
 
-    data = {
+def save_pool(tokens: list[dict]) -> None:
+    TOKENS_JSON.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
         "updated_at": time.time(),
-        "count": len(all_tokens),
-        "tokens": all_tokens,
+        "count": len(tokens),
+        "tokens": tokens,
     }
-
     with open(TOKENS_JSON, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
+        json.dump(payload, f, indent=2)
 
-    print(f"\n[ÉXITO] Token guardado en: {TOKENS_JSON}")
-    print(f"        Total tokens activos en pool: {len(all_tokens)}")
+
+def display_pool_table(tokens: list[dict]) -> None:
+    print("\n" + "=" * 82)
+    print(f"RESUMEN DEL POOL DE TOKENS (TOTAL: {len(tokens)} TOKENS ACTIVOS)")
+    print("=" * 82)
+    if not tokens:
+        print("  [!] El pool está actualmente vacío.")
+        print("=" * 82)
+        return
+
+    print(f"{'#':<3} | {'Device UUID':<37} | {'Expiración':<19} | {'Token Sufijo':<15}")
+    print("-" * 3 + "-+-" + "-" * 37 + "-+-" + "-" * 19 + "-+-" + "-" * 15)
+
+    for idx, it in enumerate(tokens, 1):
+        tok = it.get("token", "")
+        uuid_str = it.get("device_uuid", "desconocido")[:36]
+        meta = decode_jwt_payload(tok)
+        exp = meta.get("exp")
+        exp_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(exp)) if exp else "N/A"
+        suffix = f"...{tok[-12:]}" if len(tok) > 12 else tok
+        print(f"{idx:<3} | {uuid_str:<37} | {exp_str:<19} | {suffix:<15}")
+
+    print("=" * 82 + "\n")
+
+
+def extract_token_from_device(adb: Path) -> str | None:
+    res = run_adb(adb, ["shell", "run-as", PACKAGE_NAME, "cat", PREFS_FILE])
+    if res.returncode != 0:
+        return None
+    match = re.search(r'name=["\']AUTH_TOKEN["\']>([^<]+)<', res.stdout)
+    if match:
+        return match.group(1).strip()
+    return None
+
+
+def generate_single_token(adb: Path, current_step: int, total_steps: int, wait_seconds: int = 12) -> str | None:
+    print(f"\n--- [Token {current_step}/{total_steps}] Generando nueva sesión limpia ---")
+    
+    # 1. Resetear datos
+    print(f"  [1/3] Reseteando datos de SofaScore vía ADB (pm clear)...")
+    run_adb(adb, ["shell", "pm", "clear", PACKAGE_NAME])
+    time.sleep(1)
+
+    # 2. Iniciar app
+    print(f"  [2/3] Abriendo SofaScore en el teléfono...")
+    run_adb(adb, ["shell", "monkey", "-p", PACKAGE_NAME, "-c", "android.intent.category.LAUNCHER", "1"])
+
+    # 3. Cuenta regresiva con mensaje
+    print(f"  [3/3] 📱 Toca la pantalla o abre cualquier partido en el teléfono:")
+    for s in range(wait_seconds, 0, -1):
+        print(f"\r        ⏳ Esperando interacción del usuario... [{s:02d}s restantes] ", end="", flush=True)
+        time.sleep(1)
+    print("\r        ✅ Tiempo cumplido. Inspeccionando memoria de la app...            ")
+
+    # 4. Extraer token (con reintentos)
+    for retry in range(1, 4):
+        token = extract_token_from_device(adb)
+        if token:
+            payload = decode_jwt_payload(token)
+            exp = payload.get("exp")
+            exp_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(exp)) if exp else "N/A"
+            dev_id = payload.get("id", "android-direct")
+            print(f"  [OK] ¡Token capturado exitosamente!")
+            print(f"       UUID:   {dev_id}")
+            print(f"       Expira: {exp_str}")
+            print(f"       Sufijo: ...{token[-12:]}")
+            return token
+        time.sleep(2)
+
+    print("  [ERROR] No se pudo encontrar el AUTH_TOKEN tras esperar. ¿Se abrió la app correctamente?")
+    return None
+
+
+def sync_batch(num_tokens: int = 1, wait_seconds: int = 12) -> bool:
     print("=" * 65)
+    print("EXTRACTOR Y GENERADOR DE TOKENS SOFASCORE VIA ADB (USB)")
+    print("=" * 65)
+
+    adb = find_adb()
+    if not adb:
+        print("[ERROR] No se encontró el ejecutable 'adb.exe'.")
+        print("        Verifica que Android SDK esté instalado o adb en el PATH.")
+        return False
+
+    # Verificar dispositivo conectado
+    res = run_adb(adb, ["devices"])
+    lines = [line.strip() for line in res.stdout.strip().splitlines() if line.strip() and not line.startswith("*")]
+    device_lines = [l for l in lines[1:] if "\tdevice" in l]
+
+    if not device_lines:
+        print("\n[!] No hay ningún dispositivo Android conectado con depuración USB.")
+        print("    Asegúrate de conectar el teléfono por USB y autorizar la conexión.")
+        return False
+
+    dev_id = device_lines[0].split("\t")[0]
+    print(f"[+] Dispositivo detectado: {dev_id}")
+
+    existing_tokens = load_pool()
+    print(f"[+] Tokens existentes en pool: {len(existing_tokens)}")
+
+    if num_tokens <= 0:
+        display_pool_table(existing_tokens)
+        return True
+
+    new_tokens_captured = 0
+    all_tokens = list(existing_tokens)
+
+    for i in range(1, num_tokens + 1):
+        token_str = generate_single_token(adb, i, num_tokens, wait_seconds=wait_seconds)
+        if token_str:
+            # Comprobar si ya existe
+            already = next((t for t in all_tokens if t.get("token") == token_str), None)
+            if already:
+                print("  [AVISO] Este token ya estaba en el pool. Omitiendo duplicado.")
+            else:
+                payload = decode_jwt_payload(token_str)
+                new_item = {
+                    "token": token_str,
+                    "created_at": time.time(),
+                    "device_uuid": payload.get("id", f"android-{len(all_tokens)+1}"),
+                    "advertising_id": "direct-adb",
+                    "failures": 0,
+                    "last_used": time.time(),
+                }
+                all_tokens.insert(0, new_item)
+                save_pool(all_tokens)
+                new_tokens_captured += 1
+                print(f"  [+] Guardado en tokens.json. Total activos ahora: {len(all_tokens)}")
+
+        if i < num_tokens:
+            print("  ⏳ Pausa de 2 segundos antes del siguiente ciclo...")
+            time.sleep(2)
+
+    # Mostrar tabla resumen final
+    display_pool_table(all_tokens)
+    print(f"Generación por lote concluida: {new_tokens_captured} nuevos token(s) agregados.")
     return True
 
 
+def main():
+    parser = argparse.ArgumentParser(description="Extractor y generador por lotes de tokens SofaScore vía ADB")
+    parser.add_argument("-n", "--count", type=int, default=None, help="Cantidad de tokens a generar")
+    parser.add_argument("-w", "--wait", type=int, default=12, help="Segundos de espera por interacción (default: 12)")
+    parser.add_argument("--list", action="store_true", help="Solo listar los tokens actuales en el pool")
+    args = parser.parse_args()
+
+    if args.list:
+        display_pool_table(load_pool())
+        return
+
+    num = args.count
+    if num is None:
+        existing = load_pool()
+        print("=" * 65)
+        print("SINCRONIZADOR DE TOKENS JWT VIA ADB")
+        print("=" * 65)
+        print(f"Actualmente tienes {len(existing)} token(s) en monitor_v3/config/tokens.json")
+        try:
+            raw = input("\n¿Cuántos tokens nuevos deseas generar en este lote? [1-10] (default: 1): ").strip()
+            num = int(raw) if raw else 1
+        except (ValueError, KeyboardInterrupt):
+            num = 1
+
+    sync_batch(num_tokens=num, wait_seconds=args.wait)
+
+
 if __name__ == "__main__":
-    success = sync_adb()
-    sys.exit(0 if success else 1)
+    main()
