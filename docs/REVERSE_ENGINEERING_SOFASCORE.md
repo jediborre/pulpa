@@ -99,6 +99,35 @@ headers.add("X-Timestamp", String.valueOf(Instant.now().toEpochMilli())); // ms 
 > `sport/basketball/scheduled-events/{date}` **NO existe** (devuelve 404). Usar el
 > flujo de `categories`.
 
+### 2.5 URL canónica de un partido (botón "📱 Sofascore" de Telegram)
+
+Estructura real:
+
+```
+https://www.sofascore.com/{deporte}/match/{slug}/{custom_id}#id:{match_id}
+```
+
+- **`{deporte}`**: `basketball`.
+- **`{slug}`**: el campo `event.slug` del API. **NO es simplemente `home-away`**;
+  SofaScore lo devuelve en su propio orden (a veces `away-home`). Ej.:
+  `ldlc-asvel-lyon-villeurbanne-bcm-gravelines-dunkerque` para
+  "BCM Gravelines-Dunkerque vs LDLC ASVEL". Por eso **hay que usar el `event.slug`
+  tal cual**, no reconstruirlo desde `home_slug`/`away_slug`.
+- **`{custom_id}`**: `event.customId` corto (ej. `HvbsLvb`, `fEicsGRpi`). **Es
+  obligatorio**: sin él la ruta resuelve a **404**.
+- **`#id:{match_id}`**: fragmento legacy/informativo (no se envía al servidor).
+
+Ejemplo válido:
+`https://www.sofascore.com/basketball/match/al-ula-al-kuwait/fEicsGRpi#id:17249511`
+
+**Implementación:** `_sofascore_match_url()` en
+`monitor_v3/notifications/telegram_bot.py` (y `monitor_v2`). Requiere que se le pase
+`match_data` (el payload del partido con `match.event_slug` y `match.custom_id`).
+Si no se pasa `match_data`, cae a un fallback `{home_slug}-{away_slug}` sin
+`custom_id`, que **puede dar 404**. Por eso `_final_fetch_and_save` (resultados) debe
+pasar `match_data=data` (arreglado 2026-10-04: antes no lo hacía y los botones de
+RESULTADO daban 404).
+
 ---
 
 ## 3. Combinación que pasa el WAF (probada 200 OK)

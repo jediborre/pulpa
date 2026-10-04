@@ -206,6 +206,7 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
                     await send_combined_final_confirmation(
                         logs=logs,
                         match_id=match_id,
+                        match_data=data,
                         home_team=home,
                         away_team=away,
                         minute=log0["inference_minute"],
@@ -231,6 +232,7 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
                         signal=log["signal_type"],
                         outcome=log["result"],
                         match_id=match_id,
+                        match_data=data,
                         home_team=home,
                         away_team=away,
                         minute=log["inference_minute"],

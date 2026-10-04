@@ -728,7 +728,16 @@ def _normalize_sofascore_slug(value: str | None) -> str:
 
 
 def _sofascore_match_url(match_id: str, match_data: dict | None = None, home_team: str | None = None, away_team: str | None = None) -> str:
-    """Generate SofaScore URL for a match."""
+    """
+    Construye la URL canónica de un partido en SofaScore.
+
+    Estructura real:
+        https://www.sofascore.com/{deporte}/match/{slug}/{custom_id}
+    donde `slug` es el `event.slug` del API (p. ej. "al-ula-al-kuwait"; NO siempre
+    es `home-away`, a veces SofaScore lo devuelve en orden inverso) y `custom_id`
+    es el `event.customId` corto (p. ej. "fEicsGRpi"). Sin `custom_id` la ruta
+    resuelve a 404. El fragmento `#id:{match_id}` es solo informativo/legacy.
+    """
     event_slug = "unknown"
     custom_id = ""
     home_slug = _normalize_sofascore_slug(home_team) if home_team else "unknown"
@@ -745,16 +754,11 @@ def _sofascore_match_url(match_id: str, match_data: dict | None = None, home_tea
         if away_slug == "unknown":
             away_slug = _normalize_sofascore_slug(match_info.get("away_team"))
 
-    if event_slug != "unknown" and custom_id:
-        return (
-            "https://www.sofascore.com/basketball/match/"
-            f"{event_slug}/{custom_id}#id:{match_id}"
-        )
-
-    return (
-        "https://www.sofascore.com/basketball/match/"
-        f"{home_slug}/{away_slug}#id:{match_id}"
-    )
+    # El slug canónico es el event_slug del API; si falta, combinar home-away.
+    slug = event_slug if event_slug != "unknown" else f"{home_slug}-{away_slug}"
+    if custom_id:
+        return f"https://www.sofascore.com/basketball/match/{slug}/{custom_id}#id:{match_id}"
+    return f"https://www.sofascore.com/basketball/match/{slug}#id:{match_id}"
 
 
 def _format_utc6_datetime(scheduled_ts: int) -> str:
