@@ -60,7 +60,11 @@ import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-os.environ.setdefault("SOFASCORE_SCRAPER_BACKEND", "chrome")
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+os.environ.setdefault("SOFASCORE_SCRAPER_BACKEND", "mobile")
 
 import db as db_mod
 import ml_tools as ml_mod
@@ -257,15 +261,18 @@ def _ingest_pending_matches(
 def _prompt_select_backend() -> str | None:
     """Prompt user to choose scraper backend. Returns None to use env default."""
     print("[fetch-date] Backend de scraping:")
-    print("  1) Chrome headless  (recomendado, default)")
-    print("  2) Obscura (CDP)")
-    print("  3) Chromium bundled (Playwright)")
-    ans = input("  Opción [1/2/3, Enter=1]: ").strip()
+    print("  1) Mobile API / JWT (ultra-rápido, sin navegador, recomendado)")
+    print("  2) Chrome headless")
+    print("  3) Obscura (CDP)")
+    print("  4) Chromium bundled (Playwright)")
+    ans = input("  Opción [1/2/3/4, Enter=1]: ").strip()
     if ans == "2":
-        return "obscura"
+        return "chrome"
     if ans == "3":
+        return "obscura"
+    if ans == "4":
         return "traditional"
-    return "chrome"
+    return "mobile"
 
 
 # ── command handlers ──────────────────────────────────────────────────────────
@@ -1585,12 +1592,41 @@ def _select_fetch_date_interactive(db_path: str) -> tuple[str | list[str], int |
     if not recent and not historical:
         print("\nNo se detectaron huecos de fechas faltantes.")
 
+    print("  r) Descargar un RANGO de fechas personalizado (inicio a fin)")
+    print("  t) Descargar TODO el hueco faltante detectado de golpe")
     print("  m) Ingresar fecha manualmente")
     print("  0) Cancelar")
     choice = input("Selecciona: ").strip()
     if choice == "0":
         return None
-    if choice == "1":
+    if choice.lower() == "r":
+        all_missing = sorted(list(set(recent + historical)))
+        default_start = all_missing[0] if all_missing else "2026-06-12"
+        default_end = all_missing[-1] if all_missing else "2026-10-03"
+        start_str = _ask(f"Fecha de inicio YYYY-MM-DD (Enter para {default_start})", default_start)
+        end_str = _ask(f"Fecha de fin YYYY-MM-DD (Enter para {default_end})", default_end)
+        try:
+            s_dt = datetime.strptime(start_str, "%Y-%m-%d").date()
+            e_dt = datetime.strptime(end_str, "%Y-%m-%d").date()
+            if s_dt > e_dt:
+                s_dt, e_dt = e_dt, s_dt
+            curr = s_dt
+            event_date = []
+            while curr <= e_dt:
+                event_date.append(curr.isoformat())
+                curr += timedelta(days=1)
+            print(f"[fetch-date] Rango seleccionado: {len(event_date)} días (del {start_str} al {end_str})")
+        except ValueError:
+            print("[fetch-date] Formato de fecha inválido")
+            return None
+    elif choice.lower() == "t":
+        all_missing = sorted(list(set(recent + historical)))
+        if not all_missing:
+            print("[fetch-date] No hay huecos de fechas pendientes detectados.")
+            return None
+        event_date = all_missing
+        print(f"[fetch-date] Hueco completo seleccionado: {len(event_date)} días (del {event_date[0]} al {event_date[-1]})")
+    elif choice == "1":
         base_date = _ask("Fecha base YYYY-MM-DD (Enter para minima)", min_date or "")
         if not base_date:
             if not min_date:
@@ -1660,7 +1696,7 @@ def _ingest_date_with_progress(
     """Discover FT match IDs for a date and ingest them with a progress bar."""
     print(f"[fetch-date] Consultando SofaScore para {event_date}...")
     try:
-        rows_all = scraper_mod.fetch_finished_match_ids_for_date(event_date)
+        rows_all = scraper_mod.fetch_finished_match_ids_for_date(event_date, backend=backend)
     except Exception as exc:
         error_reason = str(exc).strip()
         print(f"[fetch-date] ERROR: No se pudo consultar SofaScore")
@@ -1737,7 +1773,7 @@ def _ingest_date_with_progress(
                 last_error_code=last_error_code,
             )
             # Small random spacing between match downloads to avoid rigid request cadence.
-            if idx > 1 and FETCH_DATE_JITTER_MAX_SECS > 0:
+            if idx > 1 and FETCH_DATE_JITTER_MAX_SECS > 0 and backend != "mobile":
                 jitter = random.uniform(FETCH_DATE_JITTER_MIN_SECS, FETCH_DATE_JITTER_MAX_SECS)
                 time.sleep(max(0.0, jitter))
             data = scraper_mod.fetch_match_by_id(match_id, backend=backend)
@@ -1815,12 +1851,46 @@ def _ingest_date_with_progress(
 def cmd_fetch_date(args: argparse.Namespace) -> None:
     event_date = args.date
     limit = args.limit
+    backend = getattr(args, "backend", "mobile")
     _ingest_date_with_progress(
         args.db,
         event_date,
         limit,
+        backend=backend,
         force_redownload=bool(getattr(args, "force_redownload", False)),
     )
+
+
+def cmd_fetch_range(args: argparse.Namespace) -> None:
+    start_date = args.start_date
+    end_date = args.end_date
+    limit = args.limit
+    backend = getattr(args, "backend", "mobile")
+    force_redownload = bool(getattr(args, "force_redownload", False))
+    try:
+        s_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
+        e_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
+        if s_dt > e_dt:
+            s_dt, e_dt = e_dt, s_dt
+        curr = s_dt
+        dates = []
+        while curr <= e_dt:
+            dates.append(curr.isoformat())
+            curr += timedelta(days=1)
+    except ValueError as e:
+        print(f"[fetch-range] Error en formato de fecha: {e}")
+        return
+
+    print(f"[fetch-range] Iniciando ingesta de {len(dates)} fechas (del {start_date} al {end_date}) con backend '{backend}'...")
+    for idx, d in enumerate(dates, 1):
+        print(f"\n>>> [{idx}/{len(dates)}] Procesando fecha: {d} <<<")
+        _ingest_date_with_progress(
+            args.db,
+            d,
+            limit,
+            backend=backend,
+            force_redownload=force_redownload,
+        )
 
 
 def cmd_fetch_date_menu(args: argparse.Namespace) -> None:
@@ -2186,6 +2256,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Max matches to ingest (default: no limit)",
     )
     p_fetch.add_argument(
+        "--backend",
+        choices=["mobile", "chrome", "obscura", "traditional"],
+        default="mobile",
+        help="Backend scraper engine (default: mobile)",
+    )
+    p_fetch.add_argument(
         "--force-redownload",
         action="store_true",
         help=(
@@ -2193,6 +2269,43 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     p_fetch.set_defaults(func=cmd_fetch_date)
+
+    # fetch-range
+    p_fetch_range = sub.add_parser(
+        "fetch-range",
+        help="Discover and ingest finished matches for a range of dates",
+    )
+    p_fetch_range.add_argument(
+        "--start-date",
+        required=True,
+        metavar="YYYY-MM-DD",
+        help="Start date (YYYY-MM-DD)",
+    )
+    p_fetch_range.add_argument(
+        "--end-date",
+        required=True,
+        metavar="YYYY-MM-DD",
+        help="End date (YYYY-MM-DD)",
+    )
+    p_fetch_range.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Max matches to ingest per date (default: no limit)",
+    )
+    p_fetch_range.add_argument(
+        "--backend",
+        choices=["mobile", "chrome", "obscura", "traditional"],
+        default="mobile",
+        help="Backend scraper engine (default: mobile)",
+    )
+    p_fetch_range.add_argument(
+        "--force-redownload",
+        action="store_true",
+        help="Ignore complete matches already in DB and fetch them again",
+    )
+    p_fetch_range.set_defaults(func=cmd_fetch_range)
 
     # fetch-date-menu
     p_fetch_menu = sub.add_parser(

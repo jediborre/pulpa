@@ -36,13 +36,19 @@ Output dict keys:
 
 import re
 import os
+import sys
 import time
 from datetime import datetime, timezone
 from contextlib import contextmanager
 from pathlib import Path
 
+# Asegurar que la raíz del proyecto esté en sys.path
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 # Cargar .env raíz si existe (para standalone)
-_env_path = Path(__file__).resolve().parents[1] / ".env"
+_env_path = ROOT_DIR / ".env"
 if _env_path.exists():
     try:
         from dotenv import load_dotenv
@@ -97,8 +103,26 @@ STANDARD_UA = (
 )
 
 
+def _run_coroutine_sync(coro):
+    """Ejecuta una corrutina asíncrona de forma segura en entornos síncronos."""
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
+    else:
+        return asyncio.run(coro)
+
+
 def _normalize_backend(backend: str | None = None) -> str:
-    value = (backend or os.getenv("SOFASCORE_SCRAPER_BACKEND", "chrome")).strip().lower()
+    value = (backend or os.getenv("SOFASCORE_SCRAPER_BACKEND", "mobile")).strip().lower()
+    if value in {"mobile", "jwt", "api"}:
+        return "mobile"
     if value in {"obscura", "cdp"}:
         return "obscura"
     if value in {"chrome", "system_chrome"}:
@@ -1173,6 +1197,15 @@ def fetch_match_by_id(
     backend: str | None = None,
 ) -> dict:
     """Fetch match data by ID after warming session on the match route."""
+    if _normalize_backend(backend) == "mobile":
+        from monitor_v3.core.mobile_client import get_mobile_client
+
+        async def _fetch_mobile():
+            mc = get_mobile_client()
+            return await mc.fetch_full_match(match_id)
+
+        return _run_coroutine_sync(_fetch_mobile())
+
     payloads = _fetch_match_payloads(
         warmup_url=_match_warmup_url(match_id),
         match_id=match_id,
@@ -1301,7 +1334,9 @@ def fetch_event_snapshot(match_id: str, backend: str | None = None) -> dict:
     }
 
 
-def fetch_finished_match_ids_for_date(date_str: str, max_retries: int = 3) -> list[dict]:
+def fetch_finished_match_ids_for_date(
+    date_str: str, max_retries: int = 3, backend: str | None = None
+) -> list[dict]:
     """Return finished basketball matches for a date (YYYY-MM-DD).
     
     Parameters
@@ -1310,12 +1345,45 @@ def fetch_finished_match_ids_for_date(date_str: str, max_retries: int = 3) -> li
         Date in YYYY-MM-DD format.
     max_retries : int
         Number of times to retry on HTTP 403 (after respecting cooldown).
+    backend : str | None
+        Backend scraper to use ('mobile', 'chrome', 'obscura', 'traditional').
     
     Raises
     ------
     RuntimeError
         If API returns non-OK status after all retries.
     """
+    if _normalize_backend(backend) == "mobile":
+        from monitor_v3.core.mobile_client import get_mobile_client
+
+        async def _fetch_mobile():
+            mc = get_mobile_client()
+            events = await mc.get_all_scheduled_events_for_date(date_str)
+            if not events:
+                res = await mc.request("GET", f"sport/basketball/scheduled-events/{date_str}")
+                if res.status_code == 200:
+                    events = res.json().get("events", [])
+            out = []
+            for ev in events:
+                status = (ev.get("status") or {}).get("type", "")
+                if status != "finished":
+                    continue
+                hs = (ev.get("homeScore") or {}).get("current", (ev.get("homeScore") or {}).get("normaltime"))
+                as_ = (ev.get("awayScore") or {}).get("current", (ev.get("awayScore") or {}).get("normaltime"))
+                if hs is None or as_ is None:
+                    continue
+                out.append({
+                    "match_id": str(ev.get("id", "")),
+                    "event_date": date_str,
+                    "status_type": status,
+                    "home_team": (ev.get("homeTeam") or {}).get("name", ""),
+                    "away_team": (ev.get("awayTeam") or {}).get("name", ""),
+                    "league": ((ev.get("tournament") or {}).get("name", "")),
+                })
+            return [m for m in out if m["match_id"]]
+
+        return _run_coroutine_sync(_fetch_mobile())
+
     extra_headers = {
         "Referer": "https://www.sofascore.com/",
         "Accept": "application/json, text/plain, */*",

@@ -61,10 +61,21 @@ class MobileClient:
     """
     def __init__(self, token_pool: TokenPool | None = None):
         self.token_pool = token_pool or get_token_pool()
-        self._sem = asyncio.Semaphore(MAX_CONCURRENT_FETCHES)
         self._verify_cert = SOFASCORE_CERT_PATH if os.path.exists(SOFASCORE_CERT_PATH) else True
         self._proxy = SOFASCORE_PROXY_URL if SOFASCORE_PROXY_URL else None
         self._client: httpx.AsyncClient | None = None
+        self._client_loop = None
+
+    @property
+    def sem(self) -> asyncio.Semaphore:
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+        if not hasattr(self, "_sem_loop") or self._sem_loop != current_loop:
+            self._sem_loop = current_loop
+            self._sem_obj = asyncio.Semaphore(MAX_CONCURRENT_FETCHES)
+        return self._sem_obj
 
     async def __aenter__(self):
         await self.start()
@@ -74,7 +85,17 @@ class MobileClient:
         await self.close()
 
     async def start(self) -> None:
-        if self._client is None or self._client.is_closed:
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+
+        if (
+            self._client is None
+            or self._client.is_closed
+            or self._client_loop != current_loop
+        ):
+            self._client_loop = current_loop
             self._client = httpx.AsyncClient(
                 proxy=self._proxy,
                 verify=self._verify_cert,
@@ -86,12 +107,18 @@ class MobileClient:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
             self._client = None
+            self._client_loop = None
 
     async def request(self, method: str, path: str, retry_count: int = 1, **kwargs) -> httpx.Response:
         """
         Ejecuta una petición HTTP autenticada con rotación de tokens y auto-sanación.
         """
-        if self._client is None or self._client.is_closed:
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+
+        if self._client is None or self._client.is_closed or self._client_loop != current_loop:
             await self.start()
 
         url = path if path.startswith("http") else f"{SOFASCORE_API_BASE}/{path.lstrip('/')}"
@@ -107,7 +134,7 @@ class MobileClient:
                 "Connection": "Keep-Alive",
             })
 
-            async with self._sem:
+            async with self.sem:
                 try:
                     res = await self._client.request(method, url, headers=headers, **kwargs)
                     
@@ -239,6 +266,7 @@ class MobileClient:
             "h2h": f"event/{match_id}/h2h",
             "statistics": f"event/{match_id}/statistics",
             "lineups": f"event/{match_id}/lineups",
+            "odds": f"event/{match_id}/odds/1/all",
         }
 
         async def _fetch_ep(name: str, path: str):
@@ -262,6 +290,7 @@ class MobileClient:
         h2h_json = results.get("h2h", {})
         statistics_json = results.get("statistics", {})
         lineups_json = results.get("lineups", {})
+        odds_json = results.get("odds", {})
 
         incidents = incidents_json.get("incidents", []) if isinstance(incidents_json, dict) else []
         graph_points = graph_json.get("graphPoints", []) if isinstance(graph_json, dict) else []
@@ -298,6 +327,12 @@ class MobileClient:
         else:
             parsed["lineups"] = []
             parsed["player_stats"] = []
+
+        # Cuotas pre-partido
+        if odds_json:
+            parsed["odds"] = _parse_odds(match_id, odds_json)
+        else:
+            parsed["odds"] = []
 
         return parsed
 

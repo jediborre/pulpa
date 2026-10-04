@@ -57,8 +57,18 @@ class TokenPool:
         self.pool_size = pool_size
         self.tokens: list[TokenItem] = []
         self._current_index = 0
-        self._lock = asyncio.Lock()
         self._config_path = Path(TOKENS_CONFIG_PATH)
+
+    @property
+    def lock(self) -> asyncio.Lock:
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+        if not hasattr(self, "_lock_loop") or self._lock_loop != current_loop:
+            self._lock_loop = current_loop
+            self._lock_obj = asyncio.Lock()
+        return self._lock_obj
 
     def _load_from_disk(self) -> list[TokenItem]:
         if not self._config_path.exists():
@@ -147,7 +157,7 @@ class TokenPool:
 
     async def initialize(self) -> None:
         """Inicializa el pool cargando de disco o regenerando hasta alcanzar pool_size."""
-        async with self._lock:
+        async with self.lock:
             existing = self._load_from_disk()
             # Filtrar tokens con demasiados fallos
             valid_existing = [t for t in existing if t.failures < TOKEN_MAX_FAILURES]
@@ -168,7 +178,7 @@ class TokenPool:
 
     async def get_token(self) -> str:
         """Retorna el siguiente token disponible mediante Round-Robin."""
-        async with self._lock:
+        async with self.lock:
             if not self.tokens:
                 # Si por alguna razón está vacío, emitir uno de urgencia
                 emergency = await self._mint_token()
@@ -185,7 +195,7 @@ class TokenPool:
 
     async def mark_failure(self, token_str: str, status_code: int = 0) -> None:
         """Registra un fallo en un token y lo reemplaza automáticamente si excede el umbral."""
-        async with self._lock:
+        async with self.lock:
             for i, t in enumerate(self.tokens):
                 if t.token == token_str:
                     t.failures += 1
