@@ -8,6 +8,7 @@
 .env
 **/.env
 /match/.env
+monitor_v3/config/tokens.json
 
 # ============================================================
 # Python caches / bytecode
@@ -90,6 +91,10 @@ match/training/v*/reports/
 # ============================================================
 *.tmp
 *.swp
+*.apk
+*.idsig
+*.dex
+**/decoded/
 .DS_Store
 Thumbs.db
 

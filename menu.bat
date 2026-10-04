@@ -16,6 +16,9 @@ if /i "%~1"=="help" goto CLI_HELP
 if /i "%~1"=="/?" goto CLI_HELP
 if /i "%~1"=="-h" goto CLI_HELP
 if /i "%~1"=="--help" goto CLI_HELP
+if /i "%~1"=="v3" goto RUN_MONITOR_V3_CLI
+if /i "%~1"=="monitor_v3" goto RUN_MONITOR_V3_CLI
+if /i "%~1"=="todo_v3" goto DO_TODO_V3_CLI
 if /i "%~1"=="v1" goto RUN_MONITOR_V1_CLI
 if /i "%~1"=="monitor_v1" goto RUN_MONITOR_V1_CLI
 if /i "%~1"=="v2" goto RUN_MONITOR_V2_CLI
@@ -56,39 +59,41 @@ echo                  CENTRO DE CONTROL PRINCIPAL
 echo ==================================================================
 echo.
 echo  [1] OPERACION EN VIVO Y SERVICIOS
-echo    1) Iniciar Monitor V2 (Chrome nativo - Recomendado, Sin Proxy)
-echo    2) Iniciar Monitor V1 (Telegram Bot + Bet Monitor)
-echo    3) Iniciar Monitor V2 (Modo CDP directo)
-echo    4) Iniciar API Backend (FastAPI)
-echo    5) Iniciar Dashboard Web (API + Frontend Vite)
-echo    6) Iniciar Todo con V2 (All-in-One: Monitor V2 + API + Dashboard)
-echo    7) Iniciar Todo con V1 (All-in-One: Monitor V1 + API + Dashboard)
+echo    1) Iniciar Monitor V3 (API Movil Nativa + Multi-JWT - Recomendado)
+echo    2) Iniciar Monitor V2 (Chrome nativo - Sin Proxy)
+echo    3) Iniciar Monitor V1 (Telegram Bot + Bet Monitor)
+echo    4) Iniciar Monitor V2 (Modo CDP directo)
+echo    5) Iniciar API Backend (FastAPI)
+echo    6) Iniciar Dashboard Web (API + Frontend Vite)
+echo    7) Iniciar Todo con V3 (All-in-One: Monitor V3 + API + Dashboard)
+echo    8) Iniciar Todo con V2 (All-in-One: Monitor V2 + API + Dashboard)
+echo    9) Iniciar Todo con V1 (All-in-One: Monitor V1 + API + Dashboard)
 echo.
 echo  [2] ANALISIS, ESTADISTICAS Y CONSENSO
-echo    8) Estadisticas de Modelos / Fusion Consensus / Excel (CLI)
-echo    9) M27_V3: Reporte ROI y Yield (Modelo Campeon con H2H)
+echo   10) Estadisticas de Modelos / Fusion Consensus / Excel (CLI)
+echo   11) M27_V3: Reporte ROI y Yield (Modelo Campeon con H2H)
 echo.
 echo  [3] INGESTA, SCRAPING Y BACKFILL DE DATOS
-echo   10) Traer fecha nueva / descargar dias faltantes
-echo   11) Backfill historico general (matches.db)
-echo   12) Backfill masivo H2H (SofaScore - priorizado por ligas)
-echo   13) Comparar scraper tradicional vs obscura
+echo   12) Traer fecha nueva / descargar dias faltantes
+echo   13) Backfill historico general (matches.db)
+echo   14) Backfill masivo H2H (SofaScore - priorizado por ligas)
+echo   15) Comparar scraper tradicional vs obscura
 echo.
 echo  [4] MODELOS MACHINE LEARNING (ENTRENAMIENTO Y REPORTES)
-echo   14) M27_V1: Entrenar modelo
-echo   15) M27_V1: Solo reporte ROI
-echo   16) M27_V1: Solo probe
-echo   17) V6.2: Entrenar modelo
-echo   18) V6.2: Generar reporte Q4 ROI
-echo   19) V6.2: Entrenar + Reporte completo
-echo   20) V6.3: Menu de reportes (interactivo, m27, m30, probe)
-echo   21) Entrenar V2 (clasificador base)
-echo   22) Entrenar V6 (clasificador base)
-echo   23) Entrenar V2 + V6 (en orden)
+echo   16) M27_V1: Entrenar modelo
+echo   17) M27_V1: Solo reporte ROI
+echo   18) M27_V1: Solo probe
+echo   19) V6.2: Entrenar modelo
+echo   20) V6.2: Generar reporte Q4 ROI
+echo   21) V6.2: Entrenar + Reporte completo
+echo   22) V6.3: Menu de reportes (interactivo, m27, m30, probe)
+echo   23) Entrenar V2 (clasificador base)
+echo   24) Entrenar V6 (clasificador base)
+echo   25) Entrenar V2 + V6 (en orden)
 echo.
 echo  [5] MANTENIMIENTO, OBSCURA Y SISTEMA
-echo   24) Menu Obscura (Iniciar / Apagar / Instalar / Estado)
-echo   25) Instalar / Reparar dependencias (.venv, pip, playwright, npm)
+echo   26) Menu Obscura (Iniciar / Apagar / Instalar / Estado)
+echo   27) Instalar / Reparar dependencias (.venv, pip, playwright, npm)
 echo.
 echo    0) Salir
 echo ==================================================================
@@ -98,49 +103,49 @@ set /p OPT="  Selecciona una opcion: "
 if "%OPT%"=="0" goto FIN
 
 :: [1] Servicios en Vivo
-if "%OPT%"=="1" goto RUN_MONITOR_V2
+if "%OPT%"=="1" goto RUN_MONITOR_V3
+if /i "%OPT%"=="v3" goto RUN_MONITOR_V3
+if "%OPT%"=="2" goto RUN_MONITOR_V2
 if /i "%OPT%"=="v2" goto RUN_MONITOR_V2
-if "%OPT%"=="2" goto RUN_MONITOR_V1
+if "%OPT%"=="3" goto RUN_MONITOR_V1
 if /i "%OPT%"=="v1" goto RUN_MONITOR_V1
-if "%OPT%"=="3" goto RUN_MONITOR_CDP
-if "%OPT%"=="4" goto API
+if "%OPT%"=="4" goto RUN_MONITOR_CDP
+if "%OPT%"=="5" goto API
 if "%OPT%"=="30" goto API
-if "%OPT%"=="5" goto DASHBOARD
+if "%OPT%"=="6" goto DASHBOARD
 if "%OPT%"=="32" goto DASHBOARD
-if "%OPT%"=="6" goto TODO_V2
-if "%OPT%"=="7" goto TODO_V1
+if "%OPT%"=="7" goto TODO_V3
+if "%OPT%"=="8" goto TODO_V2
+if "%OPT%"=="9" goto TODO_V1
 
 :: [2] Analisis y Consenso
-if "%OPT%"=="8" goto VIEW_STATS_CLI
-if "%OPT%"=="9" goto REPORT_M27_V3_ONLY
+if "%OPT%"=="10" goto VIEW_STATS_CLI
+if "%OPT%"=="11" goto REPORT_M27_V3_ONLY
 if "%OPT%"=="31" goto REPORT_M27_V3_ONLY
 
 :: [3] Ingesta y Backfill
-if "%OPT%"=="10" goto FETCH_DATE
-if "%OPT%"=="11" goto BACKFILL
-if "%OPT%"=="12" goto BACKFILL_H2H_MASIVO
+if "%OPT%"=="12" goto FETCH_DATE
+if "%OPT%"=="13" goto BACKFILL
+if "%OPT%"=="14" goto BACKFILL_H2H_MASIVO
 if "%OPT%"=="33" goto BACKFILL_H2H_MASIVO
-if "%OPT%"=="13" goto COMPARE_SCRAPER
+if "%OPT%"=="15" goto COMPARE_SCRAPER
 
 :: [4] Machine Learning
-if "%OPT%"=="14" goto TRAIN_M27_V1
-if "%OPT%"=="15" goto REPORT_M27_V1_ONLY
-if "%OPT%"=="16" goto REPORT_M27_V1_PROBE
-if "%OPT%"=="17" goto TRAIN_V62_ONLY
-if "%OPT%"=="18" goto REPORT_V62_ONLY
-if "%OPT%"=="19" goto TRAIN_AND_REPORT_V62
-if "%OPT%"=="20" goto MENU_V63
-if "%OPT%"=="21" goto TRAIN_V2
+if "%OPT%"=="16" goto TRAIN_M27_V1
+if "%OPT%"=="17" goto REPORT_M27_V1_ONLY
+if "%OPT%"=="18" goto REPORT_M27_V1_PROBE
+if "%OPT%"=="19" goto TRAIN_V62_ONLY
+if "%OPT%"=="20" goto REPORT_V62_ONLY
+if "%OPT%"=="21" goto TRAIN_AND_REPORT_V62
+if "%OPT%"=="22" goto MENU_V63
+if "%OPT%"=="23" goto TRAIN_V2
 if "%OPT%"=="28" goto TRAIN_V2
-if "%OPT%"=="22" goto TRAIN_V6
-if "%OPT%"=="23" goto TRAIN_ALL
+if "%OPT%"=="24" goto TRAIN_V6
+if "%OPT%"=="25" goto TRAIN_ALL
 
 :: [5] Mantenimiento y Sistema
-if "%OPT%"=="24" goto MENU_OBSCURA
 if "%OPT%"=="26" goto MENU_OBSCURA
-if "%OPT%"=="27" goto START_OBSCURA_DIRECT
-if "%OPT%"=="29" goto STOP_OBSCURA_DIRECT
-if "%OPT%"=="25" goto INSTALAR
+if "%OPT%"=="27" goto INSTALAR
 if "%OPT%"=="99" goto INSTALAR
 
 echo [ERROR] Opcion invalida.
@@ -150,6 +155,17 @@ goto MENU
 :: ─────────────────────────────────────────────────
 :: [1] OPERACION EN VIVO Y SERVICIOS
 :: ─────────────────────────────────────────────────
+
+:RUN_MONITOR_V3
+cls
+echo.
+echo ========================================================
+echo  Iniciando Monitor V3 (API Movil Nativa + Multi-JWT)
+echo ========================================================
+echo.
+echo [+] Levantando Monitor V3 en una nueva ventana...
+start "Pulpa - Monitor V3 (Mobile API)" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v3\main.py"
+goto MENU
 
 :RUN_MONITOR_V1
 cls
@@ -233,6 +249,23 @@ echo =========================================================
 echo.
 echo [1/3] Iniciando Monitor V1 (Telegram Bot)...
 start "Pulpa - Monitor V1" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v1\main.py"
+echo [2/3] Iniciando API Backend (FastAPI)...
+start "Pulpa - API Backend" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python api.py"
+timeout /t 3 /nobreak >nul
+echo [3/3] Iniciando Dashboard Web (Vite/React)...
+start "Pulpa - Dashboard" cmd /k "cd /d %~dp0\dashboard && npm run dev"
+goto MENU
+
+:TODO_V3
+cls
+echo.
+echo =========================================================
+echo  Iniciando Suite Completa con Monitor V3 (All-in-One)
+echo  (Monitor V3 API Movil + API Backend + Dashboard)
+echo =========================================================
+echo.
+echo [1/3] Iniciando Monitor V3 (Mobile API)...
+start "Pulpa - Monitor V3 (Mobile API)" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v3\main.py"
 echo [2/3] Iniciando API Backend (FastAPI)...
 start "Pulpa - API Backend" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python api.py"
 timeout /t 3 /nobreak >nul
@@ -585,6 +618,16 @@ pause
 goto MENU
 
 :: ── Rutas CLI de Monitores y Servicios (retorno directo) ──
+:RUN_MONITOR_V3_CLI
+echo [+] Iniciando Monitor V3 (API Movil Nativa + Multi-JWT) desde CLI...
+call .venv\Scripts\activate
+python monitor_v3\main.py
+exit /b %errorlevel%
+
+:DO_TODO_V3_CLI
+call :TODO_V3
+exit /b 0
+
 :RUN_MONITOR_V1_CLI
 echo [+] Iniciando Monitor V1 (Telegram Bot + Bet Monitor) desde CLI...
 call .venv\Scripts\activate
@@ -631,11 +674,13 @@ echo ==================================================================
 echo Uso: menu.bat [comando]
 echo.
 echo Comandos disponibles:
-echo   v1 / monitor_v1         Inicia Monitor V1 (Telegram Bot + Bet Monitor)
+echo   v3 / monitor_v3         Inicia Monitor V3 (API Movil Nativa + Multi-JWT)
 echo   v2 / monitor_v2         Inicia Monitor V2 (Daemon Asincrono interactivo)
+echo   v1 / monitor_v1         Inicia Monitor V1 (Telegram Bot + Bet Monitor)
 echo   v2_cdp / monitor_v2_cdp Inicia Monitor V2 en modo CDP directo
-echo   todo_v1                 Inicia Todo con Monitor V1 (Bot + API + Dashboard)
+echo   todo_v3                 Inicia Todo con Monitor V3 (Mobile + API + Dashboard)
 echo   todo_v2                 Inicia Todo con Monitor V2 (Daemon + API + Dashboard)
+echo   todo_v1                 Inicia Todo con Monitor V1 (Bot + API + Dashboard)
 echo   obscura_start / start   Inicia el servicio Obscura en puerto 9222
 echo   obscura_stop / stop     Detiene el servicio Obscura
 echo   obscura_status / status Verifica estado de Obscura
