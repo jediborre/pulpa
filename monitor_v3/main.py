@@ -409,6 +409,15 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                 if gp_count > 0 and (minute is None or gp_count > minute):
                     minute = gp_count
 
+            # Fin de Q4 por reloj FIABLE (no adivinado): si el reloj acumulado alcanzó
+            # el final de la regulación (periodLength × totalPeriodCount), Q4 terminó.
+            period_len = match_meta.get("period_length") or 600
+            period_count = match_meta.get("period_count") or 4
+            if played is not None and played >= period_len * period_count:
+                log_info("MONITOREO", f"{COLOR_GREEN}[LIVE]{COLOR_RESET} Q4 finalizado por reloj (played={played}s) → FT | {match_display}")
+                await _final_fetch_and_save(match_id, home, away)
+                break
+
             period_lower = status_desc.lower()
             q_key = None
             if "1st quarter" in period_lower: q_key = "Q1"

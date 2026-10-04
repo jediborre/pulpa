@@ -120,8 +120,14 @@ marcadores de periodo cuyo `timeSeconds` es el **fin** del periodo (1200→20, 1
 monitoreo/FT antes de tiempo. La gráfica (`graphPoints`) sí trae `minute` fiable, pero
 `time.played` es la fuente directa.
 
-Implementado en `match/scraper.py` (`_parse` expone `match.game_seconds_played`) y usado
-en `monitor_v3/main.py` y `monitor_v2/main.py` con fallback a PBP/gráfica.
+Implementado en `match/scraper.py` (`_parse` expone `match.game_seconds_played`,
+`period_length`, `period_count`) y usado en `monitor_v3/main.py` y `monitor_v2/main.py`
+con fallback a PBP/gráfica.
+
+**Cierre de Q4 por reloj fiable:** el resultado de Q4 se dispara cuando el reloj acumulado
+alcanza el final de la regulación: `played >= periodLength × totalPeriodCount` (p. ej.
+`600 × 4 = 2400`), en vez de por un minuto adivinado. Se mantiene como respaldo
+`status_type == "finished"` y un fallback por reloj de pared.
 
 ### 2.6 URL canónica de un partido (botón "📱 Sofascore" de Telegram)
 

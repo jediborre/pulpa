@@ -469,6 +469,7 @@ def _parse(event_json: dict, incidents: list, graph_points: list | None = None) 
             # event.time.played = segundos acumulados del reloj de juego.
             "game_seconds_played": (ev.get("time") or {}).get("played"),
             "period_length": (ev.get("time") or {}).get("periodLength"),
+            "period_count": (ev.get("time") or {}).get("totalPeriodCount"),
             "clock_running": (ev.get("time") or {}).get("clockRunning"),
             "period_start_ts": (ev.get("time") or {}).get("currentPeriodStartTimestamp"),
         },

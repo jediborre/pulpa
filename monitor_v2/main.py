@@ -764,10 +764,14 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                 last_gmin = minute
                 last_gmin_wall = now_wall
                 
-                # Si ya pasamos del minuto 38, la ventana Q4 está cerrada.
-                # Aun así llamamos _final_fetch_and_save para reconciliar cualquier apuesta ya lanzada.
-                if minute >= 38:
-                    log_warning("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Ventana Q4 superada (min {minute}) | {match_display}")
+                # Fin de Q4 por reloj FIABLE (no adivinado): cuando el reloj acumulado
+                # alcanza el final de la regulación (periodLength × totalPeriodCount),
+                # Q4 terminó → FT. No dependemos del minuto inferido.
+                _m = full_data.get("match") or {}
+                _period_len = _m.get("period_length") or 600
+                _period_count = _m.get("period_count") or 4
+                if played is not None and played >= _period_len * _period_count:
+                    log_info("MONITOREO", f"{COLOR_GREEN}[LIVE]{COLOR_RESET} Q4 finalizado por reloj (played={played}s) → FT | {match_display}")
                     await _final_fetch_and_save(match_id, home, away)
                     break
                     
