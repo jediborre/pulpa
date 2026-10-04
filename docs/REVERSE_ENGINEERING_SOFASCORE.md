@@ -179,3 +179,33 @@ adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>
 - El login se hace vía `https://www.sofascore.com/android-auth` en un Custom Tab.
 - El `AUTH_TOKEN` vive en `shared_prefs/com.sofascore.results_preferences.xml` y
   dura ~6 meses.
+
+---
+
+## 8. PoC sin wrapper pesado: `curl_cffi` (libcurl) con JA3 OkHttp
+
+`tls_client` (blob Go) es solo un medio para enviar el **ClientHello correcto**. Se
+demostró que basta un cliente HTTP ligero con el JA3 exacto. `curl_cffi` acepta
+`ja3=` y `akamai=` directamente.
+
+**JA3 OkHttp Android (capturado):**
+```
+771,4865-4866-4867-49195-49196-52393-49199-49200-52392-49171-49172-156-157-47-53,0-23-65281-10-11-35-16-5-13-51-45-43-21,29-23-24,0
+```
+
+**Uso (probado 200 OK en `token/init` y todos los endpoints):**
+```python
+from curl_cffi import requests as cffi
+
+JA3 = "771,4865-4866-4867-49195-49196-52393-49199-49200-52392-49171-49172-156-157-47-53,0-23-65281-10-11-35-16-5-13-51-45-43-21,29-23-24,0"
+s = cffi.Session(ja3=JA3, impersonate="chrome")
+r = s.post("https://api.sofascore.com/api/v1/token/init", headers=sign_headers(), json=payload)
+```
+
+- Scripts: `tmp/debug_connection/capture_ja3.py` (captura el JA3 vía proxy local) y
+  `tmp/debug_connection/test_curl_cffi_ja3.py` / `test_curl_cffi_get.py` (PoC).
+- **Cómo capturar el JA3:** levantar un listener TCP local que haga de proxy HTTP
+  (`CONNECT`), apuntar `tls_client`/OkHttp a él y parsear el ClientHello (debe incluir
+  la extensión `0` = SNI; si se conecta a una IP, el JA3 sale sin SNI y falla).
+- La PoC confirma que **el WAF evalúa el ClientHello TLS + el UA firmado**, no la
+  librería. `httpx`/`requests` fallan porque su ClientHello no coincide.
