@@ -123,7 +123,19 @@ def sync():
     cert = r"C:\Users\App\AppData\Local\httptoolkit\Config\ca.pem"
     verify_cert = cert if os.path.exists(cert) else True
 
-    valid_token = None
+    # Cargar tokens existentes
+    existing_tokens = {}
+    if TOKENS_JSON.exists():
+        try:
+            with open(TOKENS_JSON, "r", encoding="utf-8") as f:
+                d = json.load(f)
+                for t in d.get("tokens", []):
+                    existing_tokens[t["token"]] = t
+        except Exception:
+            pass
+
+    valid_tokens = []
+    # Evaluar tokens encontrados en HTTP Toolkit
     for idx, item in enumerate(tokens, 1):
         tok = item["token"]
         print(f"\nProbando token #{idx} (...{tok[-12:]})...")
@@ -142,38 +154,45 @@ def sync():
             )
             if r.status_code == 200:
                 print(f"  [OK] Token válido y aceptado por SofaScore (HTTP 200)!")
-                valid_token = tok
-                break
+                if tok not in valid_tokens:
+                    valid_tokens.append(tok)
             else:
                 print(f"  [RECHAZADO] HTTP {r.status_code}: {r.text[:120]}")
         except Exception as ex:
             print(f"  [ERROR] Fallo de red: {ex}")
 
-    if not valid_token:
+    if not valid_tokens:
         print("\n[!] Ninguno de los tokens actuales en HTTP Toolkit es válido o están caducados/desafiados.")
         print("    Por favor, abre la app en el teléfono (o borra datos y ábrela) para que genere uno fresco.")
         return False
 
-    # Guardar en tokens.json
+    # Combinar tokens válidos existentes y nuevos
+    pool_items = []
+    for tok in valid_tokens:
+        if tok in existing_tokens:
+            pool_items.append(existing_tokens[tok])
+        else:
+            pool_items.append({
+                "token": tok,
+                "created_at": time.time(),
+                "device_uuid": f"android-{len(pool_items)+1}",
+                "advertising_id": f"ad-{len(pool_items)+1}",
+                "failures": 0,
+                "last_used": time.time(),
+            })
+
     TOKENS_JSON.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "updated_at": time.time(),
-        "count": 1,
-        "tokens": [
-            {
-                "token": valid_token,
-                "created_at": time.time(),
-                "device_uuid": "android-device",
-                "advertising_id": "android-ad-id",
-                "failures": 0,
-                "last_used": time.time(),
-            }
-        ]
+        "count": len(pool_items),
+        "tokens": pool_items,
     }
     with open(TOKENS_JSON, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
 
-    print(f"\n[EXITO] Token activo guardado en: {TOKENS_JSON}")
+    print(f"\n[ÉXITO] Pool actualizado con {len(pool_items)} token(s) válido(s) en: {TOKENS_JSON}")
+    for i, it in enumerate(pool_items, 1):
+        print(f"  Token #{i}: ...{it['token'][-12:]}")
     return True
 
 if __name__ == "__main__":

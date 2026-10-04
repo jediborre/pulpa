@@ -1886,6 +1886,9 @@ def cmd_fetch_range(args: argparse.Namespace) -> None:
 
     print(f"[fetch-range] Iniciando ingesta de {len(dates)} fechas (del {start_date} al {end_date}) con backend '{backend}'...")
     for idx, d in enumerate(dates, 1):
+        if idx > 1:
+            print(f"\n[fetch-range] ⏳ Pausa de cortesía de 5s entre fechas para proteger sesión...")
+            time.sleep(5.0)
         print(f"\n>>> [{idx}/{len(dates)}] Procesando fecha: {d} <<<")
         _ingest_date_with_progress(
             args.db,
@@ -1906,7 +1909,10 @@ def cmd_fetch_date_menu(args: argparse.Namespace) -> None:
     backend = _prompt_select_backend()
     force_redownload = bool(getattr(args, "force_redownload", False))
     if isinstance(event_date, list):
-        for d in event_date:
+        for idx, d in enumerate(event_date, 1):
+            if idx > 1:
+                print(f"\n[fetch-date] ⏳ Pausa de cortesía de 5s entre fechas para proteger sesión...")
+                time.sleep(5.0)
             _ingest_date_with_progress(
                 args.db,
                 d,
