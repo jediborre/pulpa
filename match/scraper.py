@@ -1359,10 +1359,6 @@ def fetch_finished_match_ids_for_date(
         async def _fetch_mobile():
             mc = get_mobile_client()
             events = await mc.get_all_scheduled_events_for_date(date_str)
-            if not events:
-                res = await mc.request("GET", f"sport/basketball/scheduled-events/{date_str}")
-                if res.status_code == 200:
-                    events = res.json().get("events", [])
             out = []
             for ev in events:
                 status = (ev.get("status") or {}).get("type", "")

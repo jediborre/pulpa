@@ -141,6 +141,29 @@ Para el funcionamiento de `monitor_v3` y las descargas históricas ultrarrápida
 - Nunca bombardear peticiones a SofaScore a más de 1 petición por segundo en descargas masivas históricas.
 - Mantener siempre un intervalo de 1.0s a 1.5s entre partidos para evitar que Cloudflare marque el token con `{"error": {"code": 403, "reason": "challenge"}}`.
 
+### 4. Infraestructura Real de `api.sofascore.com` (Fastly/Varnish, NO Cloudflare):
+> ⚠️ **ANTES de tocar la capa de red móvil, parchear el APK o investigar un 403,
+> revisar obligatoriamente los findings previos de decompilado:**
+> - `docs/REVERSE_ENGINEERING_SOFASCORE.md` → contrato exacto de la app, `User-Agent`
+>   firmado (MD5 + ventana de 100s + salt `sofa2012`), clases ofuscadas, herramientas
+>   (androguard, tls_client, adb `run-as`, WebView CDP) y procedimiento para re-derivar
+>   si se actualiza el APK.
+> - `docs/HALLAZGOS_403_SOFASCORE.md` → bitácora de la investigación del 403.
+>
+> **Solución validada (200 OK):** `tls_client` con `client_identifier="okhttp4_android_13"`
+> (huella TLS/HTTP2 OkHttp Android) + `User-Agent` firmado + cabeceras
+> `X-Timestamp`, `app-version`, `Accept-Language`, `Cache-Control` y `Authorization: Bearer`.
+> Sin proxy. No funciona con `httpx`, `requests`, `curl_cffi` ni con el UA estático.
+
+- Las respuestas 403 provienen del **WAF de SofaScore servido por Fastly (motor Varnish)**, NO de Cloudflare. Evidencia: cabeceras `server: Varnish`, `retry-after: 0`, `strict-transport-security: max-age=300`, y resolución DNS a IPs de Fastly (`140.248.179.52`, IPv6 `2a04:4e42:9c::820`). El cuerpo del error es siempre `{"error": {"code": 403, "reason": "..."}}`.
+- Motivos observados: `reason: "Forbidden"` (p. ej. `POST /api/v1/token/init`) y `reason: "challenge"` (endpoints `GET /sport/...`, `/event/...`).
+- **El 403 NO se debe a tokens inválidos ni a IP baneada.** Se verificó que un `AUTH_TOKEN` recién emitido por la app en el mismo teléfono y misma red (misma IP pública) sigue dando 403 desde la PC.
+- **NO sirve mitigarlo cambiando la huella TLS:** se probaron `curl_cffi` (`chrome`, `chrome_android`, `chrome131_android`, `chrome99_android`) y `tls_client` (`okhttp4_android_10/11/12/13`, `chrome_131/133`) con cabeceras móviles exactas (`User-Agent: com.sofascore.results/260921/022538`, `x-timestamp`, `Authorization: Bearer`, `Accept`, `Accept-Encoding`) y **todos** devuelven `403 challenge`. Tampoco cambia forzando IPv4 vs IPv6.
+- **HTTP Toolkit (proxy `127.0.0.1:8000`) NO es la solución:** al activar la intercepción MITM por ADB la app real también recibe 403 (el WAF detecta el MITM); al desactivarla la app vuelve a funcionar. Por eso el token se extrae por ADB sin proxy (opción 28).
+- **La app inyecta cookies del WebView en OkHttp** (`SCSWebviewCookieJar`, `convertCookieManager`, `WebViewCookieManager`), lo que sugiere que el WAF exige una cookie/estado de sesión obtenido por un WebView real (posible `challenge` de Varnish) que la app mantiene en memoria y **no persiste** en `app_webview/Default/Cookies` (se revisó: solo cookies publicitarias).
+- **Próximas líneas de investigación sugeridas:** (a) habilitar/inspeccionar WebView remote debugging (`webview_devtools_remote`) para extraer la cookie de challenge en vivo; (b) decompilar la capa de red de la app (clases `SCSWebviewCookieJar`/interceptores OkHttp) para hallar cabeceras o firmas obligatorias; (c) usar el teléfono como egress real (VPN/reverse) o capturar su `ClientHello` con proxy passthrough (ver `tmp/debug_connection/passthrough_proxy.py`); (d) revisar si el WAF exige un `x-*` calculado por JNI.
+- Scripts de diagnóstico de esta línea: `tmp/debug_connection/` (`test_direct_matrix.py`, `test_exact_endpoints.py`, `test_android_tls.py`, `test_tlsclient.py`, `test_fresh_token.py`, `test_token_init_cookies.py`, `pull_cookie.py`, `read_cookies.py`, `passthrough_proxy.py`). Documento detallado: `docs/HALLAZGOS_403_SOFASCORE.md`.
+
 ---
 
 ## 📌 Resumen de Directrices Técnicas

@@ -84,6 +84,16 @@ def _open_db(db_path: str) -> db_mod.sqlite3.Connection:
     return conn
 
 
+def _get_token_pool():
+    """Devuelve el pool global de JWT móviles (o None si monitor_v3 no está disponible)."""
+    try:
+        from monitor_v3.core.token_manager import get_token_pool
+
+        return get_token_pool()
+    except Exception:
+        return None
+
+
 def _print_summary(match_id: str, data: dict) -> None:
     """Pretty-print a match summary table to stdout."""
     m = data["match"]
@@ -1694,6 +1704,7 @@ def _ingest_date_with_progress(
     force_redownload: bool = False,
 ) -> None:
     """Discover FT match IDs for a date and ingest them with a progress bar."""
+    token_pool = _get_token_pool()
     print(f"[fetch-date] Consultando SofaScore para {event_date}...")
     try:
         rows_all = scraper_mod.fetch_finished_match_ids_for_date(event_date, backend=backend)
@@ -1809,6 +1820,9 @@ def _ingest_date_with_progress(
                 db_mod.mark_discovered_processed(conn, match_id)
                 ing_ok += 1
                 reason = f"ok"
+                # Rotación de sesión cada 10 partidos descargados (pool multi-JWT).
+                if token_pool is not None:
+                    token_pool.notify_match_done()
         except KeyboardInterrupt:
             print()
             print("[fetch-date] interrumpido por usuario")

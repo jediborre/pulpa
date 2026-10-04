@@ -19,10 +19,45 @@
 # 11. Conversión de tiempos siempre legibles en formato humano.
 # =====================================================================
 
+import hashlib
 import random
 import socket
+import time
 from urllib.parse import urlparse
-from monitor_v3.config.constants import SOFASCORE_PROXY_URL
+from monitor_v3.config.constants import (
+    SOFASCORE_PROXY_URL,
+    SOFASCORE_PKG,
+    SOFASCORE_UA_VERSION,
+    SOFASCORE_UA_SALT,
+)
+
+def build_signed_ua() -> str:
+    """
+    Reconstruye el User-Agent firmado de la app de SofaScore.
+
+    La app lo calcula como:
+        md5( str(unix_segundos // 100) + "sofa2012" )[:6]
+    y lo antepone a "com.sofascore.results/260921/". La firma cambia cada 100s.
+    """
+    bucket = int(time.time() // 100)
+    digest = hashlib.md5(f"{bucket}{SOFASCORE_UA_SALT}".encode()).hexdigest()
+    return f"{SOFASCORE_PKG}/{SOFASCORE_UA_VERSION}/{digest[:6]}"
+
+def build_mobile_headers(token: str | None = None) -> dict:
+    """Cabeceras exactas que la app envía a la API móvil de SofaScore."""
+    headers = {
+        "User-Agent": build_signed_ua(),
+        "X-Timestamp": str(int(time.time() * 1000)),
+        "app-version": SOFASCORE_UA_VERSION,
+        "Cache-Control": "max-age=0",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip",
+        "Connection": "Keep-Alive",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
 
 def is_proxy_accessible() -> bool:
     """Verifica si el proxy HTTP local o remoto está aceptando conexiones TCP."""

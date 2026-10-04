@@ -108,18 +108,17 @@ class TokenPool:
             log_warning("TOKEN_POOL", f"Error guardando tokens.json: {e}")
 
     async def _mint_token(self) -> TokenItem | None:
-        """Fallback: Emite un nuevo JWT móvil llamando a /api/v1/token/init vía proxy HTTP Toolkit."""
+        """Emite un nuevo JWT móvil llamando a /api/v1/token/init con la huella OkHttp Android."""
+        import asyncio
+
+        from monitor_v3.config.constants import SOFASCORE_TLS_CLIENT_ID
+        from monitor_v3.utils.helpers import build_mobile_headers
+
         dev_uuid = str(uuid.uuid4())
         ad_id = str(uuid.uuid4())
 
-        headers = {
-            'User-Agent': SOFASCORE_MOBILE_UA,
-            'x-timestamp': str(int(time.time() * 1000)),
-            'Content-Type': 'application/json; charset=UTF8',
-            'Accept-Encoding': 'gzip',
-            'Connection': 'Keep-Alive',
-            'Host': 'api.sofascore.com',
-        }
+        headers = build_mobile_headers()
+        headers["Content-Type"] = "application/json; charset=UTF8"
 
         payload = {
             "deviceType": "android",
@@ -133,25 +132,33 @@ class TokenPool:
         }
 
         url = "https://api.sofascore.com/api/v1/token/init"
-        verify_cert = SOFASCORE_CERT_PATH if os.path.exists(SOFASCORE_CERT_PATH) else True
-        proxy = SOFASCORE_PROXY_URL if SOFASCORE_PROXY_URL else None
+
+        def _do_post():
+            import tls_client
+
+            session = tls_client.Session(
+                client_identifier=SOFASCORE_TLS_CLIENT_ID,
+                random_tls_extension_order=False,
+            )
+            if SOFASCORE_PROXY_URL:
+                session.proxies = {"http": SOFASCORE_PROXY_URL, "https": SOFASCORE_PROXY_URL}
+            return session.post(url, headers=headers, json=payload, timeout_seconds=15)
 
         try:
-            async with httpx.AsyncClient(proxy=proxy, verify=verify_cert, timeout=12.0) as client:
-                res = await client.post(url, headers=headers, json=payload)
-                if res.status_code == 200:
-                    token_str = res.json().get("token")
-                    if token_str:
-                        return TokenItem(
-                            token=token_str,
-                            created_at=time.time(),
-                            device_uuid=dev_uuid,
-                            advertising_id=ad_id,
-                            failures=0,
-                            last_used=time.time()
-                        )
-                else:
-                    log_error("TOKEN_POOL", f"Error en /token/init: HTTP {res.status_code} - {res.text[:150]}")
+            res = await asyncio.to_thread(_do_post)
+            if res.status_code == 200:
+                token_str = res.json().get("token")
+                if token_str:
+                    return TokenItem(
+                        token=token_str,
+                        created_at=time.time(),
+                        device_uuid=dev_uuid,
+                        advertising_id=ad_id,
+                        failures=0,
+                        last_used=time.time()
+                    )
+            else:
+                log_error("TOKEN_POOL", f"Error en /token/init: HTTP {res.status_code} - {res.text[:150]}")
         except Exception as e:
             log_error("TOKEN_POOL", f"Fallo al emitir nuevo token: {e}")
         return None
@@ -163,6 +170,34 @@ class TokenPool:
             self.tokens = [t for t in existing if t.failures < TOKEN_MAX_FAILURES]
             self._save_to_disk()
             log_info("TOKEN_POOL", f"Pool activo listo con {len(self.tokens)} tokens en rotación.")
+
+    async def ensure_min_tokens(self, min_size: int = 3, max_attempts: int = 6) -> int:
+        """
+        Garantiza que el pool tenga al menos `min_size` tokens válidos, emitiendo
+        nuevos JWT vía /token/init (huella OkHttp + UA firmado) sin depender del
+        teléfono. Retorna cuántos tokens nuevos se generaron.
+        """
+        minted = 0
+        for _ in range(max_attempts):
+            async with self.lock:
+                if len(self.tokens) >= min_size:
+                    break
+            new_item = await self._mint_token()
+            if not new_item:
+                log_warning("TOKEN_POOL", "No se pudo emitir un token de reemplazo.")
+                break
+            async with self.lock:
+                if any(t.token == new_item.token for t in self.tokens):
+                    continue
+                self.tokens.append(new_item)
+                self._save_to_disk()
+                minted += 1
+                log_info(
+                    "TOKEN_POOL",
+                    f"➕ Token regenerado automáticamente (...{new_item.token[-12:]}). "
+                    f"Pool: {len(self.tokens)} tokens."
+                )
+        return minted
 
     def notify_match_done(self) -> None:
         """

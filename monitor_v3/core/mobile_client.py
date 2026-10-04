@@ -22,22 +22,21 @@
 import asyncio
 import os
 import sys
-import time
+import threading
 from pathlib import Path
-import httpx
 
 from monitor_v3.config.constants import (
     SOFASCORE_API_BASE,
-    SOFASCORE_MOBILE_UA,
     SOFASCORE_PROXY_URL,
-    SOFASCORE_CERT_PATH,
+    SOFASCORE_TLS_CLIENT_ID,
     FETCH_TIMEOUT_SECS,
     FETCH_MIN_SPACING_SECS,
     MAX_CONCURRENT_FETCHES,
     UTC_OFFSET_HOURS,
 )
 from monitor_v3.core.token_manager import TokenPool, get_token_pool
-from monitor_v3.utils.logger import log_error, log_warning, log_info
+from monitor_v3.utils.helpers import build_mobile_headers
+from monitor_v3.utils.logger import log_error, log_warning
 
 # Asegurar import de los parseadores canónicos de match
 ROOT_DIR = Path(__file__).resolve().parents[2]
@@ -53,17 +52,44 @@ from match.scraper import (
     _parse_odds,
 )
 
+# Sesión TLS/HTTP2 thread-local con huella OkHttp Android (tls_client).
+_TLS_LOCAL = threading.local()
+
+
+def _get_tls_session():
+    session = getattr(_TLS_LOCAL, "session", None)
+    if session is None:
+        import tls_client
+
+        session = tls_client.Session(
+            client_identifier=SOFASCORE_TLS_CLIENT_ID,
+            random_tls_extension_order=False,
+        )
+        if SOFASCORE_PROXY_URL:
+            session.proxies = {
+                "http": SOFASCORE_PROXY_URL,
+                "https": SOFASCORE_PROXY_URL,
+            }
+        _TLS_LOCAL.session = session
+    return session
+
+
+def _sync_request(method: str, url: str, headers: dict, kwargs: dict):
+    session = _get_tls_session()
+    return session.execute_request(method, url, headers=headers, **kwargs)
+
+
 class MobileClient:
     """
-    Cliente HTTP asíncrono puro optimizado para la API móvil de SofaScore.
-    Utiliza el pool rotativo de JWTs (TokenPool), enrutamiento por túnel local
-    con certificado SSL propio, control estricto de concurrencia y reintentos adaptativos.
+    Cliente HTTP asíncrono para la API móvil de SofaScore.
+
+    Usa la huella TLS/HTTP2 de OkHttp Android (`tls_client`) + el User-Agent
+    firmado de la app (MD5 con ventana de 100s) para pasar el WAF de Fastly.
+    Conserva el pool rotativo de JWTs, control de concurrencia y reintentos.
+    Ver docs/REVERSE_ENGINEERING_SOFASCORE.md.
     """
     def __init__(self, token_pool: TokenPool | None = None):
         self.token_pool = token_pool or get_token_pool()
-        self._verify_cert = SOFASCORE_CERT_PATH if os.path.exists(SOFASCORE_CERT_PATH) else True
-        self._proxy = SOFASCORE_PROXY_URL if SOFASCORE_PROXY_URL else None
-        self._client: httpx.AsyncClient | None = None
         self._client_loop = None
 
     @property
@@ -78,83 +104,67 @@ class MobileClient:
         return self._sem_obj
 
     async def __aenter__(self):
-        await self.start()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.close()
+        return None
 
     async def start(self) -> None:
-        try:
-            current_loop = asyncio.get_running_loop()
-        except RuntimeError:
-            current_loop = None
-
-        if (
-            self._client is None
-            or self._client.is_closed
-            or self._client_loop != current_loop
-        ):
-            self._client_loop = current_loop
-            self._client = httpx.AsyncClient(
-                proxy=self._proxy,
-                verify=self._verify_cert,
-                timeout=FETCH_TIMEOUT_SECS,
-                limits=httpx.Limits(max_keepalive_connections=20, max_connections=50)
-            )
+        # tls_client gestiona sus propias conexiones (thread-local); nada que iniciar.
+        return None
 
     async def close(self) -> None:
-        if self._client and not self._client.is_closed:
-            await self._client.aclose()
-            self._client = None
-            self._client_loop = None
+        return None
 
-    async def request(self, method: str, path: str, retry_count: int = 1, **kwargs) -> httpx.Response:
+    async def request(self, method: str, path: str, retry_count: int = 2, **kwargs):
         """
         Ejecuta una petición HTTP autenticada con rotación de tokens y auto-sanación.
+
+        Si el WAF responde 401/403 (token retado/baneado), el token se elimina del
+        pool y se emite automáticamente uno nuevo vía /token/init (sin teléfono),
+        reintentando la petición con el token fresco.
         """
-        try:
-            current_loop = asyncio.get_running_loop()
-        except RuntimeError:
-            current_loop = None
-
-        if self._client is None or self._client.is_closed or self._client_loop != current_loop:
-            await self.start()
-
         url = path if path.startswith("http") else f"{SOFASCORE_API_BASE}/{path.lstrip('/')}"
+        kwargs.setdefault("timeout_seconds", int(FETCH_TIMEOUT_SECS))
 
+        res = None
+        last_exc: Exception | None = None
         for attempt in range(retry_count + 1):
-            token = await self.token_pool.get_token()
-            headers = kwargs.pop("headers", {})
-            headers.update({
-                "User-Agent": SOFASCORE_MOBILE_UA,
-                "x-timestamp": str(int(time.time() * 1000)),
-                "Authorization": f"Bearer {token}",
-                "Accept-Encoding": "gzip",
-                "Connection": "Keep-Alive",
-            })
+            try:
+                token = await self.token_pool.get_token()
+            except RuntimeError:
+                # Pool vacío: intentar regenerar tokens artificialmente.
+                if not await self.token_pool.ensure_min_tokens():
+                    raise
+                token = await self.token_pool.get_token()
+
+            headers = build_mobile_headers(token)
 
             async with self.sem:
                 try:
-                    res = await self._client.request(method, url, headers=headers, **kwargs)
-                    
-                    # Si el token caduca o es rechazado, marcar fallo y reintentar con el siguiente del pool
+                    res = await asyncio.to_thread(_sync_request, method, url, headers, kwargs)
+
+                    # Token retado/caducado: purgar, regenerar y reintentar.
                     if res.status_code in (401, 403):
                         await self.token_pool.mark_failure(token, status_code=res.status_code)
+                        await self.token_pool.ensure_min_tokens()
                         if attempt < retry_count:
-                            await asyncio.sleep(0.1)
+                            await asyncio.sleep(0.5)
                             continue
-                    
+
                     await asyncio.sleep(FETCH_MIN_SPACING_SECS)
                     return res
 
                 except Exception as e:
+                    last_exc = e
                     if attempt < retry_count:
-                        await asyncio.sleep(0.2)
+                        await asyncio.sleep(0.3)
                         continue
-                    raise e
+                    raise
 
-        return res
+        if res is not None:
+            return res
+        raise last_exc
 
     # -------------------------------------------------------------
     # Métodos de Alto Nivel de la API Móvil
@@ -336,8 +346,10 @@ class MobileClient:
 
         return parsed
 
+
 # Singleton para reutilización
 _GLOBAL_MOBILE_CLIENT = MobileClient()
+
 
 def get_mobile_client() -> MobileClient:
     return _GLOBAL_MOBILE_CLIENT

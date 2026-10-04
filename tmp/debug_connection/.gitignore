@@ -1,0 +1,5 @@
+# Artefactos generados por los scripts de diagnóstico (no versionar)
+*.log
+*.bin
+*.txt
+mobile_cookies/

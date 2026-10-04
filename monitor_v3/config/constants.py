@@ -42,15 +42,28 @@ LEAGUES_CONFIG_PATH = str(Path(__file__).resolve().parent / "leagues.yaml")
 TOKENS_CONFIG_PATH = str(Path(__file__).resolve().parent / "tokens.json")
 
 # --- Configuración del Motor Móvil y Red ---
+# El WAF de Fastly ya no se evade con proxy sino con huella TLS OkHttp Android +
+# User-Agent firmado (ver docs/REVERSE_ENGINEERING_SOFASCORE.md). Por defecto se
+# conecta DIRECTO (sin proxy). Solo se usa un proxy si el .env define uno explícito
+# y distinto del smartproxy (que está muerto/407).
 _env_proxy = os.getenv("SOFASCORE_PROXY_URL", "").strip()
-if not _env_proxy or "smartproxy" in _env_proxy:
-    SOFASCORE_PROXY_URL = "http://127.0.0.1:8000"
-else:
+if _env_proxy and "smartproxy" not in _env_proxy:
     SOFASCORE_PROXY_URL = _env_proxy
+else:
+    SOFASCORE_PROXY_URL = ""
 
 SOFASCORE_CERT_PATH = os.getenv("SOFASCORE_CERT_PATH", r"C:\Users\App\AppData\Local\httptoolkit\Config\ca.pem").strip()
 SOFASCORE_MOBILE_UA = os.getenv("SOFASCORE_MOBILE_UA", "com.sofascore.results/260921/022538").strip()
 SOFASCORE_API_BASE = "https://api.sofascore.com/api/v1"
+
+# --- Contrato móvil firmado (extraído por reverse engineering del APK) ---
+# UA = "{SOFASCORE_PKG}/{SOFASCORE_UA_VERSION}/{md5(str(unix//100)+SOFASCORE_UA_SALT)[:6]}"
+SOFASCORE_PKG = "com.sofascore.results"
+SOFASCORE_APP_VERSION = "260921003"
+SOFASCORE_UA_VERSION = "260921"
+SOFASCORE_UA_SALT = "sofa2012"
+# Huella TLS/HTTP2 OkHttp Android (tls_client). NO usar httpx/requests/curl_cffi.
+SOFASCORE_TLS_CLIENT_ID = os.getenv("SOFASCORE_TLS_CLIENT_ID", "okhttp4_android_13").strip()
 
 # Concurrencia y Timeouts Móviles (ultra ligeros)
 MAX_CONCURRENT_FETCHES = 8          # API móvil asíncrona pura soporta mayor concurrencia

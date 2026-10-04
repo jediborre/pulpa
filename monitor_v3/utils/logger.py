@@ -24,6 +24,14 @@ import re
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
+# Forzar salida UTF-8 en consola Windows para evitar UnicodeEncodeError con emojis.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 # Códigos ANSI para colores de consola
 COLOR_DEBUG = "\033[90m"        # Gris
 COLOR_INFO = "\033[94m"         # Azul
