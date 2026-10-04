@@ -192,7 +192,7 @@ monitor_v3/
 | **F0.3** | Integración del vector móvil en el Plan Maestro | 🟢 Completada | Alta | `docs/PLAN_MONITOR_V3.md` | Arquitectura Dual-Engine documentada. |
 | **F1.1M**| PoC: Peticiones HTTP simulando cabeceras Android | 🟢 Completada | Alta | `tmp/monitor_v3_poc/test_mobile_headers.py` | 403 Varnish recibido. Confirma que la app envía headers/tokens específicos. |
 | **F1.1W**| PoC: Pruebas con Camoufox y Chrome Headless | 🟢 Completada | Alta | `tmp/monitor_v3_poc/inspect_captcha_page.py` | Detectado iframe de Cloudflare Turnstile en `captcha.html`. |
-| **F1.2M**| Laboratorio dinámico Android (HTTP Toolkit / Mitmproxy) | 🟡 Guía Lista | Alta | `tmp/monitor_v3_poc/mobile_capture.md` | Guía de intercepción y script `replay_captured_request.py` listos. |
+| **F1.2M**| Laboratorio dinámico Android (Parcheo APK y HTTP Toolkit) | 🟢 Instalada en Teléfono | Alta | `tmp/monitor_v3_poc/Sofascore-patched.apk` | Cert-pinning desactivado, splits arm64/xxxhdpi corregidos, firmados con debug key e instalados con éxito vía `adb install-multiple`. |
 | **F1.2W**| PoC: Harvester Web con Perfil Persistente (`cf_clearance`)| 🟡 Siguiente | Alta | `tmp/monitor_v3_poc/test_persistent_profile.py` | Persistir cookies de Turnstile para reutilizar en `curl_cffi`. |
 | **F2.1** | Creación del paquete `monitor_v3/` y scaffolding | ⚪ Pendiente | Media | Directorio `monitor_v3/` | Estructura modular completa. |
 | **F2.2** | Implementación de `core/mobile_client.py` | ⚪ Pendiente | Alta | `monitor_v3/core/mobile_client.py` | Cliente primario de alta velocidad. |
@@ -221,10 +221,17 @@ Durante las pruebas experimentales ejecutadas en `tmp/monitor_v3_poc/`, se obtuv
    * Si no hay cookies de sesión previas (`cf_clearance`), cualquier llamada a `api.sofascore.com` devuelve `{"error": {"code": 403, "reason": "challenge"}}`.
 3. **Punto Clave de la Virtualización de Python en Windows:**
    * Se identificó y resolvió que el Python de Microsoft Store virtualiza las rutas bajo `LocalCache\Local\...`, requiriendo pasar rutas absolutas resueltas (`resolve()`) a los drivers de Playwright.
+4. **Parcheo e Instalación Exitosa de la App Móvil sin SSL Pinning (`Sofascore-patched.apk`):**
+   * La app oficial de SofaScore en el dispositivo es un Android App Bundle (`base.apk`, `split_config.arm64_v8a.apk`, `split_config.xxxhdpi.apk`).
+   * Se parcheó con `apk-mitm` para deshabilitar certificate pinning y forzar la confianza en CAs de usuario (`NetworkSecurityConfig`).
+   * Se corrigió un error de parseo en `AndroidManifest.xml` (`<meta-data android:resource="@null"/>` en FCM) que impedía la instalación en Android 10+.
+   * Se resignaron los splits con clave de depuración homogénea vía `uber-apk-signer` y se instalaron con éxito vía `adb install-multiple`.
+   * La aplicación inicia y corre libremente, permitiendo a HTTP Toolkit o proxies MITM interceptar el 100% de sus llamadas HTTPS sin rechazos de certificado.
 
 ---
 
 ## 7. Próximos Pasos Prioritarios
 
-1. **Vía Móvil (F1.2M):** Guía de captura rápida con HTTP Toolkit para registrar el intercambio de red real de la app SofaScore en Android y extraer sus cabeceras auténticas.
-2. **Vía Web (F1.2W):** PoC de navegador con **Perfil Persistente** (`--user-data-dir`), permitiendo almacenar la cookie `cf_clearance` de Turnstile de forma duradera para que `curl_cffi` pueda consultar las APIs en milisegundos sin bloqueos.
+1. **Vía Móvil (F1.2M):** Conectar HTTP Toolkit mediante "Android device via ADB", abrir SofaScore en el teléfono, entrar a un partido de baloncesto en vivo o finalizado y registrar las cabeceras exactas de `api.sofascore.com`.
+2. **Replay (F1.2M):** Replicar las cabeceras capturadas en `tmp/monitor_v3_poc/replay_captured_request.py` para validar que respondan `200 OK` en Python puro.
+3. **Vía Web (F1.2W):** PoC de navegador con **Perfil Persistente** (`--user-data-dir`), permitiendo almacenar la cookie `cf_clearance` de Turnstile de forma duradera para que `curl_cffi` pueda consultar las APIs en milisegundos sin bloqueos.
