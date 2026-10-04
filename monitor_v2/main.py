@@ -764,16 +764,9 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                 last_gmin = minute
                 last_gmin_wall = now_wall
                 
-                # Fin de Q4 por reloj FIABLE (no adivinado): cuando el reloj acumulado
-                # alcanza el final de la regulación (periodLength × totalPeriodCount),
-                # Q4 terminó → FT. No dependemos del minuto inferido.
-                _m = full_data.get("match") or {}
-                _period_len = _m.get("period_length") or 600
-                _period_count = _m.get("period_count") or 4
-                if played is not None and played >= _period_len * _period_count:
-                    log_info("MONITOREO", f"{COLOR_GREEN}[LIVE]{COLOR_RESET} Q4 finalizado por reloj (played={played}s) → FT | {match_display}")
-                    await _final_fetch_and_save(match_id, home, away)
-                    break
+                # NOTA: `played` puede llegar a 40:00 (fin de regulación) mientras el
+                # partido SIGUE en vivo (última posesión/tiros libres) y el marcador
+                # cambia. El único indicador fiable de fin es status_type == "finished".
                     
                 # Ventana operable Q4: AMBOS modelos (m27_v3 y v6_2) se evalúan al min 27
                 # (v6_2 snapshot 36 = fallo de diseño con leakage, se usa igual a min 27).

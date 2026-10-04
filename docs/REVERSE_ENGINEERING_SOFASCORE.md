@@ -124,14 +124,18 @@ Implementado en `match/scraper.py` (`_parse` expone `match.game_seconds_played`,
 `period_length`, `period_count`) y usado en `monitor_v3/main.py` y `monitor_v2/main.py`
 con fallback a PBP/gráfica.
 
-**Cierre de Q4 por reloj fiable:** el resultado de Q4 se dispara cuando el reloj acumulado
-alcanza el final de la regulación: `played >= periodLength × totalPeriodCount` (p. ej.
-`600 × 4 = 2400`), en vez de por un minuto adivinado. Como respaldo queda
-`status_type == "finished"` y el timeout de obsolescencia (3.5h).
+**Cierre de Q4:** el resultado se dispara **solo** cuando SofaScore reporta
+`status_type == "finished"` (autoritativo). Como respaldo queda el timeout de
+obsolescencia (3.5h).
 
+> ⚠️ **NO cerrar por reloj `played`:** `played` llega a `periodLength × totalPeriodCount`
+> (p. ej. `2400` = 40:00) mientras el partido **sigue en vivo** (última posesión, tiros
+> libres, revisiones) y el marcador continúa cambiando. Se observó un cierre a `played=2400`
+> con `status=inprogress` y marcador 90-85 → 96-89. Se eliminó ese trigger 2026-10-04.
+>
 > ⚠️ **No usar un fallback por reloj de pared** (`scheduled_ts + secs_per_gmin × 40`):
-> el `secs_per_gmin` (EMA) se subestima y cierra el partido antes de terminar Q4
-> (se observó un cierre a MIN 35 con Q4 11-5). Se eliminó 2026-10-04.
+> el `secs_per_gmin` (EMA) se subestima y cierra el partido antes de tiempo. También
+> eliminado 2026-10-04.
 
 ### 2.6 URL canónica de un partido (botón "📱 Sofascore" de Telegram)
 
