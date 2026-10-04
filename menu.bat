@@ -39,6 +39,8 @@ if /i "%~1"=="status" goto DO_STATUS_OBSCURA_CLI
 if /i "%~1"=="token" goto SYNC_TOKEN_CLI
 if /i "%~1"=="jwt" goto SYNC_TOKEN_CLI
 if /i "%~1"=="sync_token" goto SYNC_TOKEN_CLI
+if /i "%~1"=="reinstall" goto REINSTALL_APP_CLI
+if /i "%~1"=="reinstall_app" goto REINSTALL_APP_CLI
 
 :: ── Verificar .venv ───────────────────────────────
 if not exist ".venv\Scripts\activate.bat" (
@@ -98,6 +100,7 @@ echo  [5] MANTENIMIENTO, OBSCURA Y SISTEMA
 echo   26) Menu Obscura (Iniciar / Apagar / Instalar / Estado)
 echo   27) Instalar / Reparar dependencias (.venv, pip, playwright, npm)
 echo   28) Sincronizar Token JWT desde App (HTTP Toolkit)
+echo   29) Reinstalar SofaScore Parcheada en Android (ADB)
 echo.
 echo    0) Salir
 echo ==================================================================
@@ -154,6 +157,9 @@ if "%OPT%"=="28" goto SYNC_TOKEN
 if /i "%OPT%"=="token" goto SYNC_TOKEN
 if /i "%OPT%"=="jwt" goto SYNC_TOKEN
 if /i "%OPT%"=="sync_token" goto SYNC_TOKEN
+if "%OPT%"=="29" goto REINSTALL_APP
+if /i "%OPT%"=="reinstall" goto REINSTALL_APP
+if /i "%OPT%"=="reinstall_app" goto REINSTALL_APP
 
 echo [ERROR] Opcion invalida.
 timeout /t 2 /nobreak >nul
@@ -905,6 +911,24 @@ goto MENU
 :SYNC_TOKEN_CLI
 call .venv\Scripts\activate
 python tools\sync_token_from_httptoolkit.py
+exit /b %ERRORLEVEL%
+
+:REINSTALL_APP
+cls
+echo.
+echo ========================================================
+echo  Reinstalar SofaScore Parcheada en Android (ADB)
+echo ========================================================
+echo.
+call .venv\Scripts\activate
+python tools\reinstall_sofascore.py
+echo.
+pause
+goto MENU
+
+:REINSTALL_APP_CLI
+call .venv\Scripts\activate
+python tools\reinstall_sofascore.py
 exit /b %ERRORLEVEL%
 
 :: ─────────────────────────────────────────────────

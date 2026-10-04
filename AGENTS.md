@@ -123,15 +123,15 @@ Toda la suite de ML se organiza bajo el directorio raíz `models/`:
 Para el funcionamiento de `monitor_v3` y las descargas históricas ultrarrápidas con `fetch-range` / `fetch-date` se requiere un token Bearer JWT legítimo emitido por la aplicación oficial de Android (validez de 6 meses).
 
 ### 1. ¿Es necesario desinstalar la app si el token caduca o se bloquea?
-- **NO es necesario desinstalar la app.**
-- Basta con ir en el teléfono a: **Ajustes > Aplicaciones > SofaScore > Almacenamiento > "Borrar datos" (Clear Data)**.
-- Esto limpia la sesión local bloqueada y fuerza a la app a inicializarse de cero y solicitar un nuevo JWT genuino a los servidores de SofaScore. *(Desinstalar y reinstalar la APK parcheada también funciona, pero borrar datos es mucho más rápido).*
+- Para renovar sesión tras un bloqueo persistente o resetear el `Installation ID` y huella local:
+  - **Opción automatizada rápida:** Ejecuta la opción **29** en `menu.bat` (o `python tools\reinstall_sofascore.py`), la cual desinstala completamente la app por ADB, reinstala la suite APK limpia parcheada (`tmp\monitor_v3_poc\Sofascore-patched.apk` + splits) y vuelve a abrir la app de forma transparente.
+  - **Opción manual en el teléfono:** Ajustes > Aplicaciones > SofaScore > Almacenamiento > "Borrar datos".
 
 ### 2. Flujo de Captura y Sincronización:
 1. **HTTP Toolkit en PC:** Debe estar ejecutándose en la computadora (escuchando en puerto 8000 y socket local `//./pipe/httptoolkit-ctl`).
 2. **Conexión del Teléfono:** El teléfono debe estar interceptado por HTTP Toolkit (vía "Android device via ADB" o proxy Wi-Fi manual hacia el puerto 8000 con el certificado CA confiado).
 3. **Generación del Token en el Teléfono:**
-   - En el teléfono, abre la app de SofaScore (tras haber borrado datos).
+   - En el teléfono, abre la app de SofaScore (recién reinstalada con opción 29 o tras haber borrado datos).
    - Navega en la app o toca cualquier partido durante 5 segundos.
    - La app se autentica automáticamente contra `/api/v1/token/init` pasando las verificaciones internas y realiza peticiones autorizadas (`Authorization: Bearer eyJ...`).
 4. **Sincronización Automática al Proyecto:**
