@@ -99,7 +99,7 @@ echo.
 echo  [5] MANTENIMIENTO, OBSCURA Y SISTEMA
 echo   26) Menu Obscura (Iniciar / Apagar / Instalar / Estado)
 echo   27) Instalar / Reparar dependencias (.venv, pip, playwright, npm)
-echo   28) Sincronizar Token JWT desde App (HTTP Toolkit)
+echo   28) Sincronizar Token JWT desde Android (ADB Directo / USB)
 echo   29) Reinstalar SofaScore Parcheada en Android (ADB)
 echo.
 echo    0) Salir
@@ -892,25 +892,26 @@ goto MENU
 cls
 echo.
 echo ========================================================
-echo  Sincronizar Token JWT desde App (HTTP Toolkit)
+echo  Sincronizar Token JWT desde Android (ADB Directo / USB)
 echo ========================================================
 echo.
-echo  Asegurate de que:
-echo   1. HTTP Toolkit este abierto en la PC (puerto 8000).
-echo   2. Hayas borrado datos de SofaScore en el telefono si
-echo      los tokens anteriores fueron desafiados/bloqueados.
-echo   3. Abras la app SofaScore en el telefono e interactues
-echo      con cualquier partido durante 5 segundos.
-echo.
 call .venv\Scripts\activate
-python tools\sync_token_from_httptoolkit.py
+python tools\sync_token_from_adb.py
+if errorlevel 1 (
+    echo.
+    echo [AVISO] Fallo extraccion por ADB. Intentando via HTTP Toolkit...
+    python tools\sync_token_from_httptoolkit.py
+)
 echo.
 pause
 goto MENU
 
 :SYNC_TOKEN_CLI
 call .venv\Scripts\activate
-python tools\sync_token_from_httptoolkit.py
+python tools\sync_token_from_adb.py
+if errorlevel 1 (
+    python tools\sync_token_from_httptoolkit.py
+)
 exit /b %ERRORLEVEL%
 
 :REINSTALL_APP

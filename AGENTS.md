@@ -127,19 +127,15 @@ Para el funcionamiento de `monitor_v3` y las descargas históricas ultrarrápida
   - **Opción automatizada rápida:** Ejecuta la opción **29** en `menu.bat` (o `python tools\reinstall_sofascore.py`), la cual desinstala completamente la app por ADB, reinstala la suite APK limpia parcheada (`tmp\monitor_v3_poc\Sofascore-patched.apk` + splits) y vuelve a abrir la app de forma transparente.
   - **Opción manual en el teléfono:** Ajustes > Aplicaciones > SofaScore > Almacenamiento > "Borrar datos".
 
-### 2. Flujo de Captura y Sincronización:
-1. **HTTP Toolkit en PC:** Debe estar ejecutándose en la computadora (escuchando en puerto 8000 y socket local `//./pipe/httptoolkit-ctl`).
-2. **Conexión del Teléfono:** El teléfono debe estar interceptado por HTTP Toolkit (vía "Android device via ADB" o proxy Wi-Fi manual hacia el puerto 8000 con el certificado CA confiado).
-3. **Generación del Token en el Teléfono:**
-   - En el teléfono, abre la app de SofaScore (recién reinstalada con opción 29 o tras haber borrado datos).
-   - Navega en la app o toca cualquier partido durante 5 segundos.
-   - La app se autentica automáticamente contra `/api/v1/token/init` pasando las verificaciones internas y realiza peticiones autorizadas (`Authorization: Bearer eyJ...`).
-4. **Sincronización Automática al Proyecto:**
-   - Ejecuta desde la raíz del proyecto:
-     ```powershell
-     .venv\Scripts\python.exe tools\sync_token_from_httptoolkit.py
-     ```
-   - Este script lee directamente el socket de HTTP Toolkit, prueba la validez del token contra la API de SofaScore y, si responde `HTTP 200`, lo guarda automáticamente en `monitor_v3/config/tokens.json`.
+### 2. Flujo de Captura y Sincronización Directa por ADB (Sin Proxy):
+1. **Conexión del Teléfono:** El teléfono debe estar conectado por cable USB a la PC con depuración USB habilitada.
+2. **Generación del Token en el Teléfono:**
+   - La app oficial/parcheada de SofaScore se abre en el teléfono (conectada directamente a internet, sin proxys ni VPNs para no ser bloqueada por Cloudflare).
+   - Navega en la app o toca cualquier partido durante 5 segundos. La app obtiene y guarda su `AUTH_TOKEN` en sus preferencias privadas.
+3. **Extracción Automática al Proyecto:**
+   - Ejecuta la opción **28** en `menu.bat` (o `python tools\sync_token_from_adb.py`).
+   - El script extrae el token directamente de `shared_prefs/com.sofascore.results_preferences.xml` usando `adb shell run-as com.sofascore.results cat ...`, decodifica la expiración y lo almacena directamente en `monitor_v3/config/tokens.json`.
+4. **Fallback HTTP Toolkit:** Si el teléfono no está por USB, la opción 28 o `python tools\sync_token_from_httptoolkit.py` puede inspeccionar el socket local de HTTP Toolkit (`//./pipe/httptoolkit-ctl`).
 
 ### 3. Prevención de Bloqueos (Rate Limiting y Challenges):
 - Nunca bombardear peticiones a SofaScore a más de 1 petición por segundo en descargas masivas históricas.
