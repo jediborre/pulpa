@@ -330,28 +330,28 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
         await asyncio.sleep(probe_sleep)
         probe_delay = min(float(PRESTART_PROBE_MAX_SECS), probe_delay * PRESTART_PROBE_BACKOFF)
 
-    # 4. Espera Adaptativa Q1/Q2 (hasta inicio estimado de Q3 ~min 20)
-    Q3_START_GAME_MIN = 20
-    estimated_q3_wall = scheduled_ts + secs_per_gmin * Q3_START_GAME_MIN
-    now_ts = time.time()
-
-    if now_ts < estimated_q3_wall - 60:
-        wait_secs = estimated_q3_wall - 60 - now_ts
-        log_info("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Esperando ventana Q3 en ~{format_human_time(wait_secs)} | {match_display}")
-        remaining = wait_secs
-        while remaining > 0 and not stop_event.is_set():
-            chunk = min(180.0, remaining)
-            await asyncio.sleep(chunk)
-            remaining = estimated_q3_wall - 60 - time.time()
-            if remaining > 60:
-                try:
-                    snap_chk = await fetch_event_snapshot(match_id)
-                    if snap_chk.get("status_type", "").lower() == "finished":
-                        log_info("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Finalizado durante Q1/Q2 → FT | {match_display}")
-                        await _final_fetch_and_save(match_id, home, away)
-                        return
-                except Exception:
-                    pass
+    # 4. Espera hasta acercarse a la ventana de evaluación (min 27) usando el RELOJ
+    #    FIABLE del snapshot (event.time.played), NO estimaciones de reloj de pared.
+    #    Así, aunque el daemon se reinicie, el watcher sabe en qué minuto va el partido.
+    EVAL_WAKE_MINUTE = max(0, Q4_ONLY_EARLY_WAKE_MINUTE - 2)
+    while not stop_event.is_set():
+        try:
+            snap = await fetch_event_snapshot(match_id)
+            st = snap.get("status_type", "").lower()
+            if st == "finished":
+                log_info("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Finalizado antes de la ventana → FT | {match_display}")
+                await _final_fetch_and_save(match_id, home, away)
+                return
+            played = snap.get("game_seconds_played")
+            if played is not None and (int(played) // 60) >= EVAL_WAKE_MINUTE:
+                break
+            # Respaldo si el API no expone el reloj: entrar al ver Q3/Q4.
+            desc = (snap.get("status_description") or "").lower()
+            if played is None and ("3rd quarter" in desc or "4th quarter" in desc):
+                break
+        except Exception as e:
+            log_error("MONITOREO", f"[PROBE] Error sondeo {match_display}: {e}")
+        await asyncio.sleep(POLL_NEAR_SECS)
 
     # 5. Monitoreo Activo en Vivo (Ventana Q3/Q4)
     try:

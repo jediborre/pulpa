@@ -261,6 +261,9 @@ class MobileClient:
             "status_code": status.get("code", None),
             "home_score": hs.get("current", hs.get("normaltime", 0)),
             "away_score": as_.get("current", as_.get("normaltime", 0)),
+            "game_seconds_played": (ev.get("time") or {}).get("played"),
+            "period_length": (ev.get("time") or {}).get("periodLength"),
+            "period_count": (ev.get("time") or {}).get("totalPeriodCount"),
             "raw_event": ev,
         }
 
