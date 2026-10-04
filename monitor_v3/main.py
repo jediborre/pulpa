@@ -483,7 +483,8 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
 
                             # Enviar Telegram Alert
                             quarters_data = score_data.get("quarters", {})
-                            q4_scores = quarters_data.get("Q4", {})
+                            # Mostrar el marcador del cuarto ACTUAL (no el de Q4, que aún va 0-0).
+                            current_q_scores = quarters_data.get(q_key, {}) if q_key else {}
                             if len(operable_to_send) > 1:
                                 await send_combined_bet_alert(
                                     predictions=operable_to_send,
@@ -493,8 +494,8 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                     away_team=away,
                                     minute=minute,
                                     q_key=q_key,
-                                    q_home=q4_scores.get("home"),
-                                    q_away=q4_scores.get("away"),
+                                    q_home=current_q_scores.get("home"),
+                                    q_away=current_q_scores.get("away"),
                                     league=league,
                                     scheduled_ts=scheduled_ts
                                 )
@@ -512,8 +513,8 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                     away_team=away,
                                     minute=minute,
                                     q_key=q_key,
-                                    q_home=q4_scores.get("home"),
-                                    q_away=q4_scores.get("away"),
+                                    q_home=current_q_scores.get("home"),
+                                    q_away=current_q_scores.get("away"),
                                     league=league,
                                     scheduled_ts=scheduled_ts,
                                     confidence=pred0.get("confidence")
