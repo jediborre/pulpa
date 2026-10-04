@@ -1,7 +1,7 @@
 # 🚀 Plan Maestro: Arquitectura y Hoja de Ruta de Monitor V3
 
 > **Estado:** 🟡 EN DEFINICIÓN Y POC INICIAL  
-> **Objetivo:** Diseñar e implementar `monitor_v3`, un sistema de monitoreo e inferencia en vivo de básquetbol de alta velocidad, ultra bajo consumo de memoria y resistente a bloqueos anti-bot (Cloudflare Turnstile) mediante una arquitectura desacoplada sin costo de proxies.
+> **Objetivo:** Diseñar e implementar `monitor_v3`, un sistema de monitoreo e inferencia en vivo de básquetbol de alta velocidad, ultra bajo consumo de memoria y resistente a bloqueos anti-bot (Cloudflare Turnstile) mediante una arquitectura desacoplada sin costo de proxies, explorando la **vía de extracción móvil (Android API)** como vector estratégico principal y la **vía web híbrida** como respaldo robusto.
 
 ---
 
@@ -60,86 +60,128 @@ Para que `monitor_v3` reemplace o supere a `monitor_v2`, debe recopilar con tota
 
 ---
 
-## 2. Nueva Arquitectura Propuesta para Monitor V3
+## 2. El Vector Estratégico Móvil (Android Reverse Engineering)
 
-### El Cambio de Paradigma: Harvester + Fast HTTP Worker
-En V2, cada petición o sondeo ejecuta Playwright / Chrome Headless, consumiendo entre 200 y 400 MB de RAM por instancia y generando fugas de CDP detectables por Cloudflare.
+### ¿Por qué la Vía Móvil es el "Santo Grial" contra Cloudflare?
+En la web, Cloudflare intercepta con **Turnstile**, **Bot Fight Mode** y análisis de huellas de navegador (DOM, WebGL, Canvas, fugas de CDP). Esto obligó a que navegadores experimentales como Obscura fracasaran por no ejecutar el motor de Next.js/React.
 
-En V3 separamos radicalmente la **cosecha de credenciales** de la **extracción de datos**:
+En cambio, la aplicación oficial de SofaScore en Android:
+1. **Es 100% nativa:** Escrita en Kotlin/Java utilizando `OkHttp` y `Retrofit`. No es un WebView ni un contenedor HTML.
+2. **Cero Retos Interactivos de JavaScript:** Cloudflare **no puede** inyectar puzzles de JavaScript ni retos de verificación humana dentro de una app nativa porque rompería la aplicación en el dispositivo del usuario.
+3. **Consumo de Datos en JSON Puro:** La app consume endpoints directos que entregan los mismos datos estructurados que necesita `pulpa`.
 
 ```
-┌────────────────────────────────────────────────────────┐
-│ Capa 1: Harvester de Sesión (Bajo Demanda / Cada 3h)   │
-│ - Camoufox o Chrome con perfil persistente             │
-│ - Resuelve reto de Cloudflare 1 sola vez               │
-│ - Exporta CookieJar en memoria y CIERRA el navegador   │
-└──────────────────────────┬─────────────────────────────┘
-                           │ (Inyecta cookies en caliente)
-                           ▼
-┌────────────────────────────────────────────────────────┐
-│ Capa 2: Fast HTTP Engine (Asíncrono Permanente)        │
-│ - curl_cffi / httpx con TLS JA4 spoofing               │
-│ - Peticiones HTTP/2 directas en 40-80 ms               │
-│ - Menos de 30 MB de RAM en ejecución continua          │
-└──────────────────────────┬─────────────────────────────┘
-                           │ (JSONs limpios)
-                           ▼
-┌────────────────────────────────────────────────────────┐
-│ Capa 3: Orquestador y ML (Asyncio Event Loop)          │
-│ - bet_monitor_schedule_v3                              │
-│ - Inferencia desacoplada (models/registry.py)          │
-│ - bet_monitor_log_v3 + Alertas Telegram                │
-│ - Inserción atómica en base de datos matches.db        │
-└────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│ PASO 1: LABORATORIO DE DESCUBRIMIENTO (Se hace 1 sola vez en PC)       │
+├────────────────────────────────────────────────────────────────────────┤
+│ 1. Se descarga el APK oficial de SofaScore.                            │
+│ 2. Análisis Estático (JADX-GUI):                                       │
+│    - Búsqueda de endpoints base (ej. Retrofit interfaces).             │
+│    - Identificación de cabeceras obligatorias (User-Agent, API Keys).  │
+│ 3. Intercepción Dinámica (Emulador Android + HTTP Toolkit / Mitmproxy):│
+│    - Se lanza un emulador Android temporal (o teléfono de prueba).     │
+│    - HTTP Toolkit bypassea el SSL Pinning con un solo click.           │
+│    - Se navega en un partido en vivo y se captura el flujo de red:     │
+│      * URL exacta de partidos en vivo.                                 │
+│      * URL de incidentes PBP y gráfica de momentum.                   │
+│      * Cabeceras exactas (User-Agent, X-So-*, etc.).                   │
+│ 4. SE CIERRA Y ELIMINA EL EMULADOR.                                    │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ (Se extrae la plantilla de petición)
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ PASO 2: CLIENTE OPERATIVO EN PRODUCCIÓN (El Daemon Monitor V3)         │
+├────────────────────────────────────────────────────────────────────────┤
+│ - Un script Python ligero (con httpx o curl_cffi) de < 20 MB RAM.      │
+│ - Envía las cabeceras exactas de la app de Android.                    │
+│ - Consulta directamente las APIs móviles de SofaScore.                 │
+│ - Recibe JSONs en 40 ms sin navegadores, sin Chrome y sin Cloudflare.  │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Ventajas Técnicas de V3:
-1. **Consumo de Memoria:** Pasa de ~350 MB continuos a **< 35 MB de RAM**.
-2. **Latencia por Petición:** Pasa de 2.5s - 5.0s (abrir página en Chrome) a **40 - 90 ms** (HTTP/2 directo).
-3. **Cero Costo en Proxies:** Utiliza tu propia IP residencial con perfil persistente o cabeceras móviles.
-4. **Resistencia a Cloudflare:** Suplanta handshakes TLS reales (JA3/JA4) evitando la detección de bots en capa de red y eliminando la fuga CDP `Runtime.enable`.
+### ¿Es necesario emular Android en Producción?
+**NO.** Emular Android 24/7 en producción sería un error crítico de recursos (consumiría 3-4 GB de RAM y alta CPU). 
+La emulación o intercepción se realiza **exclusivamente como fase de investigación de laboratorio (1 sola vez)** para capturar el contrato de la API. En producción, el monitor corre como un proceso Python/Rust puro.
 
 ---
 
-## 3. Estructura de Módulos Propuesta (`monitor_v3/`)
+## 3. Arquitectura Híbrida de Dos Vías (Dual-Engine)
+
+Para garantizar 100% de tolerancia a fallos, `monitor_v3` implementará un diseño de **Dos Vías (Dual Engine)**:
+
+```mermaid
+flowchart TD
+    subgraph Orquestador["Monitor V3 Orquestador"]
+        M1["Planificador de Tareas"] -->|"Solicita Datos"| CM["Connection Manager"]
+    end
+
+    subgraph Via1["Vía Primaria: Mobile Direct API (Zero-Browser)"]
+        CM -->|"Intento 1"| MA["Mobile API Engine (httpx / curl_cffi)"]
+        MA -->|"Cabeceras Android / OkHttp"| S1["Servidor SofaScore (API Móvil)"]
+        S1 -->|"HTTP 200 (JSON en 40ms)"| CM
+    end
+
+    subgraph Via2["Vía Secundaria: Web Harvester + TLS Impersonation"]
+        MA -.->|"Si HTTP 403 / Cambio de Token"| FB["Fallback: Sesión Web"]
+        FB -->|"Cosechador Camoufox (1 vez cada 4h)"| CH["Harvester Browser"]
+        CH -->|"Exporta CookieJar"| CS["Cliente curl_cffi con JA4"]
+        CS -->|"Petición Web Autenticada"| S2["Servidor SofaScore (API Web)"]
+        S2 -->|"HTTP 200"| CM
+    end
+
+    subgraph Procesamiento["Capa de Negocio y Persistencia"]
+        CM -->|"JSONs Unificados"| EV["Models Evaluator (v6_2, m27_v3)"]
+        EV -->|"Señales"| DB1[("bet_monitor_log_v3")]
+        EV -->|"Alertas"| TG["Telegram Bot Dispatcher"]
+        CM -->|"FT Full Payload"| DB2[("matches.db Canónica")]
+    end
+```
+
+1. **Vía Primaria (Móvil):** Rápida, sin navegador, inmune a los retos de JavaScript de Cloudflare Turnstile.
+2. **Vía Secundaria (Web Harvester):** Si SofaScore actualiza su app móvil o introduce una firma criptográfica temporal, el sistema conmuta automáticamente al cosechador web con **Camoufox** o perfil persistente sin interrumpir el servicio.
+
+---
+
+## 4. Estructura de Módulos Propuesta (`monitor_v3/`)
 
 ```
 monitor_v3/
 ├── config/
 │   ├── __init__.py
 │   ├── constants.py            # Constantes de tiempo, timeouts, modelos activos
-│   └── leagues.yaml            # Configuración declarativa de ligas (excluidas, ft_only)
+│   └── leagues.yaml            # Configuración declarativa de ligas
 ├── core/
 │   ├── __init__.py
-│   ├── session_manager.py      # Gestor de cookies, rotación y refresco
-│   ├── harvester.py            # Navegador ligero (Camoufox/Perfil) para cookies
-│   └── http_client.py          # Cliente asíncrono ultra-rápido (curl_cffi / httpx)
+│   ├── mobile_client.py        # Cliente HTTP con cabeceras de App Android
+│   ├── session_manager.py      # Gestor de fallback para cookies web
+│   ├── web_harvester.py        # Navegador Camoufox bajo demanda
+│   └── http_client.py          # Cliente HTTP unificado (curl_cffi / httpx)
 ├── database/
 │   ├── __init__.py
 │   ├── connection.py           # Conexión canónica a matches.db en raíz
 │   ├── repository.py           # Operaciones CRUD para tablas _v3
-│   └── schemas.py              # Definición de DDL y migraciones
+│   └── schemas.py              # DDL de tablas bet_monitor_*_v3
 ├── models/
 │   ├── __init__.py
 │   └── evaluator.py            # Integración con models/registry.py (v6_2, m27_v3)
 ├── scrapers/
 │   ├── __init__.py
-│   ├── schedule_scraper.py     # Descarga de partidos del día
-│   ├── live_scraper.py         # Sondeo rápido de Q4 / PBP
-│   └── match_detail_scraper.py # Descarga atómica de ráfaga FT
+│   ├── schedule_scraper.py     # Calendario diario de eventos
+│   ├── live_scraper.py         # Sondeo ultra-rápido de Q4 / PBP
+│   └── match_detail_scraper.py # Ráfaga atómica FT (6 JSONs)
 ├── notifications/
 │   ├── __init__.py
-│   └── telegram_bot.py         # Formateo de apuestas 🟢🟡⚪ y resultados ✅❌
+│   └── telegram_bot.py         # Notificaciones con prefijos 🟢🟡⚪ y ✅❌
 ├── utils/
 │   ├── __init__.py
-│   ├── logger.py               # Logger ANSI coloreado reglamentario
-│   └── helpers.py              # Jitter gaussiano, formateo de tiempos
+│   ├── logger.py               # Formato homologado ANSI
+│   └── helpers.py              # Jitter y conversiones de tiempo
 └── main.py                     # Bucle principal de eventos asyncio
 ```
 
 ---
 
-## 4. Matriz de Seguimiento del Estado del Proyecto (Status Tracker)
+## 5. Matriz de Seguimiento del Estado del Proyecto (Status Tracker)
 
 > Esta tabla permite rastrear el progreso tarea por tarea y retomar el trabajo en sesiones posteriores sin perder el contexto.
 
@@ -147,14 +189,16 @@ monitor_v3/
 | :--- | :--- | :---: | :---: | :--- | :--- |
 | **F0.1** | Auditoría de requerimientos de datos de V2 | 🟢 Completada | Alta | `docs/PLAN_MONITOR_V3.md` | Lista completa de endpoints y campos validada. |
 | **F0.2** | Documentación de investigación anti-bot | 🟢 Completada | Alta | `docs/ANALISIS_BROWSERS_ANTI_BOT.md` | Commit `db2a862` sincronizado en main. |
-| **F1.1** | PoC de consulta HTTP directa con headers móviles | 🟡 En Curso | Alta | `tmp/monitor_v3_poc/test_mobile_api.py` | Validar si los endpoints responden sin reto 403. |
-| **F1.2** | PoC de Harvester de Sesión (Camoufox / Chrome Perfil) | ⚪ Pendiente | Alta | `tmp/monitor_v3_poc/test_session_harvester.py` | Extraer CookieJar y pasarlo a `curl_cffi`. |
-| **F1.3** | PoC de descarga FT completa sin navegador | ⚪ Pendiente | Alta | `tmp/monitor_v3_poc/test_fast_ft_download.py` | Validar descarga de los 6 JSONs (h2h, pbp, graph). |
-| **F2.1** | Creación del paquete `monitor_v3/` y scaffolding | ⚪ Pendiente | Media | Directorio `monitor_v3/` | Estructura de carpetas modular. |
-| **F2.2** | Implementación de `core/session_manager.py` | ⚪ Pendiente | Alta | `monitor_v3/core/session_manager.py` | Cacheo y renovación automática de cookies. |
-| **F2.3** | Implementación de `core/http_client.py` | ⚪ Pendiente | Alta | `monitor_v3/core/http_client.py` | Peticiones HTTP/2 con TLS impersonation. |
+| **F0.3** | Integración del vector móvil en el Plan Maestro | 🟢 Completada | Alta | `docs/PLAN_MONITOR_V3.md` | Arquitectura Dual-Engine documentada. |
+| **F1.0** | Descarga y análisis estático del APK de SofaScore | 🟡 En Curso | Alta | `tmp/monitor_v3_poc/apk_analysis.md` | Inspección de cabeceras y endpoints con JADX. |
+| **F1.1M**| PoC: Peticiones HTTP simulando cabeceras Android | 🟡 En Curso | Alta | `tmp/monitor_v3_poc/test_mobile_headers.py` | Probar peticiones directas con `httpx`/`requests`. |
+| **F1.2M**| Laboratorio dinámico (si F1.1M requiere tokens) | ⚪ Pendiente | Media | `tmp/monitor_v3_poc/capture_instructions.md` | Intercepción con HTTP Toolkit si hay SSL Pinning. |
+| **F1.1W**| PoC: Fallback Harvester Web con Camoufox | ⚪ Pendiente | Alta | `tmp/monitor_v3_poc/test_camoufox_harvester.py`| Validar extracción de cookies web hacia `curl_cffi`.|
+| **F2.1** | Creación del paquete `monitor_v3/` y scaffolding | ⚪ Pendiente | Media | Directorio `monitor_v3/` | Estructura modular completa. |
+| **F2.2** | Implementación de `core/mobile_client.py` | ⚪ Pendiente | Alta | `monitor_v3/core/mobile_client.py` | Cliente primario de alta velocidad. |
+| **F2.3** | Implementación de `core/http_client.py` con Dual Engine | ⚪ Pendiente | Alta | `monitor_v3/core/http_client.py` | Conmutación automática Mobile $\leftrightarrow$ Web. |
 | **F3.1** | Tablas `_v3` en `matches.db` canónica | ⚪ Pendiente | Alta | `monitor_v3/database/repository.py` | `schedule_v3`, `log_v3`, `quarter_scores_v3`. |
-| **F4.1** | Scrapers especializados (Schedule, Live, Detail) | ⚪ Pendiente | Alta | `monitor_v3/scrapers/*.py` | Reemplazo de los métodos síncronos de Playwright. |
+| **F4.1** | Scrapers especializados (Schedule, Live, Detail) | ⚪ Pendiente | Alta | `monitor_v3/scrapers/*.py` | Ráfaga FT de 6 JSONs y sondeo Q4. |
 | **F4.2** | Game Watcher Asíncrono para Q4 | ⚪ Pendiente | Alta | `monitor_v3/main.py` | Bucle de monitoreo liviano con jitter. |
 | **F5.1** | Integración del evaluador ML de modelos | ⚪ Pendiente | Alta | `monitor_v3/models/evaluator.py` | Conexión con `models/registry.py`. |
 | **F5.2** | Notificaciones Telegram V3 | ⚪ Pendiente | Media | `monitor_v3/notifications/telegram_bot.py` | Mensajes con prefijos 🟢🟡⚪ y ✅❌. |
@@ -163,6 +207,7 @@ monitor_v3/
 
 ---
 
-## 5. Próximo Paso Inmediato
+## 6. Próximo Paso Inmediato
 
-Ejecutar la tarea **F1.1**: Desarrollar la Prueba de Concepto (PoC) en `tmp/monitor_v3_poc/test_mobile_api.py` para probar la respuesta de las APIs de SofaScore con emulación de cabeceras móviles y cliente TLS (`httpx` / `curl_cffi`).
+Ejecutar las tareas **F1.0** y **F1.1M**:
+Crear el script de prueba en `tmp/monitor_v3_poc/test_mobile_headers.py` para probar la respuesta de las APIs de SofaScore (`/api/v1/event/...` y `/api/v1/sport/basketball/scheduled-events/...`) utilizando las cabeceras estándar de cliente móvil de Android frente a las cabeceras web, midiendo códigos de respuesta HTTP, latencia y presencia de Cloudflare.
