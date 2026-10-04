@@ -240,6 +240,16 @@ Durante las pruebas experimentales ejecutadas en `tmp/monitor_v3_poc/`, se obtuv
      - **Estadísticas de Equipo (`/event/{id}/statistics`):** 200 OK en **171 ms**.
      - **Historial H2H (`/event/{id}/h2h`):** 200 OK en **190 ms**.
    * **Conclusión y Cambio Radical de Paradigma:** No se necesita Chrome Headless, ni Obscura, ni emuladores en ejecución continua. Con este contrato, el `monitor_v3` puede operar a máxima velocidad con consumo de RAM despreciable (< 50 MB) y cero baneos de Cloudflare.
+6. **Validación del Backlog Histórico que Obscura no Podía Descargar (`extract_obscura_backlog.py`):**
+   * Obscura fallaba sistemáticamente con `403 Forbidden` al intentar extraer partidos históricos y calendarios (documentado en `docs/OBSCURA_LIMITATIONS.md`).
+   * Con el contrato móvil y el JWT de 6 meses, se sometió a prueba la extracción de 5 partidos históricos reales de `matches.db` (incluyendo NBA Knicks vs Spurs, Criollos vs Mets, Gigantes vs Atléticos, etc.).
+   * **Resultado Impecable:** **30 de 30 endpoints descargados con éxito (100% de éxito)** a una velocidad promedio de ~1 segundo por partido completo:
+     - Match 15935071 (Knicks vs Spurs): 6 JSONs descargados en **169.1 ms** totales (113 jugadas PBP, 48 puntos de momentum).
+     - Match 16078015: 6 JSONs en 1.3s (104 PBP, 40 momentum).
+     - Match 16078014: 6 JSONs en 1.2s (94 PBP, 40 momentum).
+     - Match 16256125: 6 JSONs en 1.2s (70 PBP, 40 momentum).
+     - Match 15395177: 6 JSONs en 1.2s (98 PBP, 40 momentum).
+   * Queda demostrado que la API móvil resuelve en su totalidad las limitaciones históricas de Obscura, permitiendo tanto backfill masivo como monitoreo en vivo sin navegador.
 
 ---
 
