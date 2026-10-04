@@ -212,8 +212,7 @@ class TokenPool:
             curr = self.tokens[self._current_index]
             log_info(
                 "TOKEN_POOL",
-                f"🔄 Switcheando de sesión (10 partidos completados). "
-                f"Ahora usando token #{self._current_index + 1} de {len(self.tokens)} (...{curr.token[-12:]})"
+                f"#{self._current_index + 1} de {len(self.tokens)} [...{curr.token[-12:]}]"
             )
 
     async def get_token(self) -> str:
