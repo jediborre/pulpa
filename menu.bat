@@ -101,6 +101,7 @@ echo   26) Menu Obscura (Iniciar / Apagar / Instalar / Estado)
 echo   27) Instalar / Reparar dependencias (.venv, pip, playwright, npm)
 echo   28) Sincronizar Token JWT desde Android (ADB Directo / USB)
 echo   29) Reinstalar SofaScore Parcheada en Android (ADB)
+echo   30) Iniciar Bot Telegram V3 (consultas /signals, /status)
 echo.
 echo    0) Salir
 echo ==================================================================
@@ -160,6 +161,8 @@ if /i "%OPT%"=="sync_token" goto SYNC_TOKEN
 if "%OPT%"=="29" goto REINSTALL_APP
 if /i "%OPT%"=="reinstall" goto REINSTALL_APP
 if /i "%OPT%"=="reinstall_app" goto REINSTALL_APP
+if "%OPT%"=="30" goto RUN_BOT_V3
+if /i "%OPT%"=="bot_v3" goto RUN_BOT_V3
 
 echo [ERROR] Opcion invalida.
 timeout /t 2 /nobreak >nul
@@ -189,6 +192,17 @@ echo ===============================================
 echo.
 echo [+] Levantando Monitor V1 en una nueva ventana...
 start "Pulpa - Monitor V1" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v1\main.py"
+goto MENU
+
+:RUN_BOT_V3
+cls
+echo.
+echo ====================================================
+echo  Iniciando Bot Telegram V3 (consultas /signals, /status)
+echo ====================================================
+echo.
+echo [+] Levantando Bot Telegram V3 en una nueva ventana...
+start "Pulpa - Bot Telegram V3" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python -m monitor_v3.notifications.bot_runner"
 goto MENU
 
 :BOT

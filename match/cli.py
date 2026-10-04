@@ -1069,6 +1069,15 @@ def cmd_run_bot(args: argparse.Namespace) -> None:
     bot_mod.main()
 
 
+def cmd_run_bot_v3(args: argparse.Namespace) -> None:
+    """Run the interactive Monitor V3 Telegram bot (polling, tables _v3)."""
+    if args.db and not os.getenv("MATCH_DB_PATH"):
+        os.environ["MATCH_DB_PATH"] = args.db
+
+    bot_mod = importlib.import_module("monitor_v3.notifications.bot_runner")
+    bot_mod.main()
+
+
 def cmd_retrain(args: argparse.Namespace) -> None:
     """Interactive sub-menu to retrain models and recalibrate the gate.
 
@@ -2195,6 +2204,13 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Run Telegram bot (reads TELEGRAM_BOT_TOKEN from .env)",
     )
     p_bot.set_defaults(func=cmd_run_bot)
+
+    # run-bot-v3
+    p_bot_v3 = sub.add_parser(
+        "run-bot-v3",
+        help="Run interactive Monitor V3 Telegram bot (polling, tables _v3)",
+    )
+    p_bot_v3.set_defaults(func=cmd_run_bot_v3)
 
     # run-retrain
     p_retrain = sub.add_parser(
