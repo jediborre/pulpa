@@ -64,7 +64,7 @@ echo                  CENTRO DE CONTROL PRINCIPAL
 echo ==================================================================
 echo.
 echo  [1] OPERACION EN VIVO Y SERVICIOS
-echo    1) Iniciar Monitor V3 (API Movil Nativa + Multi-JWT - Recomendado)
+echo    1) Iniciar Monitor V3 (API Movil Nativa + Multi-JWT + Bot Telegram - Recomendado)
 echo    2) Iniciar Monitor V2 (Chrome nativo - Sin Proxy)
 echo    3) Iniciar Monitor V1 (Telegram Bot + Bet Monitor)
 echo    4) Iniciar Monitor V2 (Modo CDP directo)
@@ -181,6 +181,14 @@ echo ========================================================
 echo.
 echo [+] Levantando Monitor V3 en una nueva ventana...
 start "Pulpa - Monitor V3 (Mobile API)" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v3\main.py"
+echo.
+set /p BOTV3="  Encender tambien el Bot Telegram V3 (/signals, /status)? [s/N]: "
+if /i "%BOTV3%"=="s" (
+    echo [+] Levantando Bot Telegram V3 en una nueva ventana...
+    start "Pulpa - Bot Telegram V3" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python -m monitor_v3.notifications.bot_runner"
+) else (
+    echo [i] Bot V3 no iniciado. Puedes arrancarlo con la opcion 30.
+)
 goto MENU
 
 :RUN_MONITOR_V1
