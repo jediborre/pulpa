@@ -209,3 +209,32 @@ r = s.post("https://api.sofascore.com/api/v1/token/init", headers=sign_headers()
   la extensión `0` = SNI; si se conecta a una IP, el JA3 sale sin SNI y falla).
 - La PoC confirma que **el WAF evalúa el ClientHello TLS + el UA firmado**, no la
   librería. `httpx`/`requests` fallan porque su ClientHello no coincide.
+
+### 8.1 Benchmark `tls_client` vs `curl_cffi` y decisión
+
+Benchmark riguroso (IDs de partido **disjuntos** por cliente, peticiones alternadas,
+partido completo = 7 endpoints en paralelo, mediana de 15 partidos, 2 corridas).
+Script: `tmp/debug_connection/bench_clients_opt.py`.
+
+| Cliente | mediana por partido |
+|---|---|
+| `tls_client` (`okhttp4_android_13`) | **~12 ms** |
+| `curl_cffi` `ja3=` solo (sesión compartida) | ~16 ms |
+| `curl_cffi` `AsyncSession` | ~18 ms |
+| `curl_cffi` shared con `impersonate` | ~19 ms |
+
+Notas del benchmark:
+- Un benchmark ingenuo (sesión por thread + pool recreado por partido) daba `curl_cffi`
+  ~72 ms; al **reutilizar pool de threads y sesión compartida** (curl_cffi usa handle
+  curl thread-local interno) bajó a ~16 ms. La optimización movió la aguja.
+- La clave es **reutilizar conexiones** (keep-alive); recrear sesiones/threads por
+  partido paga handshakes TLS en cada descarga.
+
+**Decisión: se mantiene `tls_client` en producción.**
+- Es marginalmente más rápido (~12 ms vs ~16 ms por partido) y ya está validado con
+  ~2400 partidos y 0 fallos.
+- La diferencia real es despreciable: el descargador espacia los partidos 0.7–1.3 s
+  (jitter anti-bot), así que ~4 ms/partido es <1% del tiempo total.
+- `curl_cffi` queda documentado como alternativa ligera válida (sin el blob Go) por si
+  se quiere eliminar esa dependencia: bastaría `curl_cffi.Session(ja3=JA3)` en
+  `mobile_client.py`.
