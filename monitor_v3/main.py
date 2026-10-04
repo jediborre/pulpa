@@ -21,6 +21,7 @@ if str(ROOT) not in sys.path:
 from monitor_v3.config.constants import (
     ACTIVE_MODELS,
     FINAL_FETCH_MIN_GP,
+    FINAL_FETCH_EXTRA_SECS,
     POLL_INTERVAL_LIVE_SECS,
     POLL_INTERVAL_IDLE_SECS,
     POLL_NEAR_SECS,
@@ -116,6 +117,20 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
     """
     Descarga el payload final FT vía API móvil y persiste scores y apuestas.
     """
+    # Deduplicación: si ya se finalizó/notificó este partido, no repetir el FT
+    # ni reenviar la confirmación a Telegram (evita spam si se relanza el watcher).
+    try:
+        with get_db_connection() as conn:
+            _row = conn.execute(
+                "SELECT final_fetched FROM bet_monitor_schedule_v3 WHERE match_id = ?",
+                (match_id,)
+            ).fetchone()
+        if _row and _row["final_fetched"]:
+            log_info("DESCARGA", f"[FT] Ya finalizado/notificado previamente, omitiendo | {home} vs {away}")
+            return
+    except Exception:
+        pass
+
     try:
         data = await fetch_match_by_id(match_id, is_ft=True)
         gp_total = len(data.get("graph_points") or [])
@@ -359,6 +374,14 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
             await _final_fetch_and_save(match_id, home, away)
             break
 
+        # Fallback por reloj: si ya pasó la duración máxima estimada (40 min de juego
+        # + margen) y el estado aún no cerró, forzar FT. No dependemos del minuto
+        # inferido, que se congela/salta cuando SofaScore devuelve datos inconsistentes.
+        if time.time() > scheduled_ts + secs_per_gmin * 40 + FINAL_FETCH_EXTRA_SECS:
+            log_warning("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Duración máxima alcanzada → FT | {match_display}")
+            await _final_fetch_and_save(match_id, home, away)
+            break
+
         try:
             full_data = await fetch_match_by_id(match_id, is_ft=False)
             match_meta = full_data.get("match", {})
@@ -402,11 +425,6 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                     secs_per_gmin = calculate_ema_secs_per_gmin(secs_per_gmin, now_wall - last_gmin_wall, minute - last_gmin)
                 last_gmin = minute
                 last_gmin_wall = now_wall
-
-                if minute >= 38:
-                    log_warning("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Ventana Q4 superada (min {minute}) | {match_display}")
-                    await _final_fetch_and_save(match_id, home, away)
-                    break
 
                 # Evaluación en Q4 (Minutos 27..36)
                 if minute >= Q4_ONLY_EARLY_WAKE_MINUTE and minute < 36:
@@ -565,7 +583,20 @@ async def _live_discovery_task(stop_event: asyncio.Event) -> None:
                 mid = str(ev.get("id"))
                 if mid in _watcher_tasks and not _watcher_tasks[mid].done():
                     continue
-                    
+
+                # No relanzar watchers de partidos ya finalizados/notificados
+                # (aunque SofaScore los siga listando como "live" con datos congelados).
+                try:
+                    with get_db_connection() as conn:
+                        srow = conn.execute(
+                            "SELECT status, final_fetched FROM bet_monitor_schedule_v3 WHERE match_id = ?",
+                            (mid,)
+                        ).fetchone()
+                    if srow and (srow["final_fetched"] or srow["status"] == "done"):
+                        continue
+                except Exception:
+                    pass
+
                 league_name = ev.get("tournament", {}).get("name", "")
                 mode = get_league_mode(league_name, leagues_cfg)
                 if mode == "EXCLUDE":
