@@ -19,8 +19,10 @@ UA = "com.sofascore.results/260921/" + md5(str(unix_segundos // 100) + "sofa2012
 `Cache-Control` y `Authorization: Bearer`. **Sin proxy.** Detalles completos y
 procedimiento de re-derivación en `docs/REVERSE_ENGINEERING_SOFASCORE.md`.
 
-**Resultado:** `token/init` y todos los endpoints de producción devuelven `200`; 86
-partidos de una fecha descargados sin ban de IP.
+**Resultado:** `token/init` y todos los endpoints de producción devuelven `200`.
+Descarga real del rango `2026-09-01` → `2026-10-03` (33 fechas): **~2406 partidos
+descargados, 0 fallos, 0 bans**, con rotación de tokens cada 10 partidos funcionando
+(los 9 tokens rotaron repetidamente). No hubo ban de IP ni de token en esta corrida.
 
 **Manejo de bans (rate limiting):** se observaron `403` a nivel de **token** tras
 descargas intensas (los tokens se "quemaban"). Implementado:
