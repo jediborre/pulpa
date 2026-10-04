@@ -99,7 +99,31 @@ headers.add("X-Timestamp", String.valueOf(Instant.now().toEpochMilli())); // ms 
 > `sport/basketball/scheduled-events/{date}` **NO existe** (devuelve 404). Usar el
 > flujo de `categories`.
 
-### 2.5 URL canónica de un partido (botón "📱 Sofascore" de Telegram)
+### 2.5 Reloj de juego (minuto real, fuente fiable)
+
+`GET event/{id}` expone `event.time`:
+
+```json
+{"played": 1932, "periodLength": 600, "overtimeLength": 300,
+ "totalPeriodCount": 4, "clockRunning": false,
+ "currentPeriodStartTimestamp": 1791131780}
+```
+
+- **`played`**: segundos acumulados del reloj de juego → **minuto real = `played // 60`**.
+  Ej.: `played=1932` → min 32 (4º cuarto), `played=1442` → min 24 (3er cuarto).
+- **`periodLength`**: segundos por periodo (600 = 10 min FIBA; 720 = 12 min NBA).
+- `overtimeLength`, `totalPeriodCount`, `clockRunning`, `currentPeriodStartTimestamp`.
+
+⚠️ **NO inferir el minuto desde PBP ni desde la gráfica.** Los `incidents` incluyen
+marcadores de periodo cuyo `timeSeconds` es el **fin** del periodo (1200→20, 1800→30,
+2400→40), por lo que el minuto inferido salta al final del cuarto y dispara el
+monitoreo/FT antes de tiempo. La gráfica (`graphPoints`) sí trae `minute` fiable, pero
+`time.played` es la fuente directa.
+
+Implementado en `match/scraper.py` (`_parse` expone `match.game_seconds_played`) y usado
+en `monitor_v3/main.py` y `monitor_v2/main.py` con fallback a PBP/gráfica.
+
+### 2.6 URL canónica de un partido (botón "📱 Sofascore" de Telegram)
 
 Estructura real:
 

@@ -398,10 +398,16 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                 await _final_fetch_and_save(match_id, home, away)
                 break
 
-            minute = _infer_minute_from_pbp(full_data)
-            gp_count = len(full_data.get("graph_points", []) or [])
-            if gp_count > 0 and (minute is None or gp_count > minute):
-                minute = gp_count
+            # Minuto fiable: event.time.played = segundos acumulados del reloj de juego
+            # (SofaScore lo expone aunque no muestre el minuto). Fallback a PBP/gráfica.
+            played = match_meta.get("game_seconds_played")
+            if played is not None:
+                minute = int(played // 60)
+            else:
+                minute = _infer_minute_from_pbp(full_data)
+                gp_count = len(full_data.get("graph_points", []) or [])
+                if gp_count > 0 and (minute is None or gp_count > minute):
+                    minute = gp_count
 
             period_lower = status_desc.lower()
             q_key = None

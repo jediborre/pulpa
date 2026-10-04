@@ -652,12 +652,17 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                 await _final_fetch_and_save(match_id, home, away)
                 break
                 
-            minute = _infer_minute_from_pbp(full_data)
-            
+            # Minuto fiable: event.time.played = segundos acumulados del reloj de juego.
+            played = (full_data.get("match") or {}).get("game_seconds_played")
+            if played is not None:
+                minute = int(played // 60)
+            else:
+                minute = _infer_minute_from_pbp(full_data)
+
             # Fallback robusto usando la cantidad de puntos en la gráfica de presión (graph_points),
             # ya que la gráfica se actualiza minuto a minuto en vivo incluso si el Play-by-Play se retrasa.
             gp_count = len(full_data.get("graph_points", []) or [])
-            if gp_count > 0 and (minute is None or gp_count > minute):
+            if played is None and gp_count > 0 and (minute is None or gp_count > minute):
                 minute = gp_count
             
             if gp_count == 0 and not full_data.get("_snapshot_fallback"):

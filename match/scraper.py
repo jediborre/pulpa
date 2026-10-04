@@ -465,6 +465,12 @@ def _parse(event_json: dict, incidents: list, graph_points: list | None = None) 
             "away_team_id": away_team_id,
             "home_rating": ev.get("homeTeam", {}).get("rating") or None,
             "away_rating": ev.get("awayTeam", {}).get("rating") or None,
+            # Reloj de juego (fuente fiable del minuto en vivo):
+            # event.time.played = segundos acumulados del reloj de juego.
+            "game_seconds_played": (ev.get("time") or {}).get("played"),
+            "period_length": (ev.get("time") or {}).get("periodLength"),
+            "clock_running": (ev.get("time") or {}).get("clockRunning"),
+            "period_start_ts": (ev.get("time") or {}).get("currentPeriodStartTimestamp"),
         },
         "score": {
             "home": home_total,
