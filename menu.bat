@@ -119,7 +119,6 @@ if "%OPT%"=="3" goto RUN_MONITOR_V1
 if /i "%OPT%"=="v1" goto RUN_MONITOR_V1
 if "%OPT%"=="4" goto RUN_MONITOR_CDP
 if "%OPT%"=="5" goto API
-if "%OPT%"=="30" goto API
 if "%OPT%"=="6" goto DASHBOARD
 if "%OPT%"=="32" goto DASHBOARD
 if "%OPT%"=="7" goto TODO_V3
