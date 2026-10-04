@@ -15,6 +15,9 @@ import sys
 import time
 from pathlib import Path
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -106,24 +109,13 @@ def sync():
     print("=" * 65)
     print("Buscando peticiones autenticadas de SofaScore en HTTP Toolkit...")
     
-    tokens = extract_tokens_from_httptoolkit()
-    if not tokens:
-        print("\n[!] No se encontraron peticiones con token Bearer en HTTP Toolkit.")
-        print("    Asegúrate de:")
-        print("    1. Tener HTTP Toolkit abierto.")
-        print("    2. Abrir la app SofaScore en el teléfono o borrar datos y abrirla.")
-        print("    3. Navegar en cualquier partido para que emita tráfico.")
-        return False
+    ht_tokens = extract_tokens_from_httptoolkit()
+    if ht_tokens:
+        print(f"[+] Se encontraron {len(ht_tokens)} token(s) en el historial de HTTP Toolkit.")
+    else:
+        print("[-] No se encontraron tokens nuevos en el historial inmediato de HTTP Toolkit.")
 
-    print(f"[+] Se encontraron {len(tokens)} token(s) únicos en el historial reciente.")
-    
-    # Probar el más reciente
-    import httpx
-    proxy = "http://127.0.0.1:8000"
-    cert = r"C:\Users\App\AppData\Local\httptoolkit\Config\ca.pem"
-    verify_cert = cert if os.path.exists(cert) else True
-
-    # Cargar tokens existentes
+    # Cargar tokens existentes en disco
     existing_tokens = {}
     if TOKENS_JSON.exists():
         try:
@@ -134,11 +126,42 @@ def sync():
         except Exception:
             pass
 
-    valid_tokens = []
-    # Evaluar tokens encontrados en HTTP Toolkit
-    for idx, item in enumerate(tokens, 1):
+    # Unificar candidatos sin duplicados
+    candidates = []
+    seen = set()
+
+    for item in ht_tokens:
         tok = item["token"]
-        print(f"\nProbando token #{idx} (...{tok[-12:]})...")
+        if tok not in seen:
+            seen.add(tok)
+            candidates.append({"token": tok, "source": "HTTP Toolkit (Nuevo/Capturado)", "meta": existing_tokens.get(tok)})
+
+    for tok, meta in existing_tokens.items():
+        if tok not in seen:
+            seen.add(tok)
+            candidates.append({"token": tok, "source": "tokens.json (Previo)", "meta": meta})
+
+    if not candidates:
+        print("\n[!] No hay ningún token para evaluar (ni en tokens.json ni en HTTP Toolkit).")
+        print("    Asegúrate de:")
+        print("    1. Tener HTTP Toolkit abierto.")
+        print("    2. Borrar datos de la app SofaScore en el teléfono y abrirla.")
+        print("    3. Tocar o navegar en cualquier partido durante 5 segundos.")
+        return False
+
+    print(f"\nEvaluando {len(candidates)} token(s) candidato(s) contra API de SofaScore...")
+
+    import httpx
+    proxy = "http://127.0.0.1:8000"
+    cert = r"C:\Users\App\AppData\Local\httptoolkit\Config\ca.pem"
+    verify_cert = cert if os.path.exists(cert) else True
+
+    valid_pool_items = []
+
+    for idx, cand in enumerate(candidates, 1):
+        tok = cand["token"]
+        src = cand["source"]
+        print(f"\nProbando token #{idx} [{src}] (...{tok[-12:]})...")
         headers = {
             "User-Agent": "com.sofascore.results/260921/2b47a6",
             "Authorization": f"Bearer {tok}",
@@ -153,45 +176,43 @@ def sync():
                 timeout=10.0,
             )
             if r.status_code == 200:
-                print(f"  [OK] Token válido y aceptado por SofaScore (HTTP 200)!")
-                if tok not in valid_tokens:
-                    valid_tokens.append(tok)
+                print(f"  [OK] Token VÁLIDO y aceptado por SofaScore (HTTP 200)!")
+                meta = cand["meta"]
+                if meta:
+                    meta["failures"] = 0
+                    meta["last_used"] = time.time()
+                    valid_pool_items.append(meta)
+                else:
+                    valid_pool_items.append({
+                        "token": tok,
+                        "created_at": time.time(),
+                        "device_uuid": f"android-{len(valid_pool_items)+1}",
+                        "advertising_id": f"ad-{len(valid_pool_items)+1}",
+                        "failures": 0,
+                        "last_used": time.time(),
+                    })
             else:
                 print(f"  [RECHAZADO] HTTP {r.status_code}: {r.text[:120]}")
         except Exception as ex:
-            print(f"  [ERROR] Fallo de red: {ex}")
+            print(f"  [ERROR] Fallo de conexión: {ex}")
 
-    if not valid_tokens:
-        print("\n[!] Ninguno de los tokens actuales en HTTP Toolkit es válido o están caducados/desafiados.")
-        print("    Por favor, abre la app en el teléfono (o borra datos y ábrela) para que genere uno fresco.")
-        return False
-
-    # Combinar tokens válidos existentes y nuevos
-    pool_items = []
-    for tok in valid_tokens:
-        if tok in existing_tokens:
-            pool_items.append(existing_tokens[tok])
-        else:
-            pool_items.append({
-                "token": tok,
-                "created_at": time.time(),
-                "device_uuid": f"android-{len(pool_items)+1}",
-                "advertising_id": f"ad-{len(pool_items)+1}",
-                "failures": 0,
-                "last_used": time.time(),
-            })
-
+    # Guardar en tokens.json
     TOKENS_JSON.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "updated_at": time.time(),
-        "count": len(pool_items),
-        "tokens": pool_items,
+        "count": len(valid_pool_items),
+        "tokens": valid_pool_items,
     }
     with open(TOKENS_JSON, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
 
-    print(f"\n[ÉXITO] Pool actualizado con {len(pool_items)} token(s) válido(s) en: {TOKENS_JSON}")
-    for i, it in enumerate(pool_items, 1):
+    if not valid_pool_items:
+        print("\n[!] Ninguno de los tokens probados es válido (todos caducados o desafiados por Cloudflare).")
+        print("    Por favor borra datos de SofaScore en el teléfono, ábrela e intenta de nuevo.")
+        return False
+
+    print(f"\n[ÉXITO] Pool actualizado con {len(valid_pool_items)} token(s) válido(s) en: {TOKENS_JSON}")
+    for i, it in enumerate(valid_pool_items, 1):
         print(f"  Token #{i}: ...{it['token'][-12:]}")
     return True
 

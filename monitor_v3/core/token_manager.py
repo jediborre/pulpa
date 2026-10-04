@@ -55,9 +55,10 @@ class TokenPool:
     """
     def __init__(self, pool_size: int = TOKEN_ROTATION_POOL_SIZE):
         self.pool_size = pool_size
-        self.tokens: list[TokenItem] = []
         self._current_index = 0
         self._config_path = Path(TOKENS_CONFIG_PATH)
+        self._matches_on_current_token = 0
+        self.tokens: list[TokenItem] = self._load_from_disk()
 
     @property
     def lock(self) -> asyncio.Lock:
@@ -107,7 +108,7 @@ class TokenPool:
             log_warning("TOKEN_POOL", f"Error guardando tokens.json: {e}")
 
     async def _mint_token(self) -> TokenItem | None:
-        """Emite un nuevo JWT móvil llamando a /api/v1/token/init vía proxy HTTP Toolkit."""
+        """Fallback: Emite un nuevo JWT móvil llamando a /api/v1/token/init vía proxy HTTP Toolkit."""
         dev_uuid = str(uuid.uuid4())
         ad_id = str(uuid.uuid4())
 
@@ -156,45 +157,49 @@ class TokenPool:
         return None
 
     async def initialize(self) -> None:
-        """Inicializa el pool cargando de disco o regenerando hasta alcanzar pool_size."""
+        """Inicializa el pool cargando de disco los tokens legítimos válidos."""
         async with self.lock:
             existing = self._load_from_disk()
-            # Filtrar tokens con demasiados fallos
-            valid_existing = [t for t in existing if t.failures < TOKEN_MAX_FAILURES]
-            self.tokens = valid_existing
-
-            needed = self.pool_size - len(self.tokens)
-            if needed > 0:
-                log_info("TOKEN_POOL", f"Inicializando pool de tokens: Generando {needed} tokens nuevos...")
-                for i in range(needed):
-                    new_token = await self._mint_token()
-                    if new_token:
-                        self.tokens.append(new_token)
-                        log_info("TOKEN_POOL", f"Token {len(self.tokens)}/{self.pool_size} generado exitosamente.")
-                    await asyncio.sleep(0.1)
-
+            self.tokens = [t for t in existing if t.failures < TOKEN_MAX_FAILURES]
             self._save_to_disk()
             log_info("TOKEN_POOL", f"Pool activo listo con {len(self.tokens)} tokens en rotación.")
 
+    def notify_match_done(self) -> None:
+        """
+        Notifica que se completó la descarga de un partido.
+        Cada 10 partidos consecutivos rota automáticamente al siguiente token
+        del pool para alternar la sesión y distribuir la carga entre usuarios.
+        """
+        self._matches_on_current_token += 1
+        if len(self.tokens) > 1 and self._matches_on_current_token >= 10:
+            self._matches_on_current_token = 0
+            self._current_index = (self._current_index + 1) % len(self.tokens)
+            curr = self.tokens[self._current_index]
+            log_info(
+                "TOKEN_POOL",
+                f"🔄 Switcheando de sesión (10 partidos completados). "
+                f"Ahora usando token #{self._current_index + 1} de {len(self.tokens)} (...{curr.token[-12:]})"
+            )
+
     async def get_token(self) -> str:
-        """Retorna el siguiente token disponible mediante Round-Robin."""
+        """Retorna el token actualmente activo en el pool."""
         async with self.lock:
             if not self.tokens:
-                # Si por alguna razón está vacío, emitir uno de urgencia
-                emergency = await self._mint_token()
-                if emergency:
-                    self.tokens.append(emergency)
-                    self._save_to_disk()
-                    return emergency.token
-                raise RuntimeError("El pool de tokens está completamente agotado y no pudo auto-regenerarse.")
+                raise RuntimeError(
+                    "El pool de tokens está vacío o todos han sido desafiados. "
+                    "Por favor captura o sincroniza nuevos tokens desde la App en menu.bat."
+                )
 
-            self._current_index = (self._current_index + 1) % len(self.tokens)
+            self._current_index = self._current_index % len(self.tokens)
             selected = self.tokens[self._current_index]
             selected.last_used = time.time()
             return selected.token
 
     async def mark_failure(self, token_str: str, status_code: int = 0) -> None:
-        """Registra un fallo en un token y lo reemplaza automáticamente si excede el umbral."""
+        """
+        Registra un fallo. Si el token recibe HTTP 401/403 ('challenge' o revocado)
+        o excede el umbral de fallos, se elimina de inmediato de la lista de tokens válidos.
+        """
         async with self.lock:
             for i, t in enumerate(self.tokens):
                 if t.token == token_str:
@@ -205,18 +210,30 @@ class TokenPool:
                         f"(Fallos: {t.failures}/{TOKEN_MAX_FAILURES} | Código: HTTP {status_code})"
                     )
 
-                    if t.failures >= TOKEN_MAX_FAILURES or status_code == 401:
+                    if t.failures >= TOKEN_MAX_FAILURES or status_code in (401, 403):
                         log_warning(
                             "TOKEN_POOL",
-                            f"Token ...{token_str[-12:]} revocado por exceso de fallos. Generando reemplazo..."
+                            f"❌ Token ...{token_str[-12:]} desafiado o caducado (HTTP {status_code}). "
+                            f"Eliminado permanentemente de la lista de tokens válidos."
                         )
                         self.tokens.pop(i)
-                        new_t = await self._mint_token()
-                        if new_t:
-                            self.tokens.append(new_t)
-                            log_info("TOKEN_POOL", f"Nuevo token de reemplazo generado e insertado al pool.")
                         self._save_to_disk()
-                    break
+                        self._matches_on_current_token = 0
+                        if self.tokens:
+                            self._current_index = self._current_index % len(self.tokens)
+                            next_tok = self.tokens[self._current_index]
+                            log_info(
+                                "TOKEN_POOL",
+                                f"➡️ Switcheando inmediatamente al siguiente token disponible: "
+                                f"...{next_tok.token[-12:]} ({len(self.tokens)} restantes en pool)"
+                            )
+                        else:
+                            log_error(
+                                "TOKEN_POOL",
+                                "⚠️ Se han agotado todos los tokens válidos del pool. "
+                                "Por favor captura o sincroniza nuevos tokens desde la App en menu.bat."
+                            )
+                        break
 
     def get_pool_status(self) -> dict:
         """Retorna estadísticas descriptivas del estado del pool."""

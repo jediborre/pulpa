@@ -36,6 +36,9 @@ if /i "%~1"=="start" goto DO_START_OBSCURA_CLI
 if /i "%~1"=="stop" goto DO_STOP_OBSCURA_CLI
 if /i "%~1"=="install" goto DO_INSTALL_OBSCURA_CLI
 if /i "%~1"=="status" goto DO_STATUS_OBSCURA_CLI
+if /i "%~1"=="token" goto SYNC_TOKEN_CLI
+if /i "%~1"=="jwt" goto SYNC_TOKEN_CLI
+if /i "%~1"=="sync_token" goto SYNC_TOKEN_CLI
 
 :: ── Verificar .venv ───────────────────────────────
 if not exist ".venv\Scripts\activate.bat" (
@@ -94,6 +97,7 @@ echo.
 echo  [5] MANTENIMIENTO, OBSCURA Y SISTEMA
 echo   26) Menu Obscura (Iniciar / Apagar / Instalar / Estado)
 echo   27) Instalar / Reparar dependencias (.venv, pip, playwright, npm)
+echo   28) Sincronizar Token JWT desde App (HTTP Toolkit)
 echo.
 echo    0) Salir
 echo ==================================================================
@@ -139,7 +143,6 @@ if "%OPT%"=="20" goto REPORT_V62_ONLY
 if "%OPT%"=="21" goto TRAIN_AND_REPORT_V62
 if "%OPT%"=="22" goto MENU_V63
 if "%OPT%"=="23" goto TRAIN_V2
-if "%OPT%"=="28" goto TRAIN_V2
 if "%OPT%"=="24" goto TRAIN_V6
 if "%OPT%"=="25" goto TRAIN_ALL
 
@@ -147,6 +150,10 @@ if "%OPT%"=="25" goto TRAIN_ALL
 if "%OPT%"=="26" goto MENU_OBSCURA
 if "%OPT%"=="27" goto INSTALAR
 if "%OPT%"=="99" goto INSTALAR
+if "%OPT%"=="28" goto SYNC_TOKEN
+if /i "%OPT%"=="token" goto SYNC_TOKEN
+if /i "%OPT%"=="jwt" goto SYNC_TOKEN
+if /i "%OPT%"=="sync_token" goto SYNC_TOKEN
 
 echo [ERROR] Opcion invalida.
 timeout /t 2 /nobreak >nul
@@ -870,6 +877,35 @@ echo   Instalacion completada con exito.
 echo ==================================================
 pause
 goto MENU
+
+:: ─────────────────────────────────────────────────
+:: [6] SINCRONIZAR TOKEN JWT DESDE APP (HTTP TOOLKIT)
+:: ─────────────────────────────────────────────────
+
+:SYNC_TOKEN
+cls
+echo.
+echo ========================================================
+echo  Sincronizar Token JWT desde App (HTTP Toolkit)
+echo ========================================================
+echo.
+echo  Asegurate de que:
+echo   1. HTTP Toolkit este abierto en la PC (puerto 8000).
+echo   2. Hayas borrado datos de SofaScore en el telefono si
+echo      los tokens anteriores fueron desafiados/bloqueados.
+echo   3. Abras la app SofaScore en el telefono e interactues
+echo      con cualquier partido durante 5 segundos.
+echo.
+call .venv\Scripts\activate
+python tools\sync_token_from_httptoolkit.py
+echo.
+pause
+goto MENU
+
+:SYNC_TOKEN_CLI
+call .venv\Scripts\activate
+python tools\sync_token_from_httptoolkit.py
+exit /b %ERRORLEVEL%
 
 :: ─────────────────────────────────────────────────
 :FIN
