@@ -122,3 +122,4 @@ tools/obscura/**/*.exe
 tools/obscura/**/*.dll
 tools/obscura/**/*.pdb
 tools/obscura/**/*.zip
+tools/obscura-src
