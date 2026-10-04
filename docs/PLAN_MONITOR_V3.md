@@ -190,10 +190,10 @@ monitor_v3/
 | **F0.1** | Auditoría de requerimientos de datos de V2 | 🟢 Completada | Alta | `docs/PLAN_MONITOR_V3.md` | Lista completa de endpoints y campos validada. |
 | **F0.2** | Documentación de investigación anti-bot | 🟢 Completada | Alta | `docs/ANALISIS_BROWSERS_ANTI_BOT.md` | Commit `db2a862` sincronizado en main. |
 | **F0.3** | Integración del vector móvil en el Plan Maestro | 🟢 Completada | Alta | `docs/PLAN_MONITOR_V3.md` | Arquitectura Dual-Engine documentada. |
-| **F1.0** | Descarga y análisis estático del APK de SofaScore | 🟡 En Curso | Alta | `tmp/monitor_v3_poc/apk_analysis.md` | Inspección de cabeceras y endpoints con JADX. |
-| **F1.1M**| PoC: Peticiones HTTP simulando cabeceras Android | 🟡 En Curso | Alta | `tmp/monitor_v3_poc/test_mobile_headers.py` | Probar peticiones directas con `httpx`/`requests`. |
-| **F1.2M**| Laboratorio dinámico (si F1.1M requiere tokens) | ⚪ Pendiente | Media | `tmp/monitor_v3_poc/capture_instructions.md` | Intercepción con HTTP Toolkit si hay SSL Pinning. |
-| **F1.1W**| PoC: Fallback Harvester Web con Camoufox | ⚪ Pendiente | Alta | `tmp/monitor_v3_poc/test_camoufox_harvester.py`| Validar extracción de cookies web hacia `curl_cffi`.|
+| **F1.1M**| PoC: Peticiones HTTP simulando cabeceras Android | 🟢 Completada | Alta | `tmp/monitor_v3_poc/test_mobile_headers.py` | 403 Varnish recibido. Confirma que la app envía headers/tokens específicos. |
+| **F1.1W**| PoC: Pruebas con Camoufox y Chrome Headless | 🟢 Completada | Alta | `tmp/monitor_v3_poc/inspect_captcha_page.py` | Detectado iframe de Cloudflare Turnstile en `captcha.html`. |
+| **F1.2M**| Laboratorio dinámico Android (HTTP Toolkit / Mitmproxy) | 🟡 Siguiente | Alta | `tmp/monitor_v3_poc/mobile_capture.md` | Captura de headers reales de la app para no adivinar UAs. |
+| **F1.2W**| PoC: Harvester Web con Perfil Persistente (`cf_clearance`)| 🟡 Siguiente | Alta | `tmp/monitor_v3_poc/test_persistent_profile.py` | Persistir cookies de Turnstile para reutilizar en `curl_cffi`. |
 | **F2.1** | Creación del paquete `monitor_v3/` y scaffolding | ⚪ Pendiente | Media | Directorio `monitor_v3/` | Estructura modular completa. |
 | **F2.2** | Implementación de `core/mobile_client.py` | ⚪ Pendiente | Alta | `monitor_v3/core/mobile_client.py` | Cliente primario de alta velocidad. |
 | **F2.3** | Implementación de `core/http_client.py` con Dual Engine | ⚪ Pendiente | Alta | `monitor_v3/core/http_client.py` | Conmutación automática Mobile $\leftrightarrow$ Web. |
@@ -207,7 +207,24 @@ monitor_v3/
 
 ---
 
-## 6. Próximo Paso Inmediato
+## 6. Bitácora de Hallazgos Empíricos de la PoC (Ejecutada en `tmp/`)
 
-Ejecutar las tareas **F1.0** y **F1.1M**:
-Crear el script de prueba en `tmp/monitor_v3_poc/test_mobile_headers.py` para probar la respuesta de las APIs de SofaScore (`/api/v1/event/...` y `/api/v1/sport/basketball/scheduled-events/...`) utilizando las cabeceras estándar de cliente móvil de Android frente a las cabeceras web, midiendo códigos de respuesta HTTP, latencia y presencia de Cloudflare.
+Durante las pruebas experimentales ejecutadas en `tmp/monitor_v3_poc/`, se obtuvieron descubrimientos técnicos de primer nivel:
+
+1. **Diagnóstico de las Llamadas HTTP Directas (`test_mobile_headers.py`):**
+   * Peticiones con `httpx`, `requests` y `curl_cffi` simulando User-Agents de Android (`okhttp/4.12.0`, `SofaScore/Android`) recibieron `HTTP 403 Forbidden` (`Server: Varnish`, `reason: Forbidden` o `reason: challenge`).
+   * **Conclusión:** SofaScore no solo valida el `User-Agent`. La app móvil real envía cabeceras adicionales (como tokens de sesión `X-So-...`, headers de dispositivo o cookies internas). Por tanto, la tarea **F1.2M** (capturar el tráfico real de la app mediante HTTP Toolkit una sola vez) es indispensable para clonar el contrato exacto de la app en lugar de adivinar cabeceras.
+2. **Descubrimiento del Reto Web (`inspect_captcha_page.py` y `test_camoufox.py`):**
+   * Al navegar con navegadores headless limpios (tanto Chrome como Camoufox), SofaScore redirige inmediatamente a `https://www.sofascore.com/captcha.html?redirectUrl=...`.
+   * En dicha página, Cloudflare inyecta un iframe explícito de **Cloudflare Turnstile**:
+     `https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/b/turnstile/...`
+   * Si no hay cookies de sesión previas (`cf_clearance`), cualquier llamada a `api.sofascore.com` devuelve `{"error": {"code": 403, "reason": "challenge"}}`.
+3. **Punto Clave de la Virtualización de Python en Windows:**
+   * Se identificó y resolvió que el Python de Microsoft Store virtualiza las rutas bajo `LocalCache\Local\...`, requiriendo pasar rutas absolutas resueltas (`resolve()`) a los drivers de Playwright.
+
+---
+
+## 7. Próximos Pasos Prioritarios
+
+1. **Vía Móvil (F1.2M):** Guía de captura rápida con HTTP Toolkit para registrar el intercambio de red real de la app SofaScore en Android y extraer sus cabeceras auténticas.
+2. **Vía Web (F1.2W):** PoC de navegador con **Perfil Persistente** (`--user-data-dir`), permitiendo almacenar la cookie `cf_clearance` de Turnstile de forma duradera para que `curl_cffi` pueda consultar las APIs en milisegundos sin bloqueos.
