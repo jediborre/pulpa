@@ -192,10 +192,10 @@ monitor_v3/
 | **F0.3** | Integración del vector móvil en el Plan Maestro | 🟢 Completada | Alta | `docs/PLAN_MONITOR_V3.md` | Arquitectura Dual-Engine documentada. |
 | **F1.1M**| PoC: Peticiones HTTP simulando cabeceras Android | 🟢 Completada | Alta | `tmp/monitor_v3_poc/test_mobile_headers.py` | 403 Varnish recibido. Confirma que la app envía headers/tokens específicos. |
 | **F1.1W**| PoC: Pruebas con Camoufox y Chrome Headless | 🟢 Completada | Alta | `tmp/monitor_v3_poc/inspect_captcha_page.py` | Detectado iframe de Cloudflare Turnstile en `captcha.html`. |
-| **F1.2M**| Laboratorio dinámico Android (Parcheo APK y HTTP Toolkit) | 🟢 Instalada en Teléfono | Alta | `tmp/monitor_v3_poc/Sofascore-patched.apk` | Cert-pinning desactivado, splits arm64/xxxhdpi corregidos, firmados con debug key e instalados con éxito vía `adb install-multiple`. |
-| **F1.2W**| PoC: Harvester Web con Perfil Persistente (`cf_clearance`)| 🟡 Siguiente | Alta | `tmp/monitor_v3_poc/test_persistent_profile.py` | Persistir cookies de Turnstile para reutilizar en `curl_cffi`. |
-| **F2.1** | Creación del paquete `monitor_v3/` y scaffolding | ⚪ Pendiente | Media | Directorio `monitor_v3/` | Estructura modular completa. |
-| **F2.2** | Implementación de `core/mobile_client.py` | ⚪ Pendiente | Alta | `monitor_v3/core/mobile_client.py` | Cliente primario de alta velocidad. |
+| **F1.2M**| Laboratorio dinámico Android e Intercepción IPC | 🟢 Completada | Alta | `tmp/monitor_v3_poc/test_fetch_schedule.py` | Conexión automática vía named pipe `//./pipe/httptoolkit-ctl`. Contrato móvil extraído y validado en Python: Live, Incidents, Graph (momentum), Lineups, Stats y H2H responden en ~60-200ms sin navegador ni Turnstile. |
+| **F1.2W**| PoC: Harvester Web con Perfil Persistente (`cf_clearance`)| 🟡 Siguiente | Alta | `tmp/monitor_v3_poc/test_persistent_profile.py` | Persistir cookies de Turnstile para reutilizar en `curl_cffi` (motor fallback). |
+| **F2.1** | Creación del paquete `monitor_v3/` y scaffolding | 🟡 En curso | Media | Directorio `monitor_v3/` | Estructura modular completa basada en especificación. |
+| **F2.2** | Implementación de `core/mobile_client.py` | 🟡 En curso | Alta | `monitor_v3/core/mobile_client.py` | Cliente primario de alta velocidad sin navegador. |
 | **F2.3** | Implementación de `core/http_client.py` con Dual Engine | ⚪ Pendiente | Alta | `monitor_v3/core/http_client.py` | Conmutación automática Mobile $\leftrightarrow$ Web. |
 | **F3.1** | Tablas `_v3` en `matches.db` canónica | ⚪ Pendiente | Alta | `monitor_v3/database/repository.py` | `schedule_v3`, `log_v3`, `quarter_scores_v3`. |
 | **F4.1** | Scrapers especializados (Schedule, Live, Detail) | ⚪ Pendiente | Alta | `monitor_v3/scrapers/*.py` | Ráfaga FT de 6 JSONs y sondeo Q4. |
@@ -227,11 +227,24 @@ Durante las pruebas experimentales ejecutadas en `tmp/monitor_v3_poc/`, se obtuv
    * Se corrigió un error de parseo en `AndroidManifest.xml` (`<meta-data android:resource="@null"/>` en FCM) que impedía la instalación en Android 10+.
    * Se resignaron los splits con clave de depuración homogénea vía `uber-apk-signer` y se instalaron con éxito vía `adb install-multiple`.
    * La aplicación inicia y corre libremente, permitiendo a HTTP Toolkit o proxies MITM interceptar el 100% de sus llamadas HTTPS sin rechazos de certificado.
+5. **Automatización IPC con HTTP Toolkit y Descubrimiento del Contrato Móvil (`query_httptoolkit.js` y `test_fetch_schedule.py`):**
+   * Nos conectamos programáticamente a la API interna de HTTP Toolkit a través de su Named Pipe (`//./pipe/httptoolkit-ctl`) sin necesidad de interacción manual por parte del usuario.
+   * Se extrajeron las peticiones intercepted de la app: inicialización de sesión (`POST /api/v1/token/init` que genera un JWT válido por 6 meses) y las cabeceras exactas de transporte:
+     `User-Agent: com.sofascore.results/260921/022538`, `x-timestamp`, `Cache-Control: max-age=0`.
+   * Se ejecutó el pipeline completo de extracción deportiva en Python puro (`test_fetch_schedule.py`):
+     - **Partidos en Vivo (`/sport/basketball/events/live`):** 200 OK en **60 ms** (29 partidos en curso obtenidos).
+     - **Metadatos y Marcadores (`/event/{id}`):** 200 OK en **235 ms**.
+     - **Incidencias PBP (`/event/{id}/incidents`):** 200 OK en **171 ms** (47 jugadas).
+     - **Curva de Momentum (`/event/{id}/graph`):** 200 OK en **229 ms** (35 puntos de presión/momentum).
+     - **Alineaciones (`/event/{id}/lineups`):** 200 OK en **168 ms**.
+     - **Estadísticas de Equipo (`/event/{id}/statistics`):** 200 OK en **171 ms**.
+     - **Historial H2H (`/event/{id}/h2h`):** 200 OK en **190 ms**.
+   * **Conclusión y Cambio Radical de Paradigma:** No se necesita Chrome Headless, ni Obscura, ni emuladores en ejecución continua. Con este contrato, el `monitor_v3` puede operar a máxima velocidad con consumo de RAM despreciable (< 50 MB) y cero baneos de Cloudflare.
 
 ---
 
 ## 7. Próximos Pasos Prioritarios
 
-1. **Vía Móvil (F1.2M):** Conectar HTTP Toolkit mediante "Android device via ADB", abrir SofaScore en el teléfono, entrar a un partido de baloncesto en vivo o finalizado y registrar las cabeceras exactas de `api.sofascore.com`.
-2. **Replay (F1.2M):** Replicar las cabeceras capturadas en `tmp/monitor_v3_poc/replay_captured_request.py` para validar que respondan `200 OK` en Python puro.
-3. **Vía Web (F1.2W):** PoC de navegador con **Perfil Persistente** (`--user-data-dir`), permitiendo almacenar la cookie `cf_clearance` de Turnstile de forma duradera para que `curl_cffi` pueda consultar las APIs en milisegundos sin bloqueos.
+1. **Implementación de `monitor_v3/core/mobile_client.py` (F2.2):** Modularizar el cliente asíncrono que implementa este contrato para despachar peticiones en milisegundos.
+2. **Creación del paquete `monitor_v3/` y scaffolding (F2.1):** Configuración, tablas `_v3` en `matches.db` canónica y scrapers especializados.
+3. **Vía Web Fallback (F1.2W):** Mantener el harvester web con perfil persistente como respaldo secundario solo si la API móvil requiere re-inicialización.
