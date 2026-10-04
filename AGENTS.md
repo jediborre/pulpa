@@ -118,6 +118,33 @@ Toda la suite de ML se organiza bajo el directorio raíz `models/`:
 - Cada archivo en `tmp/` cuenta con un encabezado descriptivo indicando su propósito y ubicación original.
 - **Creación de nuevas pruebas:** Deben ubicarse obligatoriamente en `tmp/<nombre_tarea>/` (por ejemplo: `tmp/modelo_100/`) y documentar en la cabecera del código su propósito y qué problema resuelven.
 
+## 📱 Protocolo de Obtención y Renovación del JWT Móvil (SofaScore)
+
+Para el funcionamiento de `monitor_v3` y las descargas históricas ultrarrápidas con `fetch-range` / `fetch-date` se requiere un token Bearer JWT legítimo emitido por la aplicación oficial de Android (validez de 6 meses).
+
+### 1. ¿Es necesario desinstalar la app si el token caduca o se bloquea?
+- **NO es necesario desinstalar la app.**
+- Basta con ir en el teléfono a: **Ajustes > Aplicaciones > SofaScore > Almacenamiento > "Borrar datos" (Clear Data)**.
+- Esto limpia la sesión local bloqueada y fuerza a la app a inicializarse de cero y solicitar un nuevo JWT genuino a los servidores de SofaScore. *(Desinstalar y reinstalar la APK parcheada también funciona, pero borrar datos es mucho más rápido).*
+
+### 2. Flujo de Captura y Sincronización:
+1. **HTTP Toolkit en PC:** Debe estar ejecutándose en la computadora (escuchando en puerto 8000 y socket local `//./pipe/httptoolkit-ctl`).
+2. **Conexión del Teléfono:** El teléfono debe estar interceptado por HTTP Toolkit (vía "Android device via ADB" o proxy Wi-Fi manual hacia el puerto 8000 con el certificado CA confiado).
+3. **Generación del Token en el Teléfono:**
+   - En el teléfono, abre la app de SofaScore (tras haber borrado datos).
+   - Navega en la app o toca cualquier partido durante 5 segundos.
+   - La app se autentica automáticamente contra `/api/v1/token/init` pasando las verificaciones internas y realiza peticiones autorizadas (`Authorization: Bearer eyJ...`).
+4. **Sincronización Automática al Proyecto:**
+   - Ejecuta desde la raíz del proyecto:
+     ```powershell
+     .venv\Scripts\python.exe tools\sync_token_from_httptoolkit.py
+     ```
+   - Este script lee directamente el socket de HTTP Toolkit, prueba la validez del token contra la API de SofaScore y, si responde `HTTP 200`, lo guarda automáticamente en `monitor_v3/config/tokens.json`.
+
+### 3. Prevención de Bloqueos (Rate Limiting y Challenges):
+- Nunca bombardear peticiones a SofaScore a más de 1 petición por segundo en descargas masivas históricas.
+- Mantener siempre un intervalo de 1.0s a 1.5s entre partidos para evitar que Cloudflare marque el token con `{"error": {"code": 403, "reason": "challenge"}}`.
+
 ---
 
 ## 📌 Resumen de Directrices Técnicas

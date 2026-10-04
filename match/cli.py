@@ -1772,10 +1772,13 @@ def _ingest_date_with_progress(
                 eta=last_eta,
                 last_error_code=last_error_code,
             )
-            # Small random spacing between match downloads to avoid rigid request cadence.
-            if idx > 1 and FETCH_DATE_JITTER_MAX_SECS > 0 and backend != "mobile":
-                jitter = random.uniform(FETCH_DATE_JITTER_MIN_SECS, FETCH_DATE_JITTER_MAX_SECS)
-                time.sleep(max(0.0, jitter))
+            # Espaciado aleatorio entre partidos para evitar patrones rígidos y bloqueos anti-bot.
+            if idx > 1:
+                if backend == "mobile":
+                    time.sleep(random.uniform(0.7, 1.3))
+                elif FETCH_DATE_JITTER_MAX_SECS > 0:
+                    jitter = random.uniform(FETCH_DATE_JITTER_MIN_SECS, FETCH_DATE_JITTER_MAX_SECS)
+                    time.sleep(max(0.0, jitter))
             data = scraper_mod.fetch_match_by_id(match_id, backend=backend)
             elapsed = time.perf_counter() - started_at
             if not _has_usable_data(data):
