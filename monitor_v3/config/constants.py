@@ -80,6 +80,11 @@ ACTIVE_MODELS = ["v6_2", "m27_v3"]
 
 # --- Ritmo de Juego y Ventana de Monitoreo Q4 ---
 SECS_PER_GAME_MIN = 170             # Estimación inicial de segundos reales por minuto de juego
+# Snapshot de inferencia Q4: AMBOS modelos activos (m27_v3 y v6_2) se evalúan al min 27.
+# m27_v3 fue entrenado con snapshot 27 (correcto). v6_2 fue entrenado con snapshot 36,
+# lo que es un fallo de diseño con leakage; en producción se evalúa igualmente al min 27
+# y el retraso no ha sido problemático. El minuto se obtiene del reloj fiable del API
+# (event.time.played), no de una inferencia.
 Q4_ONLY_EARLY_WAKE_MINUTE = 27      # Minuto del partido para despertar el watcher completo
 Q4_ONLY_WAKE_LEAD_MINUTES = 2       # Margen de seguridad previo al minuto de despertar
 Q4_TOO_LATE_BET_MINUTE = 33         # Límite para alertas ordinarias (minutos superiores marcan TARDÍA)

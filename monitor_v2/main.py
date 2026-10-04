@@ -775,7 +775,9 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                     await _final_fetch_and_save(match_id, home, away)
                     break
                     
-                # Si estamos dentro de la ventana operable Q4 (Minuto 27 a 36)
+                # Ventana operable Q4: AMBOS modelos (m27_v3 y v6_2) se evalúan al min 27
+                # (v6_2 snapshot 36 = fallo de diseño con leakage, se usa igual a min 27).
+                # Con el reloj fiable (time.played), el minuto es exacto.
                 if minute >= Q4_ONLY_EARLY_WAKE_MINUTE and minute < 36:
                     # Evaluar predicciones
                     eval_res = await evaluate_match_q4(match_id, full_data, watcher_state, forced_minute=minute)

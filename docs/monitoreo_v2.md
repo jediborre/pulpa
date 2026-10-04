@@ -306,6 +306,16 @@ Al consolidar la descarga completa del partido mediante `fetch_match_by_id`, el 
 *   **Falta de Crecimiento (Stale Graph):** Si los puntos de la gráfica (`graph_points`) se mantienen estáticos durante `Q4_STALE_MAX_TICKS` consecutivos, la tarea aborta registrando la incidencia como `graph_stale_timeout`.
 *   **Ausencia de Datos Históricos:** Si tras transcurrir un lapso equivalente en tiempo real a 55 minutos (`NO_GRAPH_REAL_SECS`) el partido carece de estructuras gráficas de rendimiento, se descarta el procesamiento predictivo de inmediato.
 
+### Snapshot de Inferencia (Q4)
+Ambos modelos activos se evalúan con el **snapshot del minuto 27**:
+- `m27_v3`: entrenado con snapshot min 27 (correcto).
+- `v6_2` (q4): entrenado con snapshot min 36 (fallo de diseño con *leakage*), pero en
+  producción se evalúa igualmente al **min 27**; el retraso no ha sido problemático.
+
+El minuto usado para disparar la evaluación proviene del **reloj fiable del API**
+(`event.time.played // 60`), no de una inferencia de PBP/gráfica. Ver
+`docs/REVERSE_ENGINEERING_SOFASCORE.md` §2.5.
+
 ### Clasificación y Gestión de Señales de Entrada/Salida
 Las respuestas analíticas se supeditan a una regla de guardias temporales basada en el minuto de juego exacto verificado en SofaScore dentro de la ventana de Q4 (Minuto 27 a 38 máximo):
 *   **Señal Operable (`BET_HOME` / `BET_AWAY`):**
