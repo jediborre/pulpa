@@ -126,8 +126,12 @@ con fallback a PBP/gráfica.
 
 **Cierre de Q4 por reloj fiable:** el resultado de Q4 se dispara cuando el reloj acumulado
 alcanza el final de la regulación: `played >= periodLength × totalPeriodCount` (p. ej.
-`600 × 4 = 2400`), en vez de por un minuto adivinado. Se mantiene como respaldo
-`status_type == "finished"` y un fallback por reloj de pared.
+`600 × 4 = 2400`), en vez de por un minuto adivinado. Como respaldo queda
+`status_type == "finished"` y el timeout de obsolescencia (3.5h).
+
+> ⚠️ **No usar un fallback por reloj de pared** (`scheduled_ts + secs_per_gmin × 40`):
+> el `secs_per_gmin` (EMA) se subestima y cierra el partido antes de terminar Q4
+> (se observó un cierre a MIN 35 con Q4 11-5). Se eliminó 2026-10-04.
 
 ### 2.6 URL canónica de un partido (botón "📱 Sofascore" de Telegram)
 

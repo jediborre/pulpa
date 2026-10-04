@@ -21,7 +21,6 @@ if str(ROOT) not in sys.path:
 from monitor_v3.config.constants import (
     ACTIVE_MODELS,
     FINAL_FETCH_MIN_GP,
-    FINAL_FETCH_EXTRA_SECS,
     POLL_INTERVAL_LIVE_SECS,
     POLL_INTERVAL_IDLE_SECS,
     POLL_NEAR_SECS,
@@ -373,14 +372,6 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
     while not stop_event.is_set():
         if time.time() - scheduled_ts > 12600:
             log_warning("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Partido obsoleto | {match_display}")
-            await _final_fetch_and_save(match_id, home, away)
-            break
-
-        # Fallback por reloj: si ya pasó la duración máxima estimada (40 min de juego
-        # + margen) y el estado aún no cerró, forzar FT. No dependemos del minuto
-        # inferido, que se congela/salta cuando SofaScore devuelve datos inconsistentes.
-        if time.time() > scheduled_ts + secs_per_gmin * 40 + FINAL_FETCH_EXTRA_SECS:
-            log_warning("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Duración máxima alcanzada → FT | {match_display}")
             await _final_fetch_and_save(match_id, home, away)
             break
 
