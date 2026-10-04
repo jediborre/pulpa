@@ -192,7 +192,7 @@ monitor_v3/
 | **F0.3** | Integración del vector móvil en el Plan Maestro | 🟢 Completada | Alta | `docs/PLAN_MONITOR_V3.md` | Arquitectura Dual-Engine documentada. |
 | **F1.1M**| PoC: Peticiones HTTP simulando cabeceras Android | 🟢 Completada | Alta | `tmp/monitor_v3_poc/test_mobile_headers.py` | 403 Varnish recibido. Confirma que la app envía headers/tokens específicos. |
 | **F1.1W**| PoC: Pruebas con Camoufox y Chrome Headless | 🟢 Completada | Alta | `tmp/monitor_v3_poc/inspect_captcha_page.py` | Detectado iframe de Cloudflare Turnstile en `captcha.html`. |
-| **F1.2M**| Laboratorio dinámico Android (HTTP Toolkit / Mitmproxy) | 🟡 Siguiente | Alta | `tmp/monitor_v3_poc/mobile_capture.md` | Captura de headers reales de la app para no adivinar UAs. |
+| **F1.2M**| Laboratorio dinámico Android (HTTP Toolkit / Mitmproxy) | 🟡 Guía Lista | Alta | `tmp/monitor_v3_poc/mobile_capture.md` | Guía de intercepción y script `replay_captured_request.py` listos. |
 | **F1.2W**| PoC: Harvester Web con Perfil Persistente (`cf_clearance`)| 🟡 Siguiente | Alta | `tmp/monitor_v3_poc/test_persistent_profile.py` | Persistir cookies de Turnstile para reutilizar en `curl_cffi`. |
 | **F2.1** | Creación del paquete `monitor_v3/` y scaffolding | ⚪ Pendiente | Media | Directorio `monitor_v3/` | Estructura modular completa. |
 | **F2.2** | Implementación de `core/mobile_client.py` | ⚪ Pendiente | Alta | `monitor_v3/core/mobile_client.py` | Cliente primario de alta velocidad. |
