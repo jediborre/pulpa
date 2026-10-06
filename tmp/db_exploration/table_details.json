@@ -1,0 +1,3058 @@
+{
+  "matches": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "home_team",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 2,
+        "name": "away_team",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "date",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "time",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 5,
+        "name": "venue",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 6,
+        "name": "league",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 7,
+        "name": "home_record",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 8,
+        "name": "away_record",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 9,
+        "name": "home_score",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 10,
+        "name": "away_score",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 11,
+        "name": "home_slug",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 12,
+        "name": "away_slug",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 13,
+        "name": "event_slug",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 14,
+        "name": "custom_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 15,
+        "name": "status_type",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 16,
+        "name": "status_description",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 17,
+        "name": "home_team_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 18,
+        "name": "away_team_id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 19,
+        "name": "home_rating",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 20,
+        "name": "away_rating",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 21,
+        "name": "details_checked_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "idx_matches_date",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      },
+      {
+        "seq": 1,
+        "name": "sqlite_autoindex_matches_1",
+        "unique": 1,
+        "origin": "pk",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "match_id": "15757331",
+      "home_team": "Putinų Grizliai",
+      "away_team": "Putinų Pelkės",
+      "date": "2026-03-20",
+      "time": "13:15",
+      "venue": "Putinų gimnazijos sporto salė",
+      "league": "Putinų Gimnazijos Krepšinio Lyga, Atkrintamosios",
+      "home_record": "",
+      "away_record": "",
+      "home_score": 62,
+      "away_score": 87,
+      "home_slug": null,
+      "away_slug": null,
+      "event_slug": null,
+      "custom_id": null,
+      "status_type": null,
+      "status_description": null,
+      "home_team_id": null,
+      "away_team_id": null,
+      "home_rating": null,
+      "away_rating": null,
+      "details_checked_at": null
+    }
+  },
+  "quarter_scores": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "quarter",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 2
+      },
+      {
+        "cid": 2,
+        "name": "home",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "away",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "matches",
+        "from": "match_id",
+        "to": "match_id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "idx_quarter_scores_match_id",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      },
+      {
+        "seq": 1,
+        "name": "sqlite_autoindex_quarter_scores_1",
+        "unique": 1,
+        "origin": "pk",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "match_id": "15757331",
+      "quarter": "Q1",
+      "home": 16,
+      "away": 22
+    }
+  },
+  "quarter_scores_v2": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "q1_home",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 2,
+        "name": "q1_away",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "q2_home",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "q2_away",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 5,
+        "name": "q3_home",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 6,
+        "name": "q3_away",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 7,
+        "name": "q4_home",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 8,
+        "name": "q4_away",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 9,
+        "name": "ot_home",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 10,
+        "name": "ot_away",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "sqlite_autoindex_quarter_scores_v2_1",
+        "unique": 1,
+        "origin": "pk",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "match_id": "16213184",
+      "q1_home": 26,
+      "q1_away": 21,
+      "q2_home": 17,
+      "q2_away": 28,
+      "q3_home": 17,
+      "q3_away": 18,
+      "q4_home": 19,
+      "q4_away": 12,
+      "ot_home": null,
+      "ot_away": null
+    }
+  },
+  "play_by_play": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 2,
+        "name": "quarter",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "seq",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "time",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 5,
+        "name": "player",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 6,
+        "name": "points",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 7,
+        "name": "team",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 8,
+        "name": "home_score",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 9,
+        "name": "away_score",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "matches",
+        "from": "match_id",
+        "to": "match_id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "idx_pbp_match_quarter",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      },
+      {
+        "seq": 1,
+        "name": "idx_pbp_match_id",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "id": 2609,
+      "match_id": "15757331",
+      "quarter": "Q4",
+      "seq": 0,
+      "time": "-1:00",
+      "player": "",
+      "points": 2,
+      "team": "home",
+      "home_score": 62,
+      "away_score": 87
+    }
+  },
+  "match_events": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 2,
+        "name": "quarter",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "seq",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "time",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 5,
+        "name": "time_seconds",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 6,
+        "name": "incident_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 7,
+        "name": "subtype",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 8,
+        "name": "player",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 9,
+        "name": "player_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 10,
+        "name": "team",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 11,
+        "name": "points",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 12,
+        "name": "home_score",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 13,
+        "name": "away_score",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "matches",
+        "from": "match_id",
+        "to": "match_id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "idx_match_events_match",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "id": 1823,
+      "match_id": "14491673",
+      "quarter": "Q4",
+      "seq": 0,
+      "time": "0:00",
+      "time_seconds": 2400,
+      "incident_type": "period",
+      "subtype": "",
+      "player": "",
+      "player_id": null,
+      "team": "home",
+      "points": null,
+      "home_score": 97,
+      "away_score": 102
+    }
+  },
+  "graph_points": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "seq",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 2
+      },
+      {
+        "cid": 2,
+        "name": "minute",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "value",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "matches",
+        "from": "match_id",
+        "to": "match_id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "idx_graph_points_match_id",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      },
+      {
+        "seq": 1,
+        "name": "sqlite_autoindex_graph_points_1",
+        "unique": 1,
+        "origin": "pk",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "match_id": "15742497",
+      "seq": 0,
+      "minute": 1,
+      "value": -1
+    }
+  },
+  "match_h2h": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 2,
+        "name": "h2h_match_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "date",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "timestamp",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 5,
+        "name": "home_team",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 6,
+        "name": "away_team",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 7,
+        "name": "home_score",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 8,
+        "name": "away_score",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 9,
+        "name": "q1_home",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 10,
+        "name": "q1_away",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 11,
+        "name": "q2_home",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 12,
+        "name": "q2_away",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 13,
+        "name": "q3_home",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 14,
+        "name": "q3_away",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 15,
+        "name": "q4_home",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 16,
+        "name": "q4_away",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 17,
+        "name": "tournament",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "matches",
+        "from": "match_id",
+        "to": "match_id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "idx_match_h2h_match",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "id": 32,
+      "match_id": "14491673",
+      "h2h_match_id": "14491673",
+      "date": "2026-05-17",
+      "timestamp": 1779040800,
+      "home_team": "La Laguna Tenerife",
+      "away_team": "Barça Basket",
+      "home_score": 97,
+      "away_score": 102,
+      "q1_home": 16,
+      "q1_away": 29,
+      "q2_home": 27,
+      "q2_away": 29,
+      "q3_home": 28,
+      "q3_away": 17,
+      "q4_home": 26,
+      "q4_away": 27,
+      "tournament": "Liga ACB"
+    }
+  },
+  "team_statistics": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 2,
+        "name": "period",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "'ALL'",
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "group_name",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "stat_key",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 5,
+        "name": "stat_name",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 6,
+        "name": "home_value",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 7,
+        "name": "away_value",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 8,
+        "name": "home_total",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 9,
+        "name": "away_total",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 10,
+        "name": "home_display",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 11,
+        "name": "away_display",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "matches",
+        "from": "match_id",
+        "to": "match_id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "idx_team_statistics_match",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "id": 1075,
+      "match_id": "14491673",
+      "period": "Q1",
+      "group_name": "Scoring",
+      "stat_key": "points",
+      "stat_name": "Points",
+      "home_value": 16.0,
+      "away_value": 32.0,
+      "home_total": 16.0,
+      "away_total": 32.0,
+      "home_display": "16",
+      "away_display": "32"
+    }
+  },
+  "player_stats": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 2,
+        "name": "team",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "player_name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "player_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 5,
+        "name": "sofascore_rating",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 6,
+        "name": "minutes_played",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 7,
+        "name": "points",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 8,
+        "name": "fouls",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 9,
+        "name": "plus_minus",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 10,
+        "name": "field_goals_made",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 11,
+        "name": "field_goals_attempted",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 12,
+        "name": "three_made",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 13,
+        "name": "three_attempted",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 14,
+        "name": "free_throws_made",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 15,
+        "name": "free_throws_attempted",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 16,
+        "name": "rebounds",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 17,
+        "name": "assists",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 18,
+        "name": "steals",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 19,
+        "name": "turnovers",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 20,
+        "name": "blocks",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "matches",
+        "from": "match_id",
+        "to": "match_id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "idx_player_stats_match",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "id": 568,
+      "match_id": "14491673",
+      "team": "home",
+      "player_name": "Wesley Van Beck",
+      "player_id": "1549847",
+      "sofascore_rating": 6.5,
+      "minutes_played": 15.2,
+      "points": 6,
+      "fouls": 3,
+      "plus_minus": 8,
+      "field_goals_made": 2,
+      "field_goals_attempted": 5,
+      "three_made": 0,
+      "three_attempted": 3,
+      "free_throws_made": 2,
+      "free_throws_attempted": 2,
+      "rebounds": 1,
+      "assists": 0,
+      "steals": 0,
+      "turnovers": 0,
+      "blocks": 1
+    }
+  },
+  "lineups": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 2,
+        "name": "team",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "player_name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "player_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 5,
+        "name": "is_starter",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": "0",
+        "pk": 0
+      },
+      {
+        "cid": 6,
+        "name": "shirt_number",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 7,
+        "name": "position",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "matches",
+        "from": "match_id",
+        "to": "match_id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "idx_lineups_match",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "id": 568,
+      "match_id": "14491673",
+      "team": "home",
+      "player_name": "Wesley Van Beck",
+      "player_id": "1549847",
+      "is_starter": 0,
+      "shirt_number": 4,
+      "position": "G"
+    }
+  },
+  "match_odds": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 2,
+        "name": "odds_type",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "market_name",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "market_period",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 5,
+        "name": "home_value",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 6,
+        "name": "away_value",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 7,
+        "name": "draw_value",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 8,
+        "name": "timestamp",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "matches",
+        "from": "match_id",
+        "to": "match_id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "idx_match_odds_match",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "id": 1,
+      "match_id": "14491673",
+      "odds_type": "Home/Away",
+      "market_name": "Full time",
+      "market_period": "Match",
+      "home_value": 2.35,
+      "away_value": 1.51,
+      "draw_value": null,
+      "timestamp": ""
+    }
+  },
+  "team_strength": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "team_id",
+        "type": "INTEGER",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 2,
+        "name": "team_name",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "position",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 5,
+        "name": "wins",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 6,
+        "name": "losses",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 7,
+        "name": "form",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 8,
+        "name": "perf_points",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 9,
+        "name": "fetched_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "datetime('now')",
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [
+      {
+        "id": 0,
+        "seq": 0,
+        "table": "matches",
+        "from": "match_id",
+        "to": "match_id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION",
+        "match": "NONE"
+      }
+    ],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "idx_team_strength_match",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      },
+      {
+        "seq": 1,
+        "name": "idx_team_strength_team",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "id": 49,
+      "team_id": 78043,
+      "team_name": "La Laguna Tenerife",
+      "match_id": "14491673",
+      "position": 8,
+      "wins": 17,
+      "losses": 14,
+      "form": "[\"W\", \"L\", \"L\", \"L\", \"L\"]",
+      "perf_points": "{\"14491607\": 1.28, \"15980519\": 1.4, \"14491622\": 4.5, \"14491635\": -1.6, \"14491645\": -5, \"16016268\": -3.05, \"16146476\": -1.666, \"14662388\": -1.62, \"14491673\": -1.51}",
+      "fetched_at": "2026-05-18 23:10:55"
+    }
+  },
+  "eval_match_results": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "event_date",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": null,
+        "pk": 2
+      },
+      {
+        "cid": 2,
+        "name": "home_team",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "away_team",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "q3_home_score",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 5,
+        "name": "q3_away_score",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 6,
+        "name": "q3_winner",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 7,
+        "name": "q4_home_score",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 8,
+        "name": "q4_away_score",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 9,
+        "name": "q4_winner",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 10,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "datetime('now')",
+        "pk": 0
+      },
+      {
+        "cid": 11,
+        "name": "updated_at",
+        "type": "TEXT",
+        "notnull": 1,
+        "dflt_value": "datetime('now')",
+        "pk": 0
+      },
+      {
+        "cid": 12,
+        "name": "q3_pick__hybrid_f1_v1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 13,
+        "name": "q3_signal__hybrid_f1_v1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 14,
+        "name": "q3_outcome__hybrid_f1_v1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 15,
+        "name": "q3_available__hybrid_f1_v1",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 16,
+        "name": "q4_pick__hybrid_f1_v1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 17,
+        "name": "q4_signal__hybrid_f1_v1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 18,
+        "name": "q4_outcome__hybrid_f1_v1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 19,
+        "name": "q4_available__hybrid_f1_v1",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 20,
+        "name": "q3_pick__hybrid_f1_v2",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 21,
+        "name": "q3_signal__hybrid_f1_v2",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 22,
+        "name": "q3_outcome__hybrid_f1_v2",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 23,
+        "name": "q3_available__hybrid_f1_v2",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 24,
+        "name": "q4_pick__hybrid_f1_v2",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 25,
+        "name": "q4_signal__hybrid_f1_v2",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 26,
+        "name": "q4_outcome__hybrid_f1_v2",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 27,
+        "name": "q4_available__hybrid_f1_v2",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 28,
+        "name": "q3_pick__hybrid_f1_v3",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 29,
+        "name": "q3_signal__hybrid_f1_v3",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 30,
+        "name": "q3_outcome__hybrid_f1_v3",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 31,
+        "name": "q3_available__hybrid_f1_v3",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 32,
+        "name": "q4_pick__hybrid_f1_v3",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 33,
+        "name": "q4_signal__hybrid_f1_v3",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 34,
+        "name": "q4_outcome__hybrid_f1_v3",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 35,
+        "name": "q4_available__hybrid_f1_v3",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 36,
+        "name": "q3_pick__auto_f1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 37,
+        "name": "q3_signal__auto_f1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 38,
+        "name": "q3_outcome__auto_f1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 39,
+        "name": "q3_available__auto_f1",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 40,
+        "name": "q4_pick__auto_f1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 41,
+        "name": "q4_signal__auto_f1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 42,
+        "name": "q4_outcome__auto_f1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 43,
+        "name": "q4_available__auto_f1",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 44,
+        "name": "q3_pick__bot_hybrid_f1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 45,
+        "name": "q3_signal__bot_hybrid_f1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 46,
+        "name": "q3_outcome__bot_hybrid_f1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 47,
+        "name": "q3_available__bot_hybrid_f1",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 48,
+        "name": "q4_pick__bot_hybrid_f1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 49,
+        "name": "q4_signal__bot_hybrid_f1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 50,
+        "name": "q4_outcome__bot_hybrid_f1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 51,
+        "name": "q4_available__bot_hybrid_f1",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 52,
+        "name": "q3_confidence__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 53,
+        "name": "q3_threshold_lean__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 54,
+        "name": "q3_threshold_bet__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 55,
+        "name": "q4_confidence__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 56,
+        "name": "q4_threshold_lean__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 57,
+        "name": "q4_threshold_bet__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 58,
+        "name": "q3_pick__v4",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 59,
+        "name": "q3_signal__v4",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 60,
+        "name": "q3_outcome__v4",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 61,
+        "name": "q3_available__v4",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 62,
+        "name": "q3_confidence__v4",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 63,
+        "name": "q3_threshold_lean__v4",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 64,
+        "name": "q3_threshold_bet__v4",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 65,
+        "name": "q4_pick__v4",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 66,
+        "name": "q4_signal__v4",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 67,
+        "name": "q4_outcome__v4",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 68,
+        "name": "q4_available__v4",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 69,
+        "name": "q4_confidence__v4",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 70,
+        "name": "q4_threshold_lean__v4",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 71,
+        "name": "q4_threshold_bet__v4",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 72,
+        "name": "q3_pick__v5",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 73,
+        "name": "q3_signal__v5",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 74,
+        "name": "q3_outcome__v5",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 75,
+        "name": "q3_available__v5",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 76,
+        "name": "q3_confidence__v5",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 77,
+        "name": "q3_threshold_lean__v5",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 78,
+        "name": "q3_threshold_bet__v5",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 79,
+        "name": "q4_pick__v5",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 80,
+        "name": "q4_signal__v5",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 81,
+        "name": "q4_outcome__v5",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 82,
+        "name": "q4_available__v5",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 83,
+        "name": "q4_confidence__v5",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 84,
+        "name": "q4_threshold_lean__v5",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 85,
+        "name": "q4_threshold_bet__v5",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 86,
+        "name": "q3_pick__v6",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 87,
+        "name": "q3_signal__v6",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 88,
+        "name": "q3_outcome__v6",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 89,
+        "name": "q3_available__v6",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 90,
+        "name": "q3_confidence__v6",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 91,
+        "name": "q3_threshold_lean__v6",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 92,
+        "name": "q3_threshold_bet__v6",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 93,
+        "name": "q4_pick__v6",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 94,
+        "name": "q4_signal__v6",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 95,
+        "name": "q4_outcome__v6",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 96,
+        "name": "q4_available__v6",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 97,
+        "name": "q4_confidence__v6",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 98,
+        "name": "q4_threshold_lean__v6",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 99,
+        "name": "q4_threshold_bet__v6",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 100,
+        "name": "q3_pick__v7",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 101,
+        "name": "q3_signal__v7",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 102,
+        "name": "q3_outcome__v7",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 103,
+        "name": "q3_available__v7",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 104,
+        "name": "q3_confidence__v7",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 105,
+        "name": "q3_threshold_lean__v7",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 106,
+        "name": "q3_threshold_bet__v7",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 107,
+        "name": "q4_pick__v7",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 108,
+        "name": "q4_signal__v7",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 109,
+        "name": "q4_outcome__v7",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 110,
+        "name": "q4_available__v7",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 111,
+        "name": "q4_confidence__v7",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 112,
+        "name": "q4_threshold_lean__v7",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 113,
+        "name": "q4_threshold_bet__v7",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 114,
+        "name": "q3_reasoning__bot_hybrid_f1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 115,
+        "name": "q3_predicted_home__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 116,
+        "name": "q3_predicted_away__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 117,
+        "name": "q3_predicted_total__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 118,
+        "name": "q3_mae__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 119,
+        "name": "q3_mae_home__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 120,
+        "name": "q3_mae_away__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 121,
+        "name": "q4_reasoning__bot_hybrid_f1",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 122,
+        "name": "q4_predicted_home__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 123,
+        "name": "q4_predicted_away__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 124,
+        "name": "q4_predicted_total__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 125,
+        "name": "q4_mae__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 126,
+        "name": "q4_mae_home__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 127,
+        "name": "q4_mae_away__bot_hybrid_f1",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "sqlite_autoindex_eval_match_results_1",
+        "unique": 1,
+        "origin": "pk",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "event_date": "2026-02-23",
+      "match_id": "15548171",
+      "home_team": "UGMK Ekaterinburg",
+      "away_team": "Nadezhda Orenburg Oblast",
+      "q3_home_score": 17,
+      "q3_away_score": 12,
+      "q3_winner": "home",
+      "q4_home_score": 20,
+      "q4_away_score": 21,
+      "q4_winner": "away",
+      "created_at": "2026-03-29 21:27:06",
+      "updated_at": "2026-03-29 22:25:09",
+      "q3_pick__hybrid_f1_v1": null,
+      "q3_signal__hybrid_f1_v1": null,
+      "q3_outcome__hybrid_f1_v1": null,
+      "q3_available__hybrid_f1_v1": null,
+      "q4_pick__hybrid_f1_v1": null,
+      "q4_signal__hybrid_f1_v1": null,
+      "q4_outcome__hybrid_f1_v1": null,
+      "q4_available__hybrid_f1_v1": null,
+      "q3_pick__hybrid_f1_v2": null,
+      "q3_signal__hybrid_f1_v2": null,
+      "q3_outcome__hybrid_f1_v2": null,
+      "q3_available__hybrid_f1_v2": null,
+      "q4_pick__hybrid_f1_v2": null,
+      "q4_signal__hybrid_f1_v2": null,
+      "q4_outcome__hybrid_f1_v2": null,
+      "q4_available__hybrid_f1_v2": null,
+      "q3_pick__hybrid_f1_v3": null,
+      "q3_signal__hybrid_f1_v3": null,
+      "q3_outcome__hybrid_f1_v3": null,
+      "q3_available__hybrid_f1_v3": null,
+      "q4_pick__hybrid_f1_v3": null,
+      "q4_signal__hybrid_f1_v3": null,
+      "q4_outcome__hybrid_f1_v3": null,
+      "q4_available__hybrid_f1_v3": null,
+      "q3_pick__auto_f1": null,
+      "q3_signal__auto_f1": null,
+      "q3_outcome__auto_f1": null,
+      "q3_available__auto_f1": null,
+      "q4_pick__auto_f1": null,
+      "q4_signal__auto_f1": null,
+      "q4_outcome__auto_f1": null,
+      "q4_available__auto_f1": null,
+      "q3_pick__bot_hybrid_f1": null,
+      "q3_signal__bot_hybrid_f1": null,
+      "q3_outcome__bot_hybrid_f1": null,
+      "q3_available__bot_hybrid_f1": null,
+      "q4_pick__bot_hybrid_f1": null,
+      "q4_signal__bot_hybrid_f1": null,
+      "q4_outcome__bot_hybrid_f1": null,
+      "q4_available__bot_hybrid_f1": null,
+      "q3_confidence__bot_hybrid_f1": null,
+      "q3_threshold_lean__bot_hybrid_f1": null,
+      "q3_threshold_bet__bot_hybrid_f1": null,
+      "q4_confidence__bot_hybrid_f1": null,
+      "q4_threshold_lean__bot_hybrid_f1": null,
+      "q4_threshold_bet__bot_hybrid_f1": null,
+      "q3_pick__v4": "home",
+      "q3_signal__v4": "LEAN",
+      "q3_outcome__v4": "hit",
+      "q3_available__v4": 1,
+      "q3_confidence__v4": 0.5843096606850623,
+      "q3_threshold_lean__v4": 0.55,
+      "q3_threshold_bet__v4": 0.65,
+      "q4_pick__v4": "away",
+      "q4_signal__v4": "LEAN",
+      "q4_outcome__v4": "hit",
+      "q4_available__v4": 1,
+      "q4_confidence__v4": 0.5304235890734172,
+      "q4_threshold_lean__v4": 0.55,
+      "q4_threshold_bet__v4": 0.65,
+      "q3_pick__v5": "home",
+      "q3_signal__v5": "LEAN",
+      "q3_outcome__v5": "hit",
+      "q3_available__v5": 1,
+      "q3_confidence__v5": 0.5161301064703295,
+      "q3_threshold_lean__v5": 0.55,
+      "q3_threshold_bet__v5": 0.65,
+      "q4_pick__v5": "away",
+      "q4_signal__v5": "BET",
+      "q4_outcome__v5": "hit",
+      "q4_available__v5": 1,
+      "q4_confidence__v5": 0.7455893599076839,
+      "q4_threshold_lean__v5": 0.55,
+      "q4_threshold_bet__v5": 0.65,
+      "q3_pick__v6": "home",
+      "q3_signal__v6": "BET",
+      "q3_outcome__v6": "hit",
+      "q3_available__v6": 1,
+      "q3_confidence__v6": 0.6721261153926789,
+      "q3_threshold_lean__v6": 0.55,
+      "q3_threshold_bet__v6": 0.65,
+      "q4_pick__v6": "away",
+      "q4_signal__v6": "BET",
+      "q4_outcome__v6": "hit",
+      "q4_available__v6": 1,
+      "q4_confidence__v6": 0.7694445882840482,
+      "q4_threshold_lean__v6": 0.55,
+      "q4_threshold_bet__v6": 0.65,
+      "q3_pick__v7": "home",
+      "q3_signal__v7": "LEAN",
+      "q3_outcome__v7": "hit",
+      "q3_available__v7": 1,
+      "q3_confidence__v7": 0.5742811203359796,
+      "q3_threshold_lean__v7": 0.55,
+      "q3_threshold_bet__v7": 0.65,
+      "q4_pick__v7": "away",
+      "q4_signal__v7": "BET",
+      "q4_outcome__v7": "hit",
+      "q4_available__v7": 1,
+      "q4_confidence__v7": 0.801549420027609,
+      "q4_threshold_lean__v7": 0.55,
+      "q4_threshold_bet__v7": 0.65,
+      "q3_reasoning__bot_hybrid_f1": null,
+      "q3_predicted_home__bot_hybrid_f1": null,
+      "q3_predicted_away__bot_hybrid_f1": null,
+      "q3_predicted_total__bot_hybrid_f1": null,
+      "q3_mae__bot_hybrid_f1": null,
+      "q3_mae_home__bot_hybrid_f1": null,
+      "q3_mae_away__bot_hybrid_f1": null,
+      "q4_reasoning__bot_hybrid_f1": null,
+      "q4_predicted_home__bot_hybrid_f1": null,
+      "q4_predicted_away__bot_hybrid_f1": null,
+      "q4_predicted_total__bot_hybrid_f1": null,
+      "q4_mae__bot_hybrid_f1": null,
+      "q4_mae_home__bot_hybrid_f1": null,
+      "q4_mae_away__bot_hybrid_f1": null
+    }
+  },
+  "eval_match_results_v2": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "available",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 2,
+        "name": "q4_signal__v6_2",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "q4_pick__v6_2",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "q4_confidence__v6_2",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 5,
+        "name": "q4_outcome__v6_2",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 6,
+        "name": "q4_signal__m27_v3",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 7,
+        "name": "q4_pick__m27_v3",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 8,
+        "name": "q4_confidence__m27_v3",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 9,
+        "name": "q4_outcome__m27_v3",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "sqlite_autoindex_eval_match_results_v2_1",
+        "unique": 1,
+        "origin": "pk",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "match_id": "16225942",
+      "available": 1,
+      "q4_signal__v6_2": "BET_HOME",
+      "q4_pick__v6_2": "HOME",
+      "q4_confidence__v6_2": "0.154887",
+      "q4_outcome__v6_2": "loss",
+      "q4_signal__m27_v3": null,
+      "q4_pick__m27_v3": null,
+      "q4_confidence__m27_v3": null,
+      "q4_outcome__m27_v3": null
+    }
+  },
+  "bet_monitor_log_v2": {
+    "columns": [
+      {
+        "cid": 0,
+        "name": "id",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 1
+      },
+      {
+        "cid": 1,
+        "name": "match_id",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 2,
+        "name": "model_version",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 3,
+        "name": "target_quarter",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 4,
+        "name": "inference_minute",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 5,
+        "name": "graph_points_count",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 6,
+        "name": "raw_json",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 7,
+        "name": "signal_type",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 8,
+        "name": "picked_side",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 9,
+        "name": "confidence",
+        "type": "REAL",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 10,
+        "name": "actual_home_score",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 11,
+        "name": "actual_away_score",
+        "type": "INTEGER",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 12,
+        "name": "result",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 13,
+        "name": "created_at",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      },
+      {
+        "cid": 14,
+        "name": "inference_json",
+        "type": "TEXT",
+        "notnull": 0,
+        "dflt_value": null,
+        "pk": 0
+      }
+    ],
+    "foreign_keys": [],
+    "indexes": [
+      {
+        "seq": 0,
+        "name": "idx_log_result_v2",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      },
+      {
+        "seq": 1,
+        "name": "idx_log_match_model_v2",
+        "unique": 0,
+        "origin": "c",
+        "partial": 0
+      }
+    ],
+    "sample": {
+      "id": 1,
+      "match_id": "16225941",
+      "model_version": "v6_2",
+      "target_quarter": 4,
+      "inference_minute": 31,
+      "graph_points_count": 26,
+      "raw_json": "{\"match\": {\"home_team\": \"Al Difaa Al Jawie\", \"away_team\": \"Naft Al Shamal\", \"home_slug\": \"al-difaa-aljawie\", \"away_slug\": \"naft-al-shamal\", \"event_slug\": \"naft-al-shamal-al-difaa-al-jawie\", \"custom_id\": \"ADwhsVmPj\", \"status_type\": \"inprogress\", \"status_description\": \"3rd quarter\", \"date\": \"2026-05-24\", \"time\": \"12:00\", \"venue\": \"\", \"league\": \"Iraqi Professional League, Iraqi Professional league\", \"home_record\": \"\", \"away_record\": \"\", \"home_team_id\": 928925, \"away_team_id\": 1225645, \"home_rating\": null, \"away_rating\": null}, \"score\": {\"home\": 57, \"away\": 38, \"quarters\": {\"Q1\": {\"home\": 28, \"away\": 11}, \"Q2\": {\"home\": 25, \"away\": 20}, \"Q3\": {\"home\": 4, \"away\": 7}}}, \"play_by_play\": {\"Q3\": [{\"time\": \"4:57\", \"player\": \"N. Taraad\", \"points\": 2, \"team\": \"away\", \"home_score\": 57, \"away_score\": 38}], \"Q2\": [{\"time\": \"6:44\", \"player\": \"N. Taraad\", \"points\": 2, \"team\": \"away\", \"home_score\": 57, \"away_score\": 36}, {\"time\": \"7:20\", \"player\": \"A. Al-Rubaye\", \"points\": 2, \"team\": \"home\", \"home_score\": 57, \"away_score\": 34}, {\"time\": \"8:40\", \"player\": \"N. Taraad\", \"points\": 3, \"team\": \"away\", \"home_score\": 55, \"away_score\": 34}, {\"time\": \"9:14\", \"player\": \"I. Al-Zuhairi\", \"points\": 2, \"team\": \"home\", \"home_score\": 55, \"away_score\": 31}, {\"time\": \"0:17\", \"player\": \"M. Latif\", \"points\": 2, \"team\": \"away\", \"home_score\": 53, \"away_score\": 31}, {\"time\": \"0:19\", \"player\": \"h. AL-HAYALI\", \"points\": 1, \"team\": \"home\", \"home_score\": 53, \"away_score\": 29}, {\"time\": \"0:26\", \"player\": \"h. AL-HAYALI\", \"points\": 2, \"team\": \"home\", \"home_score\": 52, \"away_score\": 29}, {\"time\": \"0:49\", \"player\": \"M. Latif\", \"points\": 2, \"team\": \"away\", \"home_score\": 50, \"away_score\": 29}, {\"time\": \"1:07\", \"player\": \"S. Husamaldeen\", \"points\": 2, \"team\": \"home\", \"home_score\": 50, \"away_score\": 27}, {\"time\": \"1:27\", \"player\": \"M. Latif\", \"points\": 2, \"team\": \"away\", \"home_score\": 48, \"away_score\": 27}, {\"time\": \"1:39\", \"player\": \"h. AL-HAYALI\", \"points\": 2, \"team\": \"home\", \"home_score\": 48, \"away_score\": 25}, {\"time\": \"2:19\", \"player\": \"A. Al-Rubaye\", \"points\": 2, \"team\": \"home\", \"home_score\": 46, \"away_score\": 25}, {\"time\": \"2:30\", \"player\": \"M. Zeghair\", \"points\": 2, \"team\": \"away\", \"home_score\": 44, \"away_score\": 25}, {\"time\": \"3:10\", \"player\": \"I. Ismail\", \"points\": 3, \"team\": \"home\", \"home_score\": 44, \"away_score\": 23}, {\"time\": \"3:22\", \"player\": \"O. ZAIDAN\", \"points\": 2, \"team\": \"away\", \"home_score\": 41, \"away_score\": 23}, {\"time\": \"4:44\", \"player\": \"I. Al-Zuhairi\", \"points\": 2, \"team\": \"home\", \"home_score\": 41, \"away_score\": 21}, {\"time\": \"5:04\", \"player\": \"H. Alameri\", \"points\": 2, \"team\": \"home\", \"home_score\": 39, \"away_score\": 21}, {\"time\": \"5:39\", \"player\": \"I. Al-Zuhairi\", \"points\": 2, \"team\": \"home\", \"home_score\": 37, \"away_score\": 21}, {\"time\": \"6:02\", \"player\": \"M. AlGaber\", \"points\": 3, \"team\": \"away\", \"home_score\": 35, \"away_score\": 21}, {\"time\": \"6:16\", \"player\": \"M. Latif\", \"points\": 2, \"team\": \"away\", \"home_score\": 35, \"away_score\": 18}, {\"time\": \"6:41\", \"player\": \"h. AL-HAYALI\", \"points\": 2, \"team\": \"home\", \"home_score\": 37, \"away_score\": 16}, {\"time\": \"6:57\", \"player\": \"M. KHORSHEED\", \"points\": 2, \"team\": \"away\", \"home_score\": 35, \"away_score\": 16}, {\"time\": \"7:45\", \"player\": \"A. Al-Rubaye\", \"points\": 2, \"team\": \"home\", \"home_score\": 35, \"away_score\": 14}], \"Q1\": [{\"time\": \"8:20\", \"player\": \"I. Al-Zuhairi\", \"points\": 2, \"team\": \"home\", \"home_score\": 33, \"away_score\": 14}, {\"time\": \"8:43\", \"player\": \"M. AlGaber\", \"points\": 3, \"team\": \"away\", \"home_score\": 31, \"away_score\": 14}, {\"time\": \"9:05\", \"player\": \"A. Alqarnawi\", \"points\": 3, \"team\": \"home\", \"home_score\": 31, \"away_score\": 11}, {\"time\": \"0:44\", \"player\": \"A. Al-Rubaye\", \"points\": 3, \"team\": \"home\", \"home_score\": 28, \"away_score\": 11}, {\"time\": \"1:04\", \"player\": \"M. Latif\", \"points\": 2, \"team\": \"away\", \"home_score\": 25, \"away_score\": 11}, {\"time\": \"1:28\", \"player\": \"h. AL-HAYALI\", \"points\": 3, \"team\": \"home\", \"home_score\": 25, \"away_score\": 9}, {\"time\": \"2:03\", \"player\": \"N. Taraad\", \"points\": 2, \"team\": \"away\", \"home_score\": 22, \"away_score\": 9}, {\"time\": \"2:26\", \"player\": \"I. Al-Zuhairi\", \"points\": 2, \"team\": \"home\", \"home_score\": 22, \"away_score\": 7}, {\"time\": \"3:21\", \"player\": \"H. Alameri\", \"points\": 2, \"team\": \"home\", \"home_score\": 20, \"away_score\": 7}, {\"time\": \"3:49\", \"player\": \"H. Alameri\", \"points\": 1, \"team\": \"home\", \"home_score\": 18, \"away_score\": 7}, {\"time\": \"3:49\", \"player\": \"H. Alameri\", \"points\": 1, \"team\": \"home\", \"home_score\": 17, \"away_score\": 7}, {\"time\": \"4:11\", \"player\": \"I. Al-Zuhairi\", \"points\": 1, \"team\": \"home\", \"home_score\": 16, \"away_score\": 7}, {\"time\": \"4:39\", \"player\": \"O. ZAIDAN\", \"points\": 2, \"team\": \"away\", \"home_score\": 15, \"away_score\": 7}, {\"time\": \"5:18\", \"player\": \"A. Al-Rubaye\", \"points\": 2, \"team\": \"home\", \"home_score\": 15, \"away_score\": 5}, {\"time\": \"5:47\", \"player\": \"H. Alameri\", \"points\": 2, \"team\": \"home\", \"home_score\": 13, \"away_score\": 5}, {\"time\": \"6:11\", \"player\": \"A. Alqarnawi\", \"points\": 2, \"team\": \"home\", \"home_score\": 11, \"away_score\": 5}, {\"time\": \"7:24\", \"player\": \"N. Taraad\", \"points\": 3, \"team\": \"away\", \"home_score\": 9, \"away_score\": 5}, {\"time\": \"7:38\", \"player\": \"H. Alameri\", \"points\": 2, \"team\": \"home\", \"home_score\": 9, \"away_score\": 2}, {\"time\": \"7:54\", \"player\": \"h. AL-HAYALI\", \"points\": 2, \"team\": \"home\", \"home_score\": 7, \"away_score\": 2}, {\"time\": \"8:12\", \"player\": \"h. AL-HAYALI\", \"points\": 3, \"team\": \"home\", \"home_score\": 5, \"away_score\": 2}, {\"time\": \"8:32\", \"player\": \"O. ZAIDAN\", \"points\": 2, \"team\": \"away\", \"home_score\": 2, \"away_score\": 2}, {\"time\": \"9:36\", \"player\": \"H. Alameri\", \"points\": 2, \"team\": \"home\", \"home_score\": 2, \"away_score\": 0}]}, \"events\": {\"Q3\": [{\"time\": \"0:00\", \"time_seconds\": 1800, \"incident_type\": \"period\", \"subtype\": \"\", \"player\": \"\", \"player_id\": null, \"team\": \"home\", \"points\": null, \"home_score\": 57, \"away_score\": 38}, {\"time\": \"4:57\", \"time_seconds\": 1503, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"N. Taraad\", \"player_id\": 2591896, \"team\": \"away\", \"points\": 2, \"home_score\": 57, \"away_score\": 38}], \"Q2\": [{\"time\": \"6:44\", \"time_seconds\": 1396, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"N. Taraad\", \"player_id\": 2591896, \"team\": \"away\", \"points\": 2, \"home_score\": 57, \"away_score\": 36}, {\"time\": \"7:20\", \"time_seconds\": 1360, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"A. Al-Rubaye\", \"player_id\": 1798248, \"team\": \"home\", \"points\": 2, \"home_score\": 57, \"away_score\": 34}, {\"time\": \"8:40\", \"time_seconds\": 1280, \"incident_type\": \"goal\", \"subtype\": \"threePoints\", \"player\": \"N. Taraad\", \"player_id\": 2591896, \"team\": \"away\", \"points\": 3, \"home_score\": 55, \"away_score\": 34}, {\"time\": \"9:14\", \"time_seconds\": 1246, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"I. Al-Zuhairi\", \"player_id\": 1968771, \"team\": \"home\", \"points\": 2, \"home_score\": 55, \"away_score\": 31}, {\"time\": \"0:00\", \"time_seconds\": 1200, \"incident_type\": \"period\", \"subtype\": \"\", \"player\": \"\", \"player_id\": null, \"team\": \"home\", \"points\": null, \"home_score\": 53, \"away_score\": 31}, {\"time\": \"0:17\", \"time_seconds\": 1183, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"M. Latif\", \"player_id\": 2591902, \"team\": \"away\", \"points\": 2, \"home_score\": 53, \"away_score\": 31}, {\"time\": \"0:19\", \"time_seconds\": 1181, \"incident_type\": \"goal\", \"subtype\": \"onePoint\", \"player\": \"h. AL-HAYALI\", \"player_id\": 1968803, \"team\": \"home\", \"points\": 1, \"home_score\": 53, \"away_score\": 29}, {\"time\": \"0:26\", \"time_seconds\": 1174, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"h. AL-HAYALI\", \"player_id\": 1968803, \"team\": \"home\", \"points\": 2, \"home_score\": 52, \"away_score\": 29}, {\"time\": \"0:49\", \"time_seconds\": 1151, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"M. Latif\", \"player_id\": 2591902, \"team\": \"away\", \"points\": 2, \"home_score\": 50, \"away_score\": 29}, {\"time\": \"1:07\", \"time_seconds\": 1133, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"S. Husamaldeen\", \"player_id\": 1968774, \"team\": \"home\", \"points\": 2, \"home_score\": 50, \"away_score\": 27}, {\"time\": \"1:27\", \"time_seconds\": 1113, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"M. Latif\", \"player_id\": 2591902, \"team\": \"away\", \"points\": 2, \"home_score\": 48, \"away_score\": 27}, {\"time\": \"1:39\", \"time_seconds\": 1101, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"h. AL-HAYALI\", \"player_id\": 1968803, \"team\": \"home\", \"points\": 2, \"home_score\": 48, \"away_score\": 25}, {\"time\": \"2:19\", \"time_seconds\": 1061, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"A. Al-Rubaye\", \"player_id\": 1798248, \"team\": \"home\", \"points\": 2, \"home_score\": 46, \"away_score\": 25}, {\"time\": \"2:30\", \"time_seconds\": 1050, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"M. Zeghair\", \"player_id\": 2591895, \"team\": \"away\", \"points\": 2, \"home_score\": 44, \"away_score\": 25}, {\"time\": \"3:10\", \"time_seconds\": 1010, \"incident_type\": \"goal\", \"subtype\": \"threePoints\", \"player\": \"I. Ismail\", \"player_id\": 1968769, \"team\": \"home\", \"points\": 3, \"home_score\": 44, \"away_score\": 23}, {\"time\": \"3:22\", \"time_seconds\": 998, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"O. ZAIDAN\", \"player_id\": 2591900, \"team\": \"away\", \"points\": 2, \"home_score\": 41, \"away_score\": 23}, {\"time\": \"4:44\", \"time_seconds\": 916, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"I. Al-Zuhairi\", \"player_id\": 1968771, \"team\": \"home\", \"points\": 2, \"home_score\": 41, \"away_score\": 21}, {\"time\": \"5:04\", \"time_seconds\": 896, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"H. Alameri\", \"player_id\": 1968772, \"team\": \"home\", \"points\": 2, \"home_score\": 39, \"away_score\": 21}, {\"time\": \"5:39\", \"time_seconds\": 861, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"I. Al-Zuhairi\", \"player_id\": 1968771, \"team\": \"home\", \"points\": 2, \"home_score\": 37, \"away_score\": 21}, {\"time\": \"6:02\", \"time_seconds\": 838, \"incident_type\": \"goal\", \"subtype\": \"threePoints\", \"player\": \"M. AlGaber\", \"player_id\": 2591894, \"team\": \"away\", \"points\": 3, \"home_score\": 35, \"away_score\": 21}, {\"time\": \"6:16\", \"time_seconds\": 824, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"M. Latif\", \"player_id\": 2591902, \"team\": \"away\", \"points\": 2, \"home_score\": 35, \"away_score\": 18}, {\"time\": \"6:41\", \"time_seconds\": 799, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"h. AL-HAYALI\", \"player_id\": 1968803, \"team\": \"home\", \"points\": 2, \"home_score\": 37, \"away_score\": 16}, {\"time\": \"6:57\", \"time_seconds\": 783, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"M. KHORSHEED\", \"player_id\": 2591903, \"team\": \"away\", \"points\": 2, \"home_score\": 35, \"away_score\": 16}, {\"time\": \"7:45\", \"time_seconds\": 735, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"A. Al-Rubaye\", \"player_id\": 1798248, \"team\": \"home\", \"points\": 2, \"home_score\": 35, \"away_score\": 14}], \"Q1\": [{\"time\": \"8:20\", \"time_seconds\": 700, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"I. Al-Zuhairi\", \"player_id\": 1968771, \"team\": \"home\", \"points\": 2, \"home_score\": 33, \"away_score\": 14}, {\"time\": \"8:43\", \"time_seconds\": 677, \"incident_type\": \"goal\", \"subtype\": \"threePoints\", \"player\": \"M. AlGaber\", \"player_id\": 2591894, \"team\": \"away\", \"points\": 3, \"home_score\": 31, \"away_score\": 14}, {\"time\": \"9:05\", \"time_seconds\": 655, \"incident_type\": \"goal\", \"subtype\": \"threePoints\", \"player\": \"A. Alqarnawi\", \"player_id\": 1968767, \"team\": \"home\", \"points\": 3, \"home_score\": 31, \"away_score\": 11}, {\"time\": \"0:00\", \"time_seconds\": 600, \"incident_type\": \"period\", \"subtype\": \"\", \"player\": \"\", \"player_id\": null, \"team\": \"home\", \"points\": null, \"home_score\": 28, \"away_score\": 11}, {\"time\": \"0:44\", \"time_seconds\": 556, \"incident_type\": \"goal\", \"subtype\": \"threePoints\", \"player\": \"A. Al-Rubaye\", \"player_id\": 1798248, \"team\": \"home\", \"points\": 3, \"home_score\": 28, \"away_score\": 11}, {\"time\": \"1:04\", \"time_seconds\": 536, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"M. Latif\", \"player_id\": 2591902, \"team\": \"away\", \"points\": 2, \"home_score\": 25, \"away_score\": 11}, {\"time\": \"1:28\", \"time_seconds\": 512, \"incident_type\": \"goal\", \"subtype\": \"threePoints\", \"player\": \"h. AL-HAYALI\", \"player_id\": 1968803, \"team\": \"home\", \"points\": 3, \"home_score\": 25, \"away_score\": 9}, {\"time\": \"2:03\", \"time_seconds\": 477, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"N. Taraad\", \"player_id\": 2591896, \"team\": \"away\", \"points\": 2, \"home_score\": 22, \"away_score\": 9}, {\"time\": \"2:26\", \"time_seconds\": 454, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"I. Al-Zuhairi\", \"player_id\": 1968771, \"team\": \"home\", \"points\": 2, \"home_score\": 22, \"away_score\": 7}, {\"time\": \"3:21\", \"time_seconds\": 399, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"H. Alameri\", \"player_id\": 1968772, \"team\": \"home\", \"points\": 2, \"home_score\": 20, \"away_score\": 7}, {\"time\": \"3:49\", \"time_seconds\": 371, \"incident_type\": \"goal\", \"subtype\": \"onePoint\", \"player\": \"H. Alameri\", \"player_id\": 1968772, \"team\": \"home\", \"points\": 1, \"home_score\": 18, \"away_score\": 7}, {\"time\": \"3:49\", \"time_seconds\": 371, \"incident_type\": \"goal\", \"subtype\": \"onePoint\", \"player\": \"H. Alameri\", \"player_id\": 1968772, \"team\": \"home\", \"points\": 1, \"home_score\": 17, \"away_score\": 7}, {\"time\": \"4:11\", \"time_seconds\": 349, \"incident_type\": \"goal\", \"subtype\": \"onePoint\", \"player\": \"I. Al-Zuhairi\", \"player_id\": 1968771, \"team\": \"home\", \"points\": 1, \"home_score\": 16, \"away_score\": 7}, {\"time\": \"4:39\", \"time_seconds\": 321, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"O. ZAIDAN\", \"player_id\": 2591900, \"team\": \"away\", \"points\": 2, \"home_score\": 15, \"away_score\": 7}, {\"time\": \"5:18\", \"time_seconds\": 282, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"A. Al-Rubaye\", \"player_id\": 1798248, \"team\": \"home\", \"points\": 2, \"home_score\": 15, \"away_score\": 5}, {\"time\": \"5:47\", \"time_seconds\": 253, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"H. Alameri\", \"player_id\": 1968772, \"team\": \"home\", \"points\": 2, \"home_score\": 13, \"away_score\": 5}, {\"time\": \"6:11\", \"time_seconds\": 229, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"A. Alqarnawi\", \"player_id\": 1968767, \"team\": \"home\", \"points\": 2, \"home_score\": 11, \"away_score\": 5}, {\"time\": \"7:24\", \"time_seconds\": 156, \"incident_type\": \"goal\", \"subtype\": \"threePoints\", \"player\": \"N. Taraad\", \"player_id\": 2591896, \"team\": \"away\", \"points\": 3, \"home_score\": 9, \"away_score\": 5}, {\"time\": \"7:38\", \"time_seconds\": 142, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"H. Alameri\", \"player_id\": 1968772, \"team\": \"home\", \"points\": 2, \"home_score\": 9, \"away_score\": 2}, {\"time\": \"7:54\", \"time_seconds\": 126, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"h. AL-HAYALI\", \"player_id\": 1968803, \"team\": \"home\", \"points\": 2, \"home_score\": 7, \"away_score\": 2}, {\"time\": \"8:12\", \"time_seconds\": 108, \"incident_type\": \"goal\", \"subtype\": \"threePoints\", \"player\": \"h. AL-HAYALI\", \"player_id\": 1968803, \"team\": \"home\", \"points\": 3, \"home_score\": 5, \"away_score\": 2}, {\"time\": \"8:32\", \"time_seconds\": 88, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"O. ZAIDAN\", \"player_id\": 2591900, \"team\": \"away\", \"points\": 2, \"home_score\": 2, \"away_score\": 2}, {\"time\": \"9:36\", \"time_seconds\": 24, \"incident_type\": \"goal\", \"subtype\": \"twoPoints\", \"player\": \"H. Alameri\", \"player_id\": 1968772, \"team\": \"home\", \"points\": 2, \"home_score\": 2, \"away_score\": 0}]}, \"graph_points\": [{\"minute\": 1, \"value\": 2}, {\"minute\": 2, \"value\": 3}, {\"minute\": 3, \"value\": 4}, {\"minute\": 4, \"value\": 6}, {\"minute\": 5, \"value\": 10}, {\"minute\": 6, \"value\": 9}, {\"minute\": 7, \"value\": 13}, {\"minute\": 8, \"value\": 13}, {\"minute\": 9, \"value\": 14}, {\"minute\": 10, \"value\": 17}, {\"minute\": 11, \"value\": 20}, {\"minute\": 12, \"value\": 19}, {\"minute\": 13, \"value\": 21}, {\"minute\": 14, \"value\": 14}, {\"minute\": 15, \"value\": 18}, {\"minute\": 16, \"value\": 20}, {\"minute\": 17, \"value\": 21}, {\"minute\": 18, \"value\": 21}, {\"minute\": 19, \"value\": 23}, {\"minute\": 20, \"value\": 22}, {\"minute\": 21, \"value\": 24}, {\"minute\": 22, \"value\": 21}, {\"minute\": 23, \"value\": 23}, {\"minute\": 24, \"value\": 21}, {\"minute\": 25, \"value\": 21}, {\"minute\": 26, \"value\": 19}], \"h2h\": [{\"h2h_match_id\": \"16188018\", \"date\": \"2026-05-16\", \"timestamp\": 1778932800, \"home_team\": \"Naft Al Shamal\", \"away_team\": \"Al Difaa Al Jawie\", \"home_score\": 34, \"away_score\": 90, \"q1_home\": 7, \"q1_away\": 23, \"q2_home\": 4, \"q2_away\": 24, \"q3_home\": 13, \"q3_away\": 26, \"q4_home\": 10, \"q4_away\": 17, \"tournament\": \"Iraqi Professional League, Iraqi Professional league\", \"match_id\": \"16225941\"}, {\"h2h_match_id\": \"16225941\", \"date\": \"2026-05-24\", \"timestamp\": 1779624000, \"home_team\": \"Al Difaa Al Jawie\", \"away_team\": \"Naft Al Shamal\", \"home_score\": 57, \"away_score\": 38, \"q1_home\": 28, \"q1_away\": 11, \"q2_home\": 25, \"q2_away\": 20, \"q3_home\": 4, \"q3_away\": 7, \"q4_home\": null, \"q4_away\": null, \"tournament\": \"Iraqi Professional League, Iraqi Professional league\", \"match_id\": \"16225941\"}], \"team_statistics\": [{\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Scoring\", \"stat_key\": \"freeThrowsScored\", \"stat_name\": \"Free throws\", \"home_value\": 4, \"away_value\": 0, \"home_total\": 5, \"away_total\": 0, \"home_display\": \"4/5 (80%)\", \"away_display\": \"0/0 (0%)\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Scoring\", \"stat_key\": \"twoPointersScored\", \"stat_name\": \"2 pointers\", \"home_value\": 19, \"away_value\": 13, \"home_total\": 31, \"away_total\": 23, \"home_display\": \"19/31 (61%)\", \"away_display\": \"13/23 (56%)\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Scoring\", \"stat_key\": \"threePointersScored\", \"stat_name\": \"3 pointers\", \"home_value\": 5, \"away_value\": 4, \"home_total\": 13, \"away_total\": 24, \"home_display\": \"5/13 (38%)\", \"away_display\": \"4/24 (16%)\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Scoring\", \"stat_key\": \"fieldGoalsScored\", \"stat_name\": \"Field goals\", \"home_value\": 24, \"away_value\": 17, \"home_total\": 44, \"away_total\": 47, \"home_display\": \"24/44 (54%)\", \"away_display\": \"17/47 (36%)\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Other\", \"stat_key\": \"rebounds\", \"stat_name\": \"Rebounds\", \"home_value\": 29, \"away_value\": 22, \"home_total\": 29, \"away_total\": 22, \"home_display\": \"29\", \"away_display\": \"22\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Other\", \"stat_key\": \"defensiveRebounds\", \"stat_name\": \"Defensive rebounds\", \"home_value\": 22, \"away_value\": 14, \"home_total\": 22, \"away_total\": 14, \"home_display\": \"22\", \"away_display\": \"14\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Other\", \"stat_key\": \"offensiveRebounds\", \"stat_name\": \"Offensive rebounds\", \"home_value\": 7, \"away_value\": 8, \"home_total\": 7, \"away_total\": 8, \"home_display\": \"7\", \"away_display\": \"8\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Other\", \"stat_key\": \"assists\", \"stat_name\": \"Assists\", \"home_value\": 17, \"away_value\": 7, \"home_total\": 17, \"away_total\": 7, \"home_display\": \"17\", \"away_display\": \"7\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Other\", \"stat_key\": \"turnovers\", \"stat_name\": \"Turnovers\", \"home_value\": 13, \"away_value\": 12, \"home_total\": 13, \"away_total\": 12, \"home_display\": \"13\", \"away_display\": \"12\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Other\", \"stat_key\": \"steals\", \"stat_name\": \"Steals\", \"home_value\": 9, \"away_value\": 10, \"home_total\": 9, \"away_total\": 10, \"home_display\": \"9\", \"away_display\": \"10\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Other\", \"stat_key\": \"blocks\", \"stat_name\": \"Blocks\", \"home_value\": 0, \"away_value\": 0, \"home_total\": 0, \"away_total\": 0, \"home_display\": \"0\", \"away_display\": \"0\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Other\", \"stat_key\": \"totalFouls\", \"stat_name\": \"Fouls\", \"home_value\": 3, \"away_value\": 3, \"home_total\": 3, \"away_total\": 3, \"home_display\": \"3\", \"away_display\": \"3\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Lead\", \"stat_key\": \"maxPointsInARow\", \"stat_name\": \"Max points in a row\", \"home_value\": 7, \"away_value\": 7, \"home_total\": 7, \"away_total\": 7, \"home_display\": \"7\", \"away_display\": \"7\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Lead\", \"stat_key\": \"timeSpentInLead\", \"stat_name\": \"Time spent in lead\", \"home_value\": 1500, \"away_value\": 0, \"home_total\": 0, \"away_total\": 0, \"home_display\": \"25:00\", \"away_display\": \"0:00\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Lead\", \"stat_key\": \"leadChanges\", \"stat_name\": \"Lead changes\", \"home_value\": 0, \"away_value\": 0, \"home_total\": 0, \"away_total\": 0, \"home_display\": \"0\", \"away_display\": \"0\"}, {\"match_id\": \"16225941\", \"period\": \"ALL\", \"group_name\": \"Lead\", \"stat_key\": \"biggestLead\", \"stat_name\": \"Biggest lead\", \"home_value\": 24, \"away_value\": 0, \"home_total\": 24, \"away_total\": 0, \"home_display\": \"24\", \"away_display\": \"0\"}], \"period_stats\": [{\"match_id\": \"16225941\", \"period\": \"Q1\", \"group_name\": \"Scoring\", \"stat_key\": \"points\", \"stat_name\": \"Points\", \"home_value\": 28, \"away_value\": 11, \"home_total\": 28, \"away_total\": 11, \"home_display\": \"28\", \"away_display\": \"11\"}, {\"match_id\": \"16225941\", \"period\": \"Q1\", \"group_name\": \"Scoring\", \"stat_key\": \"freeThrowsMade\", \"stat_name\": \"Free throws made\", \"home_value\": 3, \"away_value\": 0, \"home_total\": 3, \"away_total\": 0, \"home_display\": \"3\", \"away_display\": \"0\"}, {\"match_id\": \"16225941\", \"period\": \"Q1\", \"group_name\": \"Scoring\", \"stat_key\": \"twoPointsMade\", \"stat_name\": \"2 pointers made\", \"home_value\": 8, \"away_value\": 4, \"home_total\": 8, \"away_total\": 4, \"home_display\": \"8\", \"away_display\": \"4\"}, {\"match_id\": \"16225941\", \"period\": \"Q1\", \"group_name\": \"Scoring\", \"stat_key\": \"threePointsMade\", \"stat_name\": \"3 pointers made\", \"home_value\": 3, \"away_value\": 1, \"home_total\": 3, \"away_total\": 1, \"home_display\": \"3\", \"away_display\": \"1\"}, {\"match_id\": \"16225941\", \"period\": \"Q1\", \"group_name\": \"Other\", \"stat_key\": \"fouls\", \"stat_name\": \"Fouls\", \"home_value\": 0, \"away_value\": 0, \"home_total\": 0, \"away_total\": 0, \"home_display\": \"0\", \"away_display\": \"0\"}, {\"match_id\": \"16225941\", \"period\": \"Q1\", \"group_name\": \"Other\", \"stat_key\": \"timeouts\", \"stat_name\": \"Timeouts\", \"home_value\": 0, \"away_value\": 0, \"home_total\": 0, \"away_total\": 0, \"home_display\": \"0\", \"away_display\": \"0\"}, {\"match_id\": \"16225941\", \"period\": \"Q1\", \"group_name\": \"Other\", \"stat_key\": \"turnovers\", \"stat_name\": \"Turnovers\", \"home_value\": 0, \"away_value\": 0, \"home_total\": 0, \"away_total\": 0, \"home_display\": \"0\", \"away_display\": \"0\"}, {\"match_id\": \"16225941\", \"period\": \"Q2\", \"group_name\": \"Scoring\", \"stat_key\": \"points\", \"stat_name\": \"Points\", \"home_value\": 27, \"away_value\": 20, \"home_total\": 27, \"away_total\": 20, \"home_display\": \"27\", \"away_display\": \"20\"}, {\"match_id\": \"16225941\", \"period\": \"Q2\", \"group_name\": \"Scoring\", \"stat_key\": \"freeThrowsMade\", \"stat_name\": \"Free throws made\", \"home_value\": 1, \"away_value\": 0, \"home_total\": 1, \"away_total\": 0, \"home_display\": \"1\", \"away_display\": \"0\"}, {\"match_id\": \"16225941\", \"period\": \"Q2\", \"group_name\": \"Scoring\", \"stat_key\": \"twoPointsMade\", \"stat_name\": \"2 pointers made\", \"home_value\": 10, \"away_value\": 7, \"home_total\": 10, \"away_total\": 7, \"home_display\": \"10\", \"away_display\": \"7\"}, {\"match_id\": \"16225941\", \"period\": \"Q2\", \"group_name\": \"Scoring\", \"stat_key\": \"threePointsMade\", \"stat_name\": \"3 pointers made\", \"home_value\": 2, \"away_value\": 2, \"home_total\": 2, \"away_total\": 2, \"home_display\": \"2\", \"away_display\": \"2\"}, {\"match_id\": \"16225941\", \"period\": \"Q2\", \"group_name\": \"Other\", \"stat_key\": \"fouls\", \"stat_name\": \"Fouls\", \"home_value\": 0, \"away_value\": 0, \"home_total\": 0, \"away_total\": 0, \"home_display\": \"0\", \"away_display\": \"0\"}, {\"match_id\": \"16225941\", \"period\": \"Q2\", \"group_name\": \"Other\", \"stat_key\": \"timeouts\", \"stat_name\": \"Timeouts\", \"home_value\": 0, \"away_value\": 0, \"home_total\": 0, \"away_total\": 0, \"home_display\": \"0\", \"away_display\": \"0\"}, {\"match_id\": \"16225941\", \"period\": \"Q2\", \"group_name\": \"Other\", \"stat_key\": \"turnovers\", \"stat_name\": \"Turnovers\", \"home_value\": 0, \"away_value\": 0, \"home_total\": 0, \"away_total\": 0, \"home_display\": \"0\", \"away_display\": \"0\"}, {\"match_id\": \"16225941\", \"period\": \"Q3\", \"group_name\": \"Scoring\", \"stat_key\": \"points\", \"stat_name\": \"Points\", \"home_value\": 4, \"away_value\": 7, \"home_total\": 4, \"away_total\": 7, \"home_display\": \"4\", \"away_display\": \"7\"}, {\"match_id\": \"16225941\", \"period\": \"Q3\", \"group_name\": \"Scoring\", \"stat_key\": \"freeThrowsMade\", \"stat_name\": \"Free throws made\", \"home_value\": 0, \"away_value\": 0, \"home_total\": 0, \"away_total\": 0, \"home_display\": \"0\", \"away_display\": \"0\"}, {\"match_id\": \"16225941\", \"period\": \"Q3\", \"group_name\": \"Scoring\", \"stat_key\": \"twoPointsMade\", \"stat_name\": \"2 pointers made\", \"home_value\": 2, \"away_value\": 2, \"home_total\": 2, \"away_total\": 2, \"home_display\": \"2\", \"away_display\": \"2\"}, {\"match_id\": \"16225941\", \"period\": \"Q3\", \"group_name\": \"Scoring\", \"stat_key\": \"threePointsMade\", \"stat_name\": \"3 pointers made\", \"home_value\": 0, \"away_value\": 1, \"home_total\": 0, \"away_total\": 1, \"home_display\": \"0\", \"away_display\": \"1\"}, {\"match_id\": \"16225941\", \"period\": \"Q3\", \"group_name\": \"Other\", \"stat_key\": \"fouls\", \"stat_name\": \"Fouls\", \"home_value\": 0, \"away_value\": 0, \"home_total\": 0, \"away_total\": 0, \"home_display\": \"0\", \"away_display\": \"0\"}, {\"match_id\": \"16225941\", \"period\": \"Q3\", \"group_name\": \"Other\", \"stat_key\": \"timeouts\", \"stat_name\": \"Timeouts\", \"home_value\": 0, \"away_value\": 0, \"home_total\": 0, \"away_total\": 0, \"home_display\": \"0\", \"away_display\": \"0\"}, {\"match_id\": \"16225941\", \"period\": \"Q3\", \"group_name\": \"Other\", \"stat_key\": \"turnovers\", \"stat_name\": \"Turnovers\", \"home_value\": 0, \"away_value\": 0, \"home_total\": 0, \"away_total\": 0, \"home_display\": \"0\", \"away_display\": \"0\"}], \"lineups\": [{\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Ihab Al-Zuhairi\", \"player_id\": \"1968771\", \"is_starter\": 1, \"shirt_number\": 0, \"position\": \"C\"}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Thulfiqar Hammoodi\", \"player_id\": \"1968770\", \"is_starter\": 0, \"shirt_number\": 1, \"position\": \"G\"}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Abbas Alqarnawi\", \"player_id\": \"1968767\", \"is_starter\": 1, \"shirt_number\": 3, \"position\": \"G\"}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Alhur Al-Rubaye\", \"player_id\": \"1798248\", \"is_starter\": 1, \"shirt_number\": 5, \"position\": \"G\"}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Jasim AL-Juboori\", \"player_id\": \"1968777\", \"is_starter\": 0, \"shirt_number\": 6, \"position\": \"\"}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Ismail Ismail\", \"player_id\": \"1968769\", \"is_starter\": 0, \"shirt_number\": 11, \"position\": \"F\"}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Adam Mazin\", \"player_id\": \"2592220\", \"is_starter\": 0, \"shirt_number\": 12, \"position\": \"\"}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Sarmad Husamaldeen\", \"player_id\": \"1968774\", \"is_starter\": 0, \"shirt_number\": 13, \"position\": \"G\"}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Hayder Alameri\", \"player_id\": \"1968772\", \"is_starter\": 1, \"shirt_number\": 21, \"position\": \"G\"}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Ali Ismael\", \"player_id\": \"1968768\", \"is_starter\": 0, \"shirt_number\": 24, \"position\": \"F\"}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"hussein AL-HAYALI\", \"player_id\": \"1968803\", \"is_starter\": 1, \"shirt_number\": 25, \"position\": \"G\"}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Sadiq Salman\", \"player_id\": \"2594209\", \"is_starter\": 0, \"shirt_number\": 44, \"position\": \"G\"}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Ammar MAHMOOD\", \"player_id\": \"2591893\", \"is_starter\": 0, \"shirt_number\": 0, \"position\": \"G\"}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Moamel AlGaber\", \"player_id\": \"2591894\", \"is_starter\": 0, \"shirt_number\": 1, \"position\": \"G\"}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Mohajmen Zeghair\", \"player_id\": \"2591895\", \"is_starter\": 0, \"shirt_number\": 2, \"position\": \"\"}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Najah Taraad\", \"player_id\": \"2591896\", \"is_starter\": 1, \"shirt_number\": 6, \"position\": \"\"}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Mohammed Cuma\", \"player_id\": \"2591897\", \"is_starter\": 0, \"shirt_number\": 7, \"position\": \"\"}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Mohammed Jameel\", \"player_id\": \"2591899\", \"is_starter\": 0, \"shirt_number\": 9, \"position\": \"\"}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Obaida ZAIDAN\", \"player_id\": \"2591900\", \"is_starter\": 1, \"shirt_number\": 10, \"position\": \"G\"}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Mustafa Hussein\", \"player_id\": \"2591901\", \"is_starter\": 1, \"shirt_number\": 11, \"position\": \"\"}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Mohammed Latif\", \"player_id\": \"2591902\", \"is_starter\": 0, \"shirt_number\": 14, \"position\": \"CF\"}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Mustafa KHORSHEED\", \"player_id\": \"2591903\", \"is_starter\": 1, \"shirt_number\": 23, \"position\": \"G\"}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Layth Khraibaet\", \"player_id\": \"2591904\", \"is_starter\": 1, \"shirt_number\": 24, \"position\": \"\"}], \"player_stats\": [{\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Ihab Al-Zuhairi\", \"player_id\": \"1968771\", \"sofascore_rating\": null, \"minutes_played\": 25.7, \"points\": 11, \"fouls\": 0, \"plus_minus\": 19, \"field_goals_made\": 5, \"field_goals_attempted\": 6, \"three_made\": 0, \"three_attempted\": 0, \"free_throws_made\": 1, \"free_throws_attempted\": 2, \"rebounds\": 15, \"assists\": 5, \"steals\": 1, \"turnovers\": 3, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Thulfiqar Hammoodi\", \"player_id\": \"1968770\", \"sofascore_rating\": null, \"minutes_played\": null, \"points\": 0, \"fouls\": 0, \"plus_minus\": 0, \"field_goals_made\": 0, \"field_goals_attempted\": 0, \"three_made\": 0, \"three_attempted\": 0, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 0, \"assists\": 0, \"steals\": 0, \"turnovers\": 0, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Abbas Alqarnawi\", \"player_id\": \"1968767\", \"sofascore_rating\": null, \"minutes_played\": 18.1, \"points\": 5, \"fouls\": 0, \"plus_minus\": 21, \"field_goals_made\": 2, \"field_goals_attempted\": 8, \"three_made\": 1, \"three_attempted\": 3, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 0, \"assists\": 4, \"steals\": 0, \"turnovers\": 0, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Alhur Al-Rubaye\", \"player_id\": \"1798248\", \"sofascore_rating\": null, \"minutes_played\": 25.7, \"points\": 11, \"fouls\": 1, \"plus_minus\": 19, \"field_goals_made\": 5, \"field_goals_attempted\": 7, \"three_made\": 1, \"three_attempted\": 2, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 1, \"assists\": 3, \"steals\": 4, \"turnovers\": 3, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Jasim AL-Juboori\", \"player_id\": \"1968777\", \"sofascore_rating\": null, \"minutes_played\": null, \"points\": 0, \"fouls\": 0, \"plus_minus\": 0, \"field_goals_made\": 0, \"field_goals_attempted\": 0, \"three_made\": 0, \"three_attempted\": 0, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 0, \"assists\": 0, \"steals\": 0, \"turnovers\": 0, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Ismail Ismail\", \"player_id\": \"1968769\", \"sofascore_rating\": null, \"minutes_played\": 10.2, \"points\": 3, \"fouls\": 2, \"plus_minus\": -1, \"field_goals_made\": 1, \"field_goals_attempted\": 4, \"three_made\": 1, \"three_attempted\": 3, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 2, \"assists\": 0, \"steals\": 2, \"turnovers\": 2, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Adam Mazin\", \"player_id\": \"2592220\", \"sofascore_rating\": null, \"minutes_played\": null, \"points\": 0, \"fouls\": 0, \"plus_minus\": 0, \"field_goals_made\": 0, \"field_goals_attempted\": 0, \"three_made\": 0, \"three_attempted\": 0, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 0, \"assists\": 0, \"steals\": 0, \"turnovers\": 0, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Sarmad Husamaldeen\", \"player_id\": \"1968774\", \"sofascore_rating\": null, \"minutes_played\": 9.0, \"points\": 2, \"fouls\": 0, \"plus_minus\": 1, \"field_goals_made\": 1, \"field_goals_attempted\": 3, \"three_made\": 0, \"three_attempted\": 1, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 2, \"assists\": 0, \"steals\": 0, \"turnovers\": 0, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Hayder Alameri\", \"player_id\": \"1968772\", \"sofascore_rating\": null, \"minutes_played\": 16.7, \"points\": 12, \"fouls\": 0, \"plus_minus\": 18, \"field_goals_made\": 5, \"field_goals_attempted\": 7, \"three_made\": 0, \"three_attempted\": 0, \"free_throws_made\": 2, \"free_throws_attempted\": 2, \"rebounds\": 7, \"assists\": 3, \"steals\": 0, \"turnovers\": 1, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Ali Ismael\", \"player_id\": \"1968768\", \"sofascore_rating\": null, \"minutes_played\": null, \"points\": 0, \"fouls\": 0, \"plus_minus\": 0, \"field_goals_made\": 0, \"field_goals_attempted\": 0, \"three_made\": 0, \"three_attempted\": 0, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 0, \"assists\": 0, \"steals\": 0, \"turnovers\": 0, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"hussein AL-HAYALI\", \"player_id\": \"1968803\", \"sofascore_rating\": null, \"minutes_played\": 23.2, \"points\": 13, \"fouls\": 0, \"plus_minus\": 18, \"field_goals_made\": 5, \"field_goals_attempted\": 9, \"three_made\": 2, \"three_attempted\": 4, \"free_throws_made\": 1, \"free_throws_attempted\": 1, \"rebounds\": 1, \"assists\": 2, \"steals\": 2, \"turnovers\": 3, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"home\", \"player_name\": \"Sadiq Salman\", \"player_id\": \"2594209\", \"sofascore_rating\": null, \"minutes_played\": null, \"points\": 0, \"fouls\": 0, \"plus_minus\": 0, \"field_goals_made\": 0, \"field_goals_attempted\": 0, \"three_made\": 0, \"three_attempted\": 0, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 0, \"assists\": 0, \"steals\": 0, \"turnovers\": 0, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Ammar MAHMOOD\", \"player_id\": \"2591893\", \"sofascore_rating\": null, \"minutes_played\": null, \"points\": 0, \"fouls\": 0, \"plus_minus\": 0, \"field_goals_made\": 0, \"field_goals_attempted\": 0, \"three_made\": 0, \"three_attempted\": 0, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 0, \"assists\": 0, \"steals\": 0, \"turnovers\": 0, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Moamel AlGaber\", \"player_id\": \"2591894\", \"sofascore_rating\": null, \"minutes_played\": 5.6, \"points\": 6, \"fouls\": 0, \"plus_minus\": -3, \"field_goals_made\": 2, \"field_goals_attempted\": 6, \"three_made\": 2, \"three_attempted\": 4, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 2, \"assists\": 0, \"steals\": 1, \"turnovers\": 0, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Mohajmen Zeghair\", \"player_id\": \"2591895\", \"sofascore_rating\": null, \"minutes_played\": 15.7, \"points\": 2, \"fouls\": 1, \"plus_minus\": -2, \"field_goals_made\": 1, \"field_goals_attempted\": 4, \"three_made\": 0, \"three_attempted\": 2, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 2, \"assists\": 5, \"steals\": 0, \"turnovers\": 2, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Najah Taraad\", \"player_id\": \"2591896\", \"sofascore_rating\": null, \"minutes_played\": 18.1, \"points\": 12, \"fouls\": 0, \"plus_minus\": -17, \"field_goals_made\": 5, \"field_goals_attempted\": 9, \"three_made\": 2, \"three_attempted\": 5, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 2, \"assists\": 0, \"steals\": 2, \"turnovers\": 5, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Mohammed Cuma\", \"player_id\": \"2591897\", \"sofascore_rating\": null, \"minutes_played\": 1.9, \"points\": 0, \"fouls\": 0, \"plus_minus\": -1, \"field_goals_made\": 0, \"field_goals_attempted\": 1, \"three_made\": 0, \"three_attempted\": 0, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 0, \"assists\": 0, \"steals\": 0, \"turnovers\": 0, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Mohammed Jameel\", \"player_id\": \"2591899\", \"sofascore_rating\": null, \"minutes_played\": 7.7, \"points\": 0, \"fouls\": 0, \"plus_minus\": -2, \"field_goals_made\": 0, \"field_goals_attempted\": 2, \"three_made\": 0, \"three_attempted\": 1, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 0, \"assists\": 1, \"steals\": 1, \"turnovers\": 0, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Obaida ZAIDAN\", \"player_id\": \"2591900\", \"sofascore_rating\": null, \"minutes_played\": 12.5, \"points\": 6, \"fouls\": 0, \"plus_minus\": -18, \"field_goals_made\": 3, \"field_goals_attempted\": 4, \"three_made\": 0, \"three_attempted\": 1, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 1, \"assists\": 0, \"steals\": 2, \"turnovers\": 0, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Mustafa Hussein\", \"player_id\": \"2591901\", \"sofascore_rating\": null, \"minutes_played\": 15.7, \"points\": 0, \"fouls\": 0, \"plus_minus\": -14, \"field_goals_made\": 0, \"field_goals_attempted\": 3, \"three_made\": 0, \"three_attempted\": 3, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 1, \"assists\": 1, \"steals\": 1, \"turnovers\": 4, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Mohammed Latif\", \"player_id\": \"2591902\", \"sofascore_rating\": null, \"minutes_played\": 17.2, \"points\": 10, \"fouls\": 0, \"plus_minus\": -8, \"field_goals_made\": 5, \"field_goals_attempted\": 6, \"three_made\": 0, \"three_attempted\": 0, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 6, \"assists\": 0, \"steals\": 0, \"turnovers\": 0, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Mustafa KHORSHEED\", \"player_id\": \"2591903\", \"sofascore_rating\": null, \"minutes_played\": 25.7, \"points\": 2, \"fouls\": 0, \"plus_minus\": -19, \"field_goals_made\": 1, \"field_goals_attempted\": 8, \"three_made\": 0, \"three_attempted\": 5, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 4, \"assists\": 0, \"steals\": 3, \"turnovers\": 1, \"blocks\": 0}, {\"match_id\": \"16225941\", \"team\": \"away\", \"player_name\": \"Layth Khraibaet\", \"player_id\": \"2591904\", \"sofascore_rating\": null, \"minutes_played\": 8.6, \"points\": 0, \"fouls\": 2, \"plus_minus\": -11, \"field_goals_made\": 0, \"field_goals_attempted\": 4, \"three_made\": 0, \"three_attempted\": 3, \"free_throws_made\": 0, \"free_throws_attempted\": 0, \"rebounds\": 1, \"assists\": 0, \"steals\": 0, \"turnovers\": 0, \"blocks\": 0}], \"odds\": [{\"match_id\": \"16225941\", \"odds_type\": \"Home/Away\", \"market_name\": \"Full time\", \"market_period\": \"Match\", \"home_value\": 1.0, \"away_value\": 17.0, \"draw_value\": null, \"timestamp\": \"\"}], \"team_strength\": [{\"team_id\": 928925, \"team_name\": \"Al Difaa Al Jawie\", \"position\": 5, \"wins\": 1, \"losses\": 6, \"form\": \"[\\\"L\\\", \\\"L\\\", \\\"L\\\", \\\"W\\\", \\\"L\\\"]\", \"perf_points\": \"{\\\"13850285\\\": 1.83, \\\"13850286\\\": 1.77, \\\"16167621\\\": 1, \\\"16172063\\\": 1, \\\"16177515\\\": 1, \\\"16188018\\\": 1, \\\"16194873\\\": 1, \\\"16211103\\\": 1, \\\"16218507\\\": 1.02, \\\"16220961\\\": -5}\"}, {\"team_id\": 1225645, \"team_name\": \"Naft Al Shamal\", \"position\": null, \"wins\": null, \"losses\": null, \"form\": \"[]\", \"perf_points\": \"{\\\"16167617\\\": -1, \\\"16172064\\\": -1, \\\"16177514\\\": -1, \\\"16188018\\\": -1, \\\"16194871\\\": -1, \\\"16211101\\\": 1, \\\"16220957\\\": -1, \\\"16220960\\\": 1.65}\"}]}",
+      "signal_type": "BET_HOME",
+      "picked_side": "HOME",
+      "confidence": 0.481309,
+      "actual_home_score": 57,
+      "actual_away_score": 38,
+      "result": "win",
+      "created_at": "2026-05-24T06:50:38.790047",
+      "inference_json": null
+    }
+  }
+}

@@ -1,0 +1,448 @@
+{
+  "by_month": [
+    {
+      "month": "2025-10",
+      "matches": 3882
+    },
+    {
+      "month": "2025-11",
+      "matches": 4958
+    },
+    {
+      "month": "2025-12",
+      "matches": 4990
+    },
+    {
+      "month": "2026-01",
+      "matches": 4689
+    },
+    {
+      "month": "2026-02",
+      "matches": 8069
+    },
+    {
+      "month": "2026-03",
+      "matches": 8515
+    },
+    {
+      "month": "2026-04",
+      "matches": 3953
+    },
+    {
+      "month": "2026-05",
+      "matches": 2159
+    },
+    {
+      "month": "2026-06",
+      "matches": 1378
+    },
+    {
+      "month": "2026-07",
+      "matches": 1860
+    },
+    {
+      "month": "2026-08",
+      "matches": 1554
+    },
+    {
+      "month": "2026-09",
+      "matches": 1809
+    },
+    {
+      "month": "2026-10",
+      "matches": 807
+    }
+  ],
+  "scores": {
+    "total": 48514,
+    "avg_home": 80.72663561033929,
+    "avg_away": 77.7517623778703,
+    "avg_total": 158.4783979882096,
+    "min_total": 0,
+    "max_total": 308,
+    "home_wins": 27748,
+    "away_wins": 20745,
+    "draws": 21
+  },
+  "league_distribution": [
+    {
+      "tier": "Grande (100-199)",
+      "leagues_in_tier": 81,
+      "matches_in_tier": 11211
+    },
+    {
+      "tier": "Micro (<20)",
+      "leagues_in_tier": 1515,
+      "matches_in_tier": 8517
+    },
+    {
+      "tier": "Muy Grande (200-499)",
+      "leagues_in_tier": 27,
+      "matches_in_tier": 7789
+    },
+    {
+      "tier": "Gigante (>=500)",
+      "leagues_in_tier": 8,
+      "matches_in_tier": 7293
+    },
+    {
+      "tier": "Mediana (50-99)",
+      "leagues_in_tier": 99,
+      "matches_in_tier": 7101
+    },
+    {
+      "tier": "Pequeña (20-49)",
+      "leagues_in_tier": 228,
+      "matches_in_tier": 6712
+    }
+  ],
+  "top_50_leagues": [
+    {
+      "league": "NCAA Women's Division I, Regular season",
+      "cnt": 1729,
+      "avg_total_pts": 132.85772122614227,
+      "home_win_pct": 61.65413533834587
+    },
+    {
+      "league": "NCAA Men's Division I, Regular season",
+      "cnt": 1324,
+      "avg_total_pts": 148.39728096676737,
+      "home_win_pct": 60.80060422960725
+    },
+    {
+      "league": "NBA",
+      "cnt": 1222,
+      "avg_total_pts": 231.21194762684124,
+      "home_win_pct": 55.48281505728314
+    },
+    {
+      "league": "Poland 2nd Basketball League, Runda Zasadnicza",
+      "cnt": 852,
+      "avg_total_pts": 163.30516431924883,
+      "home_win_pct": 59.389671361502344
+    },
+    {
+      "league": "B League Premier",
+      "cnt": 575,
+      "avg_total_pts": 162.5878260869565,
+      "home_win_pct": 52.17391304347826
+    },
+    {
+      "league": "NCAA Men's Division II, Regular season",
+      "cnt": 557,
+      "avg_total_pts": 150.87073608617595,
+      "home_win_pct": 59.78456014362657
+    },
+    {
+      "league": "Liga Argentina, Group Stage",
+      "cnt": 518,
+      "avg_total_pts": 158.96718146718146,
+      "home_win_pct": 64.86486486486487
+    },
+    {
+      "league": "NBA G League",
+      "cnt": 516,
+      "avg_total_pts": 233.42635658914728,
+      "home_win_pct": 55.23255813953488
+    },
+    {
+      "league": "NCAA",
+      "cnt": 385,
+      "avg_total_pts": 155.02337662337663,
+      "home_win_pct": 59.48051948051948
+    },
+    {
+      "league": "China CBA",
+      "cnt": 372,
+      "avg_total_pts": 178.41397849462365,
+      "home_win_pct": 62.365591397849464
+    },
+    {
+      "league": "NBL",
+      "cnt": 365,
+      "avg_total_pts": 178.94246575342467,
+      "home_win_pct": 58.082191780821915
+    },
+    {
+      "league": "Brazil NBB",
+      "cnt": 353,
+      "avg_total_pts": 159.9801699716714,
+      "home_win_pct": 60.906515580736546
+    },
+    {
+      "league": "Euroleague",
+      "cnt": 352,
+      "avg_total_pts": 172.32386363636363,
+      "home_win_pct": 64.20454545454545
+    },
+    {
+      "league": "Serie A2",
+      "cnt": 320,
+      "avg_total_pts": 156.64375,
+      "home_win_pct": 60.625
+    },
+    {
+      "league": "B League One",
+      "cnt": 318,
+      "avg_total_pts": 160.31446540880503,
+      "home_win_pct": 53.77358490566038
+    },
+    {
+      "league": "Élite 2",
+      "cnt": 314,
+      "avg_total_pts": 166.21974522292993,
+      "home_win_pct": 58.28025477707006
+    },
+    {
+      "league": "Super League",
+      "cnt": 302,
+      "avg_total_pts": 164.1887417218543,
+      "home_win_pct": 62.25165562913907
+    },
+    {
+      "league": "WNBA",
+      "cnt": 301,
+      "avg_total_pts": 174.57142857142858,
+      "home_win_pct": 55.14950166112957
+    },
+    {
+      "league": "NCAA Men's Division III, Regular season",
+      "cnt": 300,
+      "avg_total_pts": 152.42666666666668,
+      "home_win_pct": 56.333333333333336
+    },
+    {
+      "league": "Argentina Liga Nacional",
+      "cnt": 298,
+      "avg_total_pts": 161.05704697986576,
+      "home_win_pct": 58.38926174496644
+    },
+    {
+      "league": "Liga ACB",
+      "cnt": 286,
+      "avg_total_pts": 177.08391608391608,
+      "home_win_pct": 56.64335664335665
+    },
+    {
+      "league": "Germany BBL",
+      "cnt": 280,
+      "avg_total_pts": 168.08214285714286,
+      "home_win_pct": 61.785714285714285
+    },
+    {
+      "league": "Serie B, Group B",
+      "cnt": 278,
+      "avg_total_pts": 151.98561151079136,
+      "home_win_pct": 63.669064748201436
+    },
+    {
+      "league": "MPBL",
+      "cnt": 277,
+      "avg_total_pts": 171.6317689530686,
+      "home_win_pct": 55.234657039711195
+    },
+    {
+      "league": "Serie B, Group A",
+      "cnt": 276,
+      "avg_total_pts": 157.30797101449275,
+      "home_win_pct": 59.42028985507246
+    },
+    {
+      "league": "1 Liga Kobiet, Runda Zasadnicza",
+      "cnt": 269,
+      "avg_total_pts": 138.02230483271376,
+      "home_win_pct": 56.13382899628253
+    },
+    {
+      "league": "BNXT League",
+      "cnt": 263,
+      "avg_total_pts": 168.70342205323195,
+      "home_win_pct": 58.17490494296578
+    },
+    {
+      "league": "RKL Division A",
+      "cnt": 246,
+      "avg_total_pts": 172.1178861788618,
+      "home_win_pct": 59.34959349593496
+    },
+    {
+      "league": "Primera FEB",
+      "cnt": 245,
+      "avg_total_pts": 161.29795918367347,
+      "home_win_pct": 60.0
+    },
+    {
+      "league": "Korean Basketball League",
+      "cnt": 239,
+      "avg_total_pts": 156.90376569037656,
+      "home_win_pct": 53.97489539748954
+    },
+    {
+      "league": "Nostra.lt-RKL Division B, Reguliarusis sezonas",
+      "cnt": 236,
+      "avg_total_pts": 161.9915254237288,
+      "home_win_pct": 52.54237288135593
+    },
+    {
+      "league": "Poland 1st Division Basketball",
+      "cnt": 229,
+      "avg_total_pts": 165.2008733624454,
+      "home_win_pct": 58.51528384279476
+    },
+    {
+      "league": "NKL",
+      "cnt": 226,
+      "avg_total_pts": 167.1946902654867,
+      "home_win_pct": 55.309734513274336
+    },
+    {
+      "league": "Israeli National League Basketball",
+      "cnt": 222,
+      "avg_total_pts": 171.31981981981983,
+      "home_win_pct": 56.306306306306304
+    },
+    {
+      "league": "France Pro A",
+      "cnt": 222,
+      "avg_total_pts": 172.44594594594594,
+      "home_win_pct": 56.306306306306304
+    },
+    {
+      "league": "United League",
+      "cnt": 199,
+      "avg_total_pts": 162.80904522613065,
+      "home_win_pct": 51.256281407035175
+    },
+    {
+      "league": "Turkish Basketball Super League",
+      "cnt": 199,
+      "avg_total_pts": 167.42713567839195,
+      "home_win_pct": 61.30653266331658
+    },
+    {
+      "league": "Club Friendlies",
+      "cnt": 198,
+      "avg_total_pts": 161.06060606060606,
+      "home_win_pct": 48.484848484848484
+    },
+    {
+      "league": "Polish Basketball League",
+      "cnt": 195,
+      "avg_total_pts": 170.53846153846155,
+      "home_win_pct": 60.51282051282051
+    },
+    {
+      "league": "Liga Femenina",
+      "cnt": 191,
+      "avg_total_pts": 133.3193717277487,
+      "home_win_pct": 62.82722513089005
+    },
+    {
+      "league": "Lega A Basket",
+      "cnt": 190,
+      "avg_total_pts": 170.54736842105262,
+      "home_win_pct": 61.578947368421055
+    },
+    {
+      "league": "LF Challenge, Regular Season",
+      "cnt": 190,
+      "avg_total_pts": 133.9578947368421,
+      "home_win_pct": 50.0
+    },
+    {
+      "league": "Meridianbet KLS",
+      "cnt": 189,
+      "avg_total_pts": 174.5079365079365,
+      "home_win_pct": 62.96296296296296
+    },
+    {
+      "league": "Estonian-Latvian Basketball League",
+      "cnt": 185,
+      "avg_total_pts": 169.02162162162162,
+      "home_win_pct": 51.891891891891895
+    },
+    {
+      "league": "Belgian Basketball 2nd Division",
+      "cnt": 185,
+      "avg_total_pts": 162.9081081081081,
+      "home_win_pct": 58.37837837837838
+    },
+    {
+      "league": "Mexico LNBP",
+      "cnt": 176,
+      "avg_total_pts": 169.3693181818182,
+      "home_win_pct": 52.84090909090909
+    },
+    {
+      "league": "Liga Nationala",
+      "cnt": 172,
+      "avg_total_pts": 172.99418604651163,
+      "home_win_pct": 57.55813953488372
+    },
+    {
+      "league": "SuperSport Premijer Liga",
+      "cnt": 168,
+      "avg_total_pts": 163.5,
+      "home_win_pct": 61.30952380952381
+    },
+    {
+      "league": "Hungary NB 1.A",
+      "cnt": 168,
+      "avg_total_pts": 169.92857142857142,
+      "home_win_pct": 63.69047619047619
+    },
+    {
+      "league": "Nationale 1, Group A",
+      "cnt": 167,
+      "avg_total_pts": 159.62874251497007,
+      "home_win_pct": 58.68263473053892
+    }
+  ],
+  "pbp_stats": {
+    "total_events": 3709807,
+    "matches_with_pbp": 43312,
+    "avg_events_per_match": 85.65309844846693
+  },
+  "graph_stats": {
+    "total_points": 1719271,
+    "matches_with_graph": 42368,
+    "avg_points_per_match": 40.57947035498489
+  },
+  "team_stats_sample_metrics": [
+    {
+      "stat_key": "fouls",
+      "stat_name": "Fouls",
+      "group_name": "Other"
+    },
+    {
+      "stat_key": "timeouts",
+      "stat_name": "Timeouts",
+      "group_name": "Other"
+    },
+    {
+      "stat_key": "turnovers",
+      "stat_name": "Turnovers",
+      "group_name": "Other"
+    },
+    {
+      "stat_key": "freeThrowsMade",
+      "stat_name": "Free throws made",
+      "group_name": "Scoring"
+    },
+    {
+      "stat_key": "points",
+      "stat_name": "Points",
+      "group_name": "Scoring"
+    },
+    {
+      "stat_key": "threePointsMade",
+      "stat_name": "3 pointers made",
+      "group_name": "Scoring"
+    },
+    {
+      "stat_key": "twoPointsMade",
+      "stat_name": "2 pointers made",
+      "group_name": "Scoring"
+    }
+  ]
+}
