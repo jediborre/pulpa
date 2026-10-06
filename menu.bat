@@ -41,6 +41,8 @@ if /i "%~1"=="jwt" goto SYNC_TOKEN_CLI
 if /i "%~1"=="sync_token" goto SYNC_TOKEN_CLI
 if /i "%~1"=="reinstall" goto REINSTALL_APP_CLI
 if /i "%~1"=="reinstall_app" goto REINSTALL_APP_CLI
+if /i "%~1"=="smart_backfill" goto RUN_SMART_BACKFILL_CLI
+if /i "%~1"=="backfill_smart" goto RUN_SMART_BACKFILL_CLI
 
 :: ── Verificar .venv ───────────────────────────────
 if not exist ".venv\Scripts\activate.bat" (
@@ -104,6 +106,13 @@ echo   28) Sincronizar Token JWT desde Android (ADB Directo / USB)
 echo   29) Reinstalar SofaScore Parcheada en Android (ADB)
 echo   30) Iniciar Bot Telegram V3 (consultas /signals, /status)
 echo.
+echo  [6] SMART BACKFILL Y DESCARGAS HISTORICAS (2015-2026)
+echo   35) Submenu Smart Backfill (Modo interactivo y fases guiadas)
+echo   36) Descarga Fase 1: 2023-2025 (Full ML para m27_v4 - Todos los clusters)
+echo   37) Descarga Fase 2: NBA 2018-2023 (Para m34_nba_12m)
+echo   38) Descarga Fase 3: Genesis Elo y H2H 2015-2018 (Memoria 10 Anos)
+echo   39) Descarga Personalizada por Cluster, Modo y Rango de Fechas
+echo.
 echo    0) Salir
 echo ==================================================================
 set /p OPT="  Selecciona una opcion: "
@@ -165,6 +174,15 @@ if /i "%OPT%"=="reinstall" goto REINSTALL_APP
 if /i "%OPT%"=="reinstall_app" goto REINSTALL_APP
 if "%OPT%"=="30" goto RUN_BOT_V3
 if /i "%OPT%"=="bot_v3" goto RUN_BOT_V3
+
+:: [6] Smart Backfill y Descargas Historicas
+if "%OPT%"=="35" goto MENU_SMART_BACKFILL
+if "%OPT%"=="36" goto RUN_PHASE_1
+if "%OPT%"=="37" goto RUN_PHASE_2
+if "%OPT%"=="38" goto RUN_PHASE_3
+if "%OPT%"=="39" goto RUN_CUSTOM_BACKFILL
+if /i "%OPT%"=="smart_backfill" goto MENU_SMART_BACKFILL
+if /i "%OPT%"=="backfill_smart" goto MENU_SMART_BACKFILL
 
 echo [ERROR] Opcion invalida.
 timeout /t 2 /nobreak >nul
@@ -979,6 +997,126 @@ goto MENU
 :REINSTALL_APP_CLI
 call .venv\Scripts\activate
 python tools\reinstall_sofascore.py
+exit /b %ERRORLEVEL%
+
+:: ─────────────────────────────────────────────────
+:: [6] SMART BACKFILL Y DESCARGAS HISTORICAS (2015-2026)
+:: ─────────────────────────────────────────────────
+
+:MENU_SMART_BACKFILL
+cls
+echo.
+echo ==================================================================
+echo       SMART HISTORICAL BACKFILL — SOFASCORE BASKETBALL
+echo ==================================================================
+echo.
+echo  Selecciona una fase preconfigurada o descarga personalizada:
+echo.
+echo   1) FASE 1: Temporadas 2023-2025 (Full ML para m27_v4, todos los clusters)
+echo   2) FASE 2: NBA Historica 2018-2023 (Profundidad para m34_nba_12m)
+echo   3) FASE 3: Genesis Elo y H2H 2015-2018 (Base historica de 10 anos)
+echo   4) Descarga Personalizada (Elegir cluster, fechas y modo)
+echo   5) Ver Estado y Conteos de Base de Datos
+echo   0) Volver al Menu Principal
+echo.
+echo ==================================================================
+set /p SB_OPT="  Selecciona una opcion: "
+
+if "%SB_OPT%"=="1" goto RUN_PHASE_1
+if "%SB_OPT%"=="2" goto RUN_PHASE_2
+if "%SB_OPT%"=="3" goto RUN_PHASE_3
+if "%SB_OPT%"=="4" goto RUN_CUSTOM_BACKFILL
+if "%SB_OPT%"=="5" (
+    call .venv\Scripts\activate
+    python -c "import sqlite3; con=sqlite3.connect('matches.db'); cur=con.cursor(); print(f'Total matches: {cur.execute(\"SELECT COUNT(*) FROM matches\").fetchone()[0]:,}'); print(f'Total Q scores: {cur.execute(\"SELECT COUNT(*) FROM quarter_scores\").fetchone()[0]:,}'); print(f'Total PBP: {cur.execute(\"SELECT COUNT(*) FROM play_by_play\").fetchone()[0]:,}'); print(f'Total Graph Points: {cur.execute(\"SELECT COUNT(*) FROM graph_points\").fetchone()[0]:,}')"
+    pause
+    goto MENU_SMART_BACKFILL
+)
+if "%SB_OPT%"=="0" goto MENU
+goto MENU_SMART_BACKFILL
+
+:RUN_PHASE_1
+cls
+echo.
+echo ========================================================
+echo  EJECUTANDO FASE 1: DESCARGA 2023-10-01 A 2025-10-07
+echo  Clúster: ALL | Modo: AUTO (Full ML + Elo)
+echo ========================================================
+echo.
+call .venv\Scripts\activate
+python tools\smart_historical_backfill.py --start-date 2023-10-01 --end-date 2025-10-07 --cluster all --mode auto
+pause
+goto MENU
+
+:RUN_PHASE_2
+cls
+echo.
+echo ========================================================
+echo  EJECUTANDO FASE 2: NBA HISTORICA 2018-10-01 A 2023-09-30
+echo  Clúster: NBA_12M | Modo: AUTO
+echo ========================================================
+echo.
+call .venv\Scripts\activate
+python tools\smart_historical_backfill.py --start-date 2018-10-01 --end-date 2023-09-30 --cluster nba_12m --mode auto
+pause
+goto MENU
+
+:RUN_PHASE_3
+cls
+echo.
+echo ========================================================
+echo  EJECUTANDO FASE 3: GENESIS ELO Y H2H 2015-01-01 A 2018-09-30
+echo  Clúster: ALL | Modo: ELO_H2H (Marcadores por cuarto)
+echo ========================================================
+echo.
+call .venv\Scripts\activate
+python tools\smart_historical_backfill.py --start-date 2015-01-01 --end-date 2018-09-30 --cluster all --mode elo_h2h
+pause
+goto MENU
+
+:RUN_CUSTOM_BACKFILL
+cls
+echo.
+echo ========================================================
+echo  DESCARGA PERSONALIZADA SMART BACKFILL
+echo ========================================================
+echo.
+set /p C_SD="  Fecha de inicio (YYYY-MM-DD): "
+set /p C_ED="  Fecha de fin (YYYY-MM-DD): "
+echo.
+echo  Clúster de ligas:
+echo    1) Todos (all)
+echo    2) FIBA Masculino Senior (fiba_men)
+echo    3) Baloncesto 12 Minutos / NBA (nba_12m)
+echo    4) FIBA Femenino (fiba_women)
+set /p C_CL_OPT="  Selecciona clúster [1-4] (default 1): "
+set "C_CL=all"
+if "%C_CL_OPT%"=="2" set "C_CL=fiba_men"
+if "%C_CL_OPT%"=="3" set "C_CL=nba_12m"
+if "%C_CL_OPT%"=="4" set "C_CL=fiba_women"
+
+echo.
+echo  Modo de completitud:
+echo    1) Auto (Recomendado: Full ML si hay PBP/GP, Elo si hay cuartos)
+echo    2) Full ML (Exige 4 cuartos + PBP + Graph Points)
+echo    3) Elo/H2H (Acepta con solo cuartos)
+set /p C_MD_OPT="  Selecciona modo [1-3] (default 1): "
+set "C_MD=auto"
+if "%C_MD_OPT%"=="2" set "C_MD=full_ml"
+if "%C_MD_OPT%"=="3" set "C_MD=elo_h2h"
+
+echo.
+echo  Iniciando descarga: Fechas %C_SD% a %C_ED% | Clúster: %C_CL% | Modo: %C_MD%
+echo.
+call .venv\Scripts\activate
+python tools\smart_historical_backfill.py --start-date %C_SD% --end-date %C_ED% --cluster %C_CL% --mode %C_MD%
+pause
+goto MENU
+
+:RUN_SMART_BACKFILL_CLI
+call .venv\Scripts\activate
+shift
+python tools\smart_historical_backfill.py %*
 exit /b %ERRORLEVEL%
 
 :: ─────────────────────────────────────────────────
