@@ -97,6 +97,22 @@ Todos los modelos comparten:
 - **Clutch**: `legacy_last10_home_pts`, `legacy_last10_diff`, `legacy_current_run_home`, etc.
 - **Monte Carlo**: `legacy_mc_home_win_prob`
 
+### E0–E3 — Quarter ELO Engine (m27_v4)
+`delta_elo_q4`, `delta_elo_ft`, `delta_elo_clutch`, `elo_expected_q4_margin`
+- Sistema dinámico bayesiano actualizado partido a partido sin data leakage; mide la fuerza relativa acumulada cerrando cuartos bajo presión.
+
+### R0–R5 — Match Lineup & Bench Quality (m27_v4)
+`delta_starter_rating`, `delta_bench_rating`, `delta_roster_depth`, `delta_star_reliance`, `bench_points_share_prior`, `live_starters_foul_trouble`
+- Calidad de los 5 titulares confirmados vs reservas (`lineups` + `player_stats`). Correlación $r = +0.401$ con desenlace de Q4 y penalización por sobredependencia de una estrella ($-0.214$).
+
+### L0–L7 — League Taxonomy Priors (m27_v4 / leagues_classification)
+`is_women`, `is_playoffs`, `is_final`, `is_relegation`, `prior_league_pace`, `prior_q4_total_points`, `prior_blowout_risk`, `prior_home_win_pct`
+- Priors macro extraídos de `leagues_classification` para normalizar ritmo FIBA vs NBA, ligas femeninas (-20 pts) y tensión defensiva de playoffs (-14.6 pts).
+
+### M0–M11 — Live Momentum at Min 27 (m27_v4)
+`score_diff_m27`, `momentum_val_m27`, `momentum_slope_m24_m27`, `momentum_mean_q3`, `momentum_integral_total`, `q3_partial_margin_m27`, `points_pace_m27`, `run_unanswered_m27`, `h2h_win_pct`, `h2h_avg_margin`, `q1_q2_leader_held`, `lead_change_count_m27`
+- Telemetría en vivo del minuto 27 con historial H2H directo.
+
 ---
 
 ## V1 — Original
@@ -630,6 +646,25 @@ Todos los modelos comparten:
 
 ---
 
+## m27_v4 (Propuesta de Próxima Generación) — Dynamic Elo, Roster & League Priors
+
+> **Documento maestro de especificación:** [`docs/PROPUESTA_NUEVO_MODELO_M27_V4.md`](file:///C:/Users/App/Desktop/pulpa/docs/PROPUESTA_NUEVO_MODELO_M27_V4.md)
+
+| Campo | Valor |
+|-------|-------|
+| **Snapshot** | **27** (a 3 minutos de finalizar Q3) |
+| **Algoritmo** | Ensemble LightGBM + CatBoost + Isotonic Calibration |
+| **Target** | **Ganador de Q4** (Home / Away) |
+| **Documentación** | [`docs/PROPUESTA_NUEVO_MODELO_M27_V4.md`](file:///C:/Users/App/Desktop/pulpa/docs/PROPUESTA_NUEVO_MODELO_M27_V4.md) |
+| **Features** | **30 features estructuradas en 4 bloques:** Bloque M (12 Momentum m27), Bloque E (4 Elo Dinámico por Cuartos), Bloque R (6 Calidad Roster/Banquillo), Bloque L (8 Priors Taxonómicos de Liga) |
+| **Dataset Filtrado** | **30,382 partidos élite** (FIBA 10m, `is_youth=0`, `is_college=0`, `competition_type!='friendly'`, `match_count>=50`) |
+| **ROC AUC Objetivo** | **$\ge 0.765$** (frente a 0.722 en baseline sin H2H y 0.789 con H2H) |
+| **Accuracy Objetivo** | **$\ge 68.0\%$** en señales operables (`BET_HOME` / `BET_AWAY` @ $P \ge 0.65$) |
+| **Yield Económico Objetivo** | **$\ge +12.5\%$** con cuota fija 1.40 |
+| **Avance Clave 1 (Elo)** | Vector dinámico $\text{Elo}_{Q4}$ y $\text{Elo}_{FT}$ por equipo calculado cronológicamente con regresión a la media entre temporadas (0.75 / 0.25). |
+| **Avance Clave 2 (Roster)** | Incorporación del diferencial de ratings de titulares ($\Delta \text{Starters}$, $r=+0.401$) y banquillo ($\Delta \text{Bench}$, $r=+0.348$), junto a penalización por sobredependencia de una estrella ($\Delta \text{Star Reliance}$, $r=-0.214$). |
+| **Avance Clave 3 (Taxonomía)** | Inyección de priors automáticos de `leagues_classification`: corrección femenina (`is_women`), postemporada (`is_playoffs`), ritmo normalizado (`scoring_pace_per_minute`) y riesgo de paliza (`blowout_rate`). |
+
 ---
 
 ## m30_v1 — Independent Minute-30
@@ -685,6 +720,7 @@ Todos los modelos comparten:
 | **m27_v1** | **27** | **0.668** | 0.626 | 3,713 | **Snapshot 27 (3m Q4 real)**. Sin filtro. Match-level. | **Señal real pre-Q4** |
 | **m27_v2** | **27** | **0.668** / 0.671\* | 0.623 / 0.626 | 4,132 | \*10m filter. 86 feat (7 podadas). Match-level. | Idéntico a v1. Recent windows dominan. Features nuevas no suman |
 | **m27_v3** | **27** | **0.789** | **0.705** | 4,132 | Snapshot 27. **+H2H features (28.5% imp)**. 99% test cov. Match-level. | **Campeón actual (+13% a +29% Yield)** |
+| **m27_v4 (Prop.)** | **27** | **$\ge 0.765$** (obj) | **$\ge 0.680$** | 30,382 | FIBA 10m élite. 30 feat (M+E+R+L). Sin youth/college. | **Próxima generación: Elo dinámico Q4 + Roster + Priors de liga** |
 | **m30_v1** | **30** | 0.585 | 0.562 | 4,144 | **Snapshot 30 (sin Q4 real)**. Sin filtro. Match-level. | Límite ~0.59 |
 
 ---

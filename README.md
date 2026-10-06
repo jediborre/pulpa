@@ -21,6 +21,7 @@ Toda la documentación técnica, científica y operativa del proyecto ha sido co
 ### 🧠 Modelado Predictivo, Roadmaps y Features
 | Archivo en `docs/` | Ubicación Original | Contenido Principal |
 |---|---|---|
+| [`docs/PROPUESTA_NUEVO_MODELO_M27_V4.md`](file:///C:/Users/App/Desktop/pulpa/docs/PROPUESTA_NUEVO_MODELO_M27_V4.md) | `docs/PROPUESTA_NUEVO_MODELO_M27_V4.md` | Especificación técnica del modelo de próxima generación `m27_v4` (Dynamic Elo E0-E3, Roster & Bench Quality R0-R5, League Priors L0-L7 y momentum M0-M11). |
 | [`docs/M27_V1_ROADMAP.md`](file:///C:/Users/App/Desktop/pulpa/docs/M27_V1_ROADMAP.md) | `findings/M27_V1_ROADMAP.md` | Hoja de ruta, hipótesis y validación del modelo predictivo fijado al minuto 27 (`m27_v1`). |
 | [`docs/M27_V2_ROADMAP.md`](file:///C:/Users/App/Desktop/pulpa/docs/M27_V2_ROADMAP.md) | `findings/M27_V2_ROADMAP.md` | Experimentos de `m27_v2`, análisis de feature importance y demostración del peso del 35.9% en ventanas recientes. |
 | [`docs/M27_FEATURES_COMPARISON.md`](file:///C:/Users/App/Desktop/pulpa/docs/M27_FEATURES_COMPARISON.md) | `findings/M27_FEATURES_COMPARISON.md` | Comparación minuciosa de variables entre las versiones preliminares y avanzadas de la serie M27. |
