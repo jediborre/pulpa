@@ -112,6 +112,7 @@ echo   36) Descarga Fase 1: 2023-2025 (Full ML para m27_v4 - Todos los clusters)
 echo   37) Descarga Fase 2: NBA 2018-2023 (Para m34_nba_12m)
 echo   38) Descarga Fase 3: Genesis Elo y H2H 2015-2018 (Memoria 10 Anos)
 echo   39) Descarga Personalizada por Cluster, Modo y Rango de Fechas
+echo   40) Reanudar Ultima Descarga Pausada (--resume)
 echo.
 echo    0) Salir
 echo ==================================================================
@@ -181,6 +182,8 @@ if "%OPT%"=="36" goto RUN_PHASE_1
 if "%OPT%"=="37" goto RUN_PHASE_2
 if "%OPT%"=="38" goto RUN_PHASE_3
 if "%OPT%"=="39" goto RUN_CUSTOM_BACKFILL
+if "%OPT%"=="40" goto RUN_RESUME_BACKFILL
+if /i "%OPT%"=="resume" goto RUN_RESUME_BACKFILL
 if /i "%OPT%"=="smart_backfill" goto MENU_SMART_BACKFILL
 if /i "%OPT%"=="backfill_smart" goto MENU_SMART_BACKFILL
 
@@ -1016,7 +1019,8 @@ echo   1) FASE 1: Temporadas 2023-2025 (Full ML para m27_v4, todos los clusters)
 echo   2) FASE 2: NBA Historica 2018-2023 (Profundidad para m34_nba_12m)
 echo   3) FASE 3: Genesis Elo y H2H 2015-2018 (Base historica de 10 anos)
 echo   4) Descarga Personalizada (Elegir cluster, fechas y modo)
-echo   5) Ver Estado y Conteos de Base de Datos
+echo   5) Reanudar Ultima Descarga Pausada (--resume)
+echo   6) Ver Estado y Conteos de Base de Datos
 echo   0) Volver al Menu Principal
 echo.
 echo ==================================================================
@@ -1026,7 +1030,8 @@ if "%SB_OPT%"=="1" goto RUN_PHASE_1
 if "%SB_OPT%"=="2" goto RUN_PHASE_2
 if "%SB_OPT%"=="3" goto RUN_PHASE_3
 if "%SB_OPT%"=="4" goto RUN_CUSTOM_BACKFILL
-if "%SB_OPT%"=="5" (
+if "%SB_OPT%"=="5" goto RUN_RESUME_BACKFILL
+if "%SB_OPT%"=="6" (
     call .venv\Scripts\activate
     python -c "import sqlite3; con=sqlite3.connect('matches.db'); cur=con.cursor(); print(f'Total matches: {cur.execute(\"SELECT COUNT(*) FROM matches\").fetchone()[0]:,}'); print(f'Total Q scores: {cur.execute(\"SELECT COUNT(*) FROM quarter_scores\").fetchone()[0]:,}'); print(f'Total PBP: {cur.execute(\"SELECT COUNT(*) FROM play_by_play\").fetchone()[0]:,}'); print(f'Total Graph Points: {cur.execute(\"SELECT COUNT(*) FROM graph_points\").fetchone()[0]:,}')"
     pause
@@ -1046,7 +1051,7 @@ echo.
 call .venv\Scripts\activate
 python tools\smart_historical_backfill.py --start-date 2023-10-01 --end-date 2025-10-07 --cluster all --mode auto
 pause
-goto MENU
+goto MENU_SMART_BACKFILL
 
 :RUN_PHASE_2
 cls
@@ -1059,7 +1064,7 @@ echo.
 call .venv\Scripts\activate
 python tools\smart_historical_backfill.py --start-date 2018-10-01 --end-date 2023-09-30 --cluster nba_12m --mode auto
 pause
-goto MENU
+goto MENU_SMART_BACKFILL
 
 :RUN_PHASE_3
 cls
@@ -1072,7 +1077,7 @@ echo.
 call .venv\Scripts\activate
 python tools\smart_historical_backfill.py --start-date 2015-01-01 --end-date 2018-09-30 --cluster all --mode elo_h2h
 pause
-goto MENU
+goto MENU_SMART_BACKFILL
 
 :RUN_CUSTOM_BACKFILL
 cls
@@ -1111,7 +1116,19 @@ echo.
 call .venv\Scripts\activate
 python tools\smart_historical_backfill.py --start-date %C_SD% --end-date %C_ED% --cluster %C_CL% --mode %C_MD%
 pause
-goto MENU
+goto MENU_SMART_BACKFILL
+
+:RUN_RESUME_BACKFILL
+cls
+echo.
+echo ========================================================
+echo  REANUDANDO DESCARGA DESDE EL ULTIMO CHECKPOINT
+echo ========================================================
+echo.
+call .venv\Scripts\activate
+python tools\smart_historical_backfill.py --resume
+pause
+goto MENU_SMART_BACKFILL
 
 :RUN_SMART_BACKFILL_CLI
 call .venv\Scripts\activate

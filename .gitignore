@@ -99,9 +99,10 @@ match/training/v*/reports/
 Thumbs.db
 
 # ============================================================
-# API cache JSON (datos regenerables)
+# API cache JSON y checkpoints (datos regenerables)
 # ============================================================
 api_cache/*.json
+tools/smart_backfill_state.json
 
 # ============================================================
 # Archivos temporales de texto generados en raiz
