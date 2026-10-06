@@ -21,6 +21,7 @@ Toda la documentación técnica, científica y operativa del proyecto ha sido co
 ### 🧠 Modelado Predictivo, Roadmaps y Features
 | Archivo en `docs/` | Ubicación Original | Contenido Principal |
 |---|---|---|
+| [`docs/PLAN_DESCARGAS_HISTORICAS_Y_BACKFILL.md`](file:///C:/Users/App/Desktop/pulpa/docs/PLAN_DESCARGAS_HISTORICAS_Y_BACKFILL.md) | `docs/PLAN_DESCARGAS_HISTORICAS_Y_BACKFILL.md` | Plan director de descargas históricas 2015-2026, arquitectura dual-tier (Full ML vs Elo/H2H) y guía de `tools/smart_historical_backfill.py`. |
 | [`docs/ARQUITECTURA_MULTI_MODELO_Y_BACKFILL.md`](file:///C:/Users/App/Desktop/pulpa/docs/ARQUITECTURA_MULTI_MODELO_Y_BACKFILL.md) | `docs/ARQUITECTURA_MULTI_MODELO_Y_BACKFILL.md` | Estrategia de los 3 modelos especializados (`m27_fiba_men`, `m34_nba_12m`, `m27_fiba_women`), mapeo de ligas, features y plan de backfill anti-overfitting. |
 | [`docs/PROPUESTA_NUEVO_MODELO_M27_V4.md`](file:///C:/Users/App/Desktop/pulpa/docs/PROPUESTA_NUEVO_MODELO_M27_V4.md) | `docs/PROPUESTA_NUEVO_MODELO_M27_V4.md` | Especificación técnica del modelo de próxima generación `m27_v4` (Dynamic Elo E0-E3, Roster & Bench Quality R0-R5, League Priors L0-L7 y momentum M0-M11). |
 | [`docs/M27_V1_ROADMAP.md`](file:///C:/Users/App/Desktop/pulpa/docs/M27_V1_ROADMAP.md) | `findings/M27_V1_ROADMAP.md` | Hoja de ruta, hipótesis y validación del modelo predictivo fijado al minuto 27 (`m27_v1`). |
