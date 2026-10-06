@@ -36,6 +36,7 @@ Toda la documentación técnica, científica y operativa del proyecto ha sido co
 | Archivo en `docs/` | Ubicación Original | Contenido Principal |
 |---|---|---|
 | [`docs/CLASIFICACION_LIGAS.md`](file:///C:/Users/App/Desktop/pulpa/docs/CLASIFICACION_LIGAS.md) | `docs/CLASIFICACION_LIGAS.md` | Catálogo taxonómico integral y guía de la tabla `leagues_classification` (1,958 ligas catalogadas por género, formativas, college, playoffs, duraciones y priors de ML). |
+| [`docs/COMPORTAMIENTO_LIGAS_Y_GUIA_ENTRENAMIENTO.md`](file:///C:/Users/App/Desktop/pulpa/docs/COMPORTAMIENTO_LIGAS_Y_GUIA_ENTRENAMIENTO.md) | `docs/COMPORTAMIENTO_LIGAS_Y_GUIA_ENTRENAMIENTO.md` | Análisis de comportamiento táctico y guía de decisión para ML (qué ligas entrenar, cuáles aislar en submodelos y cuáles mandar a blacklist). |
 | [`docs/ligas_10min.md`](file:///C:/Users/App/Desktop/pulpa/docs/ligas_10min.md) | `findings/ligas_10min.md` | Listado oficial de **1,185 ligas** con cuartos reglamentarios de 10 minutos (FIBA / Europa / Latinoamérica). |
 | [`docs/ligas_12min.md`](file:///C:/Users/App/Desktop/pulpa/docs/ligas_12min.md) | `findings/ligas_12min.md` | Listado de **16 ligas** con cuartos de 12 minutos (NBA, CBA, PBA, etc.). |
 
