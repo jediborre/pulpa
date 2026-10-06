@@ -19,11 +19,11 @@ El sistema está enfocado principalmente en la predicción del **ganador del 4to
 ### Flujo Operativo de Extremo a Extremo:
 ```mermaid
 flowchart LR
-    A["SofaScore API / Web"] -->|"Chrome CDP / Playwright"| B["Scraper / Ingesta"]
+    A["SofaScore API Móvil"] -->|"tls_client okhttp4 / Multi-JWT"| B["Scraper / Ingesta Móvil"]
     B -->|"Partidos, PBP, Marcadores, H2H"| C[("SQLite: matches.db (~737 MB)")]
-    C -->|"Features (Ventanas 2m/3m, H2H, Momentum)"| D["Modelos ML (v6.2, m27_v3, XGBoost, HistGB)"]
+    C -->|"Features (Ventanas 2m/3m, H2H, Momentum, Elo)"| D["Modelos ML (v6.2, m27_v3, m27_v4)"]
     D -->|"Ponderación y Filtros"| E["Fusion Consensus Engine"]
-    E -->|"Señales Operables / NO BET"| F["Bet Monitor V2 (Daemon Asíncrono)"]
+    E -->|"Señales Operables / NO BET"| F["Monitor V3 (Daemon Móvil Asíncrono)"]
     F -->|"Alertas y Resultados en Vivo"| G["Bot de Telegram / CLI / Excel"]
     F -->|"API FastAPI"| H["Dashboard Web (React/Vite)"]
 ```
@@ -34,9 +34,18 @@ flowchart LR
 
 El proyecto se divide en módulos claramente delimitados:
 
-### 📁 `monitor_v2/` (Daemon Asíncrono de Monitoreo Modular)
-Reemplaza la versión monolítica anterior por una arquitectura desacoplada basada en `asyncio`:
-- **`main.py`**: Event loop principal. Gestiona el ciclo de vida de los partidos (`_watch_match`), espaciado anti-baneos (20s entre watchers), sondeo adaptativo según el ritmo (`secs_per_gmin`) y menú de arranque interactivo.
+### 📁 `monitor_v3/` (Daemon Asíncrono de Producción - API Móvil Zero-Browser)
+El daemon activo de producción. Elimina los navegadores pesados y las roturas de Cloudflare consumiendo directamente la API móvil de Android:
+- **`main.py`**: Event loop principal de `asyncio`. Controla la sonda pre-partido, el bucle en vivo de Q4 y la liquidación final FT con ultra-baja latencia (1.2s).
+- **`core/`**: `mobile_client.py` (cliente HTTP con firma `okhttp4_android_13`) y `token_manager.py` (pool de tokens JWT extraídos de la app vía ADB).
+- **`config/`**: Constantes operativas (`constants.py`), tokens (`tokens.json`) y filtrado declarativo (`leagues.yaml`).
+- **`database/`**: Repositorio transaccional (`repository.py` con tablas `_v3`).
+- **`models/evaluator.py`**: Orquestador de inferencia en tiempo real (`v6_2`, `m27_v3`, `m27_v4`).
+- **`notifications/telegram_bot.py`**: Despacho de alertas inmediatas a Telegram.
+
+### 📁 `monitor_v2/` (Daemon Asíncrono Legacy - Chrome CDP)
+Versión previa basada en Google Chrome Headless y Playwright:
+- **`main.py`**: Event loop de `asyncio` con Chrome CDP.
 - **`config/`**: Constantes operativas (`constants.py`) y reglas declarativas de ligas (`leagues.yaml`: ligas excluidas y ligas `ft_only` para solo guardar resultado sin apostar).
 - **`database/`**: Conexión SQLite con modo WAL y repositorio transaccional (`repository.py` con tablas terminadas en `_v2`).
 - **`models/evaluator.py`**: Orquestador de inferencia en tiempo real. Carga en caché singleton los artefactos campeones (`v6_2` y `m27_v3`).

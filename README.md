@@ -43,9 +43,10 @@ Toda la documentación técnica, científica y operativa del proyecto ha sido co
 | [`docs/ligas_10min.md`](file:///C:/Users/App/Desktop/pulpa/docs/ligas_10min.md) | `findings/ligas_10min.md` | Listado oficial de **1,185 ligas** con cuartos reglamentarios de 10 minutos (FIBA / Europa / Latinoamérica). |
 | [`docs/ligas_12min.md`](file:///C:/Users/App/Desktop/pulpa/docs/ligas_12min.md) | `findings/ligas_12min.md` | Listado de **16 ligas** con cuartos de 12 minutos (NBA, CBA, PBA, etc.). |
 
-### ⚡ Monitoreo en Vivo (`monitor_v2` y `monitor_v1`)
+### ⚡ Monitoreo en Vivo (`monitor_v3`, `monitor_v2` y `monitor_v1`)
 | Archivo en `docs/` | Ubicación Original | Contenido Principal |
 |---|---|---|
+| [`docs/ROBUSTEZ_INFERENCIA_LIVE_Y_MONITOR_V3.md`](file:///C:/Users/App/Desktop/pulpa/docs/ROBUSTEZ_INFERENCIA_LIVE_Y_MONITOR_V3.md) | `docs/ROBUSTEZ_INFERENCIA_LIVE_Y_MONITOR_V3.md` | Análisis de disparidad entre entrenamiento offline y live en `monitor_v3`, fragilidad temporal ($\pm 1$ min), densidad de momentum y soluciones de ML robusto (Jitter training, reloj PBP, EMA). |
 | [`docs/monitoreo_v2.md`](file:///C:/Users/App/Desktop/pulpa/docs/monitoreo_v2.md) | `monitoreo_v2.md (Raíz)` | Especificación formal del daemon asíncrono `monitor_v2`, arquitectura desacoplada, control de red y ciclos de vida. |
 | [`docs/monitor_arquitectura.md`](file:///C:/Users/App/Desktop/pulpa/docs/monitor_arquitectura.md) | `findings/monitor_arquitectura.md` | Diagramas de flujo y arquitectura interna del sistema de monitoreo en tiempo real. |
 | [`docs/glosario.md`](file:///C:/Users/App/Desktop/pulpa/docs/glosario.md) | `glosario.md (Raíz)` | Glosario de mensajes de log coloreados (`[SYSTEM]`, `[WATCHER]`, `[PROBE]`, `[LIVE]`, `[EVAL]`, `[FT]`). |
@@ -77,9 +78,18 @@ pulpa/
 ├── menu.bat                # Centro de control principal (5 bloques operativos y CLI integrado)
 ├── api.py                  # API REST en FastAPI para servir inferencias al dashboard
 │
-├── docs/                   # 📚 Hub central de documentación (22 archivos .md)
+├── docs/                   # 📚 Hub central de documentación (24 archivos .md)
 │
-├── monitor_v2/             # Daemon asíncrono modular de monitoreo en tiempo real
+├── monitor_v3/             # 🚀 Daemon principal de producción (Zero-Browser, API Móvil Android + Multi-JWT)
+│   ├── config/             # Constantes, tokens.json y leagues.yaml
+│   ├── core/               # mobile_client.py (tls_client okhttp4) y token_manager.py
+│   ├── database/           # Capa de datos SQLite (tablas _v3)
+│   ├── scrapers/           # Scrapers móviles asíncronos (live, schedule, detail)
+│   ├── models/             # Evaluador de inferencia en tiempo real
+│   ├── notifications/      # Bot despachador de alertas y resultados a Telegram
+│   └── main.py             # Event loop principal con asyncio
+│
+├── monitor_v2/             # Daemon asíncrono modular basado en Chrome / Playwright
 │   ├── config/             # Constantes y leagues.yaml (filtros de ligas)
 │   ├── database/           # Capa de datos SQLite (tablas _v2)
 │   ├── scrapers/           # Clientes Playwright / Chrome CDP
@@ -134,7 +144,7 @@ menu.bat
 
 | Bloque | Opciones Clave | Descripción |
 |:---|:---:|---|
-| **[1] Operación en Vivo** | `1`-`7` | Monitor V2 Chrome sin proxy (`1`), Monitor V1 (`2`), Monitor V2 CDP (`3`), API FastAPI (`4`), Dashboard Web (`5`) y All-in-One (`6` con V2, `7` con V1). |
+| **[1] Operación en Vivo** | `1`-`7` | Monitor V3 API Móvil Nativa (`1`), Monitor V2 Chrome sin proxy (`2`), Monitor V1 (`3`), Monitor V2 CDP (`4`), API FastAPI (`5`), Dashboard Web (`6`) y All-in-One (`7` con V3 + API + Dashboard). |
 | **[2] Análisis y Consenso** | `8`, `9` | Estadísticas de Modelos / Fusion Consensus / Excel (`tools/stats_cli.py`, `8`) y Reporte ROI M27_V3 (`9`). |
 | **[3] Ingesta y Backfill** | `10`-`13` | Descarga de fechas faltantes (`10`), backfill general (`11`), backfill masivo H2H SofaScore (`12`) y comparador de scrapers (`13`). |
 | **[4] Modelos ML** | `14`-`23` | Entrenamiento y reportes ROI para la serie M27 (v1, v2, v3) y V6 (v6.2, v6.3, base v2/v6). |

@@ -72,14 +72,16 @@ Toda la documentación conceptual, histórica y técnica del proyecto ha sido co
 - **`docs/OBSCURA_*.md`:** Investigación de evasión anti-bot, bugs corregidos en Rust y comparativa de scraping.
 - **`docs/ligas_10min.md` y `docs/ligas_12min.md`:** Clasificación de ligas por duración de cuartos reglamentarios (FIBA vs NBA).
 
-### 2. Monitoreo en Vivo (`monitor_v2/` y `monitor_v1/`)
-- **`monitor_v2/` (Versión Moderna y Asíncrona):** Daemon modular de alto rendimiento basado en `asyncio`:
-  - **`monitor_v2/main.py`:** Event loop de `asyncio`. Controla la sonda pre-partido, el bucle en vivo de Q4 y la liquidación final FT.
-  - **`monitor_v2/config/constants.py` y `leagues.yaml`:** Configuración declarativa de umbrales y filtrado de ligas (excluidas vs. `ft_only`).
-  - **`monitor_v2/database/repository.py`:** Transacciones SQLite para tablas `_v2`.
-  - **`monitor_v2/models/evaluator.py`:** Ejecución de inferencias cargando en caché `v6_2` y `m27_v3`.
-  - **`monitor_v2/scrapers/browser_client.py`:** Conexión CDP a Google Chrome para extracción robusta sin bloqueos.
-  - **`monitor_v2/notifications/telegram_bot.py`:** Despacho de mensajes y señales operables a Telegram.
+### 2. Monitoreo en Vivo (`monitor_v3/`, `monitor_v2/` y `monitor_v1/`)
+- **`monitor_v3/` (Versión Actual de Producción - API Móvil Zero-Browser):** Daemon modular de alto rendimiento y ultra-baja latencia (1.2s) basado en `asyncio`, cliente móvil `tls_client okhttp4_android_13` y rotación multi-JWT:
+  - **`monitor_v3/main.py`:** Event loop de `asyncio`. Controla la sonda pre-partido, el bucle en vivo de Q4 y la liquidación final FT.
+  - **`monitor_v3/core/mobile_client.py`:** Cliente HTTP con firma nativa Android para evadir WAF Fastly sin navegadores.
+  - **`monitor_v3/core/token_manager.py`:** Pool de tokens JWT extraídos de la app oficial vía ADB o HTTP Toolkit.
+  - **`monitor_v3/config/constants.py` y `leagues.yaml`:** Configuración declarativa de umbrales y filtrado de ligas.
+  - **`monitor_v3/database/repository.py`:** Transacciones SQLite para tablas `_v3`.
+  - **`monitor_v3/models/evaluator.py`:** Ejecución de inferencias cargando en caché los modelos activos (`v6_2`, `m27_v3`, `m27_v4`).
+  - **`monitor_v3/notifications/telegram_bot.py`:** Despacho de mensajes y señales operables a Telegram.
+- **`monitor_v2/` (Versión Previa / Chrome CDP):** Daemon basado en Google Chrome Headless vía CDP.
 - **`monitor_v1/` (Versión Original / Telegram):** Monitor interactivo guiado por bot de Telegram:
   - **`monitor_v1/telegram_bot.py`:** Bot interactivo con teclado inline, selección de modelos (V1 a V11) y reportes.
   - **`monitor_v1/bet_monitor.py`:** Daemon en hilo secundario para sondeo y alertas en vivo.
