@@ -1040,7 +1040,7 @@ cls
 echo.
 echo ========================================================
 echo  EJECUTANDO FASE 1: DESCARGA 2023-10-01 A 2025-10-07
-echo  Clúster: ALL | Modo: AUTO (Full ML + Elo)
+echo  Cluster: ALL - Modo: AUTO (Full ML + Elo)
 echo ========================================================
 echo.
 call .venv\Scripts\activate
@@ -1053,7 +1053,7 @@ cls
 echo.
 echo ========================================================
 echo  EJECUTANDO FASE 2: NBA HISTORICA 2018-10-01 A 2023-09-30
-echo  Clúster: NBA_12M | Modo: AUTO
+echo  Cluster: NBA_12M - Modo: AUTO
 echo ========================================================
 echo.
 call .venv\Scripts\activate
@@ -1066,7 +1066,7 @@ cls
 echo.
 echo ========================================================
 echo  EJECUTANDO FASE 3: GENESIS ELO Y H2H 2015-01-01 A 2018-09-30
-echo  Clúster: ALL | Modo: ELO_H2H (Marcadores por cuarto)
+echo  Cluster: ALL - Modo: ELO_H2H (Marcadores por cuarto)
 echo ========================================================
 echo.
 call .venv\Scripts\activate
@@ -1106,7 +1106,7 @@ if "%C_MD_OPT%"=="2" set "C_MD=full_ml"
 if "%C_MD_OPT%"=="3" set "C_MD=elo_h2h"
 
 echo.
-echo  Iniciando descarga: Fechas %C_SD% a %C_ED% | Clúster: %C_CL% | Modo: %C_MD%
+echo  Iniciando descarga: Fechas %C_SD% a %C_ED% - Cluster: %C_CL% - Modo: %C_MD%
 echo.
 call .venv\Scripts\activate
 python tools\smart_historical_backfill.py --start-date %C_SD% --end-date %C_ED% --cluster %C_CL% --mode %C_MD%
