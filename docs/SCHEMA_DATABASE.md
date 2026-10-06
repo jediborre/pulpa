@@ -381,7 +381,44 @@ Tablas para la sincronización del scraper, monitores asíncronos y backfill:
 - **`backfill_state` (23 filas):** Estado de los cursores de ingestión histórica masiva.
 - **`backfill_days_completed` (137 filas):** Fechas históricas completamente descargadas y auditadas.
 - **`bet_monitor_schedule_v2` (2,380 filas):** Partidos calendarizados para monitoreo en vivo de Q4.
-- **`leagues_config_v2` / `leagues_config_v3`:** Caché en base de datos de reglas y umbrales declarativos de ligas.
+---
+
+### 15. Tabla `leagues_classification` (Taxonomía y Metadatos de Ligas)
+- **Rol:** Catálogo normalizado de clasificación contextual y priors estadísticos de todas las competiciones (género, categoría formativa/edad, college, formato eliminatorio/playoffs, ámbito geográfico, tier competitivo, duraciones y priors bayesianos de puntos).
+- **Volumen Actual:** 1,958 filas (1 por cada liga única presente en `matches`).
+- **Clave Primaria:** `league` (coincide con `matches.league`).
+- **Documentación Completa:** Véase [`docs/CLASIFICACION_LIGAS.md`](file:///C:/Users/App/Desktop/pulpa/docs/CLASIFICACION_LIGAS.md).
+
+| Columna | Tipo SQLite | Nulo | PK | Descripción Semántica |
+| :--- | :--- | :---: | :---: | :--- |
+| `league` | `TEXT` | No | Sí | Nombre canónico exacto de la competición. |
+| `clean_name` | `TEXT` | No | No | Nombre base limpio sin fase o etapa (ej. `'Liga ACB'`). |
+| `stage` | `TEXT` | No | No | Fase identificada (ej. `'Regular season'`, `'Playoffs'`, `'Finals'`). |
+| `gender` | `TEXT` | No | No | Género: `'men'` o `'women'`. |
+| `is_women` | `INTEGER` | No | No | Flag binario: `1` si es femenina, `0` si es masculina. |
+| `is_youth` | `INTEGER` | No | No | Flag binario: `1` si es formativa (U16 a U23, juveniles). |
+| `age_category` | `TEXT` | No | No | Categoría: `'Senior'`, `'U20'`, `'U18'`, `'Youth'`, etc. |
+| `is_college` | `INTEGER` | No | No | Flag binario: `1` si es baloncesto universitario (NCAA, NAIA). |
+| `competition_type`| `TEXT` | No | No | Tipo: `'league'`, `'playoffs'`, `'cup'`, `'friendly'`, `'all_star'`. |
+| `is_tournament` | `INTEGER` | No | No | Flag binario: `1` si es torneo corto, copa o eliminatoria. |
+| `is_playoffs` | `INTEGER` | No | No | Flag binario: `1` si es postemporada / playoffs. |
+| `is_international`| `INTEGER` | No | No | Flag binario: `1` si es competición transnacional / selecciones. |
+| `country_or_region`| `TEXT` | No | No | País o región identificada (ej. `'USA'`, `'Spain'`, `'Italy'`). |
+| `tier_level` | `TEXT` | No | No | Nivel competitivo: `'top_pro'`, `'second_pro'`, `'college'`, etc. |
+| `quarter_duration_minutes` | `INTEGER` | No | No | Duración reglamentaria de cuartos: `12` o `10`. |
+| `total_game_minutes` | `INTEGER` | No | No | Duración total reglamentaria: `48` o `40` minutos. |
+| `match_count` | `INTEGER` | No | No | Cantidad de partidos de esa liga en la base de datos. |
+| `finished_match_count` | `INTEGER` | No | No | Cantidad de partidos finalizados. |
+| `avg_home_score` | `REAL` | Sí | No | Promedio de puntos local. |
+| `avg_away_score` | `REAL` | Sí | No | Promedio de puntos visitante. |
+| `avg_total_points`| `REAL` | Sí | No | Promedio global de puntos por partido (prior base). |
+| `home_win_pct` | `REAL` | Sí | No | % victorias locales (ventaja de localía). |
+| `ot_rate` | `REAL` | Sí | No | % partidos en prórroga. |
+| `avg_q4_total_points` | `REAL` | Sí | No | Promedio de puntos combinados en Q4. |
+| `avg_q4_margin` | `REAL` | Sí | No | Margen absoluto promedio en Q4. |
+| `pbp_coverage_pct`| `REAL` | No | No | % partidos con cobertura play-by-play. |
+| `graph_coverage_pct`| `REAL` | No | No | % partidos con cobertura de curva de momentum. |
+| `updated_at` | `TEXT` | No | No | Marca temporal UTC de consolidación. |
 
 ---
 

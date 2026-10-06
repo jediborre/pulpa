@@ -1,0 +1,497 @@
+{
+  "total_leagues": 1958,
+  "total_matches": 48623,
+  "gender_dist": [
+    {
+      "gender": "men",
+      "leagues": 1426,
+      "matches": 38737,
+      "avg_pts": 153.82148981026003,
+      "win_pct": 56.83491215741392
+    },
+    {
+      "gender": "women",
+      "leagues": 532,
+      "matches": 9886,
+      "avg_pts": 135.51813559322034,
+      "win_pct": 55.502843691148776
+    }
+  ],
+  "youth_dist": [
+    {
+      "is_youth": 0,
+      "leagues": 1425,
+      "matches": 44510
+    },
+    {
+      "is_youth": 1,
+      "leagues": 533,
+      "matches": 4113
+    }
+  ],
+  "college_dist": [
+    {
+      "is_college": 0,
+      "leagues": 1900,
+      "matches": 43001
+    },
+    {
+      "is_college": 1,
+      "leagues": 58,
+      "matches": 5622
+    }
+  ],
+  "playoff_dist": [
+    {
+      "is_playoffs": 0,
+      "leagues": 1293,
+      "matches": 43782
+    },
+    {
+      "is_playoffs": 1,
+      "leagues": 665,
+      "matches": 4841
+    }
+  ],
+  "comp_dist": [
+    {
+      "competition_type": "league",
+      "leagues": 875,
+      "matches": 40146
+    },
+    {
+      "competition_type": "playoffs",
+      "leagues": 664,
+      "matches": 4840
+    },
+    {
+      "competition_type": "cup",
+      "leagues": 384,
+      "matches": 3429
+    },
+    {
+      "competition_type": "friendly",
+      "leagues": 30,
+      "matches": 201
+    },
+    {
+      "competition_type": "all_star",
+      "leagues": 5,
+      "matches": 7
+    }
+  ],
+  "tier_dist": [
+    {
+      "tier_level": "standard_pro",
+      "leagues": 1043,
+      "matches": 25969,
+      "avg_pts": 151.18947115384614
+    },
+    {
+      "tier_level": "top_pro",
+      "leagues": 252,
+      "matches": 7183,
+      "avg_pts": 154.85972111553787
+    },
+    {
+      "tier_level": "college",
+      "leagues": 58,
+      "matches": 5622,
+      "avg_pts": 131.07379310344828
+    },
+    {
+      "tier_level": "second_pro",
+      "leagues": 80,
+      "matches": 5568,
+      "avg_pts": 160.950875
+    },
+    {
+      "tier_level": "youth",
+      "leagues": 498,
+      "matches": 3375,
+      "avg_pts": 140.82542168674698
+    },
+    {
+      "tier_level": "lower_pro_amateur",
+      "leagues": 27,
+      "matches": 906,
+      "avg_pts": 153.03185185185183
+    }
+  ],
+  "duration_dist": [
+    {
+      "quarter_duration_minutes": 10,
+      "leagues": 1932,
+      "matches": 46115,
+      "avg_pts": 148.22624481327802
+    },
+    {
+      "quarter_duration_minutes": 12,
+      "leagues": 26,
+      "matches": 2508,
+      "avg_pts": 194.91961538461538
+    }
+  ],
+  "sample_top": [
+    {
+      "league": "NCAA Women's Division I, Regular season",
+      "clean_name": "NCAA Women's Division I",
+      "stage": "Regular season",
+      "gender": "women",
+      "is_youth": 0,
+      "is_college": 1,
+      "is_playoffs": 0,
+      "tier_level": "college",
+      "quarter_duration_minutes": 10,
+      "match_count": 1729,
+      "avg_total_points": 132.86,
+      "home_win_pct": 61.65,
+      "ot_rate": 4.86,
+      "avg_q4_total_points": 34.1,
+      "pbp_coverage_pct": 38.87,
+      "graph_coverage_pct": 38.87
+    },
+    {
+      "league": "NCAA Men's Division I, Regular season",
+      "clean_name": "NCAA Men's Division I",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 1,
+      "is_playoffs": 0,
+      "tier_level": "college",
+      "quarter_duration_minutes": 10,
+      "match_count": 1324,
+      "avg_total_points": 148.4,
+      "home_win_pct": 60.8,
+      "ot_rate": 6.19,
+      "avg_q4_total_points": 0.0,
+      "pbp_coverage_pct": 65.79,
+      "graph_coverage_pct": 65.56
+    },
+    {
+      "league": "NBA",
+      "clean_name": "NBA",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "top_pro",
+      "quarter_duration_minutes": 12,
+      "match_count": 1222,
+      "avg_total_points": 231.21,
+      "home_win_pct": 55.48,
+      "ot_rate": 4.42,
+      "avg_q4_total_points": 55.31,
+      "pbp_coverage_pct": 100.0,
+      "graph_coverage_pct": 99.84
+    },
+    {
+      "league": "Poland 2nd Basketball League, Runda Zasadnicza",
+      "clean_name": "Poland 2nd Basketball League",
+      "stage": "Runda Zasadnicza",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "second_pro",
+      "quarter_duration_minutes": 10,
+      "match_count": 852,
+      "avg_total_points": 163.31,
+      "home_win_pct": 59.39,
+      "ot_rate": 0.0,
+      "avg_q4_total_points": 40.02,
+      "pbp_coverage_pct": 100.0,
+      "graph_coverage_pct": 100.0
+    },
+    {
+      "league": "B League Premier",
+      "clean_name": "B League Premier",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "second_pro",
+      "quarter_duration_minutes": 10,
+      "match_count": 575,
+      "avg_total_points": 162.59,
+      "home_win_pct": 52.17,
+      "ot_rate": 3.3,
+      "avg_q4_total_points": 39.46,
+      "pbp_coverage_pct": 100.0,
+      "graph_coverage_pct": 100.0
+    },
+    {
+      "league": "NCAA Men's Division II, Regular season",
+      "clean_name": "NCAA Men's Division II",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 1,
+      "is_playoffs": 0,
+      "tier_level": "college",
+      "quarter_duration_minutes": 10,
+      "match_count": 557,
+      "avg_total_points": 150.87,
+      "home_win_pct": 59.78,
+      "ot_rate": 5.03,
+      "avg_q4_total_points": 0.0,
+      "pbp_coverage_pct": 0.0,
+      "graph_coverage_pct": 0.0
+    },
+    {
+      "league": "Liga Argentina, Group Stage",
+      "clean_name": "Liga Argentina",
+      "stage": "Group Stage",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "standard_pro",
+      "quarter_duration_minutes": 10,
+      "match_count": 518,
+      "avg_total_points": 158.97,
+      "home_win_pct": 64.86,
+      "ot_rate": 5.6,
+      "avg_q4_total_points": 38.48,
+      "pbp_coverage_pct": 100.0,
+      "graph_coverage_pct": 100.0
+    },
+    {
+      "league": "NBA G League",
+      "clean_name": "NBA G League",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "top_pro",
+      "quarter_duration_minutes": 12,
+      "match_count": 516,
+      "avg_total_points": 233.43,
+      "home_win_pct": 55.23,
+      "ot_rate": 6.78,
+      "avg_q4_total_points": 57.73,
+      "pbp_coverage_pct": 99.81,
+      "graph_coverage_pct": 99.42
+    },
+    {
+      "league": "NCAA",
+      "clean_name": "NCAA",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 1,
+      "is_playoffs": 0,
+      "tier_level": "college",
+      "quarter_duration_minutes": 10,
+      "match_count": 385,
+      "avg_total_points": 155.02,
+      "home_win_pct": 59.48,
+      "ot_rate": 5.19,
+      "avg_q4_total_points": 0.0,
+      "pbp_coverage_pct": 0.0,
+      "graph_coverage_pct": 0.0
+    },
+    {
+      "league": "China CBA",
+      "clean_name": "China CBA",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "top_pro",
+      "quarter_duration_minutes": 12,
+      "match_count": 372,
+      "avg_total_points": 178.41,
+      "home_win_pct": 62.37,
+      "ot_rate": 5.11,
+      "avg_q4_total_points": 41.73,
+      "pbp_coverage_pct": 100.0,
+      "graph_coverage_pct": 99.73
+    },
+    {
+      "league": "NBL",
+      "clean_name": "NBL",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "standard_pro",
+      "quarter_duration_minutes": 10,
+      "match_count": 367,
+      "avg_total_points": 178.94,
+      "home_win_pct": 58.08,
+      "ot_rate": 4.66,
+      "avg_q4_total_points": 43.4,
+      "pbp_coverage_pct": 85.56,
+      "graph_coverage_pct": 85.29
+    },
+    {
+      "league": "Brazil NBB",
+      "clean_name": "Brazil NBB",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "top_pro",
+      "quarter_duration_minutes": 10,
+      "match_count": 353,
+      "avg_total_points": 159.98,
+      "home_win_pct": 60.91,
+      "ot_rate": 4.53,
+      "avg_q4_total_points": 39.05,
+      "pbp_coverage_pct": 100.0,
+      "graph_coverage_pct": 100.0
+    },
+    {
+      "league": "Euroleague",
+      "clean_name": "Euroleague",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "top_pro",
+      "quarter_duration_minutes": 10,
+      "match_count": 352,
+      "avg_total_points": 172.32,
+      "home_win_pct": 64.2,
+      "ot_rate": 4.26,
+      "avg_q4_total_points": 42.9,
+      "pbp_coverage_pct": 100.0,
+      "graph_coverage_pct": 100.0
+    },
+    {
+      "league": "Serie A2",
+      "clean_name": "Serie A2",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "second_pro",
+      "quarter_duration_minutes": 10,
+      "match_count": 320,
+      "avg_total_points": 156.64,
+      "home_win_pct": 60.62,
+      "ot_rate": 3.12,
+      "avg_q4_total_points": 38.18,
+      "pbp_coverage_pct": 100.0,
+      "graph_coverage_pct": 99.69
+    },
+    {
+      "league": "B League One",
+      "clean_name": "B League One",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "second_pro",
+      "quarter_duration_minutes": 10,
+      "match_count": 318,
+      "avg_total_points": 160.31,
+      "home_win_pct": 53.77,
+      "ot_rate": 3.46,
+      "avg_q4_total_points": 39.13,
+      "pbp_coverage_pct": 100.0,
+      "graph_coverage_pct": 100.0
+    },
+    {
+      "league": "Élite 2",
+      "clean_name": "Élite 2",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "standard_pro",
+      "quarter_duration_minutes": 10,
+      "match_count": 314,
+      "avg_total_points": 166.22,
+      "home_win_pct": 58.28,
+      "ot_rate": 5.73,
+      "avg_q4_total_points": 41.57,
+      "pbp_coverage_pct": 100.0,
+      "graph_coverage_pct": 100.0
+    },
+    {
+      "league": "WNBA",
+      "clean_name": "WNBA",
+      "stage": "Regular season",
+      "gender": "women",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "top_pro",
+      "quarter_duration_minutes": 10,
+      "match_count": 304,
+      "avg_total_points": 174.57,
+      "home_win_pct": 55.15,
+      "ot_rate": 3.65,
+      "avg_q4_total_points": 43.49,
+      "pbp_coverage_pct": 100.0,
+      "graph_coverage_pct": 100.0
+    },
+    {
+      "league": "Super League",
+      "clean_name": "Super League",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "second_pro",
+      "quarter_duration_minutes": 10,
+      "match_count": 302,
+      "avg_total_points": 164.19,
+      "home_win_pct": 62.25,
+      "ot_rate": 5.96,
+      "avg_q4_total_points": 41.23,
+      "pbp_coverage_pct": 91.72,
+      "graph_coverage_pct": 91.72
+    },
+    {
+      "league": "NCAA Men's Division III, Regular season",
+      "clean_name": "NCAA Men's Division III",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 1,
+      "is_playoffs": 0,
+      "tier_level": "college",
+      "quarter_duration_minutes": 10,
+      "match_count": 300,
+      "avg_total_points": 152.43,
+      "home_win_pct": 56.33,
+      "ot_rate": 4.0,
+      "avg_q4_total_points": null,
+      "pbp_coverage_pct": 0.0,
+      "graph_coverage_pct": 0.0
+    },
+    {
+      "league": "Argentina Liga Nacional",
+      "clean_name": "Argentina Liga Nacional",
+      "stage": "Regular season",
+      "gender": "men",
+      "is_youth": 0,
+      "is_college": 0,
+      "is_playoffs": 0,
+      "tier_level": "top_pro",
+      "quarter_duration_minutes": 10,
+      "match_count": 298,
+      "avg_total_points": 161.06,
+      "home_win_pct": 58.39,
+      "ot_rate": 5.03,
+      "avg_q4_total_points": 39.34,
+      "pbp_coverage_pct": 100.0,
+      "graph_coverage_pct": 100.0
+    }
+  ]
+}

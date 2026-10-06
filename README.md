@@ -32,9 +32,10 @@ Toda la documentación técnica, científica y operativa del proyecto ha sido co
 | [`docs/V6_3_REPORT.md`](file:///C:/Users/App/Desktop/pulpa/docs/V6_3_REPORT.md) | `match/training/.../V6_3_REPORT.md` | Reporte técnico del modelo de doble ventana dinámica `v6_3`. |
 | [`docs/RESUMEN_RENDIMIENTO_MODELOS_2026-04-18.md`](file:///C:/Users/App/Desktop/pulpa/docs/RESUMEN_RENDIMIENTO_MODELOS_2026-04-18.md) | `api_cache/...` | Snapshot histórico y balance económico de modelos evaluados en abril 2026. |
 
-### 🏀 Clasificación Reglamentaria de Ligas
+### 🏀 Clasificación Reglamentaria y Taxonomía de Ligas
 | Archivo en `docs/` | Ubicación Original | Contenido Principal |
 |---|---|---|
+| [`docs/CLASIFICACION_LIGAS.md`](file:///C:/Users/App/Desktop/pulpa/docs/CLASIFICACION_LIGAS.md) | `docs/CLASIFICACION_LIGAS.md` | Catálogo taxonómico integral y guía de la tabla `leagues_classification` (1,958 ligas catalogadas por género, formativas, college, playoffs, duraciones y priors de ML). |
 | [`docs/ligas_10min.md`](file:///C:/Users/App/Desktop/pulpa/docs/ligas_10min.md) | `findings/ligas_10min.md` | Listado oficial de **1,185 ligas** con cuartos reglamentarios de 10 minutos (FIBA / Europa / Latinoamérica). |
 | [`docs/ligas_12min.md`](file:///C:/Users/App/Desktop/pulpa/docs/ligas_12min.md) | `findings/ligas_12min.md` | Listado de **16 ligas** con cuartos de 12 minutos (NBA, CBA, PBA, etc.). |
 
