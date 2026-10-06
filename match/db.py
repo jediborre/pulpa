@@ -265,6 +265,18 @@ def init_db(conn: sqlite3.Connection) -> None:
             ON team_strength (team_id);
         CREATE INDEX IF NOT EXISTS idx_team_strength_match
             ON team_strength (match_id);
+        CREATE INDEX IF NOT EXISTS idx_match_events_match
+            ON match_events (match_id);
+        CREATE INDEX IF NOT EXISTS idx_match_h2h_match
+            ON match_h2h (match_id);
+        CREATE INDEX IF NOT EXISTS idx_player_stats_match
+            ON player_stats (match_id);
+        CREATE INDEX IF NOT EXISTS idx_lineups_match
+            ON lineups (match_id);
+        CREATE INDEX IF NOT EXISTS idx_team_statistics_match
+            ON team_statistics (match_id);
+        CREATE INDEX IF NOT EXISTS idx_match_odds_match
+            ON match_odds (match_id);
     """)
     _ensure_match_columns(conn)
     _ensure_h2h_columns(conn)
@@ -314,6 +326,7 @@ def _ensure_match_columns(conn: sqlite3.Connection) -> None:
         "away_team_id",
         "home_rating",
         "away_rating",
+        "details_checked_at",
     ):
         if col_name in existing:
             continue
