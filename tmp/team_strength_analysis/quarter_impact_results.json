@@ -1,0 +1,63 @@
+{
+  "sample_size": 9326,
+  "correlations": {
+    "Diferencial Titulares (Rating)": {
+      "Cuarto 1 (Q1)": 0.5452,
+      "Cuarto 2 (Q2)": 0.4327,
+      "Cuarto 3 (Q3)": 0.4586,
+      "Cuarto 4 (Q4)": 0.4008,
+      "Partido Final (FT)": 0.7989
+    },
+    "Diferencial Banquillo (Rating)": {
+      "Cuarto 1 (Q1)": 0.2321,
+      "Cuarto 2 (Q2)": 0.3794,
+      "Cuarto 3 (Q3)": 0.295,
+      "Cuarto 4 (Q4)": 0.3482,
+      "Partido Final (FT)": 0.5471
+    },
+    "Ventaja Profundidad Banquillo": {
+      "Cuarto 1 (Q1)": -0.2928,
+      "Cuarto 2 (Q2)": -0.0998,
+      "Cuarto 3 (Q3)": -0.1787,
+      "Cuarto 4 (Q4)": -0.093,
+      "Partido Final (FT)": -0.2882
+    },
+    "Dependencia de 1 Estrella": {
+      "Cuarto 1 (Q1)": -0.2542,
+      "Cuarto 2 (Q2)": -0.2544,
+      "Cuarto 3 (Q3)": -0.232,
+      "Cuarto 4 (Q4)": -0.2136,
+      "Partido Final (FT)": -0.3663
+    },
+    "Diferencial % Victorias Previas": {
+      "Cuarto 1 (Q1)": 0.3785,
+      "Cuarto 2 (Q2)": 0.3242,
+      "Cuarto 3 (Q3)": 0.2731,
+      "Cuarto 4 (Q4)": 0.2962,
+      "Partido Final (FT)": 0.5699
+    }
+  },
+  "directional_accuracy": {
+    "Diferencial Titulares": {
+      "Q1": 66.32,
+      "Q2": 62.41,
+      "Q3": 62.18,
+      "Q4": 61.41,
+      "FT": 83.94
+    },
+    "Diferencial Banquillo": {
+      "Q1": 54.96,
+      "Q2": 61.43,
+      "Q3": 57.25,
+      "Q4": 59.17,
+      "FT": 70.02
+    },
+    "Victorias Previas": {
+      "Q1": 55.55,
+      "Q2": 54.27,
+      "Q3": 50.43,
+      "Q4": 53.91,
+      "FT": 65.93
+    }
+  }
+}

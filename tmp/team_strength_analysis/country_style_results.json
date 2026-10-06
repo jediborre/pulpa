@@ -1,0 +1,137 @@
+[
+  {
+    "country": "USA",
+    "matches": 6171,
+    "starter_rating": 7.15,
+    "bench_rating": 6.59,
+    "bench_pts_share": 69.9,
+    "three_point_rate": 37.7,
+    "ast_to_tov_ratio": 1.19
+  },
+  {
+    "country": "International",
+    "matches": 3441,
+    "starter_rating": 6.88,
+    "bench_rating": 6.5,
+    "bench_pts_share": 35.4,
+    "three_point_rate": 39.1,
+    "ast_to_tov_ratio": 1.15
+  },
+  {
+    "country": "Australia",
+    "matches": 2298,
+    "starter_rating": 6.9,
+    "bench_rating": 6.41,
+    "bench_pts_share": 26.3,
+    "three_point_rate": 45.1,
+    "ast_to_tov_ratio": 1.29
+  },
+  {
+    "country": "Italy",
+    "matches": 1753,
+    "starter_rating": 6.83,
+    "bench_rating": 6.38,
+    "bench_pts_share": 31.7,
+    "three_point_rate": 40.5,
+    "ast_to_tov_ratio": 1.41
+  },
+  {
+    "country": "Poland",
+    "matches": 1513,
+    "starter_rating": 6.89,
+    "bench_rating": 6.48,
+    "bench_pts_share": 35.2,
+    "three_point_rate": 39.3,
+    "ast_to_tov_ratio": 1.36
+  },
+  {
+    "country": "France",
+    "matches": 1508,
+    "starter_rating": 6.88,
+    "bench_rating": 6.4,
+    "bench_pts_share": 37.3,
+    "three_point_rate": 39.6,
+    "ast_to_tov_ratio": 1.21
+  },
+  {
+    "country": "Lithuania",
+    "matches": 1006,
+    "starter_rating": 6.91,
+    "bench_rating": 6.51,
+    "bench_pts_share": 34.9,
+    "three_point_rate": 39.8,
+    "ast_to_tov_ratio": 1.33
+  },
+  {
+    "country": "Japan",
+    "matches": 901,
+    "starter_rating": 6.97,
+    "bench_rating": 6.44,
+    "bench_pts_share": 34.0,
+    "three_point_rate": 42.3,
+    "ast_to_tov_ratio": 1.73
+  },
+  {
+    "country": "Argentina",
+    "matches": 901,
+    "starter_rating": 6.72,
+    "bench_rating": 6.72,
+    "bench_pts_share": 31.9,
+    "three_point_rate": 42.5,
+    "ast_to_tov_ratio": 1.27
+  },
+  {
+    "country": "Spain",
+    "matches": 870,
+    "starter_rating": 6.77,
+    "bench_rating": 6.57,
+    "bench_pts_share": 42.2,
+    "three_point_rate": 42.4,
+    "ast_to_tov_ratio": 1.27
+  },
+  {
+    "country": "Germany",
+    "matches": 554,
+    "starter_rating": 6.79,
+    "bench_rating": 6.5,
+    "bench_pts_share": 49.3,
+    "three_point_rate": 41.5,
+    "ast_to_tov_ratio": 1.19
+  },
+  {
+    "country": "Israel",
+    "matches": 514,
+    "starter_rating": 7.03,
+    "bench_rating": 6.44,
+    "bench_pts_share": 27.3,
+    "three_point_rate": 39.5,
+    "ast_to_tov_ratio": 1.46
+  },
+  {
+    "country": "Brazil",
+    "matches": 490,
+    "starter_rating": 6.9,
+    "bench_rating": 6.47,
+    "bench_pts_share": 31.3,
+    "three_point_rate": 42.2,
+    "ast_to_tov_ratio": 1.21
+  },
+  {
+    "country": "China",
+    "matches": 392,
+    "starter_rating": 0,
+    "bench_rating": 0,
+    "bench_pts_share": 35.0,
+    "three_point_rate": 39.1,
+    "ast_to_tov_ratio": 1.69
+  },
+  {
+    "country": "Greece",
+    "matches": 359,
+    "starter_rating": 6.57,
+    "bench_rating": 6.24,
+    "bench_pts_share": 34.5,
+    "three_point_rate": 34.9,
+    "ast_to_tov_ratio": 0.83
+  }
+]

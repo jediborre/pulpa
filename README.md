@@ -37,6 +37,7 @@ Toda la documentación técnica, científica y operativa del proyecto ha sido co
 |---|---|---|
 | [`docs/CLASIFICACION_LIGAS.md`](file:///C:/Users/App/Desktop/pulpa/docs/CLASIFICACION_LIGAS.md) | `docs/CLASIFICACION_LIGAS.md` | Catálogo taxonómico integral y guía de la tabla `leagues_classification` (1,958 ligas catalogadas por género, formativas, college, playoffs, duraciones y priors de ML). |
 | [`docs/COMPORTAMIENTO_LIGAS_Y_GUIA_ENTRENAMIENTO.md`](file:///C:/Users/App/Desktop/pulpa/docs/COMPORTAMIENTO_LIGAS_Y_GUIA_ENTRENAMIENTO.md) | `docs/COMPORTAMIENTO_LIGAS_Y_GUIA_ENTRENAMIENTO.md` | Análisis de comportamiento táctico y guía de decisión para ML (qué ligas entrenar, cuáles aislar en submodelos y cuáles mandar a blacklist). |
+| [`docs/MATRIZ_FORTALEZA_Y_CUARTOS.md`](file:///C:/Users/App/Desktop/pulpa/docs/MATRIZ_FORTALEZA_Y_CUARTOS.md) | `docs/MATRIZ_FORTALEZA_Y_CUARTOS.md` | Estudio empírico sobre 9,326 partidos del impacto dinámico de titulares, banquillo y estilos nacionales en el desenlace de Q1, Q2, Q3 y Q4. |
 | [`docs/ligas_10min.md`](file:///C:/Users/App/Desktop/pulpa/docs/ligas_10min.md) | `findings/ligas_10min.md` | Listado oficial de **1,185 ligas** con cuartos reglamentarios de 10 minutos (FIBA / Europa / Latinoamérica). |
 | [`docs/ligas_12min.md`](file:///C:/Users/App/Desktop/pulpa/docs/ligas_12min.md) | `findings/ligas_12min.md` | Listado de **16 ligas** con cuartos de 12 minutos (NBA, CBA, PBA, etc.). |
 
