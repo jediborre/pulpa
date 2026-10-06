@@ -1,0 +1,166 @@
+[
+  {
+    "league": "LF Challenge, Regular Season",
+    "clean_name": "LF Challenge",
+    "match_count": 190,
+    "avg_total_points": 133.96,
+    "reason": "league_kw",
+    "total_teams": 18,
+    "women_teams_count": 0,
+    "detected_teams_sample": []
+  },
+  {
+    "league": "1st DBBL",
+    "clean_name": "1st DBBL",
+    "match_count": 93,
+    "avg_total_points": 138.6,
+    "reason": "league_kw",
+    "total_teams": 10,
+    "women_teams_count": 0,
+    "detected_teams_sample": []
+  },
+  {
+    "league": "Türkiye Kadınlar Basketbol Ligi",
+    "clean_name": "Türkiye Kadınlar Basketbol Ligi",
+    "match_count": 36,
+    "avg_total_points": 136.36,
+    "reason": "league_kw",
+    "total_teams": 13,
+    "women_teams_count": 0,
+    "detected_teams_sample": []
+  },
+  {
+    "league": "Kadınlar Bölgesel Basketbol Ligi, Playoff Maçları",
+    "clean_name": "Kadınlar Bölgesel Basketbol Ligi",
+    "match_count": 27,
+    "avg_total_points": 130.85,
+    "reason": "league_kw",
+    "total_teams": 16,
+    "women_teams_count": 0,
+    "detected_teams_sample": []
+  },
+  {
+    "league": "Női Amatőr NB 1 - Zöld csoport",
+    "clean_name": "Női Amatőr NB 1",
+    "match_count": 20,
+    "avg_total_points": 122.05,
+    "reason": "league_kw",
+    "total_teams": 10,
+    "women_teams_count": 0,
+    "detected_teams_sample": []
+  },
+  {
+    "league": "ZBL, Playoffs",
+    "clean_name": "ZBL",
+    "match_count": 20,
+    "avg_total_points": 150.1,
+    "reason": "league_kw",
+    "total_teams": 8,
+    "women_teams_count": 0,
+    "detected_teams_sample": []
+  },
+  {
+    "league": "Női Amatőr NB 1 - Fehér csoport",
+    "clean_name": "Női Amatőr NB 1",
+    "match_count": 18,
+    "avg_total_points": 135.82,
+    "reason": "league_kw",
+    "total_teams": 11,
+    "women_teams_count": 1,
+    "detected_teams_sample": [
+      "Bajai Női Kosárlabda Klub"
+    ]
+  },
+  {
+    "league": "1st DBBL, Playoffs",
+    "clean_name": "1st DBBL",
+    "match_count": 12,
+    "avg_total_points": 139.17,
+    "reason": "league_kw",
+    "total_teams": 8,
+    "women_teams_count": 0,
+    "detected_teams_sample": []
+  },
+  {
+    "league": "2. DBBL, South Group",
+    "clean_name": "2. DBBL",
+    "match_count": 11,
+    "avg_total_points": 129.64,
+    "reason": "league_kw",
+    "total_teams": 12,
+    "women_teams_count": 0,
+    "detected_teams_sample": []
+  },
+  {
+    "league": "Női Amatőr NB 1 - Rájátszás az 1-16",
+    "clean_name": "Női Amatőr NB 1",
+    "match_count": 11,
+    "avg_total_points": 132.5,
+    "reason": "league_kw",
+    "total_teams": 17,
+    "women_teams_count": 1,
+    "detected_teams_sample": [
+      "Bajai Női Kosárlabda Klub"
+    ]
+  },
+  {
+    "league": "ZBL, Championship Round",
+    "clean_name": "ZBL",
+    "match_count": 10,
+    "avg_total_points": 155.5,
+    "reason": "league_kw",
+    "total_teams": 5,
+    "women_teams_count": 0,
+    "detected_teams_sample": []
+  },
+  {
+    "league": "ZBL, Relegation Round",
+    "clean_name": "ZBL",
+    "match_count": 10,
+    "avg_total_points": 152.3,
+    "reason": "league_kw",
+    "total_teams": 5,
+    "women_teams_count": 0,
+    "detected_teams_sample": []
+  },
+  {
+    "league": "2. DBBL, North Group",
+    "clean_name": "2. DBBL",
+    "match_count": 8,
+    "avg_total_points": 140.75,
+    "reason": "league_kw",
+    "total_teams": 11,
+    "women_teams_count": 0,
+    "detected_teams_sample": []
+  },
+  {
+    "league": "Türkiye Kadınlar Basketbol Ligi, Playoff Maçları",
+    "clean_name": "Türkiye Kadınlar Basketbol Ligi",
+    "match_count": 4,
+    "avg_total_points": 147.25,
+    "reason": "league_kw",
+    "total_teams": 8,
+    "women_teams_count": 0,
+    "detected_teams_sample": []
+  },
+  {
+    "league": "ZBL, Playout",
+    "clean_name": "ZBL",
+    "match_count": 2,
+    "avg_total_points": 167.0,
+    "reason": "league_kw",
+    "total_teams": 2,
+    "women_teams_count": 0,
+    "detected_teams_sample": []
+  },
+  {
+    "league": "Női Amatőr NB 1 - Rájátszás a 23-26",
+    "clean_name": "Női Amatőr NB 1",
+    "match_count": 1,
+    "avg_total_points": 129.0,
+    "reason": "league_kw",
+    "total_teams": 2,
+    "women_teams_count": 0,
+    "detected_teams_sample": []
+  }
+]

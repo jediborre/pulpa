@@ -1,0 +1,315 @@
+{
+  "stage_dist": [
+    {
+      "stage_detail": "Regular Season",
+      "leagues": 898,
+      "matches": 37786
+    },
+    {
+      "stage_detail": "Group Stage",
+      "leagues": 456,
+      "matches": 6923
+    },
+    {
+      "stage_detail": "Cup Stage",
+      "leagues": 187,
+      "matches": 1435
+    },
+    {
+      "stage_detail": "Playoffs",
+      "leagues": 143,
+      "matches": 1267
+    },
+    {
+      "stage_detail": "Relegation / Playout",
+      "leagues": 50,
+      "matches": 546
+    },
+    {
+      "stage_detail": "Final / Championship",
+      "leagues": 84,
+      "matches": 366
+    },
+    {
+      "stage_detail": "Semifinal / Final Four",
+      "leagues": 64,
+      "matches": 112
+    },
+    {
+      "stage_detail": "Quarterfinal",
+      "leagues": 27,
+      "matches": 77
+    },
+    {
+      "stage_detail": "Play-in",
+      "leagues": 16,
+      "matches": 67
+    },
+    {
+      "stage_detail": "Bronze / 3rd Place",
+      "leagues": 33,
+      "matches": 44
+    }
+  ],
+  "gender_dist": [
+    {
+      "gender": "men",
+      "leagues": 1402,
+      "matches": 38086,
+      "avg_pts": 154.5454610436026,
+      "win_pct": 56.86563974267334,
+      "pace": 3.8485396711937097
+    },
+    {
+      "gender": "women",
+      "leagues": 556,
+      "matches": 10537,
+      "avg_pts": 134.4847027027027,
+      "win_pct": 55.48299099099099,
+      "pace": 3.3620954954954954
+    }
+  ],
+  "final_sample": [
+    {
+      "league": "CBI U17, Fase Final",
+      "clean_name": "CBI U17",
+      "stage_detail": "Final / Championship",
+      "match_count": 50,
+      "avg_total_points": 134.1,
+      "blowout_rate": 50.0,
+      "clutch_rate": 10.0
+    },
+    {
+      "league": "LDB, Fase Final",
+      "clean_name": "LDB",
+      "stage_detail": "Final / Championship",
+      "match_count": 40,
+      "avg_total_points": 148.75,
+      "blowout_rate": 22.5,
+      "clutch_rate": 25.0
+    },
+    {
+      "league": "CBI U19, Fase Final",
+      "clean_name": "CBI U19",
+      "stage_detail": "Final / Championship",
+      "match_count": 33,
+      "avg_total_points": 146.21,
+      "blowout_rate": 57.58,
+      "clutch_rate": 21.21
+    },
+    {
+      "league": "CBI U15 , Fase Final",
+      "clean_name": "CBI U15",
+      "stage_detail": "Final / Championship",
+      "match_count": 24,
+      "avg_total_points": 132.08,
+      "blowout_rate": 41.67,
+      "clutch_rate": 37.5
+    },
+    {
+      "league": "Iraqi Professional League, FINALS",
+      "clean_name": "Iraqi Professional League",
+      "stage_detail": "Final / Championship",
+      "match_count": 12,
+      "avg_total_points": 149.17,
+      "blowout_rate": 33.33,
+      "clutch_rate": 25.0
+    },
+    {
+      "league": "2nd Division, Finals 4",
+      "clean_name": "2nd Division",
+      "stage_detail": "Final / Championship",
+      "match_count": 9,
+      "avg_total_points": 151.56,
+      "blowout_rate": 0.0,
+      "clutch_rate": 33.33
+    },
+    {
+      "league": "LSB, Semi Final",
+      "clean_name": "LSB",
+      "stage_detail": "Final / Championship",
+      "match_count": 8,
+      "avg_total_points": 163.5,
+      "blowout_rate": 37.5,
+      "clutch_rate": 25.0
+    },
+    {
+      "league": "Coppa Italia A2 Women, Final Eight",
+      "clean_name": "Coppa Italia A2 Women",
+      "stage_detail": "Final / Championship",
+      "match_count": 7,
+      "avg_total_points": 135.29,
+      "blowout_rate": 14.29,
+      "clutch_rate": 28.57
+    },
+    {
+      "league": "Final Eight",
+      "clean_name": "Final Eight",
+      "stage_detail": "Final / Championship",
+      "match_count": 7,
+      "avg_total_points": 170.29,
+      "blowout_rate": 0.0,
+      "clutch_rate": 14.29
+    },
+    {
+      "league": "Philippines MPBL, Division Finals",
+      "clean_name": "Philippines MPBL",
+      "stage_detail": "Final / Championship",
+      "match_count": 7,
+      "avg_total_points": 129.0,
+      "blowout_rate": 28.57,
+      "clutch_rate": 28.57
+    }
+  ],
+  "women_sample": [
+    {
+      "league": "WNBA",
+      "clean_name": "WNBA",
+      "match_count": 304,
+      "avg_total_points": 174.57,
+      "scoring_pace_per_minute": 4.364
+    },
+    {
+      "league": "1 Liga Kobiet, Runda Zasadnicza",
+      "clean_name": "1 Liga Kobiet",
+      "match_count": 270,
+      "avg_total_points": 138.02,
+      "scoring_pace_per_minute": 3.451
+    },
+    {
+      "league": "LF Challenge, Regular Season",
+      "clean_name": "LF Challenge",
+      "match_count": 190,
+      "avg_total_points": 133.96,
+      "scoring_pace_per_minute": 3.349
+    },
+    {
+      "league": "Premijer ženska liga",
+      "clean_name": "Premijer ženska liga",
+      "match_count": 100,
+      "avg_total_points": 145.45,
+      "scoring_pace_per_minute": 3.636
+    },
+    {
+      "league": "1st DBBL",
+      "clean_name": "1st DBBL",
+      "match_count": 93,
+      "avg_total_points": 138.6,
+      "scoring_pace_per_minute": 3.465
+    },
+    {
+      "league": "WNBL",
+      "clean_name": "WNBL",
+      "match_count": 87,
+      "avg_total_points": 156.11,
+      "scoring_pace_per_minute": 3.903
+    },
+    {
+      "league": "Campeonato Nacional da 1ª Divisao Feminina, 1ª Fase - Sul",
+      "clean_name": "Campeonato Nacional da 1ª Divisao Feminina",
+      "match_count": 72,
+      "avg_total_points": 131.83,
+      "scoring_pace_per_minute": 3.296
+    },
+    {
+      "league": "Campeonato Nacional da 1ª Divisao Feminina, 1ª Fase - Norte",
+      "clean_name": "Campeonato Nacional da 1ª Divisao Feminina",
+      "match_count": 51,
+      "avg_total_points": 128.65,
+      "scoring_pace_per_minute": 3.216
+    },
+    {
+      "league": "CBI U15 Fem, CBI U15 Fem",
+      "clean_name": "CBI U15 Fem",
+      "match_count": 37,
+      "avg_total_points": 92.92,
+      "scoring_pace_per_minute": 2.323
+    },
+    {
+      "league": "Türkiye Kadınlar Basketbol Ligi",
+      "clean_name": "Türkiye Kadınlar Basketbol Ligi",
+      "match_count": 36,
+      "avg_total_points": 136.36,
+      "scoring_pace_per_minute": 3.409
+    },
+    {
+      "league": "Campeonato Nacional da 1ª Divisao Feminina, 2ª Fase - Grupo Promoção",
+      "clean_name": "Campeonato Nacional da 1ª Divisao Feminina",
+      "match_count": 29,
+      "avg_total_points": 126.03,
+      "scoring_pace_per_minute": 3.151
+    },
+    {
+      "league": "WABA 2 League, Regular Season",
+      "clean_name": "WABA 2 League",
+      "match_count": 28,
+      "avg_total_points": 127.36,
+      "scoring_pace_per_minute": 3.184
+    },
+    {
+      "league": "CBI U17 Feminino, Playoff",
+      "clean_name": "CBI U17 Feminino",
+      "match_count": 27,
+      "avg_total_points": 103.63,
+      "scoring_pace_per_minute": 2.591
+    },
+    {
+      "league": "Kadınlar Bölgesel Basketbol Ligi, Playoff Maçları",
+      "clean_name": "Kadınlar Bölgesel Basketbol Ligi",
+      "match_count": 27,
+      "avg_total_points": 130.85,
+      "scoring_pace_per_minute": 3.271
+    },
+    {
+      "league": "Campeonato Nacional da 1ª Divisao Feminina, 2ª Fase - Grupo Manutenção Sul",
+      "clean_name": "Campeonato Nacional da 1ª Divisao Feminina",
+      "match_count": 21,
+      "avg_total_points": 136.67,
+      "scoring_pace_per_minute": 3.417
+    }
+  ],
+  "confed_dist": [
+    {
+      "confederation": "FIBA_EUROPE",
+      "leagues": 1281,
+      "matches": 31837,
+      "avg_pts": 149.71016431924883
+    },
+    {
+      "confederation": "NCAA",
+      "leagues": 50,
+      "matches": 5380,
+      "avg_pts": 124.6806
+    },
+    {
+      "confederation": "INTERNATIONAL",
+      "leagues": 531,
+      "matches": 3637,
+      "avg_pts": 145.18056603773584
+    },
+    {
+      "confederation": "FIBA_OCEANIA",
+      "leagues": 43,
+      "matches": 2372,
+      "avg_pts": 165.13023255813954
+    },
+    {
+      "confederation": "NBA",
+      "leagues": 16,
+      "matches": 2197,
+      "avg_pts": 192.528125
+    },
+    {
+      "confederation": "FIBA_ASIA",
+      "leagues": 23,
+      "matches": 1807,
+      "avg_pts": 178.2813043478261
+    },
+    {
+      "confederation": "FIBA_AMERICAS",
+      "leagues": 14,
+      "matches": 1393,
+      "avg_pts": 146.94785714285715
+    }
+  ]
+}
