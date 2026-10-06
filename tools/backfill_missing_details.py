@@ -147,16 +147,21 @@ async def _run(args) -> None:
         except Exception:
             pass
         done += 1
-        if done % 20 == 0 or done == total:
+        if done % 10 == 0 or done == total:
             el = time.perf_counter() - t0
             rate = done / el if el else 0
             eta = (total - done) / rate if rate else 0
+            width = 28
+            filled = int((done / total) * width) if total else 0
+            bar = "#" * filled + "-" * (width - filled)
             print(
-                f"\r[backfill] {done}/{total} ok={stats['ok']} fail={stats['fail']} "
-                f"({rate:.1f}/s eta {int(eta//60)}m{int(eta%60):02d}s)",
+                f"\r\x1b[2K[backfill] [{bar}] {done}/{total} "
+                f"ok={stats['ok']} fail={stats['fail']} {rate:.1f}/s "
+                f"tok=...{mc.token_pool.current_token_suffix()} "
+                f"eta {int(eta//60)}m{int(eta%60):02d}s",
                 end="", flush=True,
             )
-        mc.token_pool.notify_match_done()
+        mc.token_pool.notify_match_done(silent=True)
 
     await asyncio.gather(*[worker(m) for m in ids])
     print()

@@ -199,21 +199,30 @@ class TokenPool:
                 )
         return minted
 
-    def notify_match_done(self) -> None:
+    def notify_match_done(self, silent: bool = False) -> None:
         """
         Notifica que se completó la descarga de un partido.
         Cada 10 partidos consecutivos rota automáticamente al siguiente token
         del pool para alternar la sesión y distribuir la carga entre usuarios.
+        `silent=True` evita el log (útil cuando hay una barra de progreso en consola).
         """
         self._matches_on_current_token += 1
         if len(self.tokens) > 1 and self._matches_on_current_token >= 10:
             self._matches_on_current_token = 0
             self._current_index = (self._current_index + 1) % len(self.tokens)
-            curr = self.tokens[self._current_index]
-            log_info(
-                "TOKEN_POOL",
-                f"#{self._current_index + 1} de {len(self.tokens)} [...{curr.token[-12:]}]"
-            )
+            if not silent:
+                curr = self.tokens[self._current_index]
+                log_info(
+                    "TOKEN_POOL",
+                    f"#{self._current_index + 1} de {len(self.tokens)} [...{curr.token[-12:]}]"
+                )
+
+    def current_token_suffix(self) -> str:
+        """Retorna el sufijo del token activo (para mostrar en barras de progreso)."""
+        if not self.tokens:
+            return "?"
+        idx = self._current_index % len(self.tokens)
+        return self.tokens[idx].token[-12:]
 
     async def get_token(self) -> str:
         """Retorna el token actualmente activo en el pool."""
