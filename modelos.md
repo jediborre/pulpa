@@ -671,7 +671,8 @@ models/
 
 ## m27_v4 (Propuesta de Próxima Generación) — Dynamic Elo, Roster & League Priors
 
-> **Documento maestro de especificación:** [`docs/PROPUESTA_NUEVO_MODELO_M27_V4.md`](file:///C:/Users/App/Desktop/pulpa/docs/PROPUESTA_NUEVO_MODELO_M27_V4.md)
+> **Documento maestro de especificación:** [`docs/PROPUESTA_NUEVO_MODELO_M27_V4.md`](file:///C:/Users/App/Desktop/pulpa/docs/PROPUESTA_NUEVO_MODELO_M27_V4.md)  
+> **Arquitectura Multi-Modelo y Plan de Backfill:** [`docs/ARQUITECTURA_MULTI_MODELO_Y_BACKFILL.md`](file:///C:/Users/App/Desktop/pulpa/docs/ARQUITECTURA_MULTI_MODELO_Y_BACKFILL.md)
 
 | Campo | Valor |
 |-------|-------|
