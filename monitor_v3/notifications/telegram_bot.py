@@ -716,6 +716,78 @@ async def send_stats_message(active_models: list | None = None) -> dict:
     return dict(results[0]) if results else {"ok": False, "description": "Sin suscriptores"}
 
 
+def build_daily_summary_text() -> str:
+    """
+    Resumen del día desde las tablas _v3: apuestas ganadas/perdidas/push/pendientes,
+    no-bet y acierto, con desglose por modelo.
+    """
+    db_path = Path(get_real_db_path())
+    if not db_path.exists():
+        return ""
+    tz = timezone(timedelta(hours=UTC_OFFSET_HOURS))
+    today = datetime.now(tz).strftime("%Y-%m-%d")
+    try:
+        with sqlite3.connect(db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                "SELECT model_version, signal_type, result FROM bet_monitor_log_v3 "
+                "WHERE date(created_at) = ?",
+                (today,),
+            ).fetchall()
+    except Exception as e:
+        log_error("TELEGRAM", f"[DB] Error en resumen diario: {e}")
+        return ""
+
+    if not rows:
+        return ""
+
+    win = loss = push = pending = nobet = 0
+    per_model: dict[str, dict] = {}
+    for r in rows:
+        model = r["model_version"] or "?"
+        m = per_model.setdefault(model, {"bets": 0, "win": 0, "loss": 0, "pending": 0})
+        sig = r["signal_type"] or ""
+        if "NO_BET" in sig or "BET" not in sig:
+            nobet += 1
+            continue
+        m["bets"] += 1
+        res = (r["result"] or "").lower()
+        if res in ("win", "hit"):
+            win += 1
+            m["win"] += 1
+        elif res in ("loss", "miss"):
+            loss += 1
+            m["loss"] += 1
+        elif res == "push":
+            push += 1
+        else:
+            pending += 1
+            m["pending"] += 1
+
+    bets = win + loss + push + pending
+    resolved = win + loss
+    acc = f"{int(round(win * 100 / resolved))}%" if resolved else "—"
+
+    lines = [f"📊 <b>Resumen del día</b> ({today})", ""]
+    lines.append(f"Apuestas: <b>{bets}</b> | ✅ {win}  ❌ {loss}  ➖ {push}  ⏳ {pending}")
+    lines.append(f"No bet: <b>{nobet}</b> | Acierto (resueltas): <b>{acc}</b>")
+    lines.append("")
+    lines.append("<b>Por modelo</b>")
+    for model, s in per_model.items():
+        r = s["win"] + s["loss"]
+        a = f"{int(round(s['win'] * 100 / r))}%" if r else "—"
+        lines.append(f"  {model}: BET {s['bets']} | ✅ {s['win']}  ❌ {s['loss']}  ⏳ {s['pending']} | {a}")
+    return "\n".join(lines)
+
+
+async def send_daily_summary() -> dict:
+    """Construye y transmite el resumen del día a los suscriptores."""
+    text = await asyncio.to_thread(build_daily_summary_text)
+    if not text:
+        return {"ok": False, "description": "Sin datos para hoy"}
+    return await broadcast_message(text, signal_type_filter="bet")
+
+
 def _normalize_sofascore_slug(value: str | None) -> str:
     """Normalize team/event names for SofaScore URL."""
     text = (value or "").strip().lower()

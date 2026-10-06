@@ -32,6 +32,8 @@ from monitor_v3.config.constants import (
     PENDING_RECHECK_SECS,
     SECS_PER_GAME_MIN,
     UTC_OFFSET_HOURS,
+    DAILY_SUMMARY_HOUR,
+    DAILY_SUMMARY_MINUTE,
 )
 from monitor_v3.core.token_manager import get_token_pool
 from monitor_v3.core.mobile_client import get_mobile_client
@@ -61,6 +63,7 @@ from monitor_v3.notifications.telegram_bot import (
     send_combined_final_confirmation,
     send_final_confirmation,
     send_stats_message,
+    send_daily_summary,
 )
 from monitor_v3.scrapers.schedule_scraper import fetch_schedule_matches_for_date
 from monitor_v3.scrapers.live_scraper import fetch_event_snapshot, fetch_live_events
@@ -577,6 +580,29 @@ async def _reconcile_loop_task(stop_event: asyncio.Event) -> None:
                 break
             await asyncio.sleep(10)
 
+async def _daily_summary_task(stop_event: asyncio.Event) -> None:
+    """Envía el resumen del día una sola vez, al alcanzar la hora configurada (UTC-6)."""
+    tz = timezone(timedelta(hours=UTC_OFFSET_HOURS))
+    sent_for: str | None = None
+    while not stop_event.is_set():
+        try:
+            now_local = datetime.now(tz)
+            today = now_local.strftime("%Y-%m-%d")
+            if (
+                sent_for != today
+                and now_local.hour == DAILY_SUMMARY_HOUR
+                and now_local.minute >= DAILY_SUMMARY_MINUTE
+            ):
+                await send_daily_summary()
+                sent_for = today
+                log_info("TELEGRAM", f"[RESUMEN] Resumen diario enviado ({today})")
+        except Exception as e:
+            log_error("TELEGRAM", f"Error en resumen diario: {e}")
+        for _ in range(6):
+            if stop_event.is_set():
+                break
+            await asyncio.sleep(10)
+
 async def _live_discovery_task(stop_event: asyncio.Event) -> None:
     """
     Sondea continuamente partidos en vivo globalmente (/sport/basketball/events/live)
@@ -669,6 +695,7 @@ async def main_async() -> None:
         asyncio.create_task(_schedule_refresh_task(stop_event)),
         asyncio.create_task(_reconcile_loop_task(stop_event)),
         asyncio.create_task(_live_discovery_task(stop_event)),
+        asyncio.create_task(_daily_summary_task(stop_event)),
     ]
 
     log_info("SYSTEM", "Daemon V3 inicializado y operando. Monitoreando partidos en tiempo real...")

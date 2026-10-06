@@ -13,10 +13,11 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from monitor_v3.notifications.bot_runner import build_status_text, build_signals_text, fetch_v3_stats
+from monitor_v3.notifications.telegram_bot import build_daily_summary_text
 
 print("=== /status ===")
 print(build_status_text())
-print("\n=== /signals (hoy) ===")
-print(build_signals_text())
+print("\n=== resumen diario (monitor) ===")
+print(build_daily_summary_text())
 print("\n=== stats raw ===")
 print(fetch_v3_stats())

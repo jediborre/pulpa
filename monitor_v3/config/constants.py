@@ -112,3 +112,7 @@ FT_SCRAPE_SLOT_SPACING_BASE = 1.0   # Segundos base entre descargas FT
 SCHEDULE_REFRESH_HOURS = 4          # Frecuencia de actualización del itinerario
 PENDING_RECHECK_SECS = 1800         # Recheck de resultados cada 30 minutos
 UTC_OFFSET_HOURS = -6               # Horario local Ciudad de México / CST
+
+# --- Resumen diario de Telegram ---
+DAILY_SUMMARY_HOUR = 23             # Hora local (UTC-6) para enviar el resumen del día
+DAILY_SUMMARY_MINUTE = 55
