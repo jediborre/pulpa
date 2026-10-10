@@ -76,6 +76,42 @@ def cmd_audit(_args) -> None:
     conn.close()
 
 
+def cmd_complete(_args) -> None:
+    """Auditoría de COMPLETITUD: partidos con datos parciales (no solo ausentes)."""
+    conn = _open_db()
+    total = conn.execute("SELECT COUNT(*) FROM matches").fetchone()[0]
+    print(f"matches totales: {total}\n")
+    print("=== Datos PARCIALES (existen pero incompletos) ===")
+
+    gp_partial = conn.execute(
+        "SELECT COUNT(*) FROM (SELECT match_id FROM graph_points GROUP BY match_id HAVING COUNT(*) < 30)"
+    ).fetchone()[0]
+    pbp_no_q12 = conn.execute(
+        "SELECT COUNT(*) FROM matches m WHERE NOT EXISTS ("
+        "SELECT 1 FROM play_by_play p WHERE p.match_id=m.match_id AND p.quarter IN ('Q1','Q2'))"
+    ).fetchone()[0]
+    lu_partial = conn.execute(
+        "SELECT COUNT(*) FROM (SELECT match_id FROM lineups GROUP BY match_id HAVING COUNT(*) < 10)"
+    ).fetchone()[0]
+    ps_partial = conn.execute(
+        "SELECT COUNT(*) FROM (SELECT match_id FROM player_stats GROUP BY match_id HAVING COUNT(*) < 10)"
+    ).fetchone()[0]
+
+    print(f"  graph_points < 30 puntos : {gp_partial}")
+    print(f"  play_by_play sin Q1/Q2   : {pbp_no_q12}")
+    print(f"  lineups < 10 jugadores   : {lu_partial}")
+    print(f"  player_stats < 10 filas  : {ps_partial}")
+    print("\n=== Datos AUSENTES ===")
+    for t in ("lineups", "player_stats", "team_statistics", "match_odds",
+              "play_by_play", "graph_points", "team_strength"):
+        missing = conn.execute(
+            f"SELECT COUNT(*) FROM matches m WHERE NOT EXISTS "
+            f"(SELECT 1 FROM {t} x WHERE x.match_id=m.match_id)"
+        ).fetchone()[0]
+        print(f"  sin {t:<16}: {missing}")
+    conn.close()
+
+
 def _select_missing(conn, tables: list[str], since: str | None, until: str | None,
                     limit: int | None, force: bool = False) -> list[str]:
     conds = " OR ".join(
@@ -174,12 +210,104 @@ async def _run(args) -> None:
     print(f"[backfill] listo: ok={stats['ok']} fail={stats['fail']} de {total}")
 
 
+async def _run_team_strength(args) -> None:
+    """
+    Backfill de team_strength OPTIMIZADO por equipo único.
+    Descarga /team/{id} y /team/{id}/performance UNA sola vez por equipo y aplica el
+    snapshot a todos sus partidos. (La forma del equipo es 'actual' en el API, así que
+    cachear por equipo da el mismo resultado que pedirlo por partido, pero ~20-40x más rápido.)
+    """
+    from collections import defaultdict
+
+    conn = _open_db()
+    team_matches: dict[int, list[str]] = defaultdict(list)
+    team_names: dict[int, str] = {}
+    for r in conn.execute(
+        "SELECT match_id, home_team_id, away_team_id, home_team, away_team FROM matches"
+    ):
+        if r["home_team_id"]:
+            team_matches[r["home_team_id"]].append(r["match_id"])
+            team_names[r["home_team_id"]] = r["home_team"]
+        if r["away_team_id"]:
+            team_matches[r["away_team_id"]].append(r["match_id"])
+            team_names[r["away_team_id"]] = r["away_team"]
+
+    covered = {r[0] for r in conn.execute("SELECT DISTINCT match_id FROM team_strength")}
+    teams = [tid for tid, mids in team_matches.items() if any(m not in covered for m in mids)]
+    if args.limit:
+        teams = teams[: args.limit]
+    print(f"[team_strength] equipos únicos: {len(team_matches)} | a descargar: {len(teams)}")
+    if not teams:
+        conn.close()
+        return
+    if args.dry_run:
+        for tid in teams[:20]:
+            print(f"   {tid} ({team_names.get(tid, '?')}) -> {len(team_matches[tid])} partidos")
+        if len(teams) > 20:
+            print(f"   ... y {len(teams) - 20} mas")
+        conn.close()
+        return
+
+    mc = get_mobile_client()
+    sem = asyncio.Semaphore(max(1, args.concurrency))
+    stats = {"ok": 0, "fail": 0}
+    done = 0
+    t0 = time.perf_counter()
+
+    async def worker(tid: int) -> None:
+        nonlocal done
+        async with sem:
+            try:
+                rows = await mc.fetch_team_strength(tid, None, team_names.get(tid, ""), "")
+            except Exception:
+                stats["fail"] += 1
+                done += 1
+                return
+        data = rows[0] if rows else {}
+        for mid in team_matches[tid]:
+            try:
+                conn.execute("DELETE FROM team_strength WHERE match_id=? AND team_id=?", (mid, tid))
+                conn.execute(
+                    "INSERT INTO team_strength (team_id, team_name, match_id, position, wins, losses, form, perf_points) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    (int(tid), team_names.get(tid, ""), mid, data.get("position"),
+                     data.get("wins"), data.get("losses"), data.get("form"), data.get("perf_points")),
+                )
+            except Exception:
+                pass
+        conn.commit()
+        stats["ok"] += 1
+        done += 1
+        if done % 10 == 0 or done == len(teams):
+            el = time.perf_counter() - t0
+            rate = done / el if el else 0
+            eta = (len(teams) - done) / rate if rate else 0
+            width = 28
+            filled = int((done / len(teams)) * width) if teams else 0
+            bar = "#" * filled + "-" * (width - filled)
+            print(
+                f"\r\x1b[2K[team_strength] [{bar}] {done}/{len(teams)} "
+                f"ok={stats['ok']} fail={stats['fail']} {rate:.1f}/s "
+                f"tok=...{mc.token_pool.current_token_suffix()} eta {int(eta//60)}m{int(eta%60):02d}s",
+                end="", flush=True,
+            )
+        mc.token_pool.notify_match_done(silent=True)
+
+    await asyncio.gather(*[worker(t) for t in teams])
+    print()
+    conn.close()
+    print(f"[team_strength] listo: equipos ok={stats['ok']} fail={stats['fail']} de {len(teams)}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Backfill de datos de detalle faltantes")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_audit = sub.add_parser("audit", help="Contar partidos sin datos por tabla")
     p_audit.set_defaults(func=cmd_audit)
+
+    p_complete = sub.add_parser("complete", help="Auditoria de completitud (datos parciales)")
+    p_complete.set_defaults(func=cmd_complete)
 
     p_run = sub.add_parser("run", help="Re-descargar partidos con datos faltantes")
     p_run.add_argument("--tables", default=",".join(DEFAULT_REQUIRED),
@@ -191,6 +319,12 @@ def main() -> None:
     p_run.add_argument("--force", action="store_true", help="Re-procesar partidos ya marcados como revisados")
     p_run.add_argument("--dry-run", action="store_true", help="Solo listar, no descargar")
     p_run.set_defaults(func=lambda a: asyncio.run(_run(a)))
+
+    p_ts = sub.add_parser("team-strength", help="Backfill de team_strength por equipo único (optimizado)")
+    p_ts.add_argument("--limit", type=int, default=None, help="Maximo de equipos")
+    p_ts.add_argument("--concurrency", type=int, default=4, help="Equipos en paralelo (default 4)")
+    p_ts.add_argument("--dry-run", action="store_true", help="Solo listar, no descargar")
+    p_ts.set_defaults(func=lambda a: asyncio.run(_run_team_strength(a)))
 
     args = parser.parse_args()
     args.func(args)
