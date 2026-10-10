@@ -468,17 +468,17 @@ echo ========================================================
 echo  Backfill de team_strength (fortaleza de equipos)
 echo ========================================================
 echo.
-echo  Re-descarga pregameForm y performance points de los
-echo  equipos (2 endpoints por equipo) via API movil.
+echo  Descarga /team/{id} y /team/{id}/performance UNA vez por
+echo  equipo unico y lo aplica a todos sus partidos (optimizado).
 echo.
 call .venv\Scripts\activate
-set /p BFDLIM="  Limite de partidos (Enter = todos): "
-set /p BFDCC="  Concurrencia [Enter=3]: "
-if "%BFDCC%"=="" set BFDCC=3
+set /p BFDLIM="  Limite de equipos (Enter = todos): "
+set /p BFDCC="  Concurrencia [Enter=4]: "
+if "%BFDCC%"=="" set BFDCC=4
 if "%BFDLIM%"=="" (
-    start "Pulpa - Backfill team_strength" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python tools\backfill_missing_details.py run --tables team_strength --concurrency %BFDCC%"
+    start "Pulpa - Backfill team_strength" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python tools\backfill_missing_details.py team-strength --concurrency %BFDCC%"
 ) else (
-    start "Pulpa - Backfill team_strength" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python tools\backfill_missing_details.py run --tables team_strength --limit %BFDLIM% --concurrency %BFDCC%"
+    start "Pulpa - Backfill team_strength" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python tools\backfill_missing_details.py team-strength --limit %BFDLIM% --concurrency %BFDCC%"
 )
 goto MENU
 
