@@ -85,7 +85,8 @@ echo   12) Traer fecha nueva / descargar dias faltantes
 echo   13) Backfill historico general (matches.db)
 echo   14) Backfill masivo H2H (SofaScore - priorizado por ligas)
 echo   15) Comparar scraper tradicional vs obscura
-echo   34) Rellenar datos de detalle faltantes (lineups, stats, odds)
+echo   34) Rellenar datos de detalle faltantes (lineups, stats, odds, pbp, team_strength)
+echo   35) Backfill solo team_strength (fortaleza de equipos)
 echo.
 echo  [4] MODELOS MACHINE LEARNING (ENTRENAMIENTO Y REPORTES)
 echo   16) M27_V1: Entrenar modelo
@@ -149,6 +150,8 @@ if "%OPT%"=="33" goto BACKFILL_H2H_MASIVO
 if "%OPT%"=="15" goto COMPARE_SCRAPER
 if "%OPT%"=="34" goto BACKFILL_DETAILS
 if /i "%OPT%"=="backfill_details" goto BACKFILL_DETAILS
+if "%OPT%"=="35" goto BACKFILL_TEAM_STRENGTH
+if /i "%OPT%"=="backfill_team_strength" goto BACKFILL_TEAM_STRENGTH
 
 :: [4] Machine Learning
 if "%OPT%"=="16" goto TRAIN_M27_V1
@@ -439,8 +442,9 @@ echo ========================================================
 echo  Backfill de datos de detalle faltantes
 echo ========================================================
 echo.
-echo  Re-descarga lineups, player_stats, team_statistics y odds
-echo  de los partidos a los que les faltan (via API movil).
+echo  Re-descarga lineups, player_stats, team_statistics, odds,
+echo  pbp, graph, events, h2h y team_strength de los partidos
+echo  a los que les faltan (via API movil).
 echo.
 call .venv\Scripts\activate
 python tools\backfill_missing_details.py audit
@@ -454,6 +458,27 @@ if "%BFDLIM%"=="" (
     start "Pulpa - Backfill detalle" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python tools\backfill_missing_details.py run --concurrency %BFDCC%"
 ) else (
     start "Pulpa - Backfill detalle" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python tools\backfill_missing_details.py run --limit %BFDLIM% --concurrency %BFDCC%"
+)
+goto MENU
+
+:BACKFILL_TEAM_STRENGTH
+cls
+echo.
+echo ========================================================
+echo  Backfill de team_strength (fortaleza de equipos)
+echo ========================================================
+echo.
+echo  Re-descarga pregameForm y performance points de los
+echo  equipos (2 endpoints por equipo) via API movil.
+echo.
+call .venv\Scripts\activate
+set /p BFDLIM="  Limite de partidos (Enter = todos): "
+set /p BFDCC="  Concurrencia [Enter=3]: "
+if "%BFDCC%"=="" set BFDCC=3
+if "%BFDLIM%"=="" (
+    start "Pulpa - Backfill team_strength" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python tools\backfill_missing_details.py run --tables team_strength --concurrency %BFDCC%"
+) else (
+    start "Pulpa - Backfill team_strength" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python tools\backfill_missing_details.py run --tables team_strength --limit %BFDLIM% --concurrency %BFDCC%"
 )
 goto MENU
 

@@ -44,10 +44,10 @@ DETAIL_TABLES = [
     "match_odds", "team_strength",
 ]
 # Tablas que la API móvil SÍ puede traer (se rellenan con este backfill).
-# OJO: 'team_strength' NO la trae la API móvil (requiere el scraper web).
+# team_strength se obtiene con /team/{id} y /team/{id}/performance (2 por equipo).
 DEFAULT_REQUIRED = [
     "play_by_play", "graph_points", "match_events", "match_h2h",
-    "team_statistics", "lineups", "player_stats", "match_odds",
+    "team_statistics", "lineups", "player_stats", "match_odds", "team_strength",
 ]
 
 
@@ -131,7 +131,7 @@ async def _run(args) -> None:
         nonlocal done
         async with sem:
             try:
-                data = await mc.fetch_full_match(mid)
+                data = await mc.fetch_full_match(mid, fetch_team_strength=("team_strength" in tables))
             except Exception:
                 stats["fail"] += 1
                 done += 1

@@ -267,7 +267,46 @@ class MobileClient:
             "raw_event": ev,
         }
 
-    async def fetch_full_match(self, match_id: str) -> dict:
+    async def fetch_team_strength(
+        self,
+        home_team_id,
+        away_team_id,
+        home_team_name: str = "",
+        away_team_name: str = "",
+    ) -> list[dict]:
+        """
+        Fetches pregameForm (/team/{id}) and performance points (/team/{id}/performance)
+        para ambos equipos vía API móvil (sin navegador).
+        """
+        import json as _json
+
+        rows: list[dict] = []
+        for team_id, team_name in ((home_team_id, home_team_name), (away_team_id, away_team_name)):
+            if not team_id:
+                continue
+            row: dict = {"team_id": int(team_id), "team_name": team_name}
+            try:
+                r = await self.request("GET", f"team/{team_id}")
+                if r.status_code == 200:
+                    pf = (r.json() or {}).get("pregameForm") or {}
+                    row["position"] = pf.get("position")
+                    val = pf.get("value", "") or ""
+                    if "-" in val:
+                        parts = val.split("-")
+                        row["wins"] = int(parts[0]) if parts[0].isdigit() else None
+                        row["losses"] = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
+                    else:
+                        row["wins"] = row["losses"] = None
+                    row["form"] = _json.dumps(pf.get("form", []))
+                r2 = await self.request("GET", f"team/{team_id}/performance")
+                if r2.status_code == 200:
+                    row["perf_points"] = _json.dumps((r2.json() or {}).get("points") or {})
+            except Exception:
+                pass
+            rows.append(row)
+        return rows
+
+    async def fetch_full_match(self, match_id: str, fetch_team_strength: bool = False) -> dict:
         """
         Realiza una ráfaga paralela y atómica de todos los endpoints analíticos del partido
         y genera la estructura canónica lista para inferencia de modelos e inserción en matches.db.
@@ -346,6 +385,22 @@ class MobileClient:
             parsed["odds"] = _parse_odds(match_id, odds_json)
         else:
             parsed["odds"] = []
+
+        # Team strength (opcional; 2 endpoints por equipo: /team/{id} y /performance)
+        parsed["team_strength"] = []
+        if fetch_team_strength:
+            ev = event_json.get("event", {})
+            home_tid = (ev.get("homeTeam") or {}).get("id")
+            away_tid = (ev.get("awayTeam") or {}).get("id")
+            home_name = (ev.get("homeTeam") or {}).get("name", "")
+            away_name = (ev.get("awayTeam") or {}).get("name", "")
+            if home_tid and away_tid:
+                try:
+                    parsed["team_strength"] = await self.fetch_team_strength(
+                        home_tid, away_tid, home_name, away_name
+                    )
+                except Exception:
+                    parsed["team_strength"] = []
 
         return parsed
 
