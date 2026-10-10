@@ -43,7 +43,12 @@ DETAIL_TABLES = [
     "match_h2h", "player_stats", "lineups", "team_statistics",
     "match_odds", "team_strength",
 ]
-DEFAULT_REQUIRED = ["lineups", "player_stats", "team_statistics", "match_odds"]
+# Tablas que la API móvil SÍ puede traer (se rellenan con este backfill).
+# OJO: 'team_strength' NO la trae la API móvil (requiere el scraper web).
+DEFAULT_REQUIRED = [
+    "play_by_play", "graph_points", "match_events", "match_h2h",
+    "team_statistics", "lineups", "player_stats", "match_odds",
+]
 
 
 def _open_db():
