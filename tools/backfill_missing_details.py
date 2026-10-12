@@ -51,9 +51,29 @@ DEFAULT_REQUIRED = [
 ]
 
 
+# Mapeo tabla -> endpoint cuyo 404 significa "dato inexistente" (para no reintentar).
+TABLE_ENDPOINT = {
+    "lineups": "lineups",
+    "player_stats": "lineups",
+    "team_statistics": "statistics",
+    "match_odds": "odds",
+    "match_h2h": "h2h",
+    "graph_points": "graph",
+    "play_by_play": "incidents",
+    "match_events": "incidents",
+    "team_strength": "team",  # endpoints /team/{id} y /team/{id}/performance
+}
+
+
 def _open_db():
     conn = db_mod.get_conn(DB_PATH)
     db_mod.init_db(conn)
+    # Registro de (match, tabla) confirmados como inexistentes por 404 del API.
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS detail_404 ("
+        "match_id TEXT, table_name TEXT, PRIMARY KEY (match_id, table_name))"
+    )
+    conn.commit()
     return conn
 
 
@@ -114,15 +134,22 @@ def cmd_complete(_args) -> None:
 
 def _select_missing(conn, tables: list[str], since: str | None, until: str | None,
                     limit: int | None, force: bool = False) -> list[str]:
-    conds = " OR ".join(
-        f"NOT EXISTS (SELECT 1 FROM {t} x WHERE x.match_id = m.match_id)" for t in tables
-    )
+    # Selecciona partidos a los que les falta alguna tabla y NO esta registrada como
+    # inexistente (404) en detail_404. Los fallos transitorios NO se registran, por lo
+    # que se reintentan en la siguiente corrida.
+    if force:
+        conds = " OR ".join(
+            f"NOT EXISTS (SELECT 1 FROM {t} x WHERE x.match_id = m.match_id)" for t in tables
+        )
+    else:
+        conds = " OR ".join(
+            f"(NOT EXISTS (SELECT 1 FROM {t} x WHERE x.match_id = m.match_id) "
+            f"AND NOT EXISTS (SELECT 1 FROM detail_404 d WHERE d.match_id = m.match_id "
+            f"AND d.table_name = '{t}'))"
+            for t in tables
+        )
     q = f"SELECT m.match_id FROM matches m WHERE ({conds})"
     params: list = []
-    if not force:
-        # Omitir partidos ya revisados por el backfill (p. ej. el API devolvio 404
-        # para lineups/statistics: esos datos no existen y no deben reintentarse).
-        q += " AND m.details_checked_at IS NULL"
     if since:
         q += " AND m.date >= ?"
         params.append(since)
@@ -177,13 +204,30 @@ async def _run(args) -> None:
             stats["ok"] += 1
         except Exception:
             stats["fail"] += 1
-        # Marcar como revisado: aunque falten datos que el API no tiene (404),
-        # no se debe reintentar en futuras corridas.
+        # Registrar como INEXISTENTE (404) solo las tablas cuyo endpoint dio 404 real.
+        # Los fallos transitorios (403/red) NO se registran -> se reintentan.
         try:
-            conn.execute(
-                "UPDATE matches SET details_checked_at = ? WHERE match_id = ?",
-                (datetime.now().isoformat(), mid),
-            )
+            status_map = data.get("_endpoint_status", {})
+            missing_after = {
+                "lineups": not data.get("lineups"),
+                "player_stats": not data.get("player_stats"),
+                "team_statistics": not data.get("team_statistics"),
+                "match_odds": not data.get("odds"),
+                "match_h2h": not data.get("h2h"),
+                "graph_points": not data.get("graph_points"),
+                "play_by_play": not any((data.get("play_by_play") or {}).values()),
+                "match_events": not any((data.get("events") or {}).values()),
+                "team_strength": not data.get("team_strength"),
+            }
+            for t in tables:
+                if not missing_after.get(t):
+                    continue
+                ep = TABLE_ENDPOINT.get(t)
+                if t == "team_strength" or status_map.get(ep) == 404:
+                    conn.execute(
+                        "INSERT OR IGNORE INTO detail_404 (match_id, table_name) VALUES (?, ?)",
+                        (mid, t),
+                    )
             conn.commit()
         except Exception:
             pass

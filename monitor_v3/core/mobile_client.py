@@ -325,13 +325,15 @@ class MobileClient:
             try:
                 r = await self.request("GET", path)
                 if r.status_code == 200:
-                    return name, r.json()
-                return name, {}
+                    return name, r.json(), 200
+                return name, {}, r.status_code
             except Exception:
-                return name, {}
+                return name, {}, -1
 
         tasks = [_fetch_ep(k, v) for k, v in endpoints.items()]
-        results = dict(await asyncio.gather(*tasks))
+        raw = await asyncio.gather(*tasks)
+        results = {name: data for name, data, _ in raw}
+        status_map = {name: status for name, _, status in raw}
 
         event_json = results.get("event", {})
         if not event_json or "event" not in event_json:
@@ -401,6 +403,10 @@ class MobileClient:
                     )
                 except Exception:
                     parsed["team_strength"] = []
+
+        # Estado HTTP por endpoint (200/404/-1) para distinguir "dato inexistente"
+        # (404) de fallos transitorios al hacer backfill.
+        parsed["_endpoint_status"] = status_map
 
         return parsed
 
