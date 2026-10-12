@@ -223,7 +223,10 @@ async def _run(args) -> None:
                 if not missing_after.get(t):
                     continue
                 ep = TABLE_ENDPOINT.get(t)
-                if t == "team_strength" or status_map.get(ep) == 404:
+                status = status_map.get(ep)
+                # Registrar como "sin datos" si el endpoint respondió OK (200, aunque
+                # venga vacío) o 404. NO registrar en errores transitorios (-1/403/5xx).
+                if t == "team_strength" or status in (200, 404):
                     conn.execute(
                         "INSERT OR IGNORE INTO detail_404 (match_id, table_name) VALUES (?, ?)",
                         (mid, t),
