@@ -134,18 +134,23 @@ def cmd_complete(_args) -> None:
 
 def _select_missing(conn, tables: list[str], since: str | None, until: str | None,
                     limit: int | None, force: bool = False) -> list[str]:
+    # Condición de "falta la tabla" (team_statistics exige además el total period='ALL',
+    # porque el bug antiguo lo borraba al guardar los stats por cuarto).
+    def _missing(t: str) -> str:
+        if t == "team_statistics":
+            return ("NOT EXISTS (SELECT 1 FROM team_statistics x "
+                    "WHERE x.match_id = m.match_id AND x.period = 'ALL')")
+        return f"NOT EXISTS (SELECT 1 FROM {t} x WHERE x.match_id = m.match_id)"
+
     # Selecciona partidos a los que les falta alguna tabla y NO esta registrada como
     # inexistente (404) en detail_404. Los fallos transitorios NO se registran, por lo
     # que se reintentan en la siguiente corrida.
     if force:
-        conds = " OR ".join(
-            f"NOT EXISTS (SELECT 1 FROM {t} x WHERE x.match_id = m.match_id)" for t in tables
-        )
+        conds = " OR ".join(_missing(t) for t in tables)
     else:
         conds = " OR ".join(
-            f"(NOT EXISTS (SELECT 1 FROM {t} x WHERE x.match_id = m.match_id) "
-            f"AND NOT EXISTS (SELECT 1 FROM detail_404 d WHERE d.match_id = m.match_id "
-            f"AND d.table_name = '{t}'))"
+            f"({_missing(t)} AND NOT EXISTS (SELECT 1 FROM detail_404 d "
+            f"WHERE d.match_id = m.match_id AND d.table_name = '{t}'))"
             for t in tables
         )
     q = f"SELECT m.match_id FROM matches m WHERE ({conds})"
