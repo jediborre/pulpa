@@ -850,12 +850,13 @@ def save_match(conn: sqlite3.Connection, match_id: str, data: dict) -> None:
     # Player statistics (with SofaScore ratings)
     save_player_stats(conn, match_id, data.get("player_stats", []))
 
-    # Team-level statistics (2PT%, 3PT%, rebounds, fouls, etc.)
-    save_team_statistics(conn, match_id, data.get("team_statistics", []))
-
-    # Per-period team statistics (computed from incidents)
-    # Stored in the same team_statistics table with period='Q1','Q2',etc.
-    save_team_statistics(conn, match_id, data.get("period_stats", []))
+    # Team-level statistics (game totals, period='ALL') + per-period stats (Q1-Q4).
+    # Van a la MISMA tabla -> se guardan en una sola llamada para no borrar los totales.
+    save_team_statistics(
+        conn,
+        match_id,
+        list(data.get("team_statistics", [])) + list(data.get("period_stats", [])),
+    )
 
     # Pre-match betting odds
     save_match_odds(conn, match_id, data.get("odds", []))
@@ -983,6 +984,8 @@ def save_lineups(conn: sqlite3.Connection, match_id: str, lineup_rows: list[dict
 
 def save_team_statistics(conn: sqlite3.Connection, match_id: str, stat_rows: list[dict]) -> None:
     """Replace team-level statistics for a match."""
+    if not stat_rows:
+        return
     conn.execute("DELETE FROM team_statistics WHERE match_id = ?", (match_id,))
     for row in stat_rows:
         conn.execute(
