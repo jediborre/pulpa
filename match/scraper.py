@@ -642,13 +642,19 @@ def _parse_lineups(match_id: str, lineup_data: dict | None) -> tuple[list[dict],
             is_starter = not p.get("substitute", True)
             team_id = p.get("teamId")
 
+            # El número de camiseta puede venir como texto no numérico (p. ej. "O").
+            try:
+                shirt_num = int(shirt_number) if shirt_number not in (None, "") else None
+            except (TypeError, ValueError):
+                shirt_num = None
+
             lineup_rows.append({
                 "match_id": match_id,
                 "team": side,
                 "player_name": player_name,
                 "player_id": str(player_id) if player_id else None,
                 "is_starter": int(is_starter),
-                "shirt_number": int(shirt_number) if shirt_number else None,
+                "shirt_number": shirt_num,
                 "position": position,
             })
 
