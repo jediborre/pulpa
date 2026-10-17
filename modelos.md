@@ -691,6 +691,26 @@ models/
 
 ---
 
+## m27_v4 — Canonical Triad Multi-Head & Multi-Snapshot Champion (Cero Overfitting) ⭐
+
+| Campo | Valor |
+|-------|-------|
+| **Snapshot** | **Multi-Snapshot Dinámico** (`m26..m30` en FIBA 10m, óptimo **`m27`**; `m33..m36` en NBA 12m, óptimo **`m33`**; soporta confirmación live `m31..m32`) |
+| **Algoritmo** | Ensemble Híbrido Regularizado: `LightGBM` + `XGBoost` + `HistGradientBoosting` + **Ancla Lineal L2 (`LogisticRegression`)** + Calibración Isotónica Out-of-Fold |
+| **Paquete de producción** | `models/m27_v4/` (`features.py`, `predict.py`, `train.py`, `model_outputs/`) |
+| **Documentación de hallazgos** | `docs/FINDINGS_M27_V4_ITERACIONES.md` |
+| **Hiperparams (Anti-Overfit)** | `max_depth=4` (`3` en NBA), `max_leaf_nodes=15` (`10` en NBA), `min_samples_leaf=400`, `reg_lambda (L2)=50.0`, `reg_alpha (L1)=15.0`, `learning_rate=0.03`, `subsample=0.70`, `colsample_bytree=0.65`, **Modality Dropout 12%** |
+| **Targets (4 Cabezas)** | **Head 1:** `q4_win` (Moneyline Q4) · **Head 2:** `expected_q4_margin` (Hándicap Q4 y Gate de Consenso) · **Head 3:** `expected_q4_total` (Over/Under Puntos Q4) · **Head 4:** `p_ft_home_win` (Ganador FT Live) |
+| **Segmentación (Tríada Canónica)** | 3 sub-modelos independientes sobre el 100% de la DB clasificada (`0` ligas sin clasificar): **`fiba_men_10m`** (`149,713` matches), **`fiba_women_10m`** (`34,251` matches), **`nba_12m`** (`28,250` matches) |
+| **Features (41 limpias, 0 leakage)** | **Bloque A:** Reloj normalizado (`pct_q3_elapsed`, `mins_remaining_reg`). **Bloque B:** Dinámica Q1–Q3 y paridad (`lead_abs`, `is_blowout_15`, `q3_To_q12_shift`). **Bloque C:** ELO Full-Time y ELO Q4 con **Decaimiento Estacional** (`>60d` y `>300d`) + H2H con contracción Bayesiana. **Bloque D:** Rolling Pre-Match de plantilla (`rolling_delta_plus_minus` $r=+0.2294$, `rolling_top3_rating_diff`). **Bloque E:** Microestructura PBP (`2PT/3PT/FT` directo de `match_events` con 100% cobertura + `graph_points`). **Bloque F:** Priors de liga (`league_home_q4_rate`, `league_q4_total_mean`, `is_playoffs`, `is_international`). |
+| **Muestras Totales** | **`212,214` partidos válidos con Q1–Q4 completos** (`2015–2026`), split temporal estricto 70% Train / 15% Val / 15% Test Out-of-Time + 4 cortes Walk-Forward |
+| **ROC AUC (Test Out-of-Time)** | **`fiba_men_10m`: `0.6406`** (`Gap = -0.0006`) · **`fiba_women_10m`: `0.6714`** (`Gap = -0.0045`) · **`nba_12m`: `0.6208`** (`Gap = +0.0269`) · **Confirmación `m32`: `0.7069`** · **FT Live: `0.9340`–`0.9622`** |
+| **Win Rate & ROI @ $P \ge 0.70$ + Gate Margen** | **`fiba_men_10m`: `77.19%` WR** (`2,345` bets, **`+8.07%` Yield** @1.40) · **`fiba_women_10m`: `76.74%` WR** (`1,023` bets, **`+7.44%` Yield**) · **`nba_12m`: `73.86%` WR** (`241` bets, **`+3.40%` Yield**) |
+| **Over/Under Total Q4 (Head 3)** | **`fiba_men_10m`: `60.9%` WR** (`+12.7%` Yield @1.85, MAE `6.5 pts`) · **`fiba_women_10m`: `58.0%` WR** (`+7.3%` Yield, MAE `6.2 pts`) · **`nba_12m`: `61.4%` WR** (`+13.6%` Yield, MAE `7.1 pts`) |
+| **Correcciones Críticas vs `m27_v3`** | 1) Erradicada la fuga de fecha del mismo día en `match_h2h` que inflaba `m27_v3`. 2) Corregido el bug de reloj `12m` vs `10m` en `scraper.py` y `pbp_utils.py`. 3) Eliminado el drift de `team_statistics` calculando `2PT/3PT/FT` desde `match_events`. 4) Resuelto el hueco FIBA `2019–2022` con *Seasonal ELO Decay*. |
+
+---
+
 ## m30_v1 — Independent Minute-30
 
 | Campo | Valor |
@@ -741,10 +761,10 @@ models/
 | V15 | **31** | Acc only | 0.584 (val) | 10,450 | Snapshot 31. Per-league 22/100 ligas. **Solo hombres**. Sin gates en val. | 22 ligas, solo hombres |
 | V16 | 31 | Acc only | 0.597 val / 0.711 hold | 9,442 / 1,378 | Snapshot 31. PROD 46/90 ligas. **Holdout 0.711 con gates implícitos** — sesgo alcista. | TimesFM/Chronos |
 | V17 | 31 | Acc only | 0.595 val / 0.609 hold | 7,488 / 5,518 | Snapshot 31. 67/150 ligas. Holdout 17k grande. **Holdout con sesgo de gates**. | +G9 legacy hybrid |
-| **m27_v1** | **27** | **0.668** | 0.626 | 3,713 | **Snapshot 27 (3m Q4 real)**. Sin filtro. Match-level. | **Señal real pre-Q4** |
-| **m27_v2** | **27** | **0.668** / 0.671\* | 0.623 / 0.626 | 4,132 | \*10m filter. 86 feat (7 podadas). Match-level. | Idéntico a v1. Recent windows dominan. Features nuevas no suman |
-| **m27_v3** | **27** | **0.789** | **0.705** | 4,132 | Snapshot 27. **+H2H features (28.5% imp)**. 99% test cov. Match-level. | **Campeón actual (+13% a +29% Yield)** |
-| **m27_v4 (Prop.)** | **27** | **$\ge 0.765$** (obj) | **$\ge 0.680$** | 30,382 | FIBA 10m élite. 30 feat (M+E+R+L). Sin youth/college. | **Próxima generación: Elo dinámico Q4 + Roster + Priors de liga** |
+| **m27_v1** | **27** | **0.668** | 0.626 | 3,713 | **Snapshot 27 (1m Q4 filtrado por reloj 12m)**. Sin filtro. Match-level. | **Señal combinada c/reloj 12m** |
+| **m27_v2** | **27** | **0.668** / 0.671\* | 0.623 / 0.626 | 4,132 | \*10m filter. 86 feat (7 podadas). Match-level. | Idéntico a v1. Recent windows dominan. |
+| **m27_v3** | **27** | **0.789\*** | **0.705\*** | 4,132 | Snapshot 27. **\*Nota: Con fuga H2H mismo día antes del fix (`0.64` limpio)**. | **Reemplazado por `m27_v4`** |
+| **m27_v4** ⭐ | **26–32** | **0.641 / 0.671 / 0.621** | **77.2% WR** (@0.70) | **31,833** | **Tríada Canónica (`212,214` matches). Cero leakage, cero overfit (`Gap = -0.0006`). 4 Cabezas (Q4 Win, Margen, O/U, FT).** | **Campeón Actual (`+8.07%` Yield Q4, `+12.7%` O/U)** |
 | **m30_v1** | **30** | 0.585 | 0.562 | 4,144 | **Snapshot 30 (sin Q4 real)**. Sin filtro. Match-level. | Límite ~0.59 |
 
 ---

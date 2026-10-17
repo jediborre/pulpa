@@ -15,6 +15,12 @@ from models.common.schema import PredictionResult
 
 # Catálogo oficial de modelos soportados con metadatos
 REGISTERED_MODELS: dict[str, dict[str, Any]] = {
+    "m27_v4": {
+        "name": "M27 V4 Champion Triad Multi-Head (Zero-Leakage & Zero-Overfit)",
+        "targets": ["q4", "q4_total", "ft"],
+        "status": "production_champion",
+        "description": "Tríada Canónica (FIBA Men 10m, FIBA Women 10m, NBA 12m) Multi-Snapshot + ELO Estacional + Modality Dropout + Dual-Head Consensus",
+    },
     "m27_v3": {
         "name": "M27 V3 Champion Q4",
         "targets": ["q4"],
@@ -79,7 +85,11 @@ def predict(
                 reason=f"Partido {match_id} no encontrado en matches.db",
             )
 
-        if v == "m27_v3":
+        if v == "m27_v4":
+            from models.m27_v4.predict import predict as m27_v4_predict
+            return m27_v4_predict(match_id=match_id, target=target, match_data=match_data, conn=conn)
+
+        elif v == "m27_v3":
             from models.m27_v3.predict import predict as m27_predict
             return m27_predict(match_id=match_id, target=target, match_data=match_data, conn=conn)
 
