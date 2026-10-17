@@ -500,7 +500,11 @@ def _compute_h2h_features(
     ht: str, at: str, sample_dt, lookup: dict[tuple[str, str], list[dict]]
 ) -> dict:
     pair = tuple(sorted([ht, at]))
-    past = [g for g in lookup.get(pair, []) if g["dt"] < sample_dt]
+    sample_date = sample_dt.date() if hasattr(sample_dt, "date") else _parse_dt(str(sample_dt)).date()
+    past = [
+        g for g in lookup.get(pair, [])
+        if (g["dt"].date() if hasattr(g["dt"], "date") else g["dt"]) < sample_date
+    ]
     if not past:
         return {}
 

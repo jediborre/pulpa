@@ -131,9 +131,10 @@ def graph_stats_upto(graph_points: list[dict[str, Any]], max_minute: int) -> dic
     }
 
 
-def pbp_events_upto(data: dict[str, Any], cutoff_minute: int) -> list[dict[str, Any]]:
+def pbp_events_upto(data: dict[str, Any], cutoff_minute: float) -> list[dict[str, Any]]:
     """Filtra y normaliza los eventos PBP jugados hasta el minuto cutoff."""
     pbp = data.get("play_by_play", {})
+    q_dur = infer_regulation_quarter_minutes(data)
     events = []
 
     for quarter_label, plays in pbp.items():
@@ -141,16 +142,19 @@ def pbp_events_upto(data: dict[str, Any], cutoff_minute: int) -> list[dict[str, 
         if q_idx is None or q_idx < 1 or q_idx > 4:
             continue
 
-        q_start = (q_idx - 1) * 12.0
+        q_start = (q_idx - 1) * q_dur
         for play in plays:
-            rem_sec = clock_to_seconds(str(play.get("time", "")))
-            if rem_sec is None:
-                continue
+            t_sec = play.get("time_seconds")
+            if t_sec is not None:
+                event_min = float(t_sec) / 60.0
+            else:
+                rem_sec = clock_to_seconds(str(play.get("time", "")))
+                if rem_sec is None:
+                    continue
+                elapsed_in_q = max(0.0, q_dur - (rem_sec / 60.0))
+                event_min = q_start + elapsed_in_q
 
-            elapsed_in_q = max(0.0, 12.0 - (rem_sec / 60.0))
-            event_min = q_start + elapsed_in_q
-
-            if event_min <= cutoff_minute:
+            if event_min <= float(cutoff_minute):
                 ev = dict(play)
                 ev["_global_min"] = event_min
                 events.append(ev)
@@ -296,19 +300,24 @@ def infer_regulation_quarter_minutes(match_data: dict[str, Any]) -> float:
 def infer_minute_from_pbp(match_data: dict[str, Any]) -> int | None:
     """Estima el minuto global jugado del partido a partir del último evento PBP."""
     pbp = match_data.get("play_by_play", {}) or {}
+    q_dur = infer_regulation_quarter_minutes(match_data)
     latest_min = 0.0
 
     for q_label, plays in pbp.items():
         q_idx = quarter_index(str(q_label))
         if q_idx is None or q_idx < 1 or q_idx > 4:
             continue
-        q_start = (q_idx - 1) * 12.0
+        q_start = (q_idx - 1) * q_dur
         for play in plays or []:
-            rem_sec = clock_to_seconds(str(play.get("time", "")))
-            if rem_sec is None:
-                continue
-            elapsed_q = max(0.0, 12.0 - (rem_sec / 60.0))
-            tot_min = q_start + elapsed_q
+            t_sec = play.get("time_seconds")
+            if t_sec is not None:
+                tot_min = float(t_sec) / 60.0
+            else:
+                rem_sec = clock_to_seconds(str(play.get("time", "")))
+                if rem_sec is None:
+                    continue
+                elapsed_q = max(0.0, q_dur - (rem_sec / 60.0))
+                tot_min = q_start + elapsed_q
             if tot_min > latest_min:
                 latest_min = tot_min
 

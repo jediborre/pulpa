@@ -273,21 +273,23 @@ def _quarter_label(period) -> str:
         return str(period)
 
 
-def _period_from_game_seconds(time_secs: int) -> str:
+def _period_from_game_seconds(time_secs: int, period_seconds: int = 600) -> str:
     """
     Derive the quarter/OT label from cumulative game time in seconds.
-    NBA: 4 quarters of 12 min (720 s) + OT periods of 5 min (300 s).
+    Supports both FIBA (4 quarters of 10 min = 600 s) and NBA (4 quarters of 12 min = 720 s),
+    plus OT periods of 5 min (300 s).
     Used as fallback when SofaScore incidents carry no explicit 'period' field.
     """
-    if time_secs <= 720:
+    per = int(period_seconds or 600)
+    if time_secs <= per:
         return "Q1"
-    if time_secs <= 1440:
+    if time_secs <= per * 2:
         return "Q2"
-    if time_secs <= 2160:
+    if time_secs <= per * 3:
         return "Q3"
-    if time_secs <= 2880:
+    if time_secs <= per * 4:
         return "Q4"
-    ot = (time_secs - 2881) // 300 + 1
+    ot = (time_secs - (per * 4 + 1)) // 300 + 1
     return f"OT{ot}"
 
 
@@ -367,6 +369,15 @@ def _parse(event_json: dict, incidents: list, graph_points: list | None = None) 
             break
         quarters[_quarter_label(i)] = {"home": h, "away": a}
 
+    # Detect whether regulation quarters are 12 min (720 s) or 10 min (600 s)
+    max_rev_sec = max(
+        (int(inc.get("reversedPeriodTimeSeconds") or 0) for inc in incidents if inc.get("reversedPeriodTimeSeconds") is not None),
+        default=0,
+    )
+    lg_low = league.lower()
+    is_12m = max_rev_sec > 605 or any(k in lg_low for k in ("nba", "g league", "pba")) or ("cba" in lg_low and "wcba" not in lg_low)
+    period_seconds = 720 if is_12m else 600
+
     # ── Parse ALL incidents ─────────────────────────────────
     pbp: dict[str, list] = {}       # scoring-only (backward compat)
     events: dict[str, list] = {}    # all incidents with classification
@@ -411,7 +422,7 @@ def _parse(event_json: dict, incidents: list, graph_points: list | None = None) 
         if period_raw is not None:
             q = _quarter_label(period_raw)
         else:
-            q = _period_from_game_seconds(inc.get("timeSeconds", 0))
+            q = _period_from_game_seconds(inc.get("timeSeconds", 0), period_seconds=period_seconds)
 
         # Player info
         player_obj = inc.get("player") or {}
@@ -438,6 +449,7 @@ def _parse(event_json: dict, incidents: list, graph_points: list | None = None) 
         if canon_type == "goal" and pts > 0:
             pbp.setdefault(q, []).append({
                 "time": _time_str(inc),
+                "time_seconds": inc.get("timeSeconds"),
                 "player": player,
                 "points": pts,
                 "team": team,
