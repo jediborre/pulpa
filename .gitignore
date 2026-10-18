@@ -85,6 +85,7 @@ catboost_info/
 /match/reports/*
 **/reports/
 match/training/v*/reports/
+tmp/probe_404_audit/cleanup_report_*.csv
 
 # ============================================================
 # Otros temporales
