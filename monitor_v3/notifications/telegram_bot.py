@@ -352,13 +352,17 @@ def format_combined_bet_message(predictions: dict, home_team: str, away_team: st
             model_conf_str = f"{model}"
             
         picked_side = pred.get("pick")
-        is_home_pick = (picked_side == "HOME")
+        if not picked_side or picked_side == "NONE":
+            p_home = pred.get("p_home_win")
+            if p_home is not None:
+                picked_side = "HOME" if float(p_home) >= 0.5 else "AWAY"
+        is_home_pick = (str(picked_side).upper() == "HOME")
         side_emoji = "🏠" if is_home_pick else "✈️"
         picked_team_name = home_team if is_home_pick else away_team
         clean_team = html.escape(str(picked_team_name), quote=False)
         
         # Umbral específico del modelo (usar &lt; para parse_mode HTML)
-        threshold_note = "&lt;75%" if "v5_2" in model else ("&lt;68%" if "v5" in model else "&lt;65%")
+        threshold_note = "&lt;75%" if ("v5_2" in model or "v5_3" in model) else ("&lt;68%" if "v5" in model else "&lt;65%")
 
         if is_bet:
             lines.append(f"{model_conf_str} → {side_emoji} {clean_team}")
@@ -439,14 +443,25 @@ def format_combined_final_message(logs: list, home_team: str, away_team: str) ->
             conf = log.get("confidence")
             picked_side = log.get("picked_side")
             
-            # Intentar recuperar de inference_json si no viene en las columnas directas
+            # Intentar recuperar de inference_json si no viene en las columnas directas o si vino NONE
             if (not conf or conf == 0.0 or not picked_side or picked_side == "NONE") and log.get("inference_json"):
                 try:
                     inf = json.loads(log["inference_json"]) if isinstance(log["inference_json"], str) else log["inference_json"]
-                    conf = conf or inf.get("confidence") or inf.get("p_home_win")
-                    picked_side = picked_side if (picked_side and picked_side != "NONE") else inf.get("pick")
+                    conf = conf or inf.get("confidence")
+                    p_home = inf.get("p_home_win")
+                    inf_pick = inf.get("pick")
+                    if inf_pick and inf_pick != "NONE":
+                        picked_side = inf_pick
+                    elif p_home is not None:
+                        picked_side = "HOME" if float(p_home) >= 0.5 else "AWAY"
+                        conf = conf or max(float(p_home), 1.0 - float(p_home))
                 except Exception:
                     pass
+
+            if (not picked_side or picked_side == "NONE") and log.get("p_home_win") is not None:
+                p_h = float(log["p_home_win"])
+                picked_side = "HOME" if p_h >= 0.5 else "AWAY"
+                conf = conf or max(p_h, 1.0 - p_h)
 
             if conf and conf > 0 and picked_side and picked_side != "NONE":
                 if conf > 1.0:
@@ -456,7 +471,7 @@ def format_combined_final_message(logs: list, home_team: str, away_team: str) ->
                 side_emoji = "🏠" if is_home_pick else "✈️"
                 picked_team_name = home_team if is_home_pick else away_team
                 clean_team = html.escape(str(picked_team_name), quote=False)
-                threshold_note = "&lt;75%" if "v5_2" in model else ("&lt;68%" if "v5" in model else "&lt;65%")
+                threshold_note = "&lt;75%" if ("v5_2" in model or "v5_3" in model) else ("&lt;68%" if "v5" in model else "&lt;65%")
                 
                 lines.append(f"🔴 {model} {conf_pct}% [NO BET ({threshold_note})] → {side_emoji} {clean_team}")
             else:

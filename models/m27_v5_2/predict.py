@@ -154,7 +154,7 @@ def predict(
             model_version="m27_v5_2",
             target=target,
             signal="BET" if is_green else "PASS",
-            pick=pred_winner if is_green else "NONE",
+            pick=pred_winner,
             confidence=round(confidence, 4),
             p_home_win=round(p_cal, 4),
             p_away_win=round(1.0 - p_cal, 4),

@@ -42,8 +42,31 @@ from models.common.pbp_utils import infer_minute_from_pbp, infer_regulation_quar
 _ENGINE_CACHE = {}
 
 
+_PRIORS_REFRESH_TS = 0.0
+
+
+def _refresh_priors_if_stale(max_age_secs: float = 1800.0) -> None:
+    """Actualiza (en hilo, cada ~30 min) los priors de m27_v5_3 con los partidos terminados recientes."""
+    import time as _time
+
+    global _PRIORS_REFRESH_TS
+    if _time.time() - _PRIORS_REFRESH_TS < max_age_secs:
+        return
+    _PRIORS_REFRESH_TS = _time.time()
+    try:
+        from models.m27_v5_3.features import refresh_state
+        refresh_state(str(ROOT / "matches.db"))
+    except Exception:
+        pass
+
+
 def load_models_to_cache() -> None:
-    """Precarga en memoria O(1) los modelos de m27_v5_2, m27_v5_1, m27_v5 y m27_v4 para latencia cero en vivo."""
+    """Precarga en memoria O(1) los modelos de m27_v5_3, m27_v5_2, m27_v5_1 y m27_v4 para latencia cero en vivo."""
+    try:
+        from models.m27_v5_3.predict import _load_production_models as load_v5_3
+        load_v5_3()
+    except Exception:
+        pass
     try:
         from models.m27_v5_2.predict import _load_production_models as load_v5_2
         load_v5_2()
@@ -227,6 +250,7 @@ async def evaluate_match_q4(
     if int(minute_est) != watcher_state.last_snapshot_minute:
         watcher_state.last_snapshot_minute = int(minute_est)
         asyncio.create_task(asyncio.to_thread(_record_live_snapshot, match_id, float(minute_est), match_payload))
+    asyncio.create_task(asyncio.to_thread(_refresh_priors_if_stale))
 
     predictions = {}
 
@@ -280,6 +304,8 @@ async def evaluate_match_q4(
 
         final_signal = "NO_BET"
         picked_side = predicted_winner.upper()
+        if picked_side in ("NONE", ""):
+            picked_side = "HOME" if (p_home or 0.5) >= 0.5 else "AWAY"
 
         is_operable_sig = (
             bet_signal in ("BET", "BET_STRONG", "BET_SNIPER", "LEAN")
@@ -306,7 +332,7 @@ async def evaluate_match_q4(
             # Si aún estamos en minutos previos al cierre del Q3 (ej. m27..m29) y m27_v5/m27_v4 (cuyo óptimo
             # es al cierre de Q3, m30/m36) aún no han disparado apuesta, seguimos monitoreando hasta el
             # cierre del Q3 por si el partido entra en zona verde.
-            if (model_version in ("m27_v5", "m27_v4") or not any_bet_in_tick) and not in_q4_now:
+            if (model_version in ("m27_v5_3", "m27_v5", "m27_v4") or not any_bet_in_tick) and not in_q4_now:
                 predictions[model_version] = {
                     "signal": "UNAVAILABLE",
                     "reason": "monitoring_q3_window_for_green",
