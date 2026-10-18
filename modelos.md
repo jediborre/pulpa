@@ -1340,7 +1340,7 @@ La NBA cuenta con un volumen masivo (más de 3,000 partidos en el corte), pero a
 | **m27_v4** | **26–32** | **0.641 / 0.671 / 0.621** | **77.2% WR** (@0.70) | **31,833** | **Tríada Canónica (`212,214` matches). Cero leakage, cero overfit (`Gap = -0.0006`). 4 Cabezas (Q4 Win, Margen, O/U, FT).** | **Campeón Tríada (`+8.07%` Yield Q4, `+12.7%` O/U)** |
 | **m27_v5** | **27** | **0.6708** | **75.61% WR** (@0.68) | **67,836** | **198k partidos FIBA 10m limpios. Roster ELO, perfiles tácticos y fatigue drift.** | **Campeón FIBA V5 (+5.85% ROI @ 1.40)** |
 | **m27_v5_1** | **27** | **0.6320** | **73.53% WR** (@0.68) | **33,785** | **Lean 25 Features (12 podadas) + Poda de Ligas Tóxicas. Gap de sobreajuste: -0.0002.** | **Predecesor Lean (+2.94% ROI @ 1.40, +34.55% @ 1.83)** |
-| **m27_v5_2** 👑 | **27** | **0.6376** | **73.36% WR** (@0.68) | **33,785** | **Lean 27 Features (+Odds +Table WP) + Poda de Ligas Tóxicas. 5,555 apuestas (+17.8% volumen). Gap: -0.0007.** | **Campeón Absoluto de Producción (+2.70% ROI @ 1.40, +34.24% @ 1.83)** |
+| **m27_v5_2** 👑 | **27** | **0.6376** | **78.42% WR** (@0.75) | **33,785** | **Lean 27 Features (+Odds +Table WP). Calibración Sniper P>=0.75. Gap: -0.0007.** | **Campeón Absoluto de Producción (+9.79% ROI @ 1.40, +43.51% @ 1.83)** |
 | **m30_v1** | **30** | 0.585 | 0.562 | 4,144 | **Snapshot 30 (sin Q4 real)**. Sin filtro. Match-level. | Límite ~0.59 |
 
 ---
@@ -1387,8 +1387,8 @@ La NBA cuenta con un volumen masivo (más de 3,000 partidos en el corte), pero a
 | **ROC AUC** | **Train: 0.6368 \| Test: 0.6376** (**Overfitting Gap: -0.0007 — CERO sobreajuste**) |
 | **Brier Score** | **0.2350** (Mejora frente a 0.2361 de V5_1) |
 | **LogLoss / Accuracy** | **0.6623 / 59.60%** |
-| **Rendimiento Verdes ($P \ge 0.68$)** | **5,555 apuestas en test (16.44% de selectividad) \| Win Rate: 73.36% \| ROI @ 1.40: +2.70% \| ROI @ 1.83: +34.24%** |
-| **Volumen vs V5_1** | **+792 apuestas operables (+16.6% más oportunidades rentables)** |
+| **Rendimiento Verdes ($P \ge 0.75$)** | **2,442 apuestas en test (7.23% de selectividad) \| Win Rate: 78.42% \| ROI @ 1.40: +9.79% \| ROI @ 1.83: +43.51%** |
+| **Calibración Sniper** | **Filtro de alta seguridad $P \ge 0.75$ activo en producción para maximizar tasa de aciertos** |
 | **Validación Walk-Forward** | **2023:** 69.41% WR (+27.02% ROI @ 1.83) \| **2024:** 73.64% WR (+3.10% ROI @ 1.40, +34.76% @ 1.83) \| **2025-2026:** 73.44% WR (+2.81% ROI @ 1.40, +34.39% @ 1.83) |
 | **Latencia en Live** | **13.27 ms promedio** (Auditoría de paridad en CPU con 100% de compatibilidad en `monitor_v3`) |
 | **Gráficas Diagnósticas** | [`models/m27_v5_2/model_outputs/m27_v5_2_diagnostic_dashboard.png`](file:///C:/Users/App/Desktop/pulpa/models/m27_v5_2/model_outputs/m27_v5_2_diagnostic_dashboard.png) |
