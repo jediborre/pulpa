@@ -43,7 +43,12 @@ _ENGINE_CACHE = {}
 
 
 def load_models_to_cache() -> None:
-    """Precarga en memoria O(1) los modelos de m27_v5_1, m27_v5 y m27_v4 para latencia cero en vivo."""
+    """Precarga en memoria O(1) los modelos de m27_v5_2, m27_v5_1, m27_v5 y m27_v4 para latencia cero en vivo."""
+    try:
+        from models.m27_v5_2.predict import _load_production_models as load_v5_2
+        load_v5_2()
+    except Exception:
+        pass
     try:
         from models.m27_v5_1.predict import _load_production_models as load_v5_1
         load_v5_1()
