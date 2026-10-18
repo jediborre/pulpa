@@ -1337,8 +1337,35 @@ La NBA cuenta con un volumen masivo (más de 3,000 partidos en el corte), pero a
 | **m27_v1** | **27** | **0.668** | 0.626 | 3,713 | **Snapshot 27 (1m Q4 filtrado por reloj 12m)**. Sin filtro. Match-level. | **Señal combinada c/reloj 12m** |
 | **m27_v2** | **27** | **0.668** / 0.671\* | 0.623 / 0.626 | 4,132 | \*10m filter. 86 feat (7 podadas). Match-level. | Idéntico a v1. Recent windows dominan. |
 | **m27_v3** | **27** | **0.789\*** | **0.705\*** | 4,132 | Snapshot 27. **\*Nota: Con fuga H2H mismo día antes del fix (`0.64` limpio)**. | **Reemplazado por `m27_v4`** |
-| **m27_v4** ⭐ | **26–32** | **0.641 / 0.671 / 0.621** | **77.2% WR** (@0.70) | **31,833** | **Tríada Canónica (`212,214` matches). Cero leakage, cero overfit (`Gap = -0.0006`). 4 Cabezas (Q4 Win, Margen, O/U, FT).** | **Campeón Actual (`+8.07%` Yield Q4, `+12.7%` O/U)** |
+| **m27_v4** | **26–32** | **0.641 / 0.671 / 0.621** | **77.2% WR** (@0.70) | **31,833** | **Tríada Canónica (`212,214` matches). Cero leakage, cero overfit (`Gap = -0.0006`). 4 Cabezas (Q4 Win, Margen, O/U, FT).** | **Campeón Tríada (`+8.07%` Yield Q4, `+12.7%` O/U)** |
+| **m27_v5** | **27** | **0.6708** | **75.61% WR** (@0.68) | **67,836** | **198k partidos FIBA 10m limpios. Roster ELO, perfiles tácticos y fatigue drift.** | **Campeón FIBA V5 (+5.85% ROI @ 1.40)** |
+| **m27_v5_1** ⭐ | **27** | **0.6320** | **73.53% WR** (@0.68) | **33,785** | **Lean 25 Features (12 podadas) + Poda de Ligas Tóxicas. Gap de sobreajuste: -0.0002 (Cero overfit).** | **Campeón Lean Activo (+2.94% ROI @ 1.40, +34.55% @ 1.83)** |
 | **m30_v1** | **30** | 0.585 | 0.562 | 4,144 | **Snapshot 30 (sin Q4 real)**. Sin filtro. Match-level. | Límite ~0.59 |
+
+---
+
+## `m27_v5_1` (M27 V5.1 Lean Champion — 25 Features + Poda de Ligas Tóxicas)
+
+| Campo | Valor |
+|---|---|
+| **Snapshot** | **27.0** (A 3 minutos de terminar el Q3 en FIBA 10m) |
+| **Algoritmo** | **Ensamble Ponderado Trimodal:** `0.40 * XGBoost + 0.35 * HistGradientBoosting + 0.25 * LogisticRegression` + **Regresor de Margen Q4** + **Calibrador Isotónico** |
+| **Script entrenamiento** | `tmp/m27_v5_1/train_m27_v5_1_pipeline.py` |
+| **Hiperparámetros** | XGBoost(`n_estimators=160, max_depth=4, lr=0.05, reg_lambda=45.0, colsample_bytree=0.85, subsample=0.85`); HistGB(`max_iter=140, max_leaf_nodes=15, min_samples_leaf=300, lr=0.05, l2=40.0`); LogReg(`C=0.02, max_iter=300`) |
+| **Target** | **Ganador de Q4 (Moneyline) + Margen Proyectado Q4** |
+| **Dataset Total Limpio** | **187,692 partidos profesionales FIBA** (10,731 partidos excluidos de ligas tóxicas y 12m) |
+| **Split de Producción** | **82% Train (153,907 partidos) / 18% Test Reciente (33,785 partidos holdout)** |
+| **Features (25 Nucleares)** | `cur_score_diff`, `abs_cur_score_diff`, `ht_diff`, `q1_diff`, `q2_diff`, `q3_eff_diff`, `q3_vs_ht_momentum`, `recent_2m_run_diff`, `pace_pts_per_min`, `pace_vs_league_prior`, `gp_val`, `d_lineup_starters_elo_ft`, `d_lineup_starters_elo_q4`, `d_lineup_bench_elo_q4`, `d_lineup_top3_elo_q4`, `d_roster_drift_adv`, `d_strat_q4_net`, `d_q4_bayes`, `d_wr_bayes`, `expected_ft_margin`, `h2h_bayes_ft_margin`, `pbp_3pt_diff_q1_q3`, `rubber_band_gap`, `white_flag_risk_zone`, `lg_avg_q4_prior` |
+| **Features Podadas (12f)** | `gp_slope_3m`, `fraction_q3_completed`, `q3_tactical_surprise`, `d_elo_q1`, `elo_reliability`, `has_odds`, `odds_log_ratio`, `ts_delta_wp_bayes`, `pbp_2pt_diff_q1_q3`, `pbp_ft_diff_q1_q3`, `blowout_garbage_time`, `h2h_bayes_q4_margin` |
+| **Ligas Tóxicas Podadas** | Korean Basketball League (KBL), LMB Apertura, Tipos SBL, Albania Superliga, Georgia Superliga, Kosovo Superliga, Armenia A-League, Cyprus Division, Korisliiga Women, Betsafe-LKL, Serie A2/B Women Gr. B, Israeli Super League |
+| **ROC AUC** | **Train: 0.6319 \| Test: 0.6320** (**Overfitting Gap: -0.0002 — CERO sobreajuste**) |
+| **Brier Score** | **0.2361** (Calibración óptima isotónica) |
+| **LogLoss / Accuracy** | **0.6644 / 59.11%** |
+| **Rendimiento Verdes ($P \ge 0.68$)** | **4,763 apuestas en test (14.1% de selectividad) \| Win Rate: 73.53% \| ROI @ 1.40: +2.94% \| ROI @ 1.83: +34.55%** |
+| **Validación Walk-Forward** | **2023:** 68.79% WR (+25.88% ROI @ 1.83) \| **2024:** 71.48% WR (+30.82% ROI @ 1.83) \| **2025-2026:** 72.99% WR (+33.57% ROI @ 1.83) |
+| **Latencia en Live** | **10.02 ms promedio** (Auditoría de paridad en CPU con 100% de compatibilidad en `monitor_v3`) |
+| **Gráficas Diagnósticas** | [`models/m27_v5_1/model_outputs/m27_v5_1_diagnostic_dashboard.png`](file:///C:/Users/App/Desktop/pulpa/models/m27_v5_1/model_outputs/m27_v5_1_diagnostic_dashboard.png) |
+| **Resumen y Calibración** | [`m27_v5_1_summary.json`](file:///C:/Users/App/Desktop/pulpa/models/m27_v5_1/model_outputs/m27_v5_1_summary.json) y [`league_calibration.json`](file:///C:/Users/App/Desktop/pulpa/models/m27_v5_1/model_outputs/league_calibration.json) |
 
 ---
 

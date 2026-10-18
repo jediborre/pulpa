@@ -15,6 +15,12 @@ from models.common.schema import PredictionResult
 
 # Catálogo oficial de modelos soportados con metadatos
 REGISTERED_MODELS: dict[str, dict[str, Any]] = {
+    "m27_v5_1": {
+        "name": "M27 V5.1 Lean Champion (25 Features + Toxic Leagues Pruned)",
+        "targets": ["q4"],
+        "status": "production_champion",
+        "description": "25 Features Nucleares Ortogonales + Poda Algorítmica de Ligas Tóxicas/Sobreestimadas + Calibración Isotonic Zero-Gap",
+    },
     "m27_v5": {
         "name": "M27 V5 Champion (Roster ELO Dinámico + Perfil Táctico de Cuartos)",
         "targets": ["q4"],
@@ -92,7 +98,17 @@ def predict(
                 reason=f"Partido {match_id} no encontrado en matches.db",
             )
 
-        if v == "m27_v5":
+        if v in ("m27_v5_1", "m27_v5.1", "v5_1", "v5.1"):
+            from models.m27_v5_1.predict import predict as m27_v5_1_predict
+            return m27_v5_1_predict(
+                match_id=match_id,
+                target=target,
+                match_data=match_data,
+                conn=conn,
+                snapshot_minute=snapshot_minute,
+            )
+
+        elif v == "m27_v5":
             from models.m27_v5.predict import predict as m27_v5_predict
             return m27_v5_predict(
                 match_id=match_id,
