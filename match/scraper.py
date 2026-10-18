@@ -879,6 +879,10 @@ def _parse_odds(match_id: str, odds_data: dict | None) -> list[dict]:
         return []
 
     for market in markets:
+        # Los mercados in-play (isLive=True) reemplazan a los pre-partido durante el juego y contaminan
+        # el prior de mercado; solo se guardan cuotas pre-partido (cierre) para que train y live coincidan.
+        if market.get("isLive"):
+            continue
         mname = market.get("marketName") or market.get("name", "")
         mgroup = market.get("marketGroup", "")
         mperiod = market.get("marketPeriod", "")
@@ -886,22 +890,34 @@ def _parse_odds(match_id: str, odds_data: dict | None) -> list[dict]:
         home_val = None
         away_val = None
         draw_val = None
+        home_init = None
+        away_init = None
+        line_val = None
+        if mgroup == "Over/Under" and market.get("choiceGroup") not in (None, ""):
+            try:
+                line_val = float(market.get("choiceGroup"))
+            except (TypeError, ValueError):
+                line_val = None
         for ch in choices:
             ch_name = ch.get("name", "").lower()
             frac = ch.get("fractionalValue") or ch.get("initialFractionalValue")
             dec = _frac_to_dec(frac)
-            if ch_name in ("1", "home", "h"):
-                home_val = dec
-            elif ch_name in ("2", "away", "a"):
-                away_val = dec
+            dec_init = _frac_to_dec(ch.get("initialFractionalValue") or ch.get("fractionalValue"))
+            if ch_name in ("1", "home", "h", "over"):
+                home_val, home_init = dec, dec_init
+            elif ch_name in ("2", "away", "a", "under"):
+                away_val, away_init = dec, dec_init
             elif ch_name in ("x", "draw"):
                 draw_val = dec
-            # Handle spread: name like "(-4.0) Detroit Pistons"
+            # Handle spread: name like "(-4.0) Detroit Pistons" (la primera opcion es el local)
             if ch_name.startswith("(-") or ch_name.startswith("(+") or ch_name.startswith("(e"):
                 if not home_val:
-                    home_val = dec
+                    home_val, home_init = dec, dec_init
+                    sm = re.match(r"\(([+-]?\d+(?:\.\d+)?)\)", ch_name)
+                    if sm:
+                        line_val = float(sm.group(1))
                 elif not away_val:
-                    away_val = dec
+                    away_val, away_init = dec, dec_init
 
         odds_type = mgroup or mname.replace(" ", "_").lower()
         rows.append({
@@ -913,6 +929,9 @@ def _parse_odds(match_id: str, odds_data: dict | None) -> list[dict]:
             "away_value": away_val,
             "draw_value": draw_val,
             "timestamp": "",
+            "line": line_val,
+            "home_initial": home_init,
+            "away_initial": away_init,
         })
 
     return rows

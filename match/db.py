@@ -314,6 +314,13 @@ def _ensure_match_columns(conn: sqlite3.Connection) -> None:
                 conn.execute(f"ALTER TABLE match_odds ADD COLUMN {col_name} TEXT")
             except Exception:
                 pass
+    # Linea (handicap / total) y cuotas de apertura para el prior de mercado de m27_v5_3
+    for col_name in ("line", "home_initial", "away_initial"):
+        if col_name not in odds_existing:
+            try:
+                conn.execute(f"ALTER TABLE match_odds ADD COLUMN {col_name} REAL")
+            except Exception:
+                pass
 
     for col_name in (
         "home_slug",
@@ -1022,8 +1029,9 @@ def save_match_odds(conn: sqlite3.Connection, match_id: str, odds_rows: list[dic
             """
             INSERT INTO match_odds
               (match_id, odds_type, market_name, market_period,
-               home_value, away_value, draw_value, timestamp)
-            VALUES (?,?,?,?,?,?,?,?)
+               home_value, away_value, draw_value, timestamp,
+               line, home_initial, away_initial)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
                 match_id,
@@ -1034,6 +1042,9 @@ def save_match_odds(conn: sqlite3.Connection, match_id: str, odds_rows: list[dic
                 row.get("away_value"),
                 row.get("draw_value"),
                 row.get("timestamp"),
+                row.get("line"),
+                row.get("home_initial"),
+                row.get("away_initial"),
             ),
         )
     conn.commit()

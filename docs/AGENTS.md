@@ -1,7 +1,3 @@
-> **Ubicación original:** `AGENTS.md (Raíz)`
-
----
-
 # 🤖 Instrucciones Obligatorias para Agentes de IA (AGENTS.md)
 
 > **PROPÓSITO:** Esta guía establece las **reglas mandatorias de flujo de trabajo** para cualquier agente de inteligencia artificial que trabaje en el repositorio `pulpa`, así como el mapa completo para localizar archivos, datos y documentación.
@@ -70,6 +66,19 @@ Cada vez que se entrene, refine o implemente un modelo en el sistema, es **manda
 6. **Auditoría de Paridad de Features (Offline vs Live):** Verificar matemáticamente que las features calculadas por `monitor_v3` en vivo sean idénticas a las del pipeline de entrenamiento offline.
 7. **Comparativo Cuantitativo y Next Steps:** Analizar el diferencial respecto al modelo anterior y detallar los siguientes pasos de desarrollo referenciando `roadmap.md`.
 
+### 7. REINICIO AUTOMÁTICO DEL MONITOR TRAS CAMBIOS EN EL BOT O CÓDIGO EN VIVO
+Cada vez que realices cualquier cambio, corrección, ajuste de umbrales, formateo de mensajes, reglas de alertas o modificaciones en:
+- El bot de Telegram (`monitor_v3/notifications/telegram_bot.py`, `bot_runner.py`).
+- El ciclo de vida o daemon en vivo (`monitor_v3/main.py`).
+- Los evaluadores o modelos de inferencia (`monitor_v3/models/evaluator.py`, `models/*/predict.py`).
+- Las configuraciones de ligas o constantes (`monitor_v3/config/leagues.yaml`, `constants.py`).
+
+**ES OBLIGATORIO Y MANDATORIO:**
+1. **Verificar si el monitor está corriendo:** Inspeccionar los procesos activos en el sistema (ej. buscando procesos de Python con `monitor_v3\main.py`).
+2. **Reinicio Inmediato y Automático:** Si el monitor está en ejecución, se debe terminar el proceso anterior obsoleto y reiniciarlo de inmediato con `.venv\Scripts\python.exe monitor_v3\main.py` en segundo plano (`IsDaemon: true`).
+3. **Verificación de Arranque Limpio:** Confirmar que el nuevo proceso del monitor haya iniciado correctamente sin errores de sintaxis o excepciones inmediatas en el log de arranque.
+> ⚠️ **NUNCA** dejar código modificado sin reiniciar el monitor en vivo si este se encontraba en ejecución, para evitar que continúe operando o enviando alertas con código desactualizado en memoria.
+
 ---
 
 ## 🗺️ Mapa del Repositorio: Dónde Encontrar Todo
@@ -86,14 +95,16 @@ Toda la documentación conceptual, histórica y técnica del proyecto ha sido co
 - **`docs/OBSCURA_*.md`:** Investigación de evasión anti-bot, bugs corregidos en Rust y comparativa de scraping.
 - **`docs/ligas_10min.md` y `docs/ligas_12min.md`:** Clasificación de ligas por duración de cuartos reglamentarios (FIBA vs NBA).
 
-### 2. Monitoreo en Vivo (`monitor_v2/` y `monitor_v1/`)
-- **`monitor_v2/` (Versión Moderna y Asíncrona):** Daemon modular de alto rendimiento basado en `asyncio`:
-  - **`monitor_v2/main.py`:** Event loop de `asyncio`. Controla la sonda pre-partido, el bucle en vivo de Q4 y la liquidación final FT.
-  - **`monitor_v2/config/constants.py` y `leagues.yaml`:** Configuración declarativa de umbrales y filtrado de ligas (excluidas vs. `ft_only`).
-  - **`monitor_v2/database/repository.py`:** Transacciones SQLite para tablas `_v2`.
-  - **`monitor_v2/models/evaluator.py`:** Ejecución de inferencias cargando en caché `v6_2` y `m27_v3`.
-  - **`monitor_v2/scrapers/browser_client.py`:** Conexión CDP a Google Chrome para extracción robusta sin bloqueos.
-  - **`monitor_v2/notifications/telegram_bot.py`:** Despacho de mensajes y señales operables a Telegram.
+### 2. Monitoreo en Vivo (`monitor_v3/`, `monitor_v2/` y `monitor_v1/`)
+- **`monitor_v3/` (Versión Actual de Producción - API Móvil Zero-Browser):** Daemon modular de alto rendimiento y ultra-baja latencia (1.2s) basado en `asyncio`, cliente móvil `tls_client okhttp4_android_13` y rotación multi-JWT:
+  - **`monitor_v3/main.py`:** Event loop de `asyncio`. Controla la sonda pre-partido, el bucle en vivo de Q4 y la liquidación final FT.
+  - **`monitor_v3/core/mobile_client.py`:** Cliente HTTP con firma nativa Android para evadir WAF Fastly sin navegadores.
+  - **`monitor_v3/core/token_manager.py`:** Pool de tokens JWT extraídos de la app oficial vía ADB o HTTP Toolkit.
+  - **`monitor_v3/config/constants.py` y `leagues.yaml`:** Configuración declarativa de umbrales y filtrado de ligas.
+  - **`monitor_v3/database/repository.py`:** Transacciones SQLite para tablas `_v3`.
+  - **`monitor_v3/models/evaluator.py`:** Ejecución de inferencias cargando en caché los modelos activos (`v6_2`, `m27_v3`, `m27_v4`).
+  - **`monitor_v3/notifications/telegram_bot.py`:** Despacho de mensajes y señales operables a Telegram.
+- **`monitor_v2/` (Versión Previa / Chrome CDP):** Daemon basado en Google Chrome Headless vía CDP.
 - **`monitor_v1/` (Versión Original / Telegram):** Monitor interactivo guiado por bot de Telegram:
   - **`monitor_v1/telegram_bot.py`:** Bot interactivo con teclado inline, selección de modelos (V1 a V11) y reportes.
   - **`monitor_v1/bet_monitor.py`:** Daemon en hilo secundario para sondeo y alertas en vivo.
@@ -108,12 +119,15 @@ Base de datos SQLite (~737 MB, excluida en `.gitignore`) con almacenamiento hist
 - `match_h2h`: Historial cara a cara entre equipos (354k+ registros).
 - `bet_monitor_log_v2`: Registro auditado de cada predicción en vivo (señal, confianza, resultado win/loss).
 
-### 4. Pipeline de Machine Learning (`match/training/`)
-- **`train_q4_m27_v3.py`:** Script de entrenamiento del modelo **campeón actual (`m27_v3`)** con features de Head-to-Head (AUC 0.789, Yield +13% a +29%).
-- **`train_q4_m27_v1.py` y `train_q4_m27_v2.py`:** Versiones baseline del snapshot 27.
-- **`train_q3_q4_models_v6_2.py`:** Modelo champion v6 con poda de ligas.
-- **`report_m_v1_roi.py`:** Simulador de rentabilidad y ROI con criterio de Kelly.
-- **`infer_match.py`:** Inferencia en vivo reutilizada por el monitor y el bot.
+### 4. Subsistema Unificado de Modelos de Machine Learning (`models/`)
+Toda la suite de ML se organiza bajo el directorio raíz `models/`:
+- **`models/registry.py` e `__init__.py`:** Interfaz universal (`predict`, `predict_all`, `get_available_models`) que desacopla el ML de los monitores.
+- **`models/common/`:** Módulos transversales compartidos (`schema.py` para `PredictionResult`, `data_loader.py` conectado a la raíz, `persistence.py` para `eval_match_results_v2`, `pbp_utils.py`, `time_clip.py`, `h2h.py`, `monte_carlo.py`).
+- **`models/m27_v3/`:** Directorio del modelo **campeón actual (`m27_v3`)** con `train.py`, `predict.py`, `evaluate.py`, `features.py` y `model_outputs/`.
+- **`models/v6_2/`:** Directorio del modelo **campeón Q3/Q4 (`v6_2`)** con poda de ligas.
+- **`models/v6_3/`:** Modelo Q4 con blacklist manual y snapshots tempranos.
+- **`models/v1/` a `models/v17/`:** Versiones históricas y experimentales homologadas.
+- **`match/training/infer_match.py`:** Adaptador retrocompatible preservado para llamadas heredadas.
 
 ### 5. Suite Analítica y Motor de Consenso (`tools/`)
 - **`tools/stats_cli.py` (3,144 líneas):** Contiene el `FusionConsensusEngine` que combina `v6_2` y `m27_v3`, genera reportes a Excel multi-hoja y exporta resúmenes sintéticos (`MetaModel_ALL.txt`).
@@ -128,6 +142,52 @@ Base de datos SQLite (~737 MB, excluida en `.gitignore`) con almacenamiento hist
 - Todos los scripts auxiliares de diagnóstico, pruebas de concepto, inspecciones de base de datos y experimentos puntuales han sido consolidados en `tmp/` en la raíz.
 - Cada archivo en `tmp/` cuenta con un encabezado descriptivo indicando su propósito y ubicación original.
 - **Creación de nuevas pruebas:** Deben ubicarse obligatoriamente en `tmp/<nombre_tarea>/` (por ejemplo: `tmp/modelo_100/`) y documentar en la cabecera del código su propósito y qué problema resuelven.
+
+## 📱 Protocolo de Obtención y Renovación del JWT Móvil (SofaScore)
+
+Para el funcionamiento de `monitor_v3` y las descargas históricas ultrarrápidas con `fetch-range` / `fetch-date` se requiere un token Bearer JWT legítimo emitido por la aplicación oficial de Android (validez de 6 meses).
+
+### 1. ¿Es necesario desinstalar la app si el token caduca o se bloquea?
+- Para renovar sesión tras un bloqueo persistente o resetear el `Installation ID` y huella local:
+  - **Opción automatizada rápida:** Ejecuta la opción **29** en `menu.bat` (o `python tools\reinstall_sofascore.py`), la cual desinstala completamente la app por ADB, reinstala la suite APK limpia parcheada (`tmp\monitor_v3_poc\Sofascore-patched.apk` + splits) y vuelve a abrir la app de forma transparente.
+  - **Opción manual en el teléfono:** Ajustes > Aplicaciones > SofaScore > Almacenamiento > "Borrar datos".
+
+### 2. Flujo de Captura y Sincronización Directa por ADB (Sin Proxy):
+1. **Conexión del Teléfono:** El teléfono debe estar conectado por cable USB a la PC con depuración USB habilitada.
+2. **Generación del Token en el Teléfono:**
+   - La app oficial/parcheada de SofaScore se abre en el teléfono (conectada directamente a internet, sin proxys ni VPNs para no ser bloqueada por Cloudflare).
+   - Navega en la app o toca cualquier partido durante 5 segundos. La app obtiene y guarda su `AUTH_TOKEN` en sus preferencias privadas.
+3. **Extracción Automática al Proyecto:**
+   - Ejecuta la opción **28** en `menu.bat` (o `python tools\sync_token_from_adb.py`).
+   - El script extrae el token directamente de `shared_prefs/com.sofascore.results_preferences.xml` usando `adb shell run-as com.sofascore.results cat ...`, decodifica la expiración y lo almacena directamente en `monitor_v3/config/tokens.json`.
+4. **Fallback HTTP Toolkit:** Si el teléfono no está por USB, la opción 28 o `python tools\sync_token_from_httptoolkit.py` puede inspeccionar el socket local de HTTP Toolkit (`//./pipe/httptoolkit-ctl`).
+
+### 3. Prevención de Bloqueos (Rate Limiting y Challenges):
+- Nunca bombardear peticiones a SofaScore a más de 1 petición por segundo en descargas masivas históricas.
+- Mantener siempre un intervalo de 1.0s a 1.5s entre partidos para evitar que Cloudflare marque el token con `{"error": {"code": 403, "reason": "challenge"}}`.
+
+### 4. Infraestructura Real de `api.sofascore.com` (Fastly/Varnish, NO Cloudflare):
+> ⚠️ **ANTES de tocar la capa de red móvil, parchear el APK o investigar un 403,
+> revisar obligatoriamente los findings previos de decompilado:**
+> - `docs/REVERSE_ENGINEERING_SOFASCORE.md` → contrato exacto de la app, `User-Agent`
+>   firmado (MD5 + ventana de 100s + salt `sofa2012`), clases ofuscadas, herramientas
+>   (androguard, tls_client, adb `run-as`, WebView CDP) y procedimiento para re-derivar
+>   si se actualiza el APK.
+> - `docs/HALLAZGOS_403_SOFASCORE.md` → bitácora de la investigación del 403.
+>
+> **Solución validada (200 OK):** `tls_client` con `client_identifier="okhttp4_android_13"`
+> (huella TLS/HTTP2 OkHttp Android) + `User-Agent` firmado + cabeceras
+> `X-Timestamp`, `app-version`, `Accept-Language`, `Cache-Control` y `Authorization: Bearer`.
+> Sin proxy. No funciona con `httpx`, `requests`, `curl_cffi` ni con el UA estático.
+
+- Las respuestas 403 provienen del **WAF de SofaScore servido por Fastly (motor Varnish)**, NO de Cloudflare. Evidencia: cabeceras `server: Varnish`, `retry-after: 0`, `strict-transport-security: max-age=300`, y resolución DNS a IPs de Fastly (`140.248.179.52`, IPv6 `2a04:4e42:9c::820`). El cuerpo del error es siempre `{"error": {"code": 403, "reason": "..."}}`.
+- Motivos observados: `reason: "Forbidden"` (p. ej. `POST /api/v1/token/init`) y `reason: "challenge"` (endpoints `GET /sport/...`, `/event/...`).
+- **El 403 NO se debe a tokens inválidos ni a IP baneada.** Se verificó que un `AUTH_TOKEN` recién emitido por la app en el mismo teléfono y misma red (misma IP pública) sigue dando 403 desde la PC.
+- **NO sirve mitigarlo cambiando la huella TLS:** se probaron `curl_cffi` (`chrome`, `chrome_android`, `chrome131_android`, `chrome99_android`) y `tls_client` (`okhttp4_android_10/11/12/13`, `chrome_131/133`) con cabeceras móviles exactas (`User-Agent: com.sofascore.results/260921/022538`, `x-timestamp`, `Authorization: Bearer`, `Accept`, `Accept-Encoding`) y **todos** devuelven `403 challenge`. Tampoco cambia forzando IPv4 vs IPv6.
+- **HTTP Toolkit (proxy `127.0.0.1:8000`) NO es la solución:** al activar la intercepción MITM por ADB la app real también recibe 403 (el WAF detecta el MITM); al desactivarla la app vuelve a funcionar. Por eso el token se extrae por ADB sin proxy (opción 28).
+- **La app inyecta cookies del WebView en OkHttp** (`SCSWebviewCookieJar`, `convertCookieManager`, `WebViewCookieManager`), lo que sugiere que el WAF exige una cookie/estado de sesión obtenido por un WebView real (posible `challenge` de Varnish) que la app mantiene en memoria y **no persiste** en `app_webview/Default/Cookies` (se revisó: solo cookies publicitarias).
+- **Próximas líneas de investigación sugeridas:** (a) habilitar/inspeccionar WebView remote debugging (`webview_devtools_remote`) para extraer la cookie de challenge en vivo; (b) decompilar la capa de red de la app (clases `SCSWebviewCookieJar`/interceptores OkHttp) para hallar cabeceras o firmas obligatorias; (c) usar el teléfono como egress real (VPN/reverse) o capturar su `ClientHello` con proxy passthrough (ver `tmp/debug_connection/passthrough_proxy.py`); (d) revisar si el WAF exige un `x-*` calculado por JNI.
+- Scripts de diagnóstico de esta línea: `tmp/debug_connection/` (`test_direct_matrix.py`, `test_exact_endpoints.py`, `test_android_tls.py`, `test_tlsclient.py`, `test_fresh_token.py`, `test_token_init_cookies.py`, `pull_cookie.py`, `read_cookies.py`, `passthrough_proxy.py`). Documento detallado: `docs/HALLAZGOS_403_SOFASCORE.md`.
 
 ---
 

@@ -66,6 +66,19 @@ Cada vez que se entrene, refine o implemente un modelo en el sistema, es **manda
 6. **Auditoría de Paridad de Features (Offline vs Live):** Verificar matemáticamente que las features calculadas por `monitor_v3` en vivo sean idénticas a las del pipeline de entrenamiento offline.
 7. **Comparativo Cuantitativo y Next Steps:** Analizar el diferencial respecto al modelo anterior y detallar los siguientes pasos de desarrollo referenciando `roadmap.md`.
 
+### 7. REINICIO AUTOMÁTICO DEL MONITOR TRAS CAMBIOS EN EL BOT O CÓDIGO EN VIVO
+Cada vez que realices cualquier cambio, corrección, ajuste de umbrales, formateo de mensajes, reglas de alertas o modificaciones en:
+- El bot de Telegram (`monitor_v3/notifications/telegram_bot.py`, `bot_runner.py`).
+- El ciclo de vida o daemon en vivo (`monitor_v3/main.py`).
+- Los evaluadores o modelos de inferencia (`monitor_v3/models/evaluator.py`, `models/*/predict.py`).
+- Las configuraciones de ligas o constantes (`monitor_v3/config/leagues.yaml`, `constants.py`).
+
+**ES OBLIGATORIO Y MANDATORIO:**
+1. **Verificar si el monitor está corriendo:** Inspeccionar los procesos activos en el sistema (ej. buscando procesos de Python con `monitor_v3\main.py`).
+2. **Reinicio Inmediato y Automático:** Si el monitor está en ejecución, se debe terminar el proceso anterior obsoleto y reiniciarlo de inmediato con `.venv\Scripts\python.exe monitor_v3\main.py` en segundo plano (`IsDaemon: true`).
+3. **Verificación de Arranque Limpio:** Confirmar que el nuevo proceso del monitor haya iniciado correctamente sin errores de sintaxis o excepciones inmediatas en el log de arranque.
+> ⚠️ **NUNCA** dejar código modificado sin reiniciar el monitor en vivo si este se encontraba en ejecución, para evitar que continúe operando o enviando alertas con código desactualizado en memoria.
+
 ---
 
 ## 🗺️ Mapa del Repositorio: Dónde Encontrar Todo
