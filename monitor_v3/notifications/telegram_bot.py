@@ -1,4 +1,4 @@
-﻿# =====================================================================
+# =====================================================================
 # REGLAS DE ARQUITECTURA, FORMATEO Y LOGGING DE PRODUCCIÓN (MANTENER):
 # 1. ESTRUCTURA: Estrictamente modularizado (config, database, scrapers, 
 #    models, notifications, utils) coordinados asíncronamente por main.py.
@@ -220,12 +220,13 @@ def format_bet_message(model: str, picked_team: str, is_home: bool, signal: str,
     if "LATE" in signal:
         prefix = "🟡⚪️" if is_low_conf else "⚪️"
         return f"{prefix} APUESTA TARDIA Q4 {model_str} → {side_emoji} {picked_team}"
-    elif "BET" in signal:
+    elif "BET" in signal and "NO_BET" not in signal:
         prefix = "🟡" if is_low_conf else "🟢"
         return f"{prefix} APUESTA Q4 {model_str} → {side_emoji} {picked_team}"
+    elif "NO_BET" in signal:
+        return f"⚪️ NO BET {model_str} → {side_emoji} {picked_team}"
     else:
-        prefix = "🟡" if is_low_conf else "🟢"
-        return f"{prefix} APUESTA Q4 {model_str} → {side_emoji} {picked_team}"
+        return f"⚪️ NO BET {model_str} → {side_emoji} {picked_team}"
 
 
 
@@ -309,30 +310,24 @@ async def send_bet_alert(
 def format_combined_bet_message(predictions: dict, home_team: str, away_team: str) -> str:
     """
     Formatea el mensaje base de Telegram para señales múltiples combinadas.
+    Distingue explícitamente qué modelos están en APUESTA (BET) y cuáles están en [NO BET].
     """
     is_late = any("LATE" in pred.get("signal", "") for pred in predictions.values())
-    
-    has_high_conf = False
-    for pred in predictions.values():
-        conf = pred.get("confidence")
-        if conf is not None:
-            if conf > 1.0:
-                conf = conf / 100.0
-            if conf >= 0.30:
-                has_high_conf = True
-                break
-                
-    is_low_conf = not has_high_conf
+    has_real_bet = any("BET" in pred.get("signal", "") and "NO_BET" not in pred.get("signal", "") for pred in predictions.values())
     
     if is_late:
-        prefix = "🟡⚪️" if is_low_conf else "⚪️"
-        title = f"{prefix} APUESTA TARDIA Q4"
+        title = "⚪️ APUESTA TARDIA Q4"
+    elif has_real_bet:
+        title = "🟢 APUESTA Q4"
     else:
-        prefix = "🟡" if is_low_conf else "🟢"
-        title = f"{prefix} APUESTA Q4"
+        title = "⚪️ NO BET Q4"
         
     lines = [title]
     for model, pred in predictions.items():
+        sig = str(pred.get("signal", ""))
+        raw_sig = str(pred.get("raw_model_signal", sig))
+        is_bet = ("BET" in sig and "NO_BET" not in sig) or ("BET" in raw_sig and "NO_BET" not in raw_sig)
+
         conf = pred.get("confidence")
         if conf is not None:
             if conf > 1.0:
@@ -347,7 +342,13 @@ def format_combined_bet_message(predictions: dict, home_team: str, away_team: st
         side_emoji = "🏠" if is_home_pick else "✈️"
         picked_team_name = home_team if is_home_pick else away_team
         
-        lines.append(f"{model_conf_str} → {side_emoji} {picked_team_name}")
+        # Umbral específico del modelo
+        threshold_note = "<75%" if "v5_2" in model else ("<68%" if "v5" in model else "<65%")
+
+        if is_bet:
+            lines.append(f"{model_conf_str} → {side_emoji} {picked_team_name}")
+        else:
+            lines.append(f"{model_conf_str} [NO BET ({threshold_note})] → {side_emoji} {picked_team_name}")
         
     return "\n".join(lines)
 

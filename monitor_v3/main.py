@@ -449,7 +449,8 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                 continue
 
                             sig = pred.get("signal", "UNAVAILABLE")
-                            if "BET" in sig:
+                            is_bet = ("BET" in sig and "NO_BET" not in sig)
+                            if is_bet:
                                 operable_to_send[model] = pred
                             elif sig == "NO_BET":
                                 inf_json = pred.get("inference_json") or {}
@@ -492,13 +493,17 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                 )
                                 q4_done[model] = True
 
-                            # Enviar Telegram Alert
+                            # Enviar Telegram Alert solo si hay al menos una apuesta real
                             quarters_data = score_data.get("quarters", {})
                             # Mostrar el marcador del cuarto ACTUAL (no el de Q4, que aún va 0-0).
                             current_q_scores = quarters_data.get(q_key, {}) if q_key else {}
-                            if len(operable_to_send) > 1:
+                            
+                            # Mostrar todas las predicciones del tick para consenso transparente
+                            display_preds = {m: preds[m] for m in preds if preds[m].get("signal") not in ("UNAVAILABLE", None)}
+                            
+                            if len(display_preds) > 1:
                                 await send_combined_bet_alert(
-                                    predictions=operable_to_send,
+                                    predictions=display_preds,
                                     match_id=match_id,
                                     match_data=full_data,
                                     home_team=home,

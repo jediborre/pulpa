@@ -34,9 +34,18 @@ excluded_leagues:
 ft_only_leagues:
   patterns:
     - "U21"
+    - "U20"
     - "U19"
     - "U18"
+    - "U17"
     - "U16"
+    - "U15"
+    - "U14"
+    - "U13"
+    - "EYBL"
+    - "Youth"
+    - "Junior"
+    - "Cadete"
   ids:
     - 1234
     - 5678

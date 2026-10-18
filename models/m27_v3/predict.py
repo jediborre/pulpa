@@ -63,7 +63,7 @@ def predict(
     target: str = "q4",
     match_data: dict[str, Any] | None = None,
     conn: sqlite3.Connection | None = None,
-    threshold_bet: float = 0.50,
+    threshold_bet: float = 0.68,
 ) -> PredictionResult:
     """Ejecuta inferencia con m27_v3 retornando un PredictionResult canónico."""
     if target.lower() != "q4":
