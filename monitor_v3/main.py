@@ -34,6 +34,8 @@ from monitor_v3.config.constants import (
     UTC_OFFSET_HOURS,
     DAILY_SUMMARY_HOUR,
     DAILY_SUMMARY_MINUTE,
+    WATCH_OBSOLETE_SECS,
+    PROBE_MAX_CONSECUTIVE_ERRORS,
 )
 from monitor_v3.core.token_manager import get_token_pool
 from monitor_v3.core.mobile_client import get_mobile_client
@@ -66,7 +68,11 @@ from monitor_v3.notifications.telegram_bot import (
     send_daily_summary,
 )
 from monitor_v3.scrapers.schedule_scraper import fetch_schedule_matches_for_date
-from monitor_v3.scrapers.live_scraper import fetch_event_snapshot, fetch_live_events
+from monitor_v3.scrapers.live_scraper import (
+    EventNotFoundError,
+    fetch_event_snapshot,
+    fetch_live_events,
+)
 from monitor_v3.scrapers.match_detail_scraper import fetch_match_by_id
 from monitor_v3.utils.helpers import (
     format_human_time,
@@ -295,7 +301,7 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
     secs_per_gmin = float(SECS_PER_GAME_MIN)
     
     # 1. Validación de obsolescencia
-    if time.time() - scheduled_ts > 12600:
+    if time.time() - scheduled_ts > WATCH_OBSOLETE_SECS:
         log_warning("MONITOREO", f"[WATCHER] Partido obsoleto | {match_display}")
         update_schedule_status(match_id, status="done", skip_reason="obsoleto_tiempo_superado")
         await _final_fetch_and_save(match_id, home, away)
@@ -329,9 +335,10 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
     await _capture_pregame_odds(match_id)
     in_probe_mode = True
     probe_delay = float(PRESTART_PROBE_MIN_SECS)
+    probe_errors = 0
     
     while in_probe_mode and not stop_event.is_set():
-        if time.time() - scheduled_ts > 12600:
+        if time.time() - scheduled_ts > WATCH_OBSOLETE_SECS:
             log_warning("MONITOREO", f"[PROBE] Partido obsoleto | {match_display}")
             await _final_fetch_and_save(match_id, home, away)
             return
@@ -343,6 +350,7 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
 
         try:
             snapshot = await fetch_event_snapshot(match_id)
+            probe_errors = 0
             status_type = snapshot.get("status_type", "").lower()
             
             if status_type in ("inprogress", "live"):
@@ -352,8 +360,19 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                 log_info("MONITOREO", f"[PROBE] Finalizado detectado: {match_display}")
                 await _final_fetch_and_save(match_id, home, away)
                 return
+        except EventNotFoundError:
+            # El evento fue eliminado/re-creado con otro id en SofaScore: reintentar
+            # el sondeo es inútil y genera cientos de líneas de error. Se abandona.
+            log_warning("MONITOREO", f"[PROBE] Evento eliminado en el API (HTTP 404) → se abandona | {match_display}")
+            update_schedule_status(match_id, status="done", skip_reason="evento_404_eliminado")
+            return
         except Exception as e:
+            probe_errors += 1
             log_error("MONITOREO", f"[PROBE] Error sondeo {match_display}: {e}")
+            if probe_errors >= PROBE_MAX_CONSECUTIVE_ERRORS:
+                log_warning("MONITOREO", f"[PROBE] {probe_errors} fallos consecutivos → se abandona | {match_display}")
+                update_schedule_status(match_id, status="discarded", skip_reason="sondeo_fallido_consecutivo")
+                return
 
         probe_sleep = calculate_jitter_sleep_secs(probe_delay, phase="error_retry")
         await asyncio.sleep(probe_sleep)
@@ -363,9 +382,18 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
     #    FIABLE del snapshot (event.time.played), NO estimaciones de reloj de pared.
     #    Así, aunque el daemon se reinicie, el watcher sabe en qué minuto va el partido.
     EVAL_WAKE_MINUTE = max(0, Q4_ONLY_EARLY_WAKE_MINUTE - 2)
+    near_errors = 0
     while not stop_event.is_set():
+        # Guarda de obsolescencia: este bucle espera a que el partido llegue al minuto
+        # de evaluación. Si el evento nunca arranca (p. ej. 404 permanente porque
+        # SofaScore lo eliminó o lo re-creó con otro id) quedaría colgado para siempre.
+        if time.time() - scheduled_ts > WATCH_OBSOLETE_SECS:
+            log_warning("MONITOREO", f"[PROBE] Partido obsoleto sin arranque | {match_display}")
+            update_schedule_status(match_id, status="discarded", skip_reason="obsoleto_sin_arranque")
+            return
         try:
             snap = await fetch_event_snapshot(match_id)
+            near_errors = 0
             st = snap.get("status_type", "").lower()
             if st == "finished":
                 log_info("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Finalizado antes de la ventana → FT | {match_display}")
@@ -378,8 +406,17 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
             desc = (snap.get("status_description") or "").lower()
             if played is None and ("3rd quarter" in desc or "4th quarter" in desc):
                 break
+        except EventNotFoundError:
+            log_warning("MONITOREO", f"[PROBE] Evento eliminado en el API (HTTP 404) → se abandona | {match_display}")
+            update_schedule_status(match_id, status="done", skip_reason="evento_404_eliminado")
+            return
         except Exception as e:
+            near_errors += 1
             log_error("MONITOREO", f"[PROBE] Error sondeo {match_display}: {e}")
+            if near_errors >= PROBE_MAX_CONSECUTIVE_ERRORS:
+                log_warning("MONITOREO", f"[PROBE] {near_errors} fallos consecutivos → se abandona | {match_display}")
+                update_schedule_status(match_id, status="discarded", skip_reason="sondeo_fallido_consecutivo")
+                return
         await asyncio.sleep(POLL_NEAR_SECS)
 
     # 5. Monitoreo Activo en Vivo (Ventana Q3/Q4)
@@ -400,7 +437,7 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
     log_info("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Iniciando monitoreo móvil en vivo | {match_display}")
 
     while not stop_event.is_set():
-        if time.time() - scheduled_ts > 12600:
+        if time.time() - scheduled_ts > WATCH_OBSOLETE_SECS:
             log_warning("MONITOREO", f"{COLOR_BRIGHT_RED}[LIVE]{COLOR_RESET} Partido obsoleto | {match_display}")
             await _final_fetch_and_save(match_id, home, away)
             break
@@ -751,7 +788,7 @@ async def main_async() -> None:
 
                 sched_ts = int(m["scheduled_utc_ts"])
                 # Partidos que inician en las próximas 2 horas o iniciaron hace menos de 3.5 horas
-                if (sched_ts - now_ts <= 7200) and (now_ts - sched_ts <= 12600):
+                if (sched_ts - now_ts <= 7200) and (now_ts - sched_ts <= WATCH_OBSOLETE_SECS):
                     mode = get_league_mode(m["league"], leagues_cfg)
                     if mode == "EXCLUDE":
                         continue

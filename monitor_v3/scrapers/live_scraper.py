@@ -22,10 +22,27 @@
 import asyncio
 from monitor_v3.core.mobile_client import get_mobile_client
 
+
+class EventNotFoundError(RuntimeError):
+    """
+    El evento ya no existe en el API móvil (HTTP 404).
+
+    Ocurre cuando SofaScore elimina, cancela o RE-CREA un enfrentamiento con un
+    id nuevo (caso observado: 17353606 → 17356027, mismo cruce Ieliecmaisā.lv vs
+    Selga). Es un fallo PERMANENTE, no transitorio: reintentar el sondeo no sirve
+    y solo produce ruido de log, por lo que los watchers deben abortar de inmediato.
+    """
+
+
 async def fetch_event_snapshot(match_id: str) -> dict:
     """Sondea de forma ultra ligera el estado actual de un partido (/event/{id})."""
     mc = get_mobile_client()
-    return await mc.get_event_snapshot(match_id)
+    try:
+        return await mc.get_event_snapshot(match_id)
+    except RuntimeError as e:
+        if "HTTP 404" in str(e):
+            raise EventNotFoundError(str(e)) from e
+        raise
 
 async def fetch_live_events() -> list[dict]:
     """Obtiene todos los eventos en vivo actuales de baloncesto."""

@@ -20,6 +20,7 @@ import html
 import os
 import re
 import sqlite3
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -27,6 +28,7 @@ from telegram import (
     ReplyKeyboardMarkup,
     Update,
 )
+from telegram.error import NetworkError, RetryAfter, TelegramError, TimedOut
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -34,6 +36,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+from telegram.request import HTTPXRequest
 
 from monitor_v3.config.constants import (
     TELEGRAM_BOT_TOKEN,
@@ -41,11 +44,91 @@ from monitor_v3.config.constants import (
     UTC_OFFSET_HOURS,
 )
 from monitor_v3.database.connection import get_real_db_path
-from monitor_v3.utils.logger import log_info, log_error
+from monitor_v3.utils.logger import log_info, log_warning, log_error
 
 # Textos de los botones persistentes (debajo del input de Telegram)
 SIGNALS_BUTTON_TEXT = "🎯 Apuestas"
 STATUS_BUTTON_TEXT = "📊 Status"
+
+# ─────────────────────────────────────────────────────────────────────
+# Timeouts y resiliencia de red
+# ─────────────────────────────────────────────────────────────────────
+# El bot corre sobre una red doméstica con microcaídas (~10 s) que provocan
+# httpx.ReadError en el long polling de Telegram. PTB ya reintenta el polling
+# indefinidamente (max_retries=-1), pero sus envíos salientes NO se reintentan:
+# de ahí los timeouts holgados + reintentos manuales con backoff.
+CONNECT_TIMEOUT_SECS = 10.0
+READ_TIMEOUT_SECS = 20.0     # al polling se le suma el long-poll (10 s) → 30 s reales
+WRITE_TIMEOUT_SECS = 20.0
+POOL_TIMEOUT_SECS = 5.0
+SEND_MAX_ATTEMPTS = 3
+SEND_BACKOFF_BASE_SECS = 1.0
+POLL_ERROR_LOG_INTERVAL_SECS = 60.0
+
+_last_poll_error_log = 0.0
+_poll_error_count = 0
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Resiliencia de red (polling + envíos salientes)
+# ─────────────────────────────────────────────────────────────────────
+
+def _on_poll_error(exc: TelegramError) -> None:
+    """
+    Callback de errores del bucle de polling de PTB.
+
+    PTB reintenta el polling indefinidamente, así que un corte de red NO detiene
+    el bot. Aquí solo se registra en el log diario, con throttle para no inundar
+    la consola con el traceback completo en cada reconexión.
+    """
+    global _last_poll_error_log, _poll_error_count
+    _poll_error_count += 1
+    now = time.monotonic()
+    if now - _last_poll_error_log < POLL_ERROR_LOG_INTERVAL_SECS:
+        return
+    _last_poll_error_log = now
+    log_warning(
+        "TELEGRAM",
+        f"[BOT_V3] Corte de red en polling ({type(exc).__name__}: {exc or 'sin detalle'}). "
+        f"Reintentando... (fallos acumulados: {_poll_error_count})",
+    )
+
+
+async def _send_with_retry(send, *, description: str, attempts: int = SEND_MAX_ATTEMPTS):
+    """
+    Ejecuta un envío con reintentos y backoff exponencial.
+
+    `send` debe ser una función sin argumentos que devuelva una corrutina nueva en
+    cada llamada (las corrutinas no se pueden reutilizar tras un fallo).
+    """
+    last_exc: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return await send()
+        except RetryAfter as exc:
+            delay = float(exc.retry_after) + 0.5
+            log_warning(
+                "TELEGRAM",
+                f"[BOT_V3] Rate limit en {description}; esperando {delay:.1f}s "
+                f"(intento {attempt}/{attempts})",
+            )
+        except (NetworkError, TimedOut) as exc:
+            last_exc = exc
+            delay = SEND_BACKOFF_BASE_SECS * (2 ** (attempt - 1))
+            log_warning(
+                "TELEGRAM",
+                f"[BOT_V3] Fallo de red en {description} "
+                f"(intento {attempt}/{attempts}): {exc or 'sin detalle'}. "
+                f"Reintento en {delay:.1f}s",
+            )
+        if attempt < attempts:
+            await asyncio.sleep(delay)
+
+    log_error(
+        "TELEGRAM",
+        f"[BOT_V3] No se pudo completar {description} tras {attempts} intentos: {last_exc}",
+    )
+    return None
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -318,8 +401,11 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"• {SIGNALS_BUTTON_TEXT} — señales de hoy (apuestas + resultados)\n"
         f"• {STATUS_BUTTON_TEXT} — estadísticas de la BD v3"
     )
-    await update.effective_message.reply_text(
-        text, parse_mode="HTML", reply_markup=_reply_keyboard()
+    await _send_with_retry(
+        lambda: update.effective_message.reply_text(
+            text, parse_mode="HTML", reply_markup=_reply_keyboard()
+        ),
+        description="/start",
     )
 
 
@@ -336,33 +422,55 @@ async def _reply_long(message, text: str) -> None:
                 chunk = remaining[:nl]
         chunks.append(chunk)
         remaining = remaining[len(chunk):].lstrip("\n")
-    for c in chunks:
-        await message.reply_text(c, parse_mode="HTML")
+    for idx, c in enumerate(chunks, start=1):
+        await _send_with_retry(
+            lambda c=c: message.reply_text(c, parse_mode="HTML"),
+            description=f"mensaje largo ({idx}/{len(chunks)})",
+        )
 
 
 async def signals_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not _is_allowed(update):
         return
-    msg = await update.effective_message.reply_text("⏳ Procesando señales de hoy...")
+    msg = await _send_with_retry(
+        lambda: update.effective_message.reply_text("⏳ Procesando señales de hoy..."),
+        description="/signals (aviso)",
+    )
     try:
         text = await asyncio.to_thread(build_signals_text)
-        await msg.delete()
+        if msg:
+            await _send_with_retry(msg.delete, description="/signals (borrar aviso)")
         await _reply_long(update.effective_message, text)
     except Exception as e:
         log_error("TELEGRAM", f"[BOT_V3] Error en /signals: {e}")
-        await msg.edit_text("❌ Error al procesar señales")
+        if msg:
+            await _send_with_retry(
+                lambda: msg.edit_text("❌ Error al procesar señales"),
+                description="/signals (error)",
+            )
 
 
 async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not _is_allowed(update):
         return
-    msg = await update.effective_message.reply_text("⏳ Consultando estadísticas...")
+    msg = await _send_with_retry(
+        lambda: update.effective_message.reply_text("⏳ Consultando estadísticas..."),
+        description="/status (aviso)",
+    )
     try:
         text = await asyncio.to_thread(build_status_text)
-        await msg.edit_text(text=text, parse_mode="HTML")
+        if msg:
+            await _send_with_retry(
+                lambda: msg.edit_text(text=text, parse_mode="HTML"),
+                description="/status",
+            )
     except Exception as e:
         log_error("TELEGRAM", f"[BOT_V3] Error en /status: {e}")
-        await msg.edit_text("❌ Error al leer estadísticas")
+        if msg:
+            await _send_with_retry(
+                lambda: msg.edit_text("❌ Error al leer estadísticas"),
+                description="/status (error)",
+            )
 
 
 async def _handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -375,6 +483,30 @@ async def _handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await status_cmd(update, context)
 
 
+async def _on_handler_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Registra excepciones no controladas sin tumbar el bot.
+
+    En PTB 21.x los fallos del bucle de polling (httpx.ReadError, timeouts)
+    llegan aquí con `update=None` vía Application.process_error, así que se
+    enrutan al log con throttle en lugar de imprimir tracebacks completos.
+    """
+    exc = context.error
+    if update is None and isinstance(exc, TelegramError):
+        _on_poll_error(exc)
+        return
+    if isinstance(exc, (NetworkError, TimedOut)):
+        log_warning(
+            "TELEGRAM",
+            f"[BOT_V3] Fallo de red en handler: {type(exc).__name__}: {exc or 'sin detalle'}",
+        )
+    else:
+        log_error(
+            "TELEGRAM",
+            f"[BOT_V3] Excepción no controlada en handler: {type(exc).__name__}: {exc}",
+        )
+
+
 # ─────────────────────────────────────────────────────────────────────
 # Runner
 # ─────────────────────────────────────────────────────────────────────
@@ -383,15 +515,33 @@ def main() -> None:
     if not TELEGRAM_BOT_TOKEN:
         raise SystemExit("Falta TELEGRAM_BOT_TOKEN. Defínelo en .env")
 
-    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    # Timeouts holgados: el long-poll (10 s) se suma al read_timeout.
+    httpx_opts = dict(
+        connect_timeout=CONNECT_TIMEOUT_SECS,
+        read_timeout=READ_TIMEOUT_SECS,
+        write_timeout=WRITE_TIMEOUT_SECS,
+        pool_timeout=POOL_TIMEOUT_SECS,
+    )
+    app = (
+        Application.builder()
+        .token(TELEGRAM_BOT_TOKEN)
+        .request(HTTPXRequest(**httpx_opts))
+        .get_updates_request(HTTPXRequest(**httpx_opts))
+        .build()
+    )
     app.add_handler(CommandHandler("start", start_cmd))
     app.add_handler(CommandHandler("signals", signals_cmd))
     app.add_handler(CommandHandler("status", status_cmd))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _handle_text))
+    app.add_error_handler(_on_handler_error)
 
     log_info("TELEGRAM", "[BOT_V3] Bot interactivo V3 iniciado (polling).")
     print("[bot-v3] iniciado. Ctrl+C para detener.")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    app.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+        poll_interval=1.0,
+        timeout=10,
+    )
 
 
 if __name__ == "__main__":

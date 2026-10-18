@@ -99,6 +99,8 @@ PRESTART_PROBE_MIN_SECS = 60        # Intervalo mínimo de sondeo para partidos 
 PRESTART_PROBE_MAX_SECS = 300       # Intervalo máximo de sondeo (Cap del Backoff)
 PRESTART_PROBE_BACKOFF = 1.25       # Factor multiplicador del temporizador exponencial
 PROBE_GLOBAL_TIMEOUT_SECS = 21600   # Timeout global (6h) para evitar tareas colgadas
+WATCH_OBSOLETE_SECS = 12600         # 3.5h sin datos tras su hora de inicio → partido obsoleto (se descarta)
+PROBE_MAX_CONSECUTIVE_ERRORS = 8    # Fallos de sondeo consecutivos antes de abandonar un partido
 
 # --- Polling y Descarga Final (FT) ---
 POLL_INTERVAL_LIVE_SECS = 15        # Polling frecuente en vivo para Q4
