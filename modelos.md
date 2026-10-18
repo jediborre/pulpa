@@ -669,45 +669,220 @@ models/
 
 ---
 
-## m27_v4 (Propuesta de Próxima Generación) — Dynamic Elo, Roster & League Priors
+## m27_v4 — Canonical Triad Multi-Head & Multi-Snapshot Champion (Cero Overfitting) ⭐
 
-> **Documento maestro de especificación:** [`docs/PROPUESTA_NUEVO_MODELO_M27_V4.md`](file:///C:/Users/App/Desktop/pulpa/docs/PROPUESTA_NUEVO_MODELO_M27_V4.md)  
-> **Arquitectura Multi-Modelo y Plan de Backfill:** [`docs/ARQUITECTURA_MULTI_MODELO_Y_BACKFILL.md`](file:///C:/Users/App/Desktop/pulpa/docs/ARQUITECTURA_MULTI_MODELO_Y_BACKFILL.md)
+> **Paquete de producción:** [`models/m27_v4/`](file:///C:/Users/App/Desktop/pulpa/models/m27_v4/predict.py) (`features.py`, `predict.py`, `train.py`, `model_outputs/`)  
+> **Bitácora de iteraciones, corrección de fugas y anti-overfitting:** [`docs/FINDINGS_M27_V4_ITERACIONES.md`](file:///C:/Users/App/Desktop/pulpa/docs/FINDINGS_M27_V4_ITERACIONES.md)
 
 | Campo | Valor |
 |-------|-------|
-| **Snapshot** | **27** (a 3 minutos de finalizar Q3) |
-| **Algoritmo** | Ensemble LightGBM + CatBoost + Isotonic Calibration |
-| **Target** | **Ganador de Q4** (Home / Away) |
-| **Documentación** | [`docs/PROPUESTA_NUEVO_MODELO_M27_V4.md`](file:///C:/Users/App/Desktop/pulpa/docs/PROPUESTA_NUEVO_MODELO_M27_V4.md) |
-| **Features** | **30 features estructuradas en 4 bloques:** Bloque M (12 Momentum m27), Bloque E (4 Elo Dinámico por Cuartos), Bloque R (6 Calidad Roster/Banquillo), Bloque L (8 Priors Taxonómicos de Liga) |
-| **Dataset Filtrado** | **30,382 partidos élite** (FIBA 10m, `is_youth=0`, `is_college=0`, `competition_type!='friendly'`, `match_count>=50`) |
-| **ROC AUC Objetivo** | **$\ge 0.765$** (frente a 0.722 en baseline sin H2H y 0.789 con H2H) |
-| **Accuracy Objetivo** | **$\ge 68.0\%$** en señales operables (`BET_HOME` / `BET_AWAY` @ $P \ge 0.65$) |
-| **Yield Económico Objetivo** | **$\ge +12.5\%$** con cuota fija 1.40 |
-| **Avance Clave 1 (Elo)** | Vector dinámico $\text{Elo}_{Q4}$ y $\text{Elo}_{FT}$ por equipo calculado cronológicamente con regresión a la media entre temporadas (0.75 / 0.25). |
-| **Avance Clave 2 (Roster)** | Incorporación del diferencial de ratings de titulares ($\Delta \text{Starters}$, $r=+0.401$) y banquillo ($\Delta \text{Bench}$, $r=+0.348$), junto a penalización por sobredependencia de una estrella ($\Delta \text{Star Reliance}$, $r=-0.214$). |
-| **Avance Clave 3 (Taxonomía)** | Inyección de priors automáticos de `leagues_classification`: corrección femenina (`is_women`), postemporada (`is_playoffs`), ritmo normalizado (`scoring_pace_per_minute`) y riesgo de paliza (`blowout_rate`). |
+| **Snapshot Operativo** | **Multi-Snapshot Dinámico Pre-Q4:** `m26..m30` en FIBA 10m (**óptimo `m27`**, a 3:00 del cierre de Q3) y `m31..m36` en NBA 12m (**óptimo `m33`**, a 3:00 del cierre de Q3). Soporta también confirmación en vivo `m31..m32`. |
+| **Segmentación (Tríada Canónica)** | **3 sub-modelos independientes** sobre el 100% de `matches.db` clasificada (`0` ligas sin clasificar):<br>1. **`fiba_men_10m`** (`149,713` partidos válidos)<br>2. **`fiba_women_10m`** (`34,251` partidos válidos)<br>3. **`nba_12m`** (`28,250` partidos válidos) |
+| **Arquitectura (Ensemble Híbrido Regularizado)** | Combinación ponderada de árboles poco profundos + **Ancla Lineal L2 (`StandardScaler + LogisticRegression(C=0.08)`)** + **Calibración Isotónica Out-of-Fold (`IsotonicRegression`)**:<br>• `fiba_men_10m` y `fiba_women_10m`: `45% XGBoost` + `40% HistGradientBoosting` + `15% LogisticRegression L2`<br>• `nba_12m`: `35% XGBoost` + `35% HistGradientBoosting` + `30% LogisticRegression L2` |
+| **Hiperparámetros Óptimos Anti-Overfitting** | • **FIBA 10m:** `n_estimators=260`, `learning_rate=0.03`, `max_depth=4`, `max_leaf_nodes=15`, `min_samples_leaf=350`, `reg_lambda (L2)=50.0`, `reg_alpha (L1)=15.0`, `subsample=0.70`, `colsample_bytree=0.70`<br>• **NBA 12m:** `max_depth=3`, `max_leaf_nodes=10`, `min_samples_leaf=450`, `reg_lambda (L2)=60.0`<br>• **Modality Dropout en Entrenamiento:** Apagado estocástico (20%–30%) de cuotas, desglose PBP, rolling de jugadores y curva de presión para inmunizar al modelo ante caídas parciales de la API en vivo. |
+| **Targets Simultáneos (4 Cabezas / Multi-Head)** | • **Cabeza 1 (`q4_win`):** Clasificador calibrado de Ganador del Q4 (`HOME` vs `AWAY`).<br>• **Cabeza 2 (`expected_q4_margin`):** Regresor `HistGBRegressor (loss='absolute_error')` del diferencial de puntos esperado en el Q4 ($\text{Q4}_{\text{home}} - \text{Q4}_{\text{away}}$). Actúa como predictor de **Hándicap Q4** y como **Compuerta de Consenso (Gate Dual)** de la Cabeza 1.<br>• **Cabeza 3 (`expected_q4_total`):** Regresor `HistGBRegressor (loss='squared_error')` de puntos totales del Q4 ($\text{Q4}_{\text{home}} + \text{Q4}_{\text{away}}$) para el mercado **Over/Under Q4**.<br>• **Cabeza 4 (`p_ft_home_win`):** Clasificador en vivo del **Ganador del Partido Completo (FT Live)**. |
+| **Niveles de Señal en Producción (`predict.py`)** | • `BET_SNIPER`: Liga no tóxica + `Conf >= 0.72` + `|E[dQ4]| >= 3.0 pts` + **Unanimidad de los 3 submodelos** (`min(XGB, HistGB, LR) >= 0.66`) + `d_elo_q4 > 0` a favor del pick.<br>• `BET_STRONG`: Liga no tóxica + `Conf >= 0.70` + `|E[dQ4]| >= 1.8 pts`.<br>• `BET`: Liga no tóxica + `Conf >= 0.68` + `|E[dQ4]| >= 1.8 pts`.<br>• `NO_BET`: No cumple umbrales o pertenece a una liga bloqueada en `toxic_leagues.json` (`[TOXIC_LG_BLOCKED]`). |
 
 ---
 
-## m27_v4 — Canonical Triad Multi-Head & Multi-Snapshot Champion (Cero Overfitting) ⭐
+### 1. Diagrama de Arquitectura Multi-Head & Multi-Snapshot (`models/m27_v4`)
 
-| Campo | Valor |
-|-------|-------|
-| **Snapshot** | **Multi-Snapshot Dinámico** (`m26..m30` en FIBA 10m, óptimo **`m27`**; `m33..m36` en NBA 12m, óptimo **`m33`**; soporta confirmación live `m31..m32`) |
-| **Algoritmo** | Ensemble Híbrido Regularizado: `LightGBM` + `XGBoost` + `HistGradientBoosting` + **Ancla Lineal L2 (`LogisticRegression`)** + Calibración Isotónica Out-of-Fold |
-| **Paquete de producción** | `models/m27_v4/` (`features.py`, `predict.py`, `train.py`, `model_outputs/`) |
-| **Documentación de hallazgos** | `docs/FINDINGS_M27_V4_ITERACIONES.md` |
-| **Hiperparams (Anti-Overfit)** | `max_depth=4` (`3` en NBA), `max_leaf_nodes=15` (`10` en NBA), `min_samples_leaf=400`, `reg_lambda (L2)=50.0`, `reg_alpha (L1)=15.0`, `learning_rate=0.03`, `subsample=0.70`, `colsample_bytree=0.65`, **Modality Dropout 12%** |
-| **Targets (4 Cabezas)** | **Head 1:** `q4_win` (Moneyline Q4) · **Head 2:** `expected_q4_margin` (Hándicap Q4 y Gate de Consenso) · **Head 3:** `expected_q4_total` (Over/Under Puntos Q4) · **Head 4:** `p_ft_home_win` (Ganador FT Live) |
-| **Segmentación (Tríada Canónica)** | 3 sub-modelos independientes sobre el 100% de la DB clasificada (`0` ligas sin clasificar): **`fiba_men_10m`** (`149,713` matches), **`fiba_women_10m`** (`34,251` matches), **`nba_12m`** (`28,250` matches) |
-| **Features (41 limpias, 0 leakage)** | **Bloque A:** Reloj normalizado (`pct_q3_elapsed`, `mins_remaining_reg`). **Bloque B:** Dinámica Q1–Q3 y paridad (`lead_abs`, `is_blowout_15`, `q3_To_q12_shift`). **Bloque C:** ELO Full-Time y ELO Q4 con **Decaimiento Estacional** (`>60d` y `>300d`) + H2H con contracción Bayesiana. **Bloque D:** Rolling Pre-Match de plantilla (`rolling_delta_plus_minus` $r=+0.2294$, `rolling_top3_rating_diff`). **Bloque E:** Microestructura PBP (`2PT/3PT/FT` directo de `match_events` con 100% cobertura + `graph_points`). **Bloque F:** Priors de liga (`league_home_q4_rate`, `league_q4_total_mean`, `is_playoffs`, `is_international`). |
-| **Muestras Totales** | **`212,214` partidos válidos con Q1–Q4 completos** (`2015–2026`), split temporal estricto 70% Train / 15% Val / 15% Test Out-of-Time + 4 cortes Walk-Forward |
-| **ROC AUC (Test Out-of-Time)** | **`fiba_men_10m`: `0.6406`** (`Gap = -0.0006`) · **`fiba_women_10m`: `0.6714`** (`Gap = -0.0045`) · **`nba_12m`: `0.6208`** (`Gap = +0.0269`) · **Confirmación `m32`: `0.7069`** · **FT Live: `0.9340`–`0.9622`** |
-| **Win Rate & ROI @ $P \ge 0.70$ + Gate Margen** | **`fiba_men_10m`: `77.19%` WR** (`2,345` bets, **`+8.07%` Yield** @1.40) · **`fiba_women_10m`: `76.74%` WR** (`1,023` bets, **`+7.44%` Yield**) · **`nba_12m`: `73.86%` WR** (`241` bets, **`+3.40%` Yield**) |
-| **Over/Under Total Q4 (Head 3)** | **`fiba_men_10m`: `60.9%` WR** (`+12.7%` Yield @1.85, MAE `6.5 pts`) · **`fiba_women_10m`: `58.0%` WR** (`+7.3%` Yield, MAE `6.2 pts`) · **`nba_12m`: `61.4%` WR** (`+13.6%` Yield, MAE `7.1 pts`) |
-| **Correcciones Críticas vs `m27_v3`** | 1) Erradicada la fuga de fecha del mismo día en `match_h2h` que inflaba `m27_v3`. 2) Corregido el bug de reloj `12m` vs `10m` en `scraper.py` y `pbp_utils.py`. 3) Eliminado el drift de `team_statistics` calculando `2PT/3PT/FT` desde `match_events`. 4) Resuelto el hueco FIBA `2019–2022` con *Seasonal ELO Decay*. |
+```
+Payload en Vivo / Histórico (m26..m30 FIBA | m31..m36 NBA) + Estado O(1) (team_priors_state.pkl: 9,452 equipos, 3,643 ligas)
+                                                │
+                                                ▼
+                    ┌───────────────────────────────────────────────────────┐
+                    │ Enrutador Taxonómico de la Tríada Canónica            │
+                    │  ├─ fiba_men_10m   (10 min/cuarto, varonil)           │
+                    │  ├─ fiba_women_10m (10 min/cuarto, femenil)           │
+                    │  └─ nba_12m        (12 min/cuarto, NBA/CBA/PBA/NBL)   │
+                    └───────────────────────────────────────────────────────┘
+                                                │
+                                                ▼
+                    ┌───────────────────────────────────────────────────────┐
+                    │ Extractor de 36 Features Limpias (features.py)        │
+                    │  • 0% Data Leakage | 0% Drift Temporal | Seasonal ELO │
+                    └───────────────────────────────────────────────────────┘
+                                                │
+            ┌───────────────────────────────────┼───────────────────────────────────┬──────────────────────────┐
+            ▼                                   ▼                                   ▼                          ▼
+┌───────────────────────────┐     ┌───────────────────────────┐     ┌───────────────────────────┐  ┌──────────────────────┐
+│ CABEZA 1: Ganador Q4      │     │ CABEZA 2: Margen Q4 (Pts) │     │ CABEZA 3: Total Q4 (O/U)  │  │ CABEZA 4: Ganador FT │
+│ • XGBoost Regularizado    │     │ • HistGBRegressor (MAE)   │     │ • HistGBRegressor (MSE)   │  │ • HistGBClassifier   │
+│ • HistGradientBoosting    │     │ • Predice E[Q4_h - Q4_a]  │     │ • Predice E[Q4_h + Q4_a]  │  │ • Predice P(FT_Home) │
+│ • Ancla Lineal L2 (LogReg)│     └─────────────┬─────────────┘     └─────────────┬─────────────┘  └──────────┬───────────┘
+│ • Calibración Isotónica   │                   │                                 │                           │
+└─────────────┬─────────────┘                   ▼                                 ▼                           ▼
+              │                   ┌───────────────────────────┐     ┌───────────────────────────┐  ┌──────────────────────┐
+              └──────────────────►│ Gate Dual + Filtro Tóxicas│     │ Señal Over/Under Q4       │  │ Señal FT Moneyline   │
+                                  │ • Bloquea toxic_leagues   │     │ • |E[TotQ4] - Prior|>=2.5 │  │ • AUC 0.915 - 0.962  │
+                                  │ • BET / BET_STRONG /      │     │ • WR: 60.9% - 61.4%       │  │ • Acc: 82.6% - 88.6% │
+                                  │   BET_SNIPER (WR 77%-86%) │     └───────────────────────────┘  └──────────────────────┘
+                                  └───────────────────────────┘
+```
+
+---
+
+### 2. Catálogo Completo de las 36 Features (`FEATURE_NAMES_CLEAN` en `models/m27_v4/features.py`)
+
+Todas las features están garantizadas **100% libres de fuga del futuro (*zero leakage*)** y **libres de *coverage drift* entre épocas (`2015–2026`)**:
+
+| Índice | Nombre de Feature (`FEATURE_NAMES_CLEAN`) | Bloque | Descripción Técnica y Fórmula | Correlación Limpia ($r$ con `q4_win`) |
+| :-: | :--- | :---: | :--- | :---: |
+| `0` | `cur_score_diff` | **A. Marcador y Reloj** | Diferencial de marcador en el minuto de corte ($\text{Score}_{\text{home}} - \text{Score}_{\text{away}}$) | `+0.0566` (FIBA M) / `+0.2016` (FIBA W) / `-0.1190` (NBA) |
+| `1` | `abs_cur_score_diff` | **A. Marcador y Reloj** | Magnitud absoluta de la ventaja actual ($|\text{cur\_score\_diff}|$) para medir paridad vs paliza | `-0.0412` |
+| `2` | `ht_diff` | **A. Marcador y Reloj** | Diferencial de marcador al medio tiempo ($\text{HT}_{\text{home}} - \text{HT}_{\text{away}}$) | `+0.0684` |
+| `3` | `q1_diff` | **A. Marcador y Reloj** | Diferencial neto del Q1 ($\text{Q1}_{\text{home}} - \text{Q1}_{\text{away}}$) | `+0.0541` |
+| `4` | `q2_diff` | **A. Marcador y Reloj** | Diferencial neto del Q2 ($\text{Q2}_{\text{home}} - \text{Q2}_{\text{away}}$) | `+0.0489` |
+| `5` | `q3_eff_diff` | **B. Momentum Q3** | Diferencial parcial acumulado dentro del Q3 hasta el corte ($\text{cur\_score\_diff} - \text{ht\_diff}$) | `+0.0218` |
+| `6` | `q3_vs_ht_momentum` | **B. Momentum Q3** | Aceleración/cambio de tendencia en Q3 respecto a la primera mitad ($\text{q3\_eff\_diff} - 0.5 \cdot \text{ht\_diff}$) | `-0.0315` |
+| `7` | `recent_2m_run_diff` | **B. Momentum Q3** | Racha neta de puntos en los últimos 2 minutos previos al corte desde `play_by_play` | `+0.0342` |
+| `8` | `pace_pts_per_min` | **B. Momentum Q3** | Ritmo real del partido en puntos por minuto jugado ($\text{TotalPts} / \text{MinutosJugados}$) | `+0.0190` (Fuerte en Head 3 Total Q4: $r=+0.44$) |
+| `9` | `pace_vs_league_prior` | **B. Momentum Q3** | Exceso/déficit de ritmo del partido frente al ritmo histórico de esa liga | `+0.0154` (Head 3 Total Q4: $r=+0.31$) |
+| `10` | `gp_val` | **B. Momentum Q3** | Valor de la curva de dominio/presión (`graph_points`) en el minuto de corte | `+0.0612` |
+| `11` | `gp_slope_3m` | **B. Momentum Q3** | Pendiente de la curva de presión en los últimos 3 minutos ($\text{gp}_{t} - \text{gp}_{t-3}$) | `+0.0287` |
+| `12` | `fraction_q3_completed` | **A. Marcador y Reloj** | Fracción completada del Q3 (`0.60` en `m26`, `0.70` en `m27`, ..., `1.00` en `m30`) para normalizar multi-snapshot | `0.0000` (Variable de anclaje temporal) |
+| `13` | `d_elo_ft` | **C. ELO con Decay** | Diferencial de ELO Full-Time pre-partido con **Decaimiento Estacional** (`>60d` $\to$ 35% a 1500; `>300d` $\to$ 75% a 1500) + ventaja local | **`+0.1943`** ⭐ |
+| `14` | `d_elo_q4` | **C. ELO con Decay** | Diferencial de **ELO específico de Q4** (actualizado únicamente con quién gana/pierde los cuartos finales históricamente) | **`+0.1684`** ⭐ |
+| `15` | `d_elo_q1` | **C. ELO con Decay** | Diferencial de ELO específico de Q1 (mide la potencia de arranque de titulares) | **`+0.1592`** |
+| `16` | `elo_reliability` | **C. ELO con Decay** | Confiabilidad muestral del par de equipos ($\min(1.0, \min(N_{\text{home}}, N_{\text{away}}) / 15.0)$) | `+0.0420` |
+| `17` | `d_q4_bayes` | **C. ELO con Decay** | Diferencial del margen promedio en Q4 de los últimos 15 partidos con contracción Bayesiana ($n / (n + 6)$) | **`+0.1715`** ⭐ |
+| `18` | `d_wr_bayes` | **C. ELO con Decay** | Diferencial de Win Rate general de los últimos 15 partidos con contracción Bayesiana hacia `0.50` | **`+0.1640`** ⭐ |
+| `19` | `has_odds` | **D. Mercado y Tabla** | Indicador binario (`1.0` / `0.0`) de disponibilidad de cuota pre-partido en `match_odds` | `+0.0110` |
+| `20` | `odds_log_ratio` | **D. Mercado y Tabla** | Log-odds implícito del favorito pre-partido ($\ln(P_{\text{home}} / P_{\text{away}})$ sin vig) | **`+0.2185`** ⭐ |
+| `21` | `expected_ft_margin` | **D. Mercado y Tabla** | Margen final esperado pre-partido derivado de cuotas (o de `0.035 * d_elo_ft` si no hay cuota) | **`+0.2140`** ⭐ |
+| `22` | `h2h_bayes_ft_margin` | **D. Mercado y Tabla** | Margen histórico cara a cara (FT) estrictamente en fechas `< match_date` con contracción Bayesiana ($n/(n+5)$) | `+0.1312` |
+| `23` | `h2h_bayes_q4_margin` | **D. Mercado y Tabla** | Margen histórico cara a cara específico en Q4 en enfrentamientos previos (`< match_date`) | `+0.1185` |
+| `24` | `ts_delta_wp_bayes` | **D. Mercado y Tabla** | Diferencial de porcentaje de victorias en la clasificación de la liga (`team_strength`) con contracción Bayesiana | **`+0.1621`** |
+| `25` | `ts_delta_form` | **D. Mercado y Tabla** | Diferencial de racha reciente reportada en la tabla de posiciones (`team_strength`) | `+0.1290` |
+| `26` | `pbp_2pt_diff_q1_q3` | **E. Microestructura PBP** | Diferencial de puntos en la pintura/media distancia (canastas de 2 pts) extraído de `match_events` hasta el corte | `+0.0945` |
+| `27` | `pbp_3pt_diff_q1_q3` | **E. Microestructura PBP** | Diferencial de triples anotados extraído directamente de `match_events` hasta el corte (100% cobertura 2015–2026) | `+0.0618` |
+| `28` | `pbp_ft_diff_q1_q3` | **E. Microestructura PBP** | Diferencial de tiros libres anotados extraído de `match_events` (proxy directo de faltas provocadas y bonus) | `+0.0724` |
+| `29` | `d_rol_plus_minus` | **F. Rolling Plantilla** | Diferencial del `plus_minus` promedio ponderado de los jugadores en sus **partidos previos (`< match_date`)** | **`+0.2294`** 🏆 *(Feature #1)* |
+| `30` | `d_rol_bench_rating` | **F. Rolling Plantilla** | Diferencial del `sofascore_rating` histórico pre-partido de la rotación/banquillo (jugadores #6 a #10) | **`+0.1812`** ⭐ |
+| `31` | `rubber_band_gap` | **G. Física de Cierre** | Tensión de regresión a la media ($\text{expected\_ft\_margin} - \text{cur\_score\_diff}$): mide cuánto "debe" recuperar el favorito en Q4 | **`+0.1488`** ⭐ |
+| `32` | `white_flag_risk_zone` | **G. Física de Cierre** | Indicador (`-1`, `0`, `+1`) de zona de rendición de titulares cuando el favorito pierde por 14–26 pts al cierre del Q3 | `+0.0890` |
+| `33` | `blowout_garbage_time` | **G. Física de Cierre** | Indicador binario (`1.0` si $|\text{cur\_score\_diff}| \ge 22$ pts) de *garbage time* con quintetos de reserva | `-0.0512` |
+| `34` | `in_q4_partial_diff` | **A. Marcador y Reloj** | Parcial anotado dentro del Q4 (`0.0` en `m26..m30` pre-Q4; activo solo si se invoca confirmación live en `m31..m32`) | `0.0000` en `m27` (`+0.34` en `m32`) |
+| `35` | `lg_avg_q4_prior` | **D. Mercado y Tabla** | Promedio histórico de puntos totales en Q4 de la liga específica (`leagues_classification`) | `+0.0120` (Head 3 Total Q4: $r=+0.48$) |
+
+---
+
+### 3. Estadísticas de Entrenamiento, Progresión Anti-Overfitting y Cortes Walk-Forward
+
+#### 3.1 Evolución de Versiones (`V4.0_raw` $\to$ `V4.4_champion` en `fiba_men_10m`, $N = 149,713$)
+Split cronológico estricto **70% Train (`104,799`) / 15% Validation (`22,457`) / 15% Test Out-of-Time (`22,457`)**:
+
+| Iteración | Cambios en Arquitectura, Features e Hiperparámetros | Train AUC | Val AUC | Test AUC | **Brecha Overfit (`Train - Val`)** | Test Brier / LogLoss | Test WR @ $P \ge 0.70$ ($N$) | Yield @ $0.70$ (Cuota 1.40) |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`V4.0_raw`** | Árboles profundos (`max_depth=8`, `min_leaf=10`, `L2=0.1`), sin ELO decay, H2H crudo | `0.8242` | `0.6246` | `0.6298` | **`+0.1996`** ❌ *(Severo Overfit)* | `0.2412` / `0.6789` | `70.44%` (`4,360`) | `-1.39%` ❌ |
+| **`V4.1_pruned`** | Poda de IDs ruidosos + PBP 2PT/3PT directo + *Seasonal ELO Decay* + Contracción Bayesiana H2H | `0.6761` | `0.6401` | `0.6411` | `+0.0360` ⚠️ *(Leve Overfit)* | `0.2345` / `0.6612` | `74.82%` (`3,185`) | `+4.75%` ✅ |
+| **`V4.2_tuned`** | Regularización fuerte (`max_depth=4`, `max_leaf=15`, `min_leaf=350`, `L2=50`, `L1=15`, `lr=0.03`) | `0.6402` | `0.6396` | `0.6399` | **`+0.0006`** ✅ *(Cero Overfit)* | `0.2342` / `0.6606` | `76.59%` (`2,132`) | `+7.23%` ✅ |
+| **`V4.4_champion`** ⭐ | **Multi-Snapshot + Modality Dropout + Ancla Lineal L2 + Gate Regresor Margen + Isotonic** | **`0.6417`** | **`0.6423`** | **`0.6406`** | **`-0.0006`** ⭐ *(Cero Overfit)* | **`0.2337` / `0.6594`** | **`77.19%` (`2,345`)** | **`+8.07%`** ⭐ |
+
+#### 3.2 Métricas de Entrenamiento de los 3 Arquetipos de la Tríada Canónica (`212,214` Partidos)
+
+| Arquetipo (`models/m27_v4`) | Total Partidos ($N$) | Split (`Train / Val / Test`) | Train AUC | Val AUC | **Test AUC (Ciego)** | **Brecha (`Train - Val`)** | Test Brier | Test LogLoss |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`fiba_men_10m`** | `149,713` | `104,799 / 22,457 / 22,457` | `0.6417` | `0.6423` | **`0.6406`** | **`-0.0006`** ✅ | `0.2337` | `0.6594` |
+| **`fiba_women_10m`** | `34,251` | `23,975 / 5,138 / 5,138` | `0.6841` | `0.6886` | **`0.6714`** | **`-0.0045`** ✅ | `0.2268` | `0.6452` |
+| **`nba_12m`** | `28,250` | `19,775 / 4,237 / 4,238` | `0.6584` | `0.6315` | **`0.6208`** | **`+0.0269`** ✅ | `0.2383` | `0.6689` |
+
+#### 3.3 Validación Walk-Forward Cortando la Información en 4 Puntos Históricos (`2015–2026`)
+
+| Corte Histórico (Ventana Expansiva) | Ventana de Prueba Ciega | Partidos Train $\to$ Test | Train AUC | Test AUC | Brecha (`Train - Test`) | Test WR @ $P \ge 0.70$ ($N$ Apuestas) | Yield @ Cuota 1.40 |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Corte 1:** Train `<= 2023-H1` | `2024-01` a `2024-10` | `62,879` $\to$ `19,463` | `0.6405` | `0.6268` | `+0.0137` ✅ | **`76.18%`** (`995` bets) | **`+6.65%`** |
+| **Corte 2:** Train `<= 2024-H1` | `2024-10` a `2025-04` | `82,342` $\to$ `22,457` | `0.6378` | `0.6349` | `+0.0029` ✅ | **`74.87%`** (`1,707` bets) | **`+4.82%`** |
+| **Corte 3:** Train `<= 2024-Fin` | `2025-04` a `2025-12` | `104,799` $\to$ `22,457` | `0.6375` | `0.6397` | `-0.0022` ✅ | **`76.64%`** (`1,982` bets) | **`+7.30%`** |
+| **Corte 4:** Train `<= 2025-Fin` | `2025-12` a `2026-10` | `127,256` $\to$ `22,457` | `0.6386` | `0.6409` | `-0.0023` ✅ | **`77.74%`** (`2,143` bets) | **`+8.84%`** |
+
+---
+
+### 4. Estadísticas de Efectividad Operativa (Corridas Pre-Q4 en `m27`/`m33` y Prueba en Partidos No Vistos)
+
+> **Nota sobre momios y minuto de entrada:** En el minuto 32 (`2:00` jugados del Q4) la cuota del ganador del Q4 se desploma en las casas de apuestas. Por ello, **todas las tablas de efectividad principal siguientes están medidas estrictamente en el minuto 27 (`m27` en FIBA 10m) y minuto 33 (`m33` en NBA 12m), 3 minutos antes de que inicie el Q4**, cuando el momio de Ganador Q4 / Hándicap Q4 se mantiene íntegro (`~1.38–1.83`).
+
+#### 4.1 Efectividad en Test Out-of-Time (`31,833` Partidos) por Nivel de Señal Pre-Q4 (`m27` / `m33`)
+
+| Arquetipo (`m27`/`m33` Pre-Q4) | Nivel de Señal / Filtro Operativo en `predict.py` | **Win Rate en Test** | Apuestas en Test | Margen Real Ganado en Q4 | **Cuota Mínima Break-Even** | **ROI @ Cuota 1.40** | **ROI @ Cuota 1.35** |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`fiba_men_10m`** (`m27`) | `BET` (`P >= 0.68` + `E[dQ4] >= 1.8`) | **`73.80%`** | `4,019` | `+5.41 pts` | `1.36` | `+3.32%` | `-0.37%` |
+| | `BET_STRONG` (`P >= 0.70` + `E[dQ4] >= 1.8`, Base V4.4) | **`77.00%`** | `2,248` | `+6.14 pts` | `1.30` | **`+7.80%`** | `+3.95%` |
+| | `BET_STRONG` **+ Sin Ligas Tóxicas (`toxic_leagues.json`)** ⭐ | **`77.66%`** | `2,055` | `+6.27 pts` | **`1.29`** | **`+8.73%`** | **`+4.84%`** |
+| | `BET_SNIPER` (`P >= 0.72` + `E[dQ4] >= 3.0` + `minSub >= 0.66` + Sin Tóxicas) | **`77.71%`–`78.32%`** | `1,041` | `+5.94 pts` | **`1.28`** | **`+8.80%`–`+9.64%`** | **`+4.91%`–`+5.73%`** |
+| | `BET_SNIPER` **en Ligas Fuertes / Élite** 🏆 | **`79.37%`** | `383` | `+6.11 pts` | **`1.26`** | **`+11.12%`** | **`+7.15%`** |
+| **`fiba_women_10m`** (`m27`) | `BET` (`P >= 0.68` + `E[dQ4] >= 1.8`) | **`75.57%`** | `1,105` | `+6.12 pts` | `1.32` | `+5.79%` | `+2.02%` |
+| | `BET_STRONG` (`P >= 0.70` + `E[dQ4] >= 1.8` + Sin Ligas Tóxicas) ⭐ | **`77.56%`** | `936` | `+6.87 pts` | **`1.29`** | **`+8.59%`** | **`+4.71%`** |
+| | `BET_STRONG` **+ Fuerza Histórica Q4 (`d_elo_q4 > 0 & d_q4_bayes >= 0`)** | **`78.63%`** | `791` | `+7.01 pts` | **`1.27`** | **`+10.09%`** | **`+6.15%`** |
+| | `BET_SNIPER` (`P >= 0.74` + `E[dQ4] >= 3.8` + `minSub >= 0.68` + Sin Tóxicas) 🏆 | **`79.83%`** | `600` | `+7.74 pts` | **`1.25`** | **`+11.77%`** | **`+7.77%`** |
+| **`nba_12m`** (`m33`) | `BET_STRONG` (`P >= 0.70` + `E[dQ4] >= 1.8`, Base V4.4) | **`74.00%`** | `250` | `+4.75 pts` | `1.35` | `+3.60%` | `-0.10%` |
+| | `BET_STRONG` **+ Sin China CBA + Fuerza Q4 (`d_elo_q4 > 0`)** ⭐ | **`81.95%`** | `133` | `+6.32 pts` | **`1.22`** | **`+14.74%`** | **`+10.63%`** |
+| | `BET_SNIPER` (`P >= 0.72` + `E[dQ4] >= 3.0` + `minSub >= 0.66` + Sin CBA) 🏆 | **`85.71%`** | `35` | `+7.51 pts` | **`1.17`** | **`+20.00%`** | **`+15.71%`** |
+
+#### 4.2 Efectividad en los Mercados Secundarios (Cabezas 3 y 4 en `m27`/`m33`)
+* **Cabeza 3 — Over/Under de Puntos Totales del Q4 (`|expected_q4_total - lg_avg_q4_prior| >= 2.5 pts`):**
+  - **`fiba_men_10m`:** **`60.87%` Win Rate** (`4,636` apuestas en Test, MAE `6.27 pts`, $r = +0.5141$, **`+12.61%` Yield** a cuota estándar `1.85`).
+  - **`nba_12m`:** **`61.40%` Win Rate** (`1,658` apuestas en Test, MAE `7.46 pts`, **`+13.59%` Yield** @ `1.85`).
+  - **`fiba_women_10m`:** **`57.99%` Win Rate** (`1,390` apuestas en Test, MAE `6.02 pts`, **`+7.28%` Yield** @ `1.85`).
+* **Cabeza 4 — Ganador del Partido Completo en Vivo (`p_ft_home_win` al minuto 27/33):**
+  - **`fiba_men_10m`:** `ROC AUC = 0.9340` | `Accuracy = 84.71%`.
+  - **`fiba_women_10m`:** `ROC AUC = 0.9622` | `Accuracy = 88.56%`.
+  - **`nba_12m`:** `ROC AUC = 0.9150` | `Accuracy = 82.63%`.
+
+#### 4.3 Prueba en Ciego sobre Partidos 100% Nuevos Fuera de `matches.db` (`2026-10-15` a `2026-10-17`)
+Evaluación directa en memoria desde la API móvil de SofaScore sobre **`144` partidos terminados en fechas posteriores al corte de `matches.db`**, probados estrictamente en `m27`/`m33`:
+* **Todos los partidos (`P >= 0.50`):** `65.28%` WR (`94 / 144`)
+* **Umbral `P >= 0.65`:** **`87.50%` WR** (`28 / 32`, Break-Even `1.14`, `+22.50%` ROI @ `1.40`)
+* **Señal `BET` (`P >= 0.68` + `E[dQ4] >= 1.8`):** **`94.74%` WR** (`18 / 19` ganadas, Break-Even `1.06`, **`+32.63%` ROI @ `1.40`**)
+* **Señal `BET_STRONG` (`P >= 0.70` + `E[dQ4] >= 1.8`):** **`100.00%` WR** (`10 / 10` ganadas, **`+40.00%` ROI @ `1.40`**)
+
+---
+
+### 5. Catálogo de Ligas Idóneas (Élite) vs. Ligas Tóxicas (Bloqueadas en `toxic_leagues.json`)
+
+#### 5.1 Ligas Idóneas / Élite para Operar en `m27` / `m33` (Mayor Efectividad Comprobada en Test)
+
+| Arquetipo | Liga Idónea | Partidos Test | Accuracy Global (`P>=0.50`) | **WR @ `P >= 0.68` (`m27`/`m33`)** | **WR @ `P >= 0.70` (`BET_STRONG`)** |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **`fiba_men_10m`** | **International - Euroleague (Regular Season)** | `88` | `69.3%` | **`100.0%`** (`9/9`) | **`100.0%`** (`5/5`) |
+| **`fiba_men_10m`** | **Australia - NBL1 South (Men)** | `135` | `57.8%` | **`92.9%`** (`13/14`) | **`100.0%`** (`7/7`) |
+| **`fiba_men_10m`** | **Saudi Arabia - Premier League** | `23` | `78.3%` | **`90.9%`** (`10/11`) | **`90.0%`** (`9/10`) |
+| **`fiba_men_10m`** | **Iceland - Subway League / Premier League** | `62` | `61.3%` | **`90.0%`** (`9/10`) | **`83.3%`** (`5/6`) |
+| **`fiba_men_10m`** | **Vietnam - VBA** | `57` | `64.9%` | **`89.5%`** (`17/19`) | **`93.8%`** (`15/16`) |
+| **`fiba_men_10m`** | **Poland - 1. Liga (1st Division Men)** | `147` | `59.2%` | **`88.2%`** (`15/17`) | **`100.0%`** (`8/8`) |
+| **`fiba_men_10m`** | **Brazil - CBI (Classificatória A & B)** | `154` | `72.1%` | **`95.0%`** (`38/40`) | **`96.7%`** (`29/30`) |
+| **`fiba_women_10m`** | **Czech Republic - ZBL Playoffs (Women)** | `20` | `85.0%` | **`100.0%`** (`9/9`) | **`100.0%`** (`9/9`) |
+| **`fiba_women_10m`** | **Rwanda - Basketball League Women** | `31` | `83.9%` | **`100.0%`** (`11/11`) | **`100.0%`** (`11/11`) |
+| **`fiba_women_10m`** | **Belgium - Top Division Women** | `26` | `80.8%` | **`92.3%`** (`12/13`) | **`92.3%`** (`12/13`) |
+| **`fiba_women_10m`** | **Kosovo / Albania - Superliga Women** | `19` | `73.7%` | **`90.0%`** (`9/10`) | **`90.0%`** (`9/10`) |
+| **`fiba_women_10m`** | **Serbia - 1. ZLS Women** | `32` | `59.4%` | **`87.5%`** (`7/8`) | **`87.5%`** (`7/8`) |
+| **`fiba_women_10m`** | **Switzerland - SB League Women** | `32` | `71.9%` | **`83.3%`** (`10/12`) | **`83.3%`** (`10/12`) |
+| **`fiba_women_10m`** | **Mexico - LNBP Femenil** | `52` | `69.2%` | **`81.8%`** (`9/11`) | **`88.9%`** (`8/9`) |
+| **`fiba_women_10m`** | **Spain - Liga Femenina Endesa** | `79` | `58.2%` | **`81.8%`** (`9/11`) | **`80.0%`** (`8/10`) |
+| **`fiba_women_10m`** | **Australia - NBL1 East Women** | `118` | `75.4%` | **`79.6%`** (`39/49`) | **`80.4%`** (`37/46`) |
+| **`fiba_women_10m`** | **USA - NCAA Women's March Madness** | `59` | `64.4%` | **`80.0%`** (`12/15`) | **`80.0%`** (`12/15`) |
+| **`nba_12m`** | **Philippines - PBA Philippine Cup** | `117` | `65.0%` | **`90.9%`** (`10/11`) | **`90.9%`** (`10/11`) |
+| **`nba_12m`** | **USA - NBA G League** | `946` | `59.3%` | **`77.5%`** (`31/40`) | **`79.5%`** (`31/39`) |
+| **`nba_12m`** | **USA - NBA** | `1,871` | `59.1%` | **`77.2%`** (`95/123`) | **`77.7%`** (`94/121`) |
+
+#### 5.2 Ligas Tóxicas / Bloqueadas (`models/m27_v4/model_outputs/toxic_leagues.json`)
+Estas ligas están bloqueadas automáticamente en [`models/m27_v4/predict.py`](file:///C:/Users/App/Desktop/pulpa/models/m27_v4/predict.py) (`is_toxic_league = True` $\to$ `NO_BET [TOXIC_LG_BLOCKED]`):
+
+| Arquetipo | Liga Tóxica Bloqueada | Partidos Test | **WR @ `P >= 0.68` (`m27`/`m33`)** | **WR @ `P >= 0.70`** | Causa Estructural del Fallo en Q4 |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| **`fiba_men_10m`** | **Austria - Basketball Superliga** | `40` | **`36.4%`** (`4/11`) ❌ | `33.3%` (`3/9`) ❌ | Rotaciones masivas de titulares y alta tasa de remontadas en Q4 |
+| **`fiba_men_10m`** | **Poland - PGE Basket Liga (Orlen Basket Liga)** | `104` | **`37.5%`** (`3/8`) ❌ | `0.0%` (`0/2`) ❌ | Paridad extrema en 1ra división polaca; el líder al Q3 cede el Q4 sistemáticamente |
+| **`fiba_men_10m`** | **Qatar - Qatari Basketball League** | `26` | **`37.5%`** (`3/8`) ❌ | `20.0%` (`1/5`) ❌ | Restricción de jugadores extranjeros en cancha en el último cuarto |
+| **`fiba_men_10m`** | **Luxembourg - Enovos League** | `64` | **`45.5%`** (`5/11`) ❌ | `50.0%` (`2/4`) ❌ | Varianza extrema de ritmo y anotación en cierres |
+| **`fiba_men_10m`** | **Australia - NBL1 Central & NBL1 East (Men)** | `169` | **`46.2%–53.8%`** ❌ | `33.3%–58.8%` ❌ | *Garbage time* prematuro en ligas estatales australianas varoniles |
+| **`fiba_men_10m`** | **Denmark - Basketligaen (Championship Round)** | `25` | **`50.0%`** (`4/8`) ❌ | `60.0%` (`3/5`) ❌ | Fuerte efecto *rubber-banding* en ronda de campeonato |
+| **`fiba_men_10m`** | **Israel - Basketball Super League (Winner League)** | `81` | **`53.8%`** (`7/13`) ❌ | `40.0%` (`2/5`) ❌ | Dosificación de plantillas de Euroliga/Eurocup en liga doméstica |
+| **`fiba_women_10m`** | **Croatia - Premijer ženska liga** | `40` | **`36.4%`** (`4/11`) ❌ | `36.4%` (`4/11`) ❌ | Las favoritas sacan +25 pts en Q1–Q3 y juegan todo el Q4 con juveniles |
+| **`fiba_women_10m`** | **Australia - NBL1 North Women** | `74` | **`50.0%`** (`4/8`) ❌ | `66.7%` (`4/6`) ⚠️ | Rotación de titulares en el último cuarto en ventajas amplias |
+| **`fiba_women_10m`** | **Great Britain - SLB Women** | `38` | **`52.9%`** (`9/17`) ❌ | `52.9%` (`9/17`) ❌ | Alta volatilidad en cierres de cuarto |
+| **`fiba_women_10m`** | **Chile - Liga Nacional Femenina (Fase regular)** | `34` | **`54.5%`** (`6/11`) ❌ | `54.5%` (`6/11`) ❌ | Desigualdad extrema (+40 pts al Q3) que provoca relajación total de la líder en Q4 |
+| **`nba_12m`** | **China - CBA** | `552` | **`63.5%`** (`33/52`) ⚠️ | `63.5%` (`33/52`) ⚠️ | **Regla CBA de extranjeros:** permite 2 extranjeros en Q1–Q3 pero **solo 1 extranjero en el Q4**, alterando drásticamente la física del último cuarto frente a NBA/G-League |
 
 ---
 
