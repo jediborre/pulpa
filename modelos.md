@@ -1397,6 +1397,24 @@ La NBA cuenta con un volumen masivo (más de 3,000 partidos en el corte), pero a
 
 ---
 
+## `m27_v5_3` (Extractor único train/live + snapshot resiliente 25.5–30 + mercado pre-partido + simetría)
+
+| Campo | Valor |
+|---|---|
+| **Snapshot** | Minuto real **t ∈ [25.5, 30]** (feature `minute`); en Q4/retraso usa el cierre de Q3 (Q1+Q2+Q3). Antes de min 25 → `unavailable` |
+| **Algoritmo** | `0.40·XGBoost + 0.35·HistGB + 0.25·LR (imputada)` con **aumentación espejo local↔visitante** + regresor de margen Q4 + **calibrador isotónico fuera de muestra** (techo 0.95) |
+| **Script entrenamiento** | `tmp/m27_v5_3/build_dataset.py` + `tmp/m27_v5_3/train_m27_v5_3_pipeline.py` (extractor único `models/m27_v5_3/features.py`) |
+| **Dataset** | 197,111 partidos elegibles (10m, no tóxicos, sin empate Q4); 383,985 filas (ancla t=30 + 2 snapshots intra-Q3 en 88 k partidos con eventos). Split cronológico A 70 % / B 12 % (calibrador y umbral) / C 18 % (test, desde 2025-11-10) |
+| **Features (42)** | Estado a minuto t (18), fuerza pre-partido as-of (11), mercado pre-partido (7: ML, spread, total), liga (5), orientación (1). Ver `docs/findings_m27_v5_3.md` y `models/m27_v5_3/model_outputs/feature_justification.md` |
+| **ROC AUC** | Train 0.6454 · Calib (B) 0.6540 · **Test 0.6530** · gap −0.0076 |
+| **Brier / LogLoss / Acc** | **0.2308** / 0.6529 / 61.1 % |
+| **Rendimiento (ancla, test)** | P≥0.68: 6,156 apuestas, WR 75.5 %, ROI@1.40 +5.6 % · **P≥0.72 (operativo): 4,563, WR 77.8 %, ROI@1.40 +8.9 %, @1.83 +42.3 %** · P≥0.80: 1,586, WR 84.9 % |
+| **Resiliencia al minuto** | AUC 0.649–0.656 y WR 76.8–78.8 % en todos los tramos de 1 min entre 25.5 y 30 |
+| **Walk-forward** | 2023: AUC 0.629, WR 74.9 %, ROI@1.40 +4.9 % · 2024: 0.637, 75.9 %, +6.3 % · 2025-26: 0.648, 77.3 %, +8.2 % |
+| **Paridad offline/live** | `tmp/m27_v5_3/audit_feature_parity.py` → PARIDAD OK; latencia ≈ 30 ms |
+| **Artefactos** | `models/m27_v5_3/model_outputs/` (`model_config.json`, `v5_3_state.pkl`, summary, dashboard, `feature_justification.md`) |
+
+---
 ## Glosario
 
 | Término | Significado |
