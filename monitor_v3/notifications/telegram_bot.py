@@ -321,10 +321,24 @@ async def send_bet_alert(
     return res
 
 
+def model_display_sort_key(model_name: str) -> int:
+    """
+    Prioridad de visualización para que m27_v5_3 siempre aparezca hasta arriba
+    tanto en alertas de apuesta como en resultados finales FT.
+    """
+    order = ["m27_v5_3", "m27_v5_2", "v6_2", "m27_v3", "m27_v5_1", "m27_v5", "m27_v4"]
+    m_clean = str(model_name).strip().lower()
+    for idx, target in enumerate(order):
+        if target in m_clean:
+            return idx
+    return 99
+
+
 def format_combined_bet_message(predictions: dict, home_team: str, away_team: str) -> str:
     """
     Formatea el mensaje base de Telegram para señales múltiples combinadas.
     Distingue explícitamente qué modelos están en APUESTA (BET) y cuáles están en [NO BET].
+    m27_v5_3 se posiciona siempre hasta arriba en el reporte.
     """
     is_late = any("LATE" in pred.get("signal", "") for pred in predictions.values())
     has_real_bet = any("BET" in pred.get("signal", "") and "NO_BET" not in pred.get("signal", "") for pred in predictions.values())
@@ -337,7 +351,9 @@ def format_combined_bet_message(predictions: dict, home_team: str, away_team: st
         title = "⚪️ NO BET Q4"
         
     lines = [title]
-    for model, pred in predictions.items():
+    sorted_models = sorted(predictions.keys(), key=model_display_sort_key)
+    for model in sorted_models:
+        pred = predictions[model]
         sig = str(pred.get("signal", ""))
         raw_sig = str(pred.get("raw_model_signal", sig))
         is_bet = ("BET" in sig and "NO_BET" not in sig) or ("BET" in raw_sig and "NO_BET" not in raw_sig)
@@ -434,7 +450,8 @@ def format_combined_final_message(logs: list, home_team: str, away_team: str) ->
         title = f"{prefix} RESULTADO Q4"
         
     lines = [title]
-    for log in logs:
+    sorted_logs = sorted(logs, key=lambda l: model_display_sort_key(l.get("model_version", "")))
+    for log in sorted_logs:
         model = log.get("model_version")
         sig = log.get("signal_type") or ""
         

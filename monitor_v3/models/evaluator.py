@@ -61,7 +61,7 @@ def _refresh_priors_if_stale(max_age_secs: float = 1800.0) -> None:
 
 
 def load_models_to_cache() -> None:
-    """Precarga en memoria O(1) los modelos de m27_v5_3, m27_v5_2, m27_v5_1 y m27_v4 para latencia cero en vivo."""
+    """Precarga en memoria O(1) los modelos de m27_v5_3 y m27_v5_2 para latencia cero en vivo."""
     try:
         from models.m27_v5_3.predict import _load_production_models as load_v5_3
         load_v5_3()
@@ -70,25 +70,6 @@ def load_models_to_cache() -> None:
     try:
         from models.m27_v5_2.predict import _load_production_models as load_v5_2
         load_v5_2()
-    except Exception:
-        pass
-    try:
-        from models.m27_v5_1.predict import _load_production_models as load_v5_1
-        load_v5_1()
-    except Exception:
-        pass
-    try:
-        from models.m27_v5.predict import _load_production_models as load_v5
-        load_v5()
-    except Exception:
-        pass
-    try:
-        from models.m27_v4.features import get_priors_state
-        from models.m27_v4.predict import _get_bundle, _get_toxic_map
-        get_priors_state()
-        _get_toxic_map()
-        for arch in ("fiba_men_10m", "fiba_women_10m", "nba_12m"):
-            _get_bundle(arch)
     except Exception:
         pass
 
@@ -332,7 +313,7 @@ async def evaluate_match_q4(
             # Si aún estamos en minutos previos al cierre del Q3 (ej. m27..m29) y m27_v5/m27_v4 (cuyo óptimo
             # es al cierre de Q3, m30/m36) aún no han disparado apuesta, seguimos monitoreando hasta el
             # cierre del Q3 por si el partido entra en zona verde.
-            if (model_version in ("m27_v5_3", "m27_v5", "m27_v4") or not any_bet_in_tick) and not in_q4_now:
+            if (model_version in ("m27_v5_3",) or not any_bet_in_tick) and not in_q4_now:
                 predictions[model_version] = {
                     "signal": "UNAVAILABLE",
                     "reason": "monitoring_q3_window_for_green",
