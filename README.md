@@ -52,6 +52,7 @@ Toda la documentación técnica, científica y operativa del proyecto ha sido co
 | [`docs/monitoreo_v2.md`](file:///C:/Users/App/Desktop/pulpa/docs/monitoreo_v2.md) | `monitoreo_v2.md (Raíz)` | Especificación formal del daemon asíncrono `monitor_v2`, arquitectura desacoplada, control de red y ciclos de vida. |
 | [`docs/monitor_arquitectura.md`](file:///C:/Users/App/Desktop/pulpa/docs/monitor_arquitectura.md) | `findings/monitor_arquitectura.md` | Diagramas de flujo y arquitectura interna del sistema de monitoreo en tiempo real. |
 | [`docs/glosario.md`](file:///C:/Users/App/Desktop/pulpa/docs/glosario.md) | `glosario.md (Raíz)` | Glosario de mensajes de log coloreados (`[SYSTEM]`, `[WATCHER]`, `[PROBE]`, `[LIVE]`, `[EVAL]`, `[FT]`). |
+| [`docs/FORMATO_LOGS_V3.md`](file:///C:/Users/App/Desktop/pulpa/docs/FORMATO_LOGS_V3.md) | `docs/FORMATO_LOGS_V3.md` | Especificación del formato de logs de `monitor_v3`: anatomía de la línea, niveles y códigos ANSI, componentes, tags, catálogo de mensajes por fase, archivo diario `logs/` y prefijos de Telegram. |
 
 ### 🛡️ Evasión Anti-Bot y Scraping (Obscura vs. Chrome)
 | Archivo en `docs/` | Ubicación Original | Contenido Principal |
