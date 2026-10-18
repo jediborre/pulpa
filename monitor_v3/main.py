@@ -252,6 +252,32 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
         log_error("DESCARGA", f"[FT] Error procesando final {match_id}: {e}")
         update_schedule_status(match_id, status="done", skip_reason="final_fetch_failed")
 
+async def _capture_pregame_odds(match_id: str) -> None:
+    """Guarda cuotas/lineas pre-partido (ML, spread, total) justo antes del salto inicial; en vivo la API las reemplaza
+    por mercados in-play y m27_v5_3 las lee de matches.db. Best-effort: un fallo nunca detiene el watcher."""
+    try:
+        from match.scraper import _parse_odds
+        import match.db as db_mod
+
+        res = await get_mobile_client().request("GET", f"event/{match_id}/odds/1/all")
+        if res.status_code != 200:
+            return
+        rows = _parse_odds(match_id, res.json())
+        if not rows:
+            return
+
+        def _save() -> None:
+            conn = db_mod.get_conn(str(ROOT / "matches.db"))
+            try:
+                db_mod.init_db(conn)
+                db_mod.save_match_odds(conn, match_id, rows)
+            finally:
+                conn.close()
+
+        await asyncio.to_thread(_save)
+    except Exception:
+        pass
+
 async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event, ft_only: bool = False) -> None:
     """
     Máquina de estados independiente para el seguimiento en vivo de un partido.
@@ -300,6 +326,7 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
         return
 
     # 3. Modo Sonda Prestart
+    await _capture_pregame_odds(match_id)
     in_probe_mode = True
     probe_delay = float(PRESTART_PROBE_MIN_SECS)
     
