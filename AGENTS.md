@@ -56,6 +56,16 @@ Cada vez que realices cualquier cambio, corrección, refactorización o adición
 - **CERO ASUNCIONES:** Si una solicitud o instrucción del usuario no está 100% clara, es ambigua, incompleta o deja dudas sobre su alcance o implementación, **ESTÁ ESTRICTAMENTE PROHIBIDO ASUMIR** o adivinar lo que el usuario quiso decir.
 - **PREGUNTAS PROACTIVAS:** El agente debe formular al usuario todas las preguntas necesarias, estructuradas y precisas para clarificar y elaborar correctamente la solicitud antes de actuar o tomar decisiones de diseño por su cuenta.
 
+### 6. PROTOCOLO OBLIGATORIO AL CREAR O ACTUALIZAR MODELOS DE ML
+Cada vez que se entrene, refine o implemente un modelo en el sistema, es **mandatorio** cumplir el siguiente ciclo completo:
+1. **Métricas Completas:** Calcular y reportar ROC-AUC (train vs test), Brier score, LogLoss, Accuracy y brecha de sobreajuste (Train vs Test gap).
+2. **Gráficas Diagnósticas Obligatorias:** Generar y almacenar en `model_outputs/` y el directorio de artefactos las curvas de aprendizaje, calibración por deciles, importancia de features y cortes temporales.
+3. **Auditoría Temporal Walk-Forward:** Validar el modelo en cortes temporales independientes a lo largo de los años para descartar memorización de rachas temporales.
+4. **Matriz de Calibración por Liga y Simulación de ROI:** Generar la matriz de sobreestimación vs subestimación por liga, Win Rate y simulación económica con momio conservador pesimista (**1.40**) y flat (**1.83**).
+5. **Implementación en Producción en `monitor_v3`:** Integrar el modelo en `monitor_v3/models/evaluator.py`, registrarlo en `models/registry.py` y actualizar la taxonomía de ligas en `leagues.yaml` o `constants.py`.
+6. **Auditoría de Paridad de Features (Offline vs Live):** Verificar matemáticamente que las features calculadas por `monitor_v3` en vivo sean idénticas a las del pipeline de entrenamiento offline.
+7. **Comparativo Cuantitativo y Next Steps:** Analizar el diferencial respecto al modelo anterior y detallar los siguientes pasos de desarrollo referenciando `roadmap.md`.
+
 ---
 
 ## 🗺️ Mapa del Repositorio: Dónde Encontrar Todo
