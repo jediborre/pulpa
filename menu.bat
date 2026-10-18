@@ -205,6 +205,14 @@ echo ========================================================
 echo  Iniciando Monitor V3 (API Movil Nativa + Multi-JWT)
 echo ========================================================
 echo.
+echo [*] Verificando y limpiando procesos previos del monitor...
+if exist ".venv\Scripts\python.exe" (
+    ".venv\Scripts\python.exe" tools\kill_monitor.py
+) else (
+    python tools\kill_monitor.py 2>nul
+)
+timeout /t 1 /nobreak >nul
+echo.
 echo [+] Levantando Monitor V3 en una nueva ventana...
 start "Pulpa - Monitor V3 (Mobile API)" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v3\main.py"
 echo.
@@ -325,6 +333,13 @@ echo  Iniciando Suite Completa con Monitor V3 (All-in-One)
 echo  (Monitor V3 API Movil + API Backend + Dashboard)
 echo =========================================================
 echo.
+echo [*] Verificando y limpiando procesos previos del monitor...
+if exist ".venv\Scripts\python.exe" (
+    ".venv\Scripts\python.exe" tools\kill_monitor.py
+) else (
+    python tools\kill_monitor.py 2>nul
+)
+timeout /t 1 /nobreak >nul
 echo [1/3] Iniciando Monitor V3 (Mobile API)...
 start "Pulpa - Monitor V3 (Mobile API)" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python monitor_v3\main.py"
 echo [2/3] Iniciando API Backend (FastAPI)...
@@ -727,6 +742,14 @@ goto MENU
 
 :: ── Rutas CLI de Monitores y Servicios (retorno directo) ──
 :RUN_MONITOR_V3_CLI
+echo.
+echo [*] Verificando y limpiando procesos previos del monitor...
+if exist ".venv\Scripts\python.exe" (
+    ".venv\Scripts\python.exe" tools\kill_monitor.py
+) else (
+    python tools\kill_monitor.py 2>nul
+)
+timeout /t 1 /nobreak >nul
 echo [+] Iniciando Monitor V3 (API Movil Nativa + Multi-JWT) desde CLI...
 call .venv\Scripts\activate
 python monitor_v3\main.py
