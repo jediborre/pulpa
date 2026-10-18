@@ -1150,7 +1150,39 @@ Cuando un equipo llega ganando por un margen moderado (**`+4 a +12 pts` al cierr
 
 ---
 
-### 3. Validación Walk-Forward Multi-Corte en el Tiempo (Anti-Overfitting)
+### 2.1. Desglose Exhaustivo Feature por Feature de las 7 Nuevas Variables de V5 (vs. V4)
+
+En `m27_v4`, el modelo se apoyaba en proxies estáticos de club (`d_elo_ft`, `d_elo_q4`, `d_rol_plus_minus`). En `m27_v5`, esas variables fueron sustituidas y complementadas por métricas vivas de quinteto, rotación y estrategia de cuarto:
+
+#### 1. `d_lineup_starters_elo_ft` — Diferencial de ELO de Titulares en Cancha (13.77% de Importancia)
+* **Formulación:** $\frac{1}{5}\sum_{i=1}^{5} \text{ELO}_{\text{titular\_home}, i} - \frac{1}{5}\sum_{j=1}^{5} \text{ELO}_{\text{titular\_away}, j}$.
+* **Dinámica Táctica:** Mide la calidad baloncestística real de los 10 jugadores que iniciaron el partido hoy. Si un equipo de élite (ej. Celtics) descansa a sus 2 máximas figuras por gestión de carga (*load management*), su "Logo ELO" histórico sigue marcando 1,750, pero el ELO de sus 5 titulares reales en duela cae a 1,510. `m27_v5` detecta la debilidad inmediata de la alineación y evita la trampa del prestigio.
+
+#### 2. `d_lineup_starters_elo_q4` — ELO de Titulares Especializado en Último Cuarto (1.94% de Importancia)
+* **Formulación:** Promedio del ELO acumulado por cada jugador titular compitiendo **exclusivamente en los últimos 10 o 12 minutos de partido (Q4)**.
+* **Dinámica Táctica:** Aísla el factor *"Clutch"*. Hay jugadores de gran rendimiento en la primera mitad cuando el ritmo es abierto, pero que en el Q4 sufren ante defensas agresivas a media cancha, cometen pérdidas no forzadas y bajan su porcentaje de libres. Esta variable cuantifica la resistencia a la presión del quinteto titular.
+
+#### 3. `d_lineup_bench_elo_q4` — Diferencial de ELO en Q4 de la Banca / Segunda Unidad (1.82% de Importancia)
+* **Formulación:** $\bar{\text{ELO}}_{\text{banca\_home, Q4}} - \bar{\text{ELO}}_{\text{banca\_away, Q4}}$ evaluado sobre los suplentes vestidos que integran la rotación activa.
+* **Dinámica Táctica:** Entre el minuto 28 y el minuto 33 de juego, los entrenadores dan descanso biológico obligatorio a las estrellas para tenerlas frescas en el cierre. Si un equipo tiene titulares galácticos pero una banca deficiente (-35 ELO), el rival habitualmente asesta un parcial de 10-2 al inicio del Q4. `m27_v5` proyecta si la segunda unidad sostendrá el marcador o entregará la ventaja.
+
+#### 4. `d_lineup_top3_elo_q4` — Poder de Fuego de las Top-3 Superestrellas en Cierre (3.73% de Importancia)
+* **Formulación:** Diferencial de ELO en Q4 tomando **únicamente a los 3 mejores jugadores** de cada plantilla presentes en el partido.
+* **Dinámica Táctica:** En finales cerrados ($\le 4$ puntos de diferencia a falta de 3 minutos), el juego colectivo se reduce a posesiones de aislamiento (*iso-ball*) o bloqueos directos para las superestrellas del equipo. Contar con un 4º y 5º titular promedio no compensa medirse a jugadores determinantes en tiros definitorios.
+
+#### 5. `d_roster_drift_adv` — Divergencia entre el Roster de Hoy y el "Logo" Histórico (1.65% de Importancia)
+* **Formulación:** $d_{\text{roster\_drift}} = (\text{ELO}_{\text{Titulares\_Home, Q4}} - \text{ELO}_{\text{Titulares\_Away, Q4}}) - (\text{Logo ELO}_{\text{Home}} - \text{Logo ELO}_{\text{Away}})$.
+* **Dinámica Táctica:** Detecta discrepancias de mercado. Cuando el valor es marcadamente negativo, indica que el mercado o el público general están sobrevalorando al local por su escudo tradicional cuando hoy compite con un cuadro disminuido. Si es positivo, identifica a un conjunto modesto con quinteto de gala ante un rival mermado.
+
+#### 6. `d_strat_q4_net` — Perfil Táctico Histórico del Entrenador / Sistema en Q4 (3.64% de Importancia)
+* **Formulación:** Diferencial de margen neto promedio producido por cada equipo en el último cuarto a lo largo de los últimos 12 juegos de la temporada.
+* **Dinámica Táctica:** Refleja la identidad táctica del cuerpo técnico. Existen franquicias con excelente ritmo en transición en la primera mitad que se desmoronan tácticamente cuando el adversario plantea zonas o trampas defensivas en el Q4. Por el contrario, equipos con esquemas de media cancha y control de posesión (ej. Miami Heat, Olympiacos) generan diferenciales sistemáticamente positivos en el cuarto final.
+
+#### 7. `q3_tactical_surprise` — Sobreextensión y Efecto Fatiga en Q3 (3.16% de Importancia, $r = -0.1041$)
+* **Formulación:** $\text{Surprise}_{Q3} = \text{Diferencial Real}_{Q3} - (\text{NetMargin}_{Q3, \text{Home}} - \text{NetMargin}_{Q3, \text{Away}})$.
+* **Dinámica Táctica:** Cuantifica el fenómeno de **"tanque vacío"**. Cuando un equipo gana el Q3 por un margen anormalmente abultado respecto a su promedio histórico (ej. ganar el Q3 por +15 cuando su media es +1) con el fin de recortar una desventaja, suele deberse a un esfuerzo físico extenuante (presión a toda la cancha y rotaciones cortadas). En el Q4 sufren un bajón biológico severo, fatiga en las piernas para el tiro perimetral y regresión a la media.
+
+---
 
 Para garantizar rigurosamente que el modelo no tiene sobreajuste ni depende de rachas pasajeras, se entrenó y probó en tres ventanas temporales mutuamente excluyentes hacia el futuro:
 
@@ -1205,6 +1237,37 @@ Para garantizar rigurosamente que el modelo no tiene sobreajuste ni depende de r
 6. **Liga e Parë (Kosovo):** 46.7% WR.
 7. **Azerbaijan Basketball League B:** 46.7% WR.
 8. **Liga de Baloncesto Puertorriqueña (LBP):** 46.2% WR.
+
+---
+
+### 5.1. Auditoría de Sobreestimación por Liga y Calibración Adaptativa de Umbrales (Overconfidence Audit & Adaptive Gating)
+
+Sobre una muestra reciente de **116,412 partidos auditados (2024–2026)**, se ejecutó una prueba de sobreconfianza comparando la probabilidad predicha promedio ($\bar{P}_{\text{pred}}$) contra el Win Rate real obtenido ($\text{WR}_{\text{real}}$), detectando **tres categorías operativas**:
+
+#### A) Ligas Trampa Sobreestimadas (Gap $\bar{P} - \text{WR} > +12\%$ / Bloqueo Obligatorio)
+Estas competiciones sufren de sobreestimación severa: el modelo proyecta un $P \approx 65\% - 71\%$, pero el desenlace real es un volado ($\approx 50\%$) debido a rotaciones aleatorias, desmotivación o tácticas de emergencia:
+
+| Competición Auditada | Arquetipo | Partidos | Apuestas @ .58 | WR Real @ .58 | $\bar{P}$ Predicha | Brecha Sobreestimación | Estatus de Producción |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Friendly Club Matches** | `fiba_men_10m` | 1,845 | 1,196 | **52.8%** | 71.8% | **+19.0%** | **BLOQUEADO (Blacklist)** |
+| **1. Liga, Relegation Round** | `fiba_men_10m` | 84 | 44 | **45.5%** | 63.6% | **+18.1%** | **BLOQUEADO (Blacklist)** |
+| **Austrian Superliga Relegation** | `fiba_men_10m` | 69 | 34 | **47.1%** | 64.5% | **+17.5%** | **BLOQUEADO (Blacklist)** |
+| **CBA Preseason (China)** | `nba_12m` | 67 | 44 | **52.3%** | 65.9% | **+13.7%** | **BLOQUEADO (Blacklist)** |
+| **NBA Preseason** | `nba_12m` | 102 | 62 | **50.0%** | 63.0% | **+13.0%** | **BLOQUEADO (Blacklist)** |
+| **Sparkasse Prva Liga** | `fiba_men_10m` | 75 | 61 | **57.4%** | 70.3% | **+12.9%** | **BLOQUEADO (Blacklist)** |
+
+#### B) El Caso Especial de la NBA y Ligas 12m (Filtro Sniper Obligatorio $P \ge 0.68$)
+La NBA cuenta con un volumen masivo (más de 3,000 partidos en el corte), pero a un umbral permisivo ($P \ge 0.58$) arroja un **WR de 63.7%**, el cual genera pérdida neta si se opera a momios de 1.40. Sin embargo, al barrer los umbrales de seguridad, la calidad de la señal se transforma:
+* **NBA @ $P \ge 0.58$:** 1,955 apuestas | WR: **63.7%** | ROI @ 1.40: **-10.8%** *(Perdedor a cuota baja)*
+* **NBA @ $P \ge 0.65$:** 1,220 apuestas | WR: **70.5%** | ROI @ 1.40: **-1.3%**
+* **NBA @ $P \ge 0.68$ (Filtro Calibrado):** 780 apuestas | WR: **73.2%** | ROI @ 1.40: **+2.5%** *(ROI @ 1.83: **+33.9%**)*
+* **NBA @ $P \ge 0.70$ (Sniper):** 460 apuestas | WR: **75.6%** | ROI @ 1.40: **+5.8%** *(ROI @ 1.83: **+38.3%**)*
+
+> **Regla Operativa NBA/CBA en `m27_v5`:** En competiciones de 12 minutos (NBA, NBA G League, China CBA), el modelo **NO apuesta con umbrales genéricos de 0.60–0.63**. Exige obligatoriamente **$P \ge 0.68$ y margen proyectado $\ge 2.2$ puntos**, eliminando automáticamente los falsos positivos.
+
+#### C) Ligas Élite y Femeninas (Golden Tier: WR 74% a 89% con Margen Positivo a Momio 1.40)
+* **Ligas Femeninas (`fiba_women_10m`):** `LNB Women` (87.4% WR), `Extraliga Women` (80.4% WR), `ZBL Women` (80.1% WR), `Euroleague Women` (77.6% WR). Menor varianza de tiro exterior y ventajas consolidadas en Q3. Umbral asignado: **$P \ge 0.60$**.
+* **Ligas FIBA Élite (`fiba_men_10m`):** `EuroLeague` (76.5% WR), `Liga ACB` (74.5% WR), `BBL` (73.5% WR), `Serie A` (72.8% WR), `France Pro A` (72.2% WR). Umbral asignado: **$P \ge 0.62 - 0.63$**.
 
 ---
 

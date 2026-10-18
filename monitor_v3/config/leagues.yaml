@@ -1,33 +1,43 @@
 # =====================================================================
 # CONFIGURACIÓN DE FILTROS Y RESTRICCIONES DE LIGAS (DIFERENCIACIÓN Q4)
+# Calibrado según Auditoría Empírica M27 V5 (116,412 partidos 2024-2026)
 # =====================================================================
 
-# Ligas que se ignoran por completo (No generan ninguna acción)
+# Ligas que se ignoran por completo (Pretemporadas, Amistosos, Descenso y Volátiles con WR ~50%)
 excluded_leagues:
   patterns:
     - "Regional Cup"
     - "Development League"
     - "Friendly"
+    - "Preseason"
+    - "Relegation"
+    - "Playout"
+    - "Rel/Prom"
+    - "Qualifying Round"
+    - "Manutenção"
+    - "Placement matches 9-12"
+    - "Placement 9-12"
+    - "Exhibition"
+    - "Cyber"
+    - "Esports"
+    - "2K"
+    - "Summer League"
+    - "TPBL"
+    - "Sparkasse Prva Liga"
+    - "Copas regionales"
   ids:
     - 9999
     - 8888
 
 # Ligas restringidas a Modo Degradado (Modo FT-Only: Solo descarga y guarda marcador final, NO Inferencia ML)
+# Las ligas femeninas y NBA fueron retiradas de FT-Only para ser operadas por m27_v5 bajo sus umbrales específicos.
 ft_only_leagues:
   patterns:
-    - "WNBA"
-    - "Women"
-    - "Femenina"
-    - "Feminina"
     - "U21"
     - "U19"
-    - "ABA Liga"
-    - "NBA"
-    - "Lega A"
-    - "Turkish Basketball Super League"
-    - "Playoffs"
-    - "Stoiximan GBL"
-    - "Copas regionales"
+    - "U18"
+    - "U16"
   ids:
     - 1234
     - 5678
+

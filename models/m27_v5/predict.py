@@ -15,6 +15,21 @@ from models.m27_v5.features import FEATURE_NAMES_V5, MODEL_DIR, extract_m27_v5_f
 
 _MODELS_CACHE: dict[str, Any] | None = None
 _TOXIC_CACHE: dict[str, list[str]] | None = None
+_CALIBRATION_CACHE: dict[str, Any] | None = None
+
+
+def _get_league_calibration() -> dict[str, Any]:
+    global _CALIBRATION_CACHE
+    if _CALIBRATION_CACHE is None:
+        calib_path = MODEL_DIR / "league_calibration.json"
+        if calib_path.exists():
+            try:
+                _CALIBRATION_CACHE = json.loads(calib_path.read_text(encoding="utf-8"))
+            except Exception:
+                _CALIBRATION_CACHE = {}
+        else:
+            _CALIBRATION_CACHE = {}
+    return _CALIBRATION_CACHE
 
 
 def _load_production_models() -> dict[str, Any]:
@@ -119,7 +134,7 @@ def predict(
             min_submodel_conf = min(1.0 - p_xgb, 1.0 - p_hgb, 1.0 - p_lr)
             fav_expected_q4_margin = -exp_q4_margin
 
-        # Filtros de Operabilidad y Verdes
+        # Filtros de Operabilidad, Calibración de Ligas y Verdes
         league_str = meta.get("league", "").strip()
         country_str = meta.get("country", "").strip()
         full_league_key = f"{country_str} - {league_str}" if country_str else league_str
@@ -131,6 +146,36 @@ def predict(
             for t in toxic_list
             if len(t) >= 4
         )
+
+        calib_cfg = _get_league_calibration()
+        blacklisted_patterns = calib_cfg.get("blacklisted_patterns", [
+            "friendly", "preseason", "relegation", "playout", "rel/prom", "qualifying round"
+        ])
+        is_blacklisted_league = any(
+            p.lower() in league_str.lower() or p.lower() in full_league_key.lower()
+            for p in blacklisted_patterns
+        )
+
+        # Calibración adaptativa de umbral P y margen mínimo según arquetipo y liga
+        league_up = league_str.upper()
+        is_women_league = any(tag in league_up for tag in ["WOMEN", "FEMENIL", "FEMENINA", "FEMININA", "WNBA", "DAMEN", "KOBIET", "NAISTE"])
+
+        if is_women_league:
+            req_confidence = 0.60
+            req_margin = 1.4
+            league_tier_note = "Women Tier (WR 78-89%)"
+        elif any(k in league_up for k in ["NBA", "G LEAGUE", "CBA"]):
+            req_confidence = 0.68
+            req_margin = 2.2
+            league_tier_note = "NBA/CBA Tier (Filtro Sniper P>=0.68)"
+        elif any(k in league_up for k in ["ACB", "EUROLEAGUE"]):
+            req_confidence = 0.62
+            req_margin = 1.6
+            league_tier_note = "Euro Elite Tier (WR 74-76%)"
+        else:
+            req_confidence = 0.63
+            req_margin = 1.6
+            league_tier_note = "Standard FIBA Tier (WR 71-73%)"
 
         # Filtro de ligas juveniles U13..U18
         is_youth = any(tag in league_str.upper() for tag in ["U13", "U14", "U15", "U16", "U17", "U18", "JUNIOR", "CADETE"])
@@ -147,33 +192,35 @@ def predict(
         )
 
         signal = "NO_BET"
-        if not is_toxic_league and not is_youth and not is_cyber and not is_star_rest_trap:
-            # Sniper threshold: máxima exigencia
+        if not is_toxic_league and not is_blacklisted_league and not is_youth and not is_cyber and not is_star_rest_trap:
             if (
-                confidence >= 0.70 and
-                fav_expected_q4_margin >= 2.5 and
+                confidence >= 0.72 and
+                fav_expected_q4_margin >= (req_margin + 0.8) and
                 min_submodel_conf >= 0.65
             ):
                 signal = "BET_SNIPER"
             elif (
-                confidence >= 0.66 and
-                fav_expected_q4_margin >= 2.0 and
-                min_submodel_conf >= 0.62
+                confidence >= max(0.66, req_confidence) and
+                fav_expected_q4_margin >= (req_margin + 0.3) and
+                min_submodel_conf >= 0.60
             ):
                 signal = "BET_STRONG"
             elif (
-                confidence >= 0.63 and
-                fav_expected_q4_margin >= 1.6 and
-                min_submodel_conf >= 0.58
+                confidence >= req_confidence and
+                fav_expected_q4_margin >= req_margin and
+                min_submodel_conf >= (req_confidence - 0.05)
             ):
                 signal = "BET"
 
         reason = (
-            f"V5 Consensus: Conf={confidence*100:.1f}% ({pick}) | Submodels: XGB={p_xgb:.2f}, "
-            f"HGB={p_hgb:.2f}, LR={p_lr:.2f} | Exp Margin Q4={exp_q4_margin:+.1f} | "
+            f"V5 Consensus: Conf={confidence*100:.1f}% ({pick}) [{league_tier_note}] | "
+            f"Submodels: XGB={p_xgb:.2f}, HGB={p_hgb:.2f}, LR={p_lr:.2f} | "
+            f"Exp Margin Q4={exp_q4_margin:+.1f} (Req>={req_margin:.1f}) | "
             f"Roster ELO Q4 Diff={meta.get('d_lineup_starters_elo_q4', 0.0):+.1f}"
         )
-        if is_toxic_league:
+        if is_blacklisted_league:
+            reason += " [BLOCKED: Liga Sobreestimada/Pretemporada/Descenso]"
+        elif is_toxic_league:
             reason += " [BLOCKED: Liga Tóxica]"
         elif is_youth:
             reason += " [BLOCKED: Liga Juvenil]"
@@ -181,6 +228,8 @@ def predict(
             reason += " [BLOCKED: Partido Cyber/Esports]"
         elif is_star_rest_trap:
             reason += " [BLOCKED: Trampa de Descanso de Estrellas en Paliza]"
+        elif signal == "NO_BET" and confidence >= 0.60 and confidence < req_confidence:
+            reason += f" [NO_BET: Confianza {confidence*100:.1f}% no alcanza umbral de seguridad para {league_tier_note} ({req_confidence*100:.0f}%)]"
 
         raw_payload = {
             "features": {FEATURE_NAMES_V5[i]: float(X[i]) for i in range(len(FEATURE_NAMES_V5))},
