@@ -27,6 +27,8 @@ import re
 import unicodedata
 import sqlite3
 import urllib.request
+import urllib.error
+import html
 import asyncio
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
@@ -96,6 +98,14 @@ def _send_request(url: str, payload: dict) -> dict:
         with urllib.request.urlopen(req, timeout=15) as response:
             res_body = response.read().decode("utf-8")
             return json.loads(res_body)
+    except urllib.error.HTTPError as err:
+        try:
+            err_body = err.read().decode("utf-8")
+            err_json = json.loads(err_body)
+            desc = err_json.get("description", str(err))
+            return {"ok": False, "description": f"{err}: {desc}"}
+        except Exception:
+            return {"ok": False, "description": str(err)}
     except Exception as e:
         return {"ok": False, "description": str(e)}
 
@@ -204,6 +214,7 @@ def format_bet_message(model: str, picked_team: str, is_home: bool, signal: str,
     Formatea el mensaje base de Telegram de acuerdo con las especificaciones.
     """
     side_emoji = "🏠" if is_home else "✈️"
+    clean_team = html.escape(str(picked_team), quote=False)
     
     if confidence is not None and confidence > 0:
         # Normalize in case confidence is expressed as a percentage > 1 (e.g. 29.0 instead of 0.29)
@@ -219,14 +230,14 @@ def format_bet_message(model: str, picked_team: str, is_home: bool, signal: str,
 
     if "LATE" in signal:
         prefix = "🟡⚪️" if is_low_conf else "⚪️"
-        return f"{prefix} APUESTA TARDIA Q4 {model_str} → {side_emoji} {picked_team}"
+        return f"{prefix} APUESTA TARDIA Q4 {model_str} → {side_emoji} {clean_team}"
     elif "BET" in signal and "NO_BET" not in signal:
         prefix = "🟡" if is_low_conf else "🟢"
-        return f"{prefix} APUESTA Q4 {model_str} → {side_emoji} {picked_team}"
+        return f"{prefix} APUESTA Q4 {model_str} → {side_emoji} {clean_team}"
     elif "NO_BET" in signal:
-        return f"⚪️ NO BET {model_str} → {side_emoji} {picked_team}"
+        return f"⚪️ NO BET {model_str} → {side_emoji} {clean_team}"
     else:
-        return f"⚪️ NO BET {model_str} → {side_emoji} {picked_team}"
+        return f"⚪️ NO BET {model_str} → {side_emoji} {clean_team}"
 
 
 
@@ -247,11 +258,14 @@ def _format_telegram_details(
     
     # Line 2: {home} vs {away}
     if home_team and away_team:
-        details.append(f"{home_team} vs {away_team}")
+        clean_home = html.escape(str(home_team), quote=False)
+        clean_away = html.escape(str(away_team), quote=False)
+        details.append(f"{clean_home} vs {clean_away}")
         
     # Line 3: {league} (raw string, no prefix)
     if league:
-        details.append(league)
+        clean_league = html.escape(str(league), quote=False)
+        details.append(clean_league)
         
     # Line 4: {time_str} | MIN {min_actual} | {q_key}: {q_home} - {q_away}
     if scheduled_ts:
@@ -341,14 +355,15 @@ def format_combined_bet_message(predictions: dict, home_team: str, away_team: st
         is_home_pick = (picked_side == "HOME")
         side_emoji = "🏠" if is_home_pick else "✈️"
         picked_team_name = home_team if is_home_pick else away_team
+        clean_team = html.escape(str(picked_team_name), quote=False)
         
-        # Umbral específico del modelo
-        threshold_note = "<75%" if "v5_2" in model else ("<68%" if "v5" in model else "<65%")
+        # Umbral específico del modelo (usar &lt; para parse_mode HTML)
+        threshold_note = "&lt;75%" if "v5_2" in model else ("&lt;68%" if "v5" in model else "&lt;65%")
 
         if is_bet:
-            lines.append(f"{model_conf_str} → {side_emoji} {picked_team_name}")
+            lines.append(f"{model_conf_str} → {side_emoji} {clean_team}")
         else:
-            lines.append(f"{model_conf_str} [NO BET ({threshold_note})] → {side_emoji} {picked_team_name}")
+            lines.append(f"{model_conf_str} [NO BET ({threshold_note})] → {side_emoji} {clean_team}")
         
     return "\n".join(lines)
 
