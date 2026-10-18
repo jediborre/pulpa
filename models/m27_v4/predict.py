@@ -81,19 +81,54 @@ def predict(
 
         conf_q4 = max(p_home_q4, p_away_q4)
         pick_q4 = "HOME" if p_home_q4 >= 0.5 else "AWAY"
+        pick_sign = 1.0 if p_home_q4 >= 0.5 else -1.0
 
-        # Gate Dual-Head: probabilidad calibrada >= 0.68 y margen esperado alineado >= 1.8 pts
-        margin_aligned = (p_home_q4 >= 0.5 and exp_q4_margin >= 1.8) or (p_home_q4 < 0.5 and exp_q4_margin <= -1.8)
-        if conf_q4 >= 0.70 and margin_aligned:
+        # Unanimidad de submodelos (XGB, HistGB, Linear L2) y fuerza histórica Q4
+        c_xgb = p_xgb if pick_sign > 0 else (1.0 - p_xgb)
+        c_hgb = p_hgb if pick_sign > 0 else (1.0 - p_hgb)
+        c_lr = p_lr if pick_sign > 0 else (1.0 - p_lr)
+        min_submodel_conf = min(c_xgb, c_hgb, c_lr)
+        exp_margin_fav = pick_sign * exp_q4_margin
+        elo_q4_fav = pick_sign * float(X[0, 14])
+        q4_bayes_fav = pick_sign * float(X[0, 17])
+
+        # Filtro de Ligas Tóxicas auditadas en Validación (WR@0.65 < 60%)
+        toxic_path = MODEL_DIR / "toxic_leagues.json"
+        is_toxic_league = False
+        lg_name = str(meta.get("league", ""))
+        if toxic_path.exists():
+            try:
+                import json
+                toxic_map = json.loads(toxic_path.read_text(encoding="utf-8"))
+                toxic_list = toxic_map.get(arch, [])
+                is_toxic_league = any(t.lower() in lg_name.lower() for t in toxic_list)
+            except Exception:
+                is_toxic_league = False
+
+        # Gate Dual-Head + Filtros de Alta Precisión en m27/m33 (sin depender de m32)
+        margin_aligned = exp_margin_fav >= 1.8
+        sniper_aligned = (
+            not is_toxic_league
+            and conf_q4 >= 0.72
+            and exp_margin_fav >= 3.0
+            and min_submodel_conf >= 0.66
+            and elo_q4_fav > 0
+        )
+        if is_toxic_league:
+            sig = "NO_BET"
+        elif sniper_aligned:
+            sig = "BET_SNIPER"
+        elif conf_q4 >= 0.70 and margin_aligned:
             sig = "BET_STRONG"
         elif conf_q4 >= 0.68 and margin_aligned:
             sig = "BET"
         else:
             sig = "NO_BET"
 
+        tox_tag = " [TOXIC_LG_BLOCKED]" if is_toxic_league else ""
         reason_str = (
             f"[{arch} | m{int(round(meta['snapshot_minute']))}] "
-            f"Q4 Pick={pick_q4} ({conf_q4*100:.1f}%, E[dQ4]={exp_q4_margin:+.1f} pts) | "
+            f"Q4 Pick={pick_q4} ({conf_q4*100:.1f}%, minSub={min_submodel_conf*100:.1f}%, E[dQ4]={exp_q4_margin:+.1f} pts){tox_tag} | "
             f"E[TotQ4]={exp_q4_total:.1f} vs Prior={lg_avg_q4:.1f} ({ou_signal}) | "
             f"P(FT Home)={p_home_ft*100:.1f}%"
         )
@@ -104,6 +139,8 @@ def predict(
             "p_home_win": round(p_home_q4, 4),
             "p_away_win": round(p_away_q4, 4),
             "confidence": round(conf_q4, 4),
+            "min_submodel_confidence": round(min_submodel_conf, 4),
+            "is_toxic_league": is_toxic_league,
             "predicted_winner": pick_q4.lower(),
             "bet_signal": sig,
             "expected_q4_margin": round(exp_q4_margin, 2),
