@@ -227,10 +227,10 @@ async def evaluate_match_q4(
             final_signal = "NO_BET"
 
         if final_signal == "NO_BET":
-            # Si aún estamos en minutos previos al cierre del Q3 (ej. m27..m29) y m27_v4 (cuyo óptimo
-            # es al cierre de Q3, m30/m36) aún no ha disparado apuesta, seguimos monitoreando hasta el
+            # Si aún estamos en minutos previos al cierre del Q3 (ej. m27..m29) y m27_v5/m27_v4 (cuyo óptimo
+            # es al cierre de Q3, m30/m36) aún no han disparado apuesta, seguimos monitoreando hasta el
             # cierre del Q3 por si el partido entra en zona verde.
-            if (model_version == "m27_v4" or not any_bet_in_tick) and not in_q4_now:
+            if (model_version in ("m27_v5", "m27_v4") or not any_bet_in_tick) and not in_q4_now:
                 predictions[model_version] = {
                     "signal": "UNAVAILABLE",
                     "reason": "monitoring_q3_window_for_green",

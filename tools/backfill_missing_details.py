@@ -201,6 +201,19 @@ async def _run(args) -> None:
             try:
                 data = await mc.fetch_full_match(mid, fetch_team_strength=("team_strength" in tables))
             except Exception:
+                # Si el evento no existe (HTTP 404), el partido ya no esta en SofaScore:
+                # marcar todas las tablas requeridas como inexistentes para no reintentar.
+                try:
+                    er = await mc.request("GET", f"event/{mid}")
+                    if er.status_code == 404:
+                        for t in tables:
+                            conn.execute(
+                                "INSERT OR IGNORE INTO detail_404 (match_id, table_name) VALUES (?, ?)",
+                                (mid, t),
+                            )
+                        conn.commit()
+                except Exception:
+                    pass
                 stats["fail"] += 1
                 done += 1
                 return

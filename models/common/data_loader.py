@@ -31,6 +31,8 @@ def _safe_rate(num: float, den: float) -> float:
 
 def load_match(conn: sqlite3.Connection, match_id: str) -> dict[str, Any] | None:
     """Reconstruye el diccionario canónico de un partido desde la base de datos."""
+    if conn.row_factory != sqlite3.Row:
+        conn.row_factory = sqlite3.Row
     row = conn.execute(
         "SELECT * FROM matches WHERE match_id = ?", (str(match_id),)
     ).fetchone()

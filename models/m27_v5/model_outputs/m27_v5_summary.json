@@ -1,0 +1,220 @@
+{
+  "model_version": "m27_v5",
+  "created_at": "2026-10-17T23:36:36.954823",
+  "n_features": 37,
+  "feature_names": [
+    "cur_score_diff",
+    "abs_cur_score_diff",
+    "ht_diff",
+    "q1_diff",
+    "q2_diff",
+    "q3_eff_diff",
+    "q3_vs_ht_momentum",
+    "recent_2m_run_diff",
+    "pace_pts_per_min",
+    "pace_vs_league_prior",
+    "gp_val",
+    "gp_slope_3m",
+    "fraction_q3_completed",
+    "d_lineup_starters_elo_ft",
+    "d_lineup_starters_elo_q4",
+    "d_lineup_bench_elo_q4",
+    "d_lineup_top3_elo_q4",
+    "d_roster_drift_adv",
+    "d_strat_q4_net",
+    "q3_tactical_surprise",
+    "d_elo_q1",
+    "elo_reliability",
+    "d_q4_bayes",
+    "d_wr_bayes",
+    "has_odds",
+    "odds_log_ratio",
+    "expected_ft_margin",
+    "h2h_bayes_ft_margin",
+    "h2h_bayes_q4_margin",
+    "ts_delta_wp_bayes",
+    "pbp_2pt_diff_q1_q3",
+    "pbp_3pt_diff_q1_q3",
+    "pbp_ft_diff_q1_q3",
+    "rubber_band_gap",
+    "white_flag_risk_zone",
+    "blowout_garbage_time",
+    "lg_avg_q4_prior"
+  ],
+  "n_train": 186530,
+  "n_test": 40946,
+  "train_auc": 0.6450435137812911,
+  "test_auc": 0.6498985754773517,
+  "train_test_auc_gap": -0.004855061696060647,
+  "test_brier": 0.23124798480641506,
+  "walk_forward_stability": [
+    {
+      "cut": "Corte 1: Train <= 2022 -> Test 2023",
+      "n_test": 12910,
+      "auc": 0.6201242186467814,
+      "brier": 0.23841091330537212,
+      "n_bets": 2154,
+      "wr": 67.73444753946146
+    },
+    {
+      "cut": "Corte 2: Train <= 2023 -> Test 2024",
+      "n_test": 39103,
+      "auc": 0.6346455248760925,
+      "brier": 0.23511985348994593,
+      "n_bets": 8119,
+      "wr": 70.36580859711788
+    },
+    {
+      "cut": "Corte 3: Train <= 2024 -> Test 2025-2026",
+      "n_test": 77309,
+      "auc": 0.6472027173394874,
+      "brier": 0.23194511673840568,
+      "n_bets": 19133,
+      "wr": 71.13887001515707
+    }
+  ],
+  "overall_green_bets": 12306,
+  "overall_green_win_rate": 70.16089712335446,
+  "top_leagues": [
+    {
+      "league": "LNB, Women",
+      "arch": "fiba_women_10m",
+      "bets": 40,
+      "win_rate": 97.5
+    },
+    {
+      "league": "CBI U15 , Classificatória A",
+      "arch": "fiba_men_10m",
+      "bets": 28,
+      "win_rate": 92.86
+    },
+    {
+      "league": "ZBL, Playoffs",
+      "arch": "fiba_women_10m",
+      "bets": 12,
+      "win_rate": 91.67
+    },
+    {
+      "league": "Israeli Women Basketball Premier League",
+      "arch": "fiba_women_10m",
+      "bets": 21,
+      "win_rate": 90.48
+    },
+    {
+      "league": "CBI U19, Sede Rio",
+      "arch": "fiba_men_10m",
+      "bets": 21,
+      "win_rate": 90.48
+    },
+    {
+      "league": "Mexico LNBP Women",
+      "arch": "fiba_women_10m",
+      "bets": 19,
+      "win_rate": 89.47
+    },
+    {
+      "league": "Rwanda Basketball League Women, Regular Season",
+      "arch": "fiba_women_10m",
+      "bets": 27,
+      "win_rate": 88.89
+    },
+    {
+      "league": "NBL1, North",
+      "arch": "fiba_men_10m",
+      "bets": 18,
+      "win_rate": 88.89
+    },
+    {
+      "league": "LNB, Clausura",
+      "arch": "fiba_men_10m",
+      "bets": 26,
+      "win_rate": 88.46
+    },
+    {
+      "league": "2. Muška Liga",
+      "arch": "fiba_men_10m",
+      "bets": 16,
+      "win_rate": 87.5
+    },
+    {
+      "league": "Campeonato Nacional da 1ª Divisao Feminina, 1ª Fase - Norte",
+      "arch": "fiba_women_10m",
+      "bets": 21,
+      "win_rate": 85.71
+    },
+    {
+      "league": "CN1 Basquetebol, 1ª Fase - Sul",
+      "arch": "fiba_men_10m",
+      "bets": 14,
+      "win_rate": 85.71
+    },
+    {
+      "league": "WABA League Women, Regular Season",
+      "arch": "fiba_women_10m",
+      "bets": 13,
+      "win_rate": 84.62
+    },
+    {
+      "league": "Premier League",
+      "arch": "fiba_men_10m",
+      "bets": 13,
+      "win_rate": 84.62
+    },
+    {
+      "league": "Saudi Basketball League, Premier League",
+      "arch": "fiba_men_10m",
+      "bets": 31,
+      "win_rate": 83.87
+    }
+  ],
+  "toxic_leagues": [
+    {
+      "league": "PGE Basket Liga",
+      "arch": "fiba_men_10m",
+      "bets": 19,
+      "win_rate": 52.63
+    },
+    {
+      "league": "Qatari Basketball League, Regular Season",
+      "arch": "fiba_men_10m",
+      "bets": 19,
+      "win_rate": 52.63
+    },
+    {
+      "league": "Sparkasse Prva Liga Zeni",
+      "arch": "fiba_men_10m",
+      "bets": 33,
+      "win_rate": 51.52
+    },
+    {
+      "league": "Superleague",
+      "arch": "fiba_men_10m",
+      "bets": 18,
+      "win_rate": 50.0
+    },
+    {
+      "league": "NBL1, Central",
+      "arch": "fiba_men_10m",
+      "bets": 22,
+      "win_rate": 50.0
+    },
+    {
+      "league": "Liga e Parë",
+      "arch": "fiba_men_10m",
+      "bets": 15,
+      "win_rate": 46.67
+    },
+    {
+      "league": "Azerbaijan Basketball League, B Group",
+      "arch": "fiba_men_10m",
+      "bets": 15,
+      "win_rate": 46.67
+    },
+    {
+      "league": "Liga de Baloncesto Puertorriquena , Seccion Oeste",
+      "arch": "fiba_men_10m",
+      "bets": 13,
+      "win_rate": 46.15
+    }
+  ]
+}

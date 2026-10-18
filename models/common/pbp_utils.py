@@ -89,9 +89,13 @@ def count_sign_swings(values: list[int]) -> int:
     return swings
 
 
-def graph_stats_upto(graph_points: list[dict[str, Any]], max_minute: int) -> dict[str, Any]:
+def graph_stats_upto(graph_points: Any, max_minute: int) -> dict[str, Any]:
     """Calcula estadísticas agregadas de la gráfica de presión hasta un minuto dado."""
-    points = [p for p in graph_points if int(p.get("minute", 0)) <= max_minute]
+    if isinstance(graph_points, dict):
+        graph_points = graph_points.get("graph_points") or []
+    if not isinstance(graph_points, list):
+        graph_points = []
+    points = [p for p in graph_points if isinstance(p, dict) and int(p.get("minute", 0)) <= max_minute]
     values = [int(p.get("value", 0)) for p in points]
     if not values:
         return {

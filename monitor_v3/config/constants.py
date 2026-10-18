@@ -75,8 +75,8 @@ TOKEN_ROTATION_POOL_SIZE = 5        # Cantidad objetivo de tokens concurrentes
 TOKEN_MAX_FAILURES = 3              # Fallos consecutivos antes de revocar y regenerar token
 TOKEN_REFRESH_MINUTES = 60 * 24 * 7 # Chequeo preventivo semanal (tokens duran ~6 meses)
 
-# Modelos Activos para Inferencia (Tríada Campeona m27_v4 + Campeones previos v6_2 y m27_v3)
-ACTIVE_MODELS = ["m27_v4", "v6_2", "m27_v3"]
+# Modelos Activos para Inferencia (M27 V5 Roster/Táctico + m27_v4 + v6_2 + m27_v3)
+ACTIVE_MODELS = ["m27_v5", "m27_v4", "v6_2", "m27_v3"]
 
 # --- Ritmo de Juego y Ventana de Monitoreo Q4 ---
 SECS_PER_GAME_MIN = 170             # Estimación inicial de segundos reales por minuto de juego
