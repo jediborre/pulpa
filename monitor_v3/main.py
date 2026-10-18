@@ -177,7 +177,7 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
 
             cursor = conn.execute("""
                 SELECT id, model_version, picked_side, signal_type, result,
-                       inference_minute, confidence, actual_home_score, actual_away_score, target_quarter
+                       inference_minute, confidence, actual_home_score, actual_away_score, target_quarter, inference_json
                 FROM bet_monitor_log_v3
                 WHERE match_id = ?
             """, (match_id,))
@@ -489,8 +489,8 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                     graph_points_count=pred.get("graph_points_count"),
                                     raw_json=pred.get("raw_payload"),
                                     signal_type="NO_BET",
-                                    picked_side="NONE",
-                                    confidence=0.0,
+                                    picked_side=pred.get("pick") or "NONE",
+                                    confidence=pred.get("confidence") or 0.0,
                                     actual_home_score=pred.get("actual_home_score"),
                                     actual_away_score=pred.get("actual_away_score"),
                                     result="push",

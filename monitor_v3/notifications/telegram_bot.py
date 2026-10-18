@@ -436,7 +436,31 @@ def format_combined_final_message(logs: list, home_team: str, away_team: str) ->
         
         if "BET" not in sig or "NO_BET" in sig:
             # Es NO_BET!
-            lines.append(f"🔴 {model} NO BET")
+            conf = log.get("confidence")
+            picked_side = log.get("picked_side")
+            
+            # Intentar recuperar de inference_json si no viene en las columnas directas
+            if (not conf or conf == 0.0 or not picked_side or picked_side == "NONE") and log.get("inference_json"):
+                try:
+                    inf = json.loads(log["inference_json"]) if isinstance(log["inference_json"], str) else log["inference_json"]
+                    conf = conf or inf.get("confidence") or inf.get("p_home_win")
+                    picked_side = picked_side if (picked_side and picked_side != "NONE") else inf.get("pick")
+                except Exception:
+                    pass
+
+            if conf and conf > 0 and picked_side and picked_side != "NONE":
+                if conf > 1.0:
+                    conf = conf / 100.0
+                conf_pct = int(round(conf * 100))
+                is_home_pick = (str(picked_side).upper() == "HOME")
+                side_emoji = "🏠" if is_home_pick else "✈️"
+                picked_team_name = home_team if is_home_pick else away_team
+                clean_team = html.escape(str(picked_team_name), quote=False)
+                threshold_note = "&lt;75%" if "v5_2" in model else ("&lt;68%" if "v5" in model else "&lt;65%")
+                
+                lines.append(f"🔴 {model} {conf_pct}% [NO BET ({threshold_note})] → {side_emoji} {clean_team}")
+            else:
+                lines.append(f"🔴 {model} NO BET")
         else:
             conf = log.get("confidence")
             if conf is not None:
@@ -448,14 +472,15 @@ def format_combined_final_message(logs: list, home_team: str, away_team: str) ->
                 model_conf_str = f"{model}"
                 
             picked_side = log.get("picked_side")
-            is_home_pick = (picked_side == "HOME")
+            is_home_pick = (str(picked_side).upper() == "HOME")
             side_emoji = "🏠" if is_home_pick else "✈️"
             picked_team_name = home_team if is_home_pick else away_team
+            clean_team = html.escape(str(picked_team_name), quote=False)
             
             result = log.get("result")
             res_emoji = "✅" if result == "win" else "❌"
             
-            lines.append(f"{res_emoji} {model_conf_str} → {side_emoji} {picked_team_name}")
+            lines.append(f"{res_emoji} {model_conf_str} → {side_emoji} {clean_team}")
         
     return "\n".join(lines)
 
