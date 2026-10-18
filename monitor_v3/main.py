@@ -438,7 +438,7 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                 # pero se evalúa igualmente al min 27; con el retraso no ha ido mal.)
                 # Se corre en cuanto el reloj FIABLE alcanza el min 27; el clasificador
                 # distingue ordinaria (<=33), tardía (34-35) y anulada (>=36).
-                if minute >= Q4_ONLY_EARLY_WAKE_MINUTE and minute < 36:
+                if minute >= Q4_ONLY_EARLY_WAKE_MINUTE and minute < 40:
                     eval_res = await evaluate_match_q4(match_id, full_data, watcher_state, forced_minute=minute)
                     if eval_res.get("ok"):
                         preds = eval_res.get("predictions", {})

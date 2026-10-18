@@ -59,6 +59,46 @@ def load_match(conn: sqlite3.Connection, match_id: str) -> dict[str, Any] | None
             "away_score": pr["away_score"],
         })
 
+    events: dict[str, list[dict[str, Any]]] = {}
+    try:
+        for er in conn.execute(
+            "SELECT quarter, time, time_seconds, incident_type, subtype, player, player_id, team, points, home_score, away_score "
+            "FROM match_events WHERE match_id = ? ORDER BY time_seconds ASC, seq ASC",
+            (str(match_id),),
+        ):
+            events.setdefault(er["quarter"], []).append({
+                "time": er["time"],
+                "time_seconds": er["time_seconds"],
+                "incident_type": er["incident_type"],
+                "subtype": er["subtype"],
+                "player": er["player"],
+                "player_id": er["player_id"],
+                "team": er["team"],
+                "points": er["points"],
+                "home_score": er["home_score"],
+                "away_score": er["away_score"],
+            })
+    except Exception:
+        pass
+
+    lineups: list[dict[str, Any]] = []
+    try:
+        for lr in conn.execute(
+            "SELECT team, player_name, player_id, is_starter, shirt_number, position "
+            "FROM lineups WHERE match_id = ?",
+            (str(match_id),),
+        ):
+            lineups.append({
+                "team": lr["team"],
+                "player_name": lr["player_name"],
+                "player_id": str(lr["player_id"]) if lr["player_id"] is not None else None,
+                "is_starter": int(lr["is_starter"] or 0),
+                "shirt_number": lr["shirt_number"],
+                "position": lr["position"],
+            })
+    except Exception:
+        pass
+
     graph_points: list[dict[str, int]] = []
     for gr in conn.execute(
         "SELECT minute, value FROM graph_points WHERE match_id = ? ORDER BY seq",
@@ -70,6 +110,7 @@ def load_match(conn: sqlite3.Connection, match_id: str) -> dict[str, Any] | None
     out: dict[str, Any] = {
         "match_id": str(match_id),
         "match": {
+            "match_id": str(match_id),
             "home_team": row["home_team"],
             "away_team": row["away_team"],
             "home_slug": row["home_slug"] or "unknown",
@@ -96,6 +137,8 @@ def load_match(conn: sqlite3.Connection, match_id: str) -> dict[str, Any] | None
         },
         "graph_points": graph_points,
         "play_by_play": pbp,
+        "events": events,
+        "lineups": lineups,
     }
     return out
 

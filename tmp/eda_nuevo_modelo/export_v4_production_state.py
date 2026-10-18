@@ -1,8 +1,8 @@
 """
-Exporta el estado final de ELO estacional, estadísticos rolling por equipo y clasificación
-de ligas a `models/m27_v4/model_outputs/team_priors_state.pkl`, y copia los bundles
-entrenados de la Tríada Canónica (`fiba_men_10m`, `fiba_women_10m`, `nba_12m`) para
-inferencia en producción en O(1) (< 1 ms).
+Exporta el estado final de ELO estacional, estadísticos rolling por equipo, estadísticos rolling
+por jugador (`player_priors`) y clasificación de ligas (`lc_map`) a
+`models/m27_v4/model_outputs/team_priors_state.pkl`, y copia los bundles entrenados de la
+Tríada Canónica (`fiba_men_10m`, `fiba_women_10m`, `nba_12m`) para inferencia en producción O(1) (< 1 ms).
 """
 import sys
 import math
@@ -23,7 +23,7 @@ DST_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def main():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True, timeout=60)
     cur = conn.cursor()
 
     cur.execute("""
@@ -115,9 +115,54 @@ def main():
         team_ft_hist[ht].append(ft_m)
         team_ft_hist[at].append(-ft_m)
 
+    # Calcular estadísticos rolling por jugador (últimos 10 partidos: rating y plus_minus)
+    cur.execute("""
+        SELECT ps.player_id, ps.sofascore_rating, ps.plus_minus
+        FROM player_stats ps
+        JOIN matches m ON m.match_id = ps.match_id
+        WHERE ps.player_id IS NOT NULL AND ps.sofascore_rating IS NOT NULL
+        ORDER BY m.date ASC, m.time ASC, m.match_id ASC
+    """)
+    p_hist = defaultdict(list)
+    for pid, rat, pm in cur:
+        s_pid = str(pid)
+        p_hist[s_pid].append((float(rat or 6.5), float(pm or 0.0)))
+        if len(p_hist[s_pid]) > 12:
+            p_hist[s_pid] = p_hist[s_pid][-10:]
+
+    # Último estado de clasificación / forma (team_strength) por equipo
+    cur.execute("""
+        SELECT ts.team_name, ts.wins, ts.losses, ts.form
+        FROM team_strength ts
+        JOIN matches m ON m.match_id = ts.match_id
+        ORDER BY m.date ASC, m.time ASC, m.match_id ASC
+    """)
+    ts_latest = {}
+    for tname, w, l, fm in cur:
+        if not tname:
+            continue
+        w_i, l_i = int(w or 0), int(l or 0)
+        if (w_i + l_i) > 0:
+            wp_b = (w_i + 3.0) / (w_i + l_i + 6.0)
+            fv = 0.5
+            if fm:
+                wc, lc_ = str(fm).count("W"), str(fm).count("L")
+                if (wc + lc_) > 0:
+                    fv = (wc + 1.5) / (wc + lc_ + 3.0)
+            ts_latest[str(tname)] = (round(float(wp_b), 4), round(float(fv), 4))
+
     conn.close()
 
+    player_priors = {}
+    for pid, hist in p_hist.items():
+        if len(hist) >= 2:
+            rec = hist[-10:]
+            m_rat = sum(x[0] for x in rec) / len(rec)
+            m_pm = sum(x[1] for x in rec) / len(rec)
+            player_priors[pid] = (round(float(m_rat), 3), round(float(m_pm), 3), len(rec))
+
     team_priors = {}
+    ts_priors = dict(ts_latest)
     for t in elo_ft.keys():
         q4_l = team_q4_hist[t][-15:]
         ft_l = team_ft_hist[t][-15:]
@@ -132,10 +177,22 @@ def main():
             round(float(wr_b), 4),
             int(n_g),
         )
+        if t not in ts_priors and ft_l:
+            ft_l5 = ft_l[-5:]
+            fv_5 = (sum(1.0 if m > 0 else 0.0 for m in ft_l5) + 1.5) / (len(ft_l5) + 3.0)
+            ts_priors[t] = (round(float(wr_b), 4), round(float(fv_5), 4))
 
     state_path = DST_DIR / "team_priors_state.pkl"
     with open(state_path, "wb") as f:
-        pickle.dump({"team_priors": team_priors, "lc_map": lc_map}, f)
+        pickle.dump(
+            {
+                "team_priors": team_priors,
+                "lc_map": lc_map,
+                "player_priors": player_priors,
+                "ts_priors": ts_priors,
+            },
+            f,
+        )
 
     for fname in [
         "model_v4_fiba_men_10m.pkl",
@@ -147,7 +204,9 @@ def main():
         if src.exists():
             shutil.copy2(src, DST_DIR / fname)
 
-    print(f"Exportados {len(team_priors):,} equipos y {len(lc_map):,} ligas en {DST_DIR}")
+    print(
+        f"Exportados {len(team_priors):,} equipos, {len(player_priors):,} jugadores, {len(ts_priors):,} ts_priors y {len(lc_map):,} ligas en {DST_DIR}"
+    )
 
 
 if __name__ == "__main__":

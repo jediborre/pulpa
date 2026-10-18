@@ -65,6 +65,7 @@ def predict(
     target: str = "q4",
     match_data: dict[str, Any] | None = None,
     conn: sqlite3.Connection | None = None,
+    snapshot_minute: float | None = None,
 ) -> PredictionResult:
     """Ejecuta inferencia con el modelo especificado retornando un PredictionResult canónico."""
     v = model_version.lower().strip()
@@ -87,7 +88,13 @@ def predict(
 
         if v == "m27_v4":
             from models.m27_v4.predict import predict as m27_v4_predict
-            return m27_v4_predict(match_id=match_id, target=target, match_data=match_data, conn=conn)
+            return m27_v4_predict(
+                match_id=match_id,
+                target=target,
+                match_data=match_data,
+                conn=conn,
+                snapshot_minute=snapshot_minute,
+            )
 
         elif v == "m27_v3":
             from models.m27_v3.predict import predict as m27_predict
@@ -160,7 +167,7 @@ def predict_all(
 ) -> dict[str, PredictionResult]:
     """Ejecuta inferencia multi-modelo y opcionalmente persiste en eval_match_results_v2."""
     if models is None:
-        models = ["m27_v3", "v6_2"]
+        models = ["m27_v4", "m27_v3", "v6_2"]
 
     close_conn = False
     if conn is None:

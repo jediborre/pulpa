@@ -351,6 +351,13 @@ class MobileClient:
 
         # Parsear con los módulos canónicos de match
         parsed = _parse(event_json, incidents, graph_points)
+        parsed["match_id"] = str(match_id)
+        if isinstance(parsed.get("match"), dict):
+            parsed["match"]["match_id"] = str(match_id)
+            ev_obj = event_json.get("event") or {}
+            cat_name = ((ev_obj.get("tournament") or {}).get("category") or {}).get("name") or ""
+            if cat_name:
+                parsed["match"]["country"] = cat_name
 
         # H2H
         parsed["h2h"] = []

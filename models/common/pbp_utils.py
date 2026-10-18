@@ -132,18 +132,23 @@ def graph_stats_upto(graph_points: list[dict[str, Any]], max_minute: int) -> dic
 
 
 def pbp_events_upto(data: dict[str, Any], cutoff_minute: float) -> list[dict[str, Any]]:
-    """Filtra y normaliza los eventos PBP jugados hasta el minuto cutoff."""
-    pbp = data.get("play_by_play", {})
+    """Filtra y normaliza los eventos PBP jugados hasta el minuto cutoff (incluyendo 1PT, 2PT y 3PT)."""
+    raw_events = data.get("events") or {}
+    pbp = data.get("play_by_play") or {}
+    source = raw_events if raw_events else pbp
     q_dur = infer_regulation_quarter_minutes(data)
     events = []
 
-    for quarter_label, plays in pbp.items():
-        q_idx = quarter_index(quarter_label)
+    for quarter_label, plays in source.items():
+        q_idx = quarter_index(str(quarter_label))
         if q_idx is None or q_idx < 1 or q_idx > 4:
             continue
 
         q_start = (q_idx - 1) * q_dur
-        for play in plays:
+        for play in plays or []:
+            pts = int(play.get("points") or 0)
+            if source is raw_events and pts <= 0:
+                continue
             t_sec = play.get("time_seconds")
             if t_sec is not None:
                 event_min = float(t_sec) / 60.0
@@ -156,6 +161,7 @@ def pbp_events_upto(data: dict[str, Any], cutoff_minute: float) -> list[dict[str
 
             if event_min <= float(cutoff_minute):
                 ev = dict(play)
+                ev["points"] = pts
                 ev["_global_min"] = event_min
                 events.append(ev)
 
@@ -257,7 +263,19 @@ def score_upto(data: dict[str, Any], cutoff_minute: int) -> tuple[int, int]:
 
 def infer_regulation_quarter_minutes(match_data: dict[str, Any]) -> float:
     """Infiere si la liga juega cuartos reglamentarios de 10 o 12 minutos."""
-    pbp = match_data.get("play_by_play", {}) or {}
+    m_info = match_data.get("match") or {}
+    per_len = m_info.get("period_length")
+    if per_len is not None:
+        try:
+            pl_sec = int(per_len)
+            if pl_sec >= 700:
+                return 12.0
+            if 500 <= pl_sec <= 620:
+                return 10.0
+        except (ValueError, TypeError):
+            pass
+
+    pbp = (match_data.get("events") or match_data.get("play_by_play") or {})
     best_clock_seconds = 0
     for quarter_label, plays in pbp.items():
         q_idx = quarter_index(str(quarter_label))
@@ -270,7 +288,7 @@ def infer_regulation_quarter_minutes(match_data: dict[str, Any]) -> float:
             if rem_sec > best_clock_seconds:
                 best_clock_seconds = rem_sec
 
-    if best_clock_seconds >= (11 * 60):
+    if best_clock_seconds >= (10 * 60 + 15):
         return 12.0
     if best_clock_seconds >= (9 * 60):
         return 10.0
@@ -291,8 +309,8 @@ def infer_regulation_quarter_minutes(match_data: dict[str, Any]) -> float:
         approx_q_minutes = max(gp_minutes) / float(n_played_quarters)
         return min((10.0, 12.0), key=lambda val: abs(val - approx_q_minutes))
 
-    league = str((match_data.get("match") or {}).get("league") or "")
-    if "nba" in league.lower():
+    league = str(m_info.get("league") or match_data.get("league") or "").lower()
+    if any(k in league for k in ("nba", "g league", "pba")) or ("cba" in league and "wcba" not in league):
         return 12.0
     return 10.0
 
