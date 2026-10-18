@@ -56,6 +56,58 @@ from match.scraper import (
 _TLS_LOCAL = threading.local()
 
 
+def _frac_dec(frac) -> float | None:
+    """Convierte cuota fraccionaria '53/100' a decimal."""
+    import re
+
+    if not frac or not isinstance(frac, str):
+        return None
+    m = re.match(r"\s*(\d+)/(\d+)", frac)
+    if not m or int(m.group(2)) <= 0:
+        return None
+    return round(int(m.group(1)) / int(m.group(2)) + 1.0, 3)
+
+
+def summarize_live_odds(odds_json: dict | None) -> dict:
+    """
+    Resume los mercados IN-PLAY (isLive=True) de event/{id}/odds/1/all:
+    ML en vivo, linea de handicap y total implicitas (donde ambos lados cotizan mas parejo).
+    No alimenta m27_v5_3; se persiste en live_snapshots_v3 para entrenar con cuotas en vivo a futuro.
+    """
+    import re
+
+    out: dict = {}
+    spreads: list[tuple[float, float, float]] = []
+    totals: list[tuple[float, float, float]] = []
+    for m in (odds_json or {}).get("markets") or []:
+        if not m.get("isLive") or m.get("suspended"):
+            continue
+        grp, per = m.get("marketGroup"), m.get("marketPeriod")
+        ch = m.get("choices") or []
+        if len(ch) < 2:
+            continue
+        p0, p1 = _frac_dec(ch[0].get("fractionalValue")), _frac_dec(ch[1].get("fractionalValue"))
+        if not p0 or not p1:
+            continue
+        if grp == "Home/Away" and per == "Match":
+            out["ml_home"], out["ml_away"] = p0, p1
+        elif grp == "Point spread":
+            sm = re.match(r"\(([+-]?\d+(?:\.\d+)?)\)", str(ch[0].get("name", "")))
+            if sm:
+                spreads.append((float(sm.group(1)), p0, p1))
+        elif grp == "Over/Under":
+            try:
+                totals.append((float(m.get("choiceGroup")), p0, p1))
+            except (TypeError, ValueError):
+                continue
+    for key, ladder in (("spread", spreads), ("total", totals)):
+        if ladder:
+            line, a, b = min(ladder, key=lambda r: abs(1.0 / r[1] - 1.0 / r[2]))
+            out[f"{key}_line"] = line
+            out[f"{key}_n"] = len(ladder)
+    return out
+
+
 def _get_tls_session():
     session = getattr(_TLS_LOCAL, "session", None)
     if session is None:
@@ -389,11 +441,13 @@ class MobileClient:
             parsed["lineups"] = []
             parsed["player_stats"] = []
 
-        # Cuotas pre-partido
+        # Cuotas pre-partido (isLive=False). Las in-play se resumen aparte para no contaminar el prior de mercado.
         if odds_json:
             parsed["odds"] = _parse_odds(match_id, odds_json)
+            parsed["odds_live"] = summarize_live_odds(odds_json)
         else:
             parsed["odds"] = []
+            parsed["odds_live"] = {}
 
         # Team strength (opcional; 2 endpoints por equipo: /team/{id} y /performance)
         parsed["team_strength"] = []

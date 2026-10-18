@@ -101,6 +101,24 @@ def init_tables() -> None:
                 );
             """)
 
+            # 6. live_snapshots_v3: telemetria en vivo por minuto (jugadores, faltas, +/-, cuotas in-play)
+            #    para entrenar a futuro con informacion que hoy no se puede backtestear.
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS live_snapshots_v3 (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    match_id TEXT,
+                    game_minute REAL,
+                    home_score INTEGER,
+                    away_score INTEGER,
+                    status_description TEXT,
+                    odds_live_json TEXT,
+                    players_json TEXT,
+                    team_stats_json TEXT,
+                    created_at TEXT
+                );
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_live_snap_match_v3 ON live_snapshots_v3 (match_id, game_minute);")
+
             # 5. Asegurar existencia de quarter_scores_v2 para persistencia canónica de cuartos
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS quarter_scores_v2 (
@@ -304,6 +322,29 @@ def save_bet_log(
                 1 if h2h_available else (0 if h2h_available is not None else None)
             ))
             return cursor.lastrowid
+
+def save_live_snapshot(
+    match_id: str, game_minute: float | None, home_score: int, away_score: int,
+    status_description: str, odds_live: dict | None, players: list | None, team_stats: list | None,
+) -> None:
+    """Persiste una foto compacta del estado en vivo (best-effort; nunca debe romper el monitoreo)."""
+    try:
+        with get_db_connection() as conn:
+            with conn:
+                conn.execute("""
+                    INSERT INTO live_snapshots_v3 (
+                        match_id, game_minute, home_score, away_score, status_description,
+                        odds_live_json, players_json, team_stats_json, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    match_id, game_minute, home_score, away_score, status_description,
+                    json.dumps(odds_live or {}, ensure_ascii=False),
+                    json.dumps(players or [], ensure_ascii=False),
+                    json.dumps(team_stats or [], ensure_ascii=False),
+                    datetime.now().isoformat(),
+                ))
+    except Exception as exc:
+        log_error("DB", f"live_snapshots_v3: {exc}")
 
 def update_bet_log_result(log_id: int, result: str) -> None:
     with get_db_connection() as conn:

@@ -1020,9 +1020,27 @@ def save_team_statistics(conn: sqlite3.Connection, match_id: str, stat_rows: lis
 
 
 def save_match_odds(conn: sqlite3.Connection, match_id: str, odds_rows: list[dict]) -> None:
-    """Replace betting odds for a match."""
+    """Replace betting odds for a match, conservando lineas pre-partido ya guardadas que el payload actual no trae
+    (en vivo SofaScore solo expone spread/total in-play, que se descartan)."""
     if not odds_rows:
         return
+    new_keys = {(r.get("odds_type", ""), r.get("market_name", ""), r.get("market_period", "")) for r in odds_rows}
+    kept: list[dict] = []
+    try:
+        for e in conn.execute(
+            "SELECT odds_type, market_name, market_period, home_value, away_value, draw_value, timestamp, "
+            "line, home_initial, away_initial FROM match_odds WHERE match_id = ? AND line IS NOT NULL",
+            (match_id,),
+        ).fetchall():
+            if (e[0], e[1], e[2]) not in new_keys:
+                kept.append({
+                    "odds_type": e[0], "market_name": e[1], "market_period": e[2], "home_value": e[3],
+                    "away_value": e[4], "draw_value": e[5], "timestamp": e[6], "line": e[7],
+                    "home_initial": e[8], "away_initial": e[9],
+                })
+    except sqlite3.Error:
+        kept = []
+    odds_rows = list(odds_rows) + kept
     conn.execute("DELETE FROM match_odds WHERE match_id = ?", (match_id,))
     for row in odds_rows:
         conn.execute(

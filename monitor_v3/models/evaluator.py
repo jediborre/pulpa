@@ -81,6 +81,8 @@ class GameWatcherState:
         self.unavailable_ticks = 0
         self.team_strength_cache: list[dict] | None = None
         self.team_strength_fetched: bool = False
+        self.pregame_odds_rows: list[dict] | None = None
+        self.last_snapshot_minute: int = -1
 
     def check_stale_graph(self, current_count: int, score_sum: int) -> bool:
         if current_count > 0 and current_count == self.last_graph_points_count:
@@ -95,6 +97,59 @@ class GameWatcherState:
             self.last_score_sum = score_sum
 
         return self.stale_ticks >= Q4_STALE_MAX_TICKS
+
+
+def _merge_pregame_odds(match_id: str, payload: dict, watcher_state: "GameWatcherState") -> None:
+    """Agrega al payload las lineas pre-partido (spread/total) guardadas en matches.db, ya que en vivo la API solo
+    expone mercados in-play. Se lee una sola vez por partido."""
+    if watcher_state.pregame_odds_rows is None:
+        rows: list[dict] = []
+        try:
+            import sqlite3
+            conn = sqlite3.connect(str(ROOT / "matches.db"), timeout=5)
+            try:
+                for r in conn.execute(
+                    "SELECT odds_type, market_name, market_period, home_value, away_value, line "
+                    "FROM match_odds WHERE match_id = ?", (match_id,)
+                ):
+                    rows.append({
+                        "odds_type": r[0], "market_name": r[1], "market_period": r[2],
+                        "home_value": r[3], "away_value": r[4], "line": r[5],
+                    })
+            finally:
+                conn.close()
+        except Exception:
+            rows = []
+        watcher_state.pregame_odds_rows = rows
+    have = {(o.get("odds_type"), o.get("market_period")) for o in (payload.get("odds") or []) if o.get("line") is not None}
+    extra = [r for r in watcher_state.pregame_odds_rows if r.get("line") is not None and (r["odds_type"], r["market_period"]) not in have]
+    if extra:
+        payload["odds"] = list(payload.get("odds") or []) + extra
+
+
+def _record_live_snapshot(match_id: str, minute: float, payload: dict) -> None:
+    """Guarda telemetria compacta del minuto (jugadores/faltas/+- y cuotas in-play) en live_snapshots_v3."""
+    from monitor_v3.database.repository import save_live_snapshot
+
+    starters = {
+        (l.get("team"), str(l.get("player_id"))): int(l.get("is_starter") or 0)
+        for l in (payload.get("lineups") or []) if isinstance(l, dict)
+    }
+    players = [
+        [p.get("team"), str(p.get("player_id")), starters.get((p.get("team"), str(p.get("player_id"))), 0),
+         p.get("minutes_played"), p.get("points"), p.get("fouls"), p.get("plus_minus"), p.get("sofascore_rating")]
+        for p in (payload.get("player_stats") or []) if isinstance(p, dict)
+    ]
+    team_stats = [
+        [s.get("stat_key"), s.get("home_value"), s.get("away_value")]
+        for s in (payload.get("team_statistics") or []) if isinstance(s, dict) and s.get("period") == "ALL"
+    ]
+    score = payload.get("score") or {}
+    m_info = payload.get("match") or {}
+    save_live_snapshot(
+        match_id, minute, int(score.get("home") or 0), int(score.get("away") or 0),
+        str(m_info.get("status_description") or ""), payload.get("odds_live"), players, team_stats,
+    )
 
 
 async def evaluate_match_q4(
@@ -126,6 +181,8 @@ async def evaluate_match_q4(
 
     if watcher_state.team_strength_cache and not match_payload.get("team_strength"):
         match_payload["team_strength"] = watcher_state.team_strength_cache
+
+    _merge_pregame_odds(match_id, match_payload, watcher_state)
 
     # Guardar en SQLite previo a la inferencia
     try:
@@ -166,6 +223,10 @@ async def evaluate_match_q4(
     # En ligas de 12 minutos (NBA/G-League/PBA), la ventana de evaluación pre-Q4 inicia en el minuto 32 (4:00 rest Q3)
     if is_12m and minute_est < 32:
         return {"ok": False, "reason": "waiting_nba_12m_q3_window"}
+
+    if int(minute_est) != watcher_state.last_snapshot_minute:
+        watcher_state.last_snapshot_minute = int(minute_est)
+        asyncio.create_task(asyncio.to_thread(_record_live_snapshot, match_id, float(minute_est), match_payload))
 
     predictions = {}
 
