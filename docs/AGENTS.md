@@ -134,7 +134,7 @@ Toda la suite de ML se organiza bajo el directorio raíz `models/`:
 - **`tools/obscura-src/`:** Código fuente en Rust del navegador headless Obscura con parches para cookies cross-origin y tiempos de promesa.
 
 ### 6. Interfaz y Operación
-- **`menu.bat`:** Centro de control unificado y único script por lotes del sistema. Organizado en 5 bloques temáticos (1-25 opciones y soporte CLI): Operación en Vivo, Análisis/Consenso, Ingesta/Backfill, Modelos ML y Mantenimiento (incluyendo control total de Obscura).
+- **`menu.bat`:** Centro de control unificado y único script por lotes del sistema. Organizado en 5 bloques temáticos (1-39 opciones y soporte CLI): Operación en Vivo, Análisis/Consenso, Ingesta/Backfill, Modelos ML y Mantenimiento (incluyendo control total de Obscura).
 - **`api.py`:** Backend en FastAPI.
 - **`dashboard/`:** Frontend en React + Vite + TypeScript.
 
@@ -149,7 +149,7 @@ Para el funcionamiento de `monitor_v3` y las descargas históricas ultrarrápida
 
 ### 1. ¿Es necesario desinstalar la app si el token caduca o se bloquea?
 - Para renovar sesión tras un bloqueo persistente o resetear el `Installation ID` y huella local:
-  - **Opción automatizada rápida:** Ejecuta la opción **29** en `menu.bat` (o `python tools\reinstall_sofascore.py`), la cual desinstala completamente la app por ADB, reinstala la suite APK limpia parcheada (`tmp\monitor_v3_poc\Sofascore-patched.apk` + splits) y vuelve a abrir la app de forma transparente.
+  - **Opción automatizada rápida:** Ejecuta la opción **39** en `menu.bat` (o `python tools\reinstall_sofascore.py`), la cual desinstala completamente la app por ADB, reinstala la suite APK limpia parcheada (`tmp\monitor_v3_poc\Sofascore-patched.apk` + splits) y vuelve a abrir la app de forma transparente.
   - **Opción manual en el teléfono:** Ajustes > Aplicaciones > SofaScore > Almacenamiento > "Borrar datos".
 
 ### 2. Flujo de Captura y Sincronización Directa por ADB (Sin Proxy):
@@ -158,9 +158,9 @@ Para el funcionamiento de `monitor_v3` y las descargas históricas ultrarrápida
    - La app oficial/parcheada de SofaScore se abre en el teléfono (conectada directamente a internet, sin proxys ni VPNs para no ser bloqueada por Cloudflare).
    - Navega en la app o toca cualquier partido durante 5 segundos. La app obtiene y guarda su `AUTH_TOKEN` en sus preferencias privadas.
 3. **Extracción Automática al Proyecto:**
-   - Ejecuta la opción **28** en `menu.bat` (o `python tools\sync_token_from_adb.py`).
+   - Ejecuta la opción **38** en `menu.bat` (o `python tools\sync_token_from_adb.py`).
    - El script extrae el token directamente de `shared_prefs/com.sofascore.results_preferences.xml` usando `adb shell run-as com.sofascore.results cat ...`, decodifica la expiración y lo almacena directamente en `monitor_v3/config/tokens.json`.
-4. **Fallback HTTP Toolkit:** Si el teléfono no está por USB, la opción 28 o `python tools\sync_token_from_httptoolkit.py` puede inspeccionar el socket local de HTTP Toolkit (`//./pipe/httptoolkit-ctl`).
+4. **Fallback HTTP Toolkit:** Si el teléfono no está por USB, la opción 38 o `python tools\sync_token_from_httptoolkit.py` puede inspeccionar el socket local de HTTP Toolkit (`//./pipe/httptoolkit-ctl`).
 
 ### 3. Prevención de Bloqueos (Rate Limiting y Challenges):
 - Nunca bombardear peticiones a SofaScore a más de 1 petición por segundo en descargas masivas históricas.
@@ -184,7 +184,7 @@ Para el funcionamiento de `monitor_v3` y las descargas históricas ultrarrápida
 - Motivos observados: `reason: "Forbidden"` (p. ej. `POST /api/v1/token/init`) y `reason: "challenge"` (endpoints `GET /sport/...`, `/event/...`).
 - **El 403 NO se debe a tokens inválidos ni a IP baneada.** Se verificó que un `AUTH_TOKEN` recién emitido por la app en el mismo teléfono y misma red (misma IP pública) sigue dando 403 desde la PC.
 - **NO sirve mitigarlo cambiando la huella TLS:** se probaron `curl_cffi` (`chrome`, `chrome_android`, `chrome131_android`, `chrome99_android`) y `tls_client` (`okhttp4_android_10/11/12/13`, `chrome_131/133`) con cabeceras móviles exactas (`User-Agent: com.sofascore.results/260921/022538`, `x-timestamp`, `Authorization: Bearer`, `Accept`, `Accept-Encoding`) y **todos** devuelven `403 challenge`. Tampoco cambia forzando IPv4 vs IPv6.
-- **HTTP Toolkit (proxy `127.0.0.1:8000`) NO es la solución:** al activar la intercepción MITM por ADB la app real también recibe 403 (el WAF detecta el MITM); al desactivarla la app vuelve a funcionar. Por eso el token se extrae por ADB sin proxy (opción 28).
+- **HTTP Toolkit (proxy `127.0.0.1:8000`) NO es la solución:** al activar la intercepción MITM por ADB la app real también recibe 403 (el WAF detecta el MITM); al desactivarla la app vuelve a funcionar. Por eso el token se extrae por ADB sin proxy (opción 38).
 - **La app inyecta cookies del WebView en OkHttp** (`SCSWebviewCookieJar`, `convertCookieManager`, `WebViewCookieManager`), lo que sugiere que el WAF exige una cookie/estado de sesión obtenido por un WebView real (posible `challenge` de Varnish) que la app mantiene en memoria y **no persiste** en `app_webview/Default/Cookies` (se revisó: solo cookies publicitarias).
 - **Próximas líneas de investigación sugeridas:** (a) habilitar/inspeccionar WebView remote debugging (`webview_devtools_remote`) para extraer la cookie de challenge en vivo; (b) decompilar la capa de red de la app (clases `SCSWebviewCookieJar`/interceptores OkHttp) para hallar cabeceras o firmas obligatorias; (c) usar el teléfono como egress real (VPN/reverse) o capturar su `ClientHello` con proxy passthrough (ver `tmp/debug_connection/passthrough_proxy.py`); (d) revisar si el WAF exige un `x-*` calculado por JNI.
 - Scripts de diagnóstico de esta línea: `tmp/debug_connection/` (`test_direct_matrix.py`, `test_exact_endpoints.py`, `test_android_tls.py`, `test_tlsclient.py`, `test_fresh_token.py`, `test_token_init_cookies.py`, `pull_cookie.py`, `read_cookies.py`, `passthrough_proxy.py`). Documento detallado: `docs/HALLAZGOS_403_SOFASCORE.md`.

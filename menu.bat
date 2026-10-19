@@ -66,55 +66,53 @@ echo                  CENTRO DE CONTROL PRINCIPAL
 echo ==================================================================
 echo.
 echo  [1] OPERACION EN VIVO Y SERVICIOS
-echo    1) Iniciar Monitor V3 (API Movil Nativa + Multi-JWT + Bot Telegram - Recomendado)
-echo    2) Iniciar Monitor V2 (Chrome nativo - Sin Proxy)
-echo    3) Iniciar Monitor V1 (Telegram Bot + Bet Monitor)
-echo    4) Iniciar Monitor V2 (Modo CDP directo)
-echo    5) Iniciar API Backend (FastAPI)
-echo    6) Iniciar Dashboard Web (API + Frontend Vite)
-echo    7) Iniciar Todo con V3 (All-in-One: Monitor V3 + API + Dashboard)
-echo    8) Iniciar Todo con V2 (All-in-One: Monitor V2 + API + Dashboard)
-echo    9) Iniciar Todo con V1 (All-in-One: Monitor V1 + API + Dashboard)
+echo    1) Iniciar Monitor V3 + Bot Telegram (API Movil Nativa + Multi-JWT - Recomendado)
+echo    2) Detener Monitor V3 + Bot Telegram (cierra tambien las ventanas)
+echo    3) Iniciar Bot Telegram V3 (consultas /signals, /status)
+echo    4) Iniciar Monitor V2 (Chrome nativo - Sin Proxy)
+echo    5) Iniciar Monitor V2 (Modo CDP directo)
+echo    6) Iniciar Monitor V1 (Telegram Bot + Bet Monitor)
+echo    7) Iniciar API Backend (FastAPI)
+echo    8) Iniciar Dashboard Web (API + Frontend Vite)
+echo    9) Iniciar Todo con V3 (All-in-One: Monitor V3 + API + Dashboard)
+echo   10) Iniciar Todo con V2 (All-in-One: Monitor V2 + API + Dashboard)
+echo   11) Iniciar Todo con V1 (All-in-One: Monitor V1 + API + Dashboard)
 echo.
 echo  [2] ANALISIS, ESTADISTICAS Y CONSENSO
-echo   10) Estadisticas de Modelos / Fusion Consensus / Excel (CLI)
-echo   11) M27_V3: Reporte ROI y Yield (Modelo Campeon con H2H)
+echo   12) Estadisticas de Modelos / Fusion Consensus / Excel (CLI)
+echo   13) M27_V3: Reporte ROI y Yield (Modelo Campeon con H2H)
+echo   14) M27_V1: Solo reporte ROI
+echo   15) M27_V1: Solo probe
+echo   16) V6.2: Generar reporte Q4 ROI
+echo   17) V6.3: Menu de reportes (interactivo, m27, m30, probe)
 echo.
 echo  [3] INGESTA, SCRAPING Y BACKFILL DE DATOS
-echo   12) Traer fecha nueva / descargar dias faltantes
-echo   13) Backfill historico general (matches.db)
-echo   14) Backfill masivo H2H (SofaScore - priorizado por ligas)
-echo   15) Comparar scraper tradicional vs obscura
-echo   34) Rellenar datos de detalle faltantes (lineups, stats, odds, pbp, team_strength)
-echo   35) Backfill solo team_strength (fortaleza de equipos)
+echo   18) Traer fecha nueva / descargar dias faltantes
+echo   19) Backfill historico general (matches.db)
+echo   20) Backfill masivo H2H (SofaScore - priorizado por ligas)
+echo   21) Rellenar datos de detalle faltantes (lineups, stats, odds, pbp, team_strength)
+echo   22) Backfill solo team_strength (fortaleza de equipos)
+echo   23) Comparar scraper tradicional vs obscura
+echo   24) Submenu Smart Backfill (Modo interactivo y fases guiadas)
+echo   25) Descarga Fase 1: 2023-2025 (Full ML para m27_v4 - Todos los clusters)
+echo   26) Descarga Fase 2: NBA 2018-2023 (Para m34_nba_12m)
+echo   27) Descarga Fase 3: Genesis Elo y H2H 2015-2018 (Memoria 10 Anos)
+echo   28) Descarga Personalizada por Cluster, Modo y Rango de Fechas
+echo   29) Reanudar Ultima Descarga Pausada (--resume)
 echo.
 echo  [4] MODELOS MACHINE LEARNING (ENTRENAMIENTO Y REPORTES)
-echo   16) M27_V1: Entrenar modelo
-echo   17) M27_V1: Solo reporte ROI
-echo   18) M27_V1: Solo probe
-echo   19) V6.2: Entrenar modelo
-echo   20) V6.2: Generar reporte Q4 ROI
-echo   21) V6.2: Entrenar + Reporte completo
-echo   22) V6.3: Menu de reportes (interactivo, m27, m30, probe)
-echo   23) Entrenar V2 (clasificador base)
-echo   24) Entrenar V6 (clasificador base)
-echo   25) Entrenar V2 + V6 (en orden)
+echo   30) Entrenar V2 (clasificador base)
+echo   31) Entrenar V6 (clasificador base)
+echo   32) Entrenar V2 + V6 (en orden)
+echo   33) M27_V1: Entrenar modelo
+echo   34) V6.2: Entrenar modelo
+echo   35) V6.2: Entrenar + Reporte completo
 echo.
 echo  [5] MANTENIMIENTO, OBSCURA Y SISTEMA
-echo   26) Menu Obscura (Iniciar / Apagar / Instalar / Estado)
-echo   27) Instalar / Reparar dependencias (.venv, pip, playwright, npm)
-echo   28) Sincronizar Token JWT desde Android (ADB Directo / USB)
-echo   29) Reinstalar SofaScore Parcheada en Android (ADB)
-echo   30) Iniciar Bot Telegram V3 (consultas /signals, /status)
-echo   41) Detener Monitor V3 + Bot Telegram (cierra tambien las ventanas)
-echo.
-echo  [6] SMART BACKFILL Y DESCARGAS HISTORICAS (2015-2026)
-echo   35) Submenu Smart Backfill (Modo interactivo y fases guiadas)
-echo   36) Descarga Fase 1: 2023-2025 (Full ML para m27_v4 - Todos los clusters)
-echo   37) Descarga Fase 2: NBA 2018-2023 (Para m34_nba_12m)
-echo   38) Descarga Fase 3: Genesis Elo y H2H 2015-2018 (Memoria 10 Anos)
-echo   39) Descarga Personalizada por Cluster, Modo y Rango de Fechas
-echo   40) Reanudar Ultima Descarga Pausada (--resume)
+echo   36) Menu Obscura (Iniciar / Apagar / Instalar / Estado)
+echo   37) Instalar / Reparar dependencias (.venv, pip, playwright, npm)
+echo   38) Sincronizar Token JWT desde Android (ADB Directo / USB)
+echo   39) Reinstalar SofaScore Parcheada en Android (ADB)
 echo.
 echo    0) Salir
 echo ==================================================================
@@ -123,76 +121,71 @@ set /p OPT="  Selecciona una opcion: "
 :: Salida
 if "%OPT%"=="0" goto FIN
 
-:: [1] Servicios en Vivo
+:: [1] Operacion en vivo y servicios
 if "%OPT%"=="1" goto RUN_MONITOR_V3
 if /i "%OPT%"=="v3" goto RUN_MONITOR_V3
-if "%OPT%"=="2" goto RUN_MONITOR_V2
+if "%OPT%"=="2" goto STOP_MONITOR_V3
+if /i "%OPT%"=="stop" goto STOP_MONITOR_V3
+if /i "%OPT%"=="detener" goto STOP_MONITOR_V3
+if "%OPT%"=="3" goto RUN_BOT_V3
+if /i "%OPT%"=="bot_v3" goto RUN_BOT_V3
+if "%OPT%"=="4" goto RUN_MONITOR_V2
 if /i "%OPT%"=="v2" goto RUN_MONITOR_V2
-if "%OPT%"=="3" goto RUN_MONITOR_V1
+if "%OPT%"=="5" goto RUN_MONITOR_CDP
+if "%OPT%"=="6" goto RUN_MONITOR_V1
 if /i "%OPT%"=="v1" goto RUN_MONITOR_V1
-if "%OPT%"=="4" goto RUN_MONITOR_CDP
-if "%OPT%"=="5" goto API
-if "%OPT%"=="6" goto DASHBOARD
-if "%OPT%"=="32" goto DASHBOARD
-if "%OPT%"=="7" goto TODO_V3
-if "%OPT%"=="8" goto TODO_V2
-if "%OPT%"=="9" goto TODO_V1
+if "%OPT%"=="7" goto API
+if "%OPT%"=="8" goto DASHBOARD
+if "%OPT%"=="9" goto TODO_V3
+if "%OPT%"=="10" goto TODO_V2
+if "%OPT%"=="11" goto TODO_V1
 
-:: [2] Analisis y Consenso
-if "%OPT%"=="10" goto VIEW_STATS_CLI
-if "%OPT%"=="11" goto REPORT_M27_V3_ONLY
-if "%OPT%"=="31" goto REPORT_M27_V3_ONLY
+:: [2] Analisis, estadisticas y consenso
+if "%OPT%"=="12" goto VIEW_STATS_CLI
+if "%OPT%"=="13" goto REPORT_M27_V3_ONLY
+if "%OPT%"=="14" goto REPORT_M27_V1_ONLY
+if "%OPT%"=="15" goto REPORT_M27_V1_PROBE
+if "%OPT%"=="16" goto REPORT_V62_ONLY
+if "%OPT%"=="17" goto MENU_V63
 
-:: [3] Ingesta y Backfill
-if "%OPT%"=="12" goto FETCH_DATE
-if "%OPT%"=="13" goto BACKFILL
-if "%OPT%"=="14" goto BACKFILL_H2H_MASIVO
-if "%OPT%"=="33" goto BACKFILL_H2H_MASIVO
-if "%OPT%"=="15" goto COMPARE_SCRAPER
-if "%OPT%"=="34" goto BACKFILL_DETAILS
+:: [3] Ingesta, scraping y backfill
+if "%OPT%"=="18" goto FETCH_DATE
+if "%OPT%"=="19" goto BACKFILL
+if "%OPT%"=="20" goto BACKFILL_H2H_MASIVO
+if "%OPT%"=="21" goto BACKFILL_DETAILS
 if /i "%OPT%"=="backfill_details" goto BACKFILL_DETAILS
-if "%OPT%"=="35" goto BACKFILL_TEAM_STRENGTH
+if "%OPT%"=="22" goto BACKFILL_TEAM_STRENGTH
 if /i "%OPT%"=="backfill_team_strength" goto BACKFILL_TEAM_STRENGTH
+if "%OPT%"=="23" goto COMPARE_SCRAPER
+if "%OPT%"=="24" goto MENU_SMART_BACKFILL
+if /i "%OPT%"=="smart_backfill" goto MENU_SMART_BACKFILL
+if /i "%OPT%"=="backfill_smart" goto MENU_SMART_BACKFILL
+if "%OPT%"=="25" goto RUN_PHASE_1
+if "%OPT%"=="26" goto RUN_PHASE_2
+if "%OPT%"=="27" goto RUN_PHASE_3
+if "%OPT%"=="28" goto RUN_CUSTOM_BACKFILL
+if "%OPT%"=="29" goto RUN_RESUME_BACKFILL
+if /i "%OPT%"=="resume" goto RUN_RESUME_BACKFILL
 
-:: [4] Machine Learning
-if "%OPT%"=="16" goto TRAIN_M27_V1
-if "%OPT%"=="17" goto REPORT_M27_V1_ONLY
-if "%OPT%"=="18" goto REPORT_M27_V1_PROBE
-if "%OPT%"=="19" goto TRAIN_V62_ONLY
-if "%OPT%"=="20" goto REPORT_V62_ONLY
-if "%OPT%"=="21" goto TRAIN_AND_REPORT_V62
-if "%OPT%"=="22" goto MENU_V63
-if "%OPT%"=="23" goto TRAIN_V2
-if "%OPT%"=="24" goto TRAIN_V6
-if "%OPT%"=="25" goto TRAIN_ALL
+:: [4] Modelos Machine Learning
+if "%OPT%"=="30" goto TRAIN_V2
+if "%OPT%"=="31" goto TRAIN_V6
+if "%OPT%"=="32" goto TRAIN_ALL
+if "%OPT%"=="33" goto TRAIN_M27_V1
+if "%OPT%"=="34" goto TRAIN_V62_ONLY
+if "%OPT%"=="35" goto TRAIN_AND_REPORT_V62
 
-:: [5] Mantenimiento y Sistema
-if "%OPT%"=="26" goto MENU_OBSCURA
-if "%OPT%"=="27" goto INSTALAR
+:: [5] Mantenimiento, Obscura y sistema
+if "%OPT%"=="36" goto MENU_OBSCURA
+if "%OPT%"=="37" goto INSTALAR
 if "%OPT%"=="99" goto INSTALAR
-if "%OPT%"=="28" goto SYNC_TOKEN
+if "%OPT%"=="38" goto SYNC_TOKEN
 if /i "%OPT%"=="token" goto SYNC_TOKEN
 if /i "%OPT%"=="jwt" goto SYNC_TOKEN
 if /i "%OPT%"=="sync_token" goto SYNC_TOKEN
-if "%OPT%"=="29" goto REINSTALL_APP
+if "%OPT%"=="39" goto REINSTALL_APP
 if /i "%OPT%"=="reinstall" goto REINSTALL_APP
 if /i "%OPT%"=="reinstall_app" goto REINSTALL_APP
-if "%OPT%"=="30" goto RUN_BOT_V3
-if /i "%OPT%"=="bot_v3" goto RUN_BOT_V3
-if "%OPT%"=="41" goto STOP_MONITOR_V3
-if /i "%OPT%"=="stop" goto STOP_MONITOR_V3
-if /i "%OPT%"=="detener" goto STOP_MONITOR_V3
-
-:: [6] Smart Backfill y Descargas Historicas
-if "%OPT%"=="35" goto MENU_SMART_BACKFILL
-if "%OPT%"=="36" goto RUN_PHASE_1
-if "%OPT%"=="37" goto RUN_PHASE_2
-if "%OPT%"=="38" goto RUN_PHASE_3
-if "%OPT%"=="39" goto RUN_CUSTOM_BACKFILL
-if "%OPT%"=="40" goto RUN_RESUME_BACKFILL
-if /i "%OPT%"=="resume" goto RUN_RESUME_BACKFILL
-if /i "%OPT%"=="smart_backfill" goto MENU_SMART_BACKFILL
-if /i "%OPT%"=="backfill_smart" goto MENU_SMART_BACKFILL
 
 echo [ERROR] Opcion invalida.
 timeout /t 2 /nobreak >nul
@@ -242,7 +235,7 @@ if /i "%BOTV3%"=="s" (
     echo [+] Levantando Bot Telegram V3 en una nueva ventana...
     start "Pulpa - Bot Telegram V3" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python -m monitor_v3.notifications.bot_runner"
 ) else (
-    echo [i] Bot V3 no iniciado. Puedes arrancarlo con la opcion 30.
+    echo [i] Bot V3 no iniciado. Puedes arrancarlo con la opcion 3.
 )
 goto MENU
 

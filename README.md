@@ -146,11 +146,11 @@ Ejecuta el menú interactivo para acceder a todas las funciones organizadas en 5
 menu.bat
 ```
 
-| Bloque | Opciones Clave | Descripción |
+| Bloque | Opciones Clave | Descripcion |
 |:---|:---:|---|
-| **[1] Operación en Vivo** | `1`-`7` | Monitor V3 API Móvil Nativa (`1`), Monitor V2 Chrome sin proxy (`2`), Monitor V1 (`3`), Monitor V2 CDP (`4`), API FastAPI (`5`), Dashboard Web (`6`) y All-in-One (`7` con V3 + API + Dashboard). |
-| **[2] Análisis y Consenso** | `8`, `9` | Estadísticas de Modelos / Fusion Consensus / Excel (`tools/stats_cli.py`, `8`) y Reporte ROI M27_V3 (`9`). |
-| **[3] Ingesta y Backfill** | `10`-`13` | Descarga de fechas faltantes (`10`), backfill general (`11`), backfill masivo H2H SofaScore (`12`) y comparador de scrapers (`13`). |
-| **[4] Modelos ML** | `14`-`23` | Entrenamiento y reportes ROI para la serie M27 (v1, v2, v3) y V6 (v6.2, v6.3, base v2/v6). |
-| **[5] Mantenimiento** | `24`, `25` | Control integrado de Obscura (`24`) e Instalador / Reparador de dependencias (`25`). |
+| **[1] Operacion en Vivo** | `1`-`11` | Monitor V3 + Bot (`1`), **detener todo** (`2`), Bot V3 solo (`3`), Monitor V2 Chrome (`4`), Monitor V2 CDP (`5`), Monitor V1 (`6`), API FastAPI (`7`), Dashboard (`8`) y All-in-One con V3/V2/V1 (`9`-`11`). |
+| **[2] Analisis y Consenso** | `12`-`17` | Estadisticas / Fusion Consensus / Excel (`12`), reportes ROI M27_V3 (`13`), M27_V1 (`14`-`15`) y V6.2 / V6.3 (`16`-`17`). |
+| **[3] Ingesta y Backfill** | `18`-`29` | Fechas faltantes (`18`), backfill general (`19`), H2H masivo (`20`), detalles (`21`), team_strength (`22`), comparador (`23`) y Smart Backfill con sus fases (`24`-`29`). |
+| **[4] Modelos ML** | `30`-`35` | Entrenamiento V2 (`30`), V6 (`31`), ambos (`32`), M27_V1 (`33`), V6.2 (`34`-`35`). |
+| **[5] Mantenimiento** | `36`-`39` | Menu Obscura (`36`), instalador de dependencias (`37`), token JWT por ADB (`38`) y reinstalacion de SofaScore (`39`). |
 
