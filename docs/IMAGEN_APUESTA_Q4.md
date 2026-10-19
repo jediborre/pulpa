@@ -154,7 +154,7 @@ El texto que acompaña a la imagen repite las mismas cifras (y se usa como capti
 - Si el partido no tiene desglose por cuartos, la cabecera cae al **marcador global** (`MARCADOR 86-76`) con el mismo criterio de color.
 - **Nombres de equipos**: el ganador del partido va en **negrita**; el perdedor en regular.
 - **Panel de apuesta**: a la derecha del título se muestra el parcial del **cuarto objetivo** (`Q4 21-17`), coloreado por quién ganó ese cuarto.
-- **Gráfica**: cuando la tabla está presente no reserva franja superior ni repite `Q1..Q4`/`FT`; el área de datos arranca justo bajo la tabla y solo queda la hora de inicio abajo a la izquierda. Sin tabla (partidos sin desglose) vuelve a mostrar `Q1..Q4` arriba y `FT` abajo a la derecha.
+- **Gráfica**: cuando la tabla está presente no reserva franja superior ni repite `Q1..Q4`/`FT`, y **no hay eje inferior** (la hora ya está en la cabecera): el área de datos ocupa todo el alto disponible. La tabla queda pegada a la gráfica, separada solo por la línea divisoria. Sin tabla (partidos sin desglose) la gráfica vuelve a mostrar `Q1..Q4` arriba.
 
 ---
 

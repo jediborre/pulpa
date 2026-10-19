@@ -71,7 +71,7 @@ JPEG_QUALITY = 92
 # Gráfica de momentum (estilo oficial de SofaScore modo dark)
 CHART_HEIGHT = 320             # alto final de la gráfica dentro de la imagen
 CHART_TOP_STRIP = 60           # franja superior: etiquetas Q1..Q4 + cuarto en vivo en rojo
-CHART_BOTTOM_LABELS = 32       # franja inferior para "18:00" / "FT"
+CHART_BOTTOM_LABELS = 0        # sin franja inferior (la hora ya va en la cabecera de la tarjeta)
 CHART_SS = 2                   # supersampling (se dibuja al doble y se reduce: bordes suaves)
 
 # Colores de la gráfica estilo SofaScore
@@ -575,7 +575,6 @@ def momentum_chart(
     *,
     width: int = WIDTH,
     height: int = CHART_HEIGHT,
-    start_label: str = "",
     period_label: str = "",
     current_minute: int | None = None,
     current_quarter: int | None = None,
@@ -672,15 +671,7 @@ def momentum_chart(
     draw.text((w - 6 * ss, baseline), "0", font=font_y, fill=SS_Y_ZERO, anchor="rm")
     draw.text((w - 6 * ss, bottom - 2 * ss), label, font=font_y, fill=SS_Y_LABEL, anchor="rd")
 
-    # Hora de inicio (verde, abajo-izquierda) con el punto de origen.
-    font_x = _font(22 * ss, True)
-    if start_label:
-        draw.ellipse(
-            [6 * ss - 3 * ss, baseline - 3 * ss, 6 * ss + 3 * ss, baseline + 3 * ss],
-            outline=SS_X_LABEL,
-            width=max(2, ss),
-        )
-        draw.text((6 * ss, bottom - 2 * ss), start_label, font=font_x, fill=SS_X_LABEL, anchor="la")
+    # Sin etiqueta de hora abajo: ya va en la cabecera de la tarjeta.
 
     # Marcador de tiempo real: línea roja + punto + etiqueta del cuarto en curso
     if not finished:
@@ -1014,7 +1005,10 @@ def build_q4_alert_image(
         y += panel_h
         if table_after_panel:
             y += 16 + _SCOREBOARD_H
-        card_h = y + PAD
+            # La tabla es el último bloque: se pega a la gráfica (sin aire extra).
+            card_h = y + 10
+        else:
+            card_h = y + PAD
 
         card = Image.new("RGB", (WIDTH, card_h), COLOR_BG)
         draw = ImageDraw.Draw(card)
@@ -1092,7 +1086,6 @@ def build_q4_alert_image(
         if include_chart:
             chart = momentum_chart(
                 graph_points,
-                start_label=hhmm,
                 period_label=_period_label(str(match.get("status_description") or ""), q_key),
                 current_minute=minute,
                 current_quarter=(
