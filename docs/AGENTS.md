@@ -134,7 +134,7 @@ Toda la suite de ML se organiza bajo el directorio raíz `models/`:
 - **`tools/obscura-src/`:** Código fuente en Rust del navegador headless Obscura con parches para cookies cross-origin y tiempos de promesa.
 
 ### 6. Interfaz y Operación
-- **`menu.bat`:** Centro de control unificado y único script por lotes del sistema. Organizado en 6 bloques temáticos (1-39 opciones y soporte CLI): Operación en Vivo, Análisis/Consenso, Ingesta/Backfill, Modelos ML y Mantenimiento (incluyendo control total de Obscura).
+- **`menu.bat`:** Centro de control unificado y único script por lotes del sistema. Organizado en 6 bloques temáticos (1-39 opciones y soporte CLI): Operación en Vivo, Análisis/Consenso, Ingesta/Backfill, Smart Backfill Histórico, Modelos ML y Mantenimiento (incluyendo control total de Obscura).
 - **`api.py`:** Backend en FastAPI.
 - **`dashboard/`:** Frontend en React + Vite + TypeScript.
 
