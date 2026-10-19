@@ -125,8 +125,17 @@ async def main() -> None:
     match = data.get("match") or {}
     home, away = str(match.get("home_team")), str(match.get("away_team"))
     score = data.get("score") or {}
-    minute = int((match.get("game_seconds_played") or 0) // 60) or 27
-    print(f"\nPartido de prueba: {mid} | {home} vs {away} | marcador {score.get('home')}-{score.get('away')} | {q_key}")
+    # Minuto real: reloj del API; si no lo expone, el último punto de la gráfica.
+    minute = None
+    if match.get("game_seconds_played") is not None:
+        minute = int(int(match["game_seconds_played"]) // 60)
+    elif data.get("graph_points"):
+        minute = int(max(float(p.get("minute") or 0) for p in data["graph_points"]))
+    # Hora de inicio plausible (la tarjeta la usa como etiqueta del eje).
+    ahora = int(__import__("time").time())
+    scheduled_ts = ahora - max(1, minute or 30) * 60
+    print(f"\nPartido de prueba: {mid} | {home} vs {away} | marcador {score.get('home')}-{score.get('away')} "
+          f"| {q_key} | min={minute}")
 
     for variant in ("simple", "combinada", "tardia"):
         photo = bet_image.build_q4_alert_image(
@@ -134,6 +143,7 @@ async def main() -> None:
             _bets(home, away, variant),
             minute=minute,
             q_key=q_key,
+            scheduled_ts=scheduled_ts,
         )
         if not photo:
             print(f"❌ variante {variant}: no se generó imagen")

@@ -36,10 +36,7 @@
 from __future__ import annotations
 
 import io
-import tempfile
-import threading
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -64,6 +61,26 @@ PAD = 32
 STAKE = 500.0                  # fija de ejemplo para la proyección de ganancia
 JPEG_QUALITY = 92
 
+# Gráfica de momentum (estilo oficial de SofaScore modo dark)
+CHART_HEIGHT = 320             # alto final de la gráfica dentro de la imagen
+CHART_TOP_STRIP = 30           # franja superior para la etiqueta roja del cuarto en vivo
+CHART_BOTTOM_LABELS = 32       # franja inferior para "18:00" / "FT"
+CHART_SS = 2                   # supersampling (se dibuja al doble y se reduce: bordes suaves)
+
+# Colores de la gráfica estilo SofaScore
+SS_BG = (12, 20, 27)           # #0C141B
+SS_ZONE_HOME = (22, 50, 38)    # tinte verde de la mitad local
+SS_ZONE_AWAY = (31, 40, 64)    # tinte azul de la mitad visitante
+SS_FILL_HOME = (63, 203, 92)   # #3FCB5C relleno de presión local
+SS_FILL_AWAY = (140, 156, 247)  # #8C9CF7 relleno de presión visitante
+SS_BASELINE = (208, 214, 222)
+SS_SEPARATOR = (110, 120, 135)
+SS_Y_LABEL = (76, 208, 94)     # etiquetas 11/0/11 en verde
+SS_Y_ZERO = (200, 208, 218)
+SS_X_LABEL = (76, 208, 94)     # hora de inicio en verde
+SS_X_FT = (143, 160, 180)
+SS_LIVE = (255, 77, 87)        # marcador de tiempo real y cuarto en curso
+
 # Fuentes: Segoe UI en Windows, con respaldo Arial/DejaVu y, en último caso, default.
 _FONT_CANDIDATES_REGULAR = [
     r"C:\Windows\Fonts\segoeui.ttf",
@@ -77,7 +94,6 @@ _FONT_CANDIDATES_BOLD = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
 ]
 _font_cache: dict[tuple[int, bool], ImageFont.FreeTypeFont] = {}
-_plot_lock = threading.Lock()
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -211,46 +227,198 @@ def _conf_pct(confidence: float | None) -> int | None:
 
 
 # ─────────────────────────────────────────────────────────────────────
-# Gráfica de momentum (reutiliza el motor del bot anterior)
+# Gráfica de momentum (estilo oficial SofaScore dark, dibujada con Pillow)
 # ─────────────────────────────────────────────────────────────────────
 
-def momentum_png(match_data: dict | None) -> bytes | None:
+def _blend(c1: tuple, c2: tuple, alpha: float) -> tuple:
+    """Mezcla el color c2 sobre c1 con la opacidad alpha (0..1)."""
+    return tuple(int(round(a + (b - a) * alpha)) for a, b in zip(c1, c2))
+
+
+def _period_label(status_description: str, q_key: str | None) -> str:
+    """Etiqueta roja del cuarto en curso, tal como la rotula SofaScore."""
+    desc = (status_description or "").strip()
+    if desc and any(w in desc.lower() for w in ("quarter", "half", "overtime")):
+        return desc[0].upper() + desc[1:]
+    return q_key or ""
+
+
+def _total_minutes(match: dict, score: dict, graph_points: list[dict]) -> float:
     """
-    Renderiza la gráfica de momentum reutilizando `match.ml_tools.plot_graph`
-    (misma paleta y estilo que el bot interactivo anterior) y devuelve el PNG
-    en memoria. Devuelve None si el partido no tiene `graph_points`.
+    Duración total de la gráfica (eje 0..FT). Usa `period_length` del API
+    (10 min FIBA / 12 min NBA) y contempla partidos de 2 mitades (NCAA).
     """
-    if not match_data or not match_data.get("graph_points"):
-        return None
+    quarters = score.get("quarters") or {}
+    n_played = sum(
+        1
+        for q in ("Q1", "Q2", "Q3", "Q4")
+        if isinstance(quarters.get(q), dict) and quarters[q].get("home") is not None
+    )
+    status = str(match.get("status_type") or "").lower()
+    n_periods = 2 if (status == "finished" and 0 < n_played <= 2) else 4
 
-    graph_points = match_data.get("graph_points") or []
+    qd = 10
+    period_length = match.get("period_length")
     try:
-        if len(graph_points) < 2:
-            return None
-    except TypeError:
-        return None
+        if period_length:
+            value = float(period_length) / 60.0
+            if 5 <= value <= 25:
+                qd = int(round(value))
+    except (TypeError, ValueError):
+        pass
 
-    tmp_dir = Path(tempfile.gettempdir()) / "pulpa_q4_graph"
-    mid = str((match_data.get("match") or {}).get("match_id") or "match")
-    out_path = tmp_dir / f"momentum_{mid}.png"
+    total = float(n_periods * qd)
+    last = max((float(p.get("minute") or 0) for p in graph_points), default=0.0)
+    return max(total, last)
 
-    try:
-        from match.ml_tools import plot_graph
 
-        # Agg/matplotlib no es thread-safe: se serializa el render.
-        # show_title=False: la tarjeta ya rotula equipos, cuartos y marcador.
-        with _plot_lock:
-            plot_graph(match_data, str(out_path), show_title=False)
-        data = out_path.read_bytes()
-        return data or None
-    except Exception as e:  # noqa: BLE001
-        log_warning("TELEGRAM", f"[IMG] Sin gráfica de momentum ({type(e).__name__}: {e})")
-        return None
-    finally:
+def _series_points(graph_points: list[dict]) -> list[tuple[float, float]]:
+    """Normaliza graph_points a [(minuto, valor)] ordenado y sin duplicados de minuto."""
+    pts: dict[float, float] = {}
+    for p in graph_points or []:
         try:
-            out_path.unlink()
-        except Exception:
-            pass
+            minute = float(p.get("minute"))
+            value = float(p.get("value"))
+        except (TypeError, ValueError, AttributeError):
+            continue
+        pts[minute] = value
+    return sorted(pts.items())
+
+
+def _split_runs(pts: list[tuple[float, float]]) -> list[tuple[int, list[tuple[float, float]]]]:
+    """
+    Divide la serie en tramos de signo constante, insertando los cruces por cero
+    interpolados (equivalente a `fill_between(interpolate=True)` de la gráfica oficial).
+    Devuelve [(signo, [(x, valor), ...]), ...].
+    """
+    runs: list[tuple[int, list[tuple[float, float]]]] = []
+    if not pts:
+        return runs
+
+    def _push(sign: int, point: tuple[float, float]) -> None:
+        if runs and runs[-1][0] == sign:
+            runs[-1][1].append(point)
+        else:
+            previous = runs[-1][1][-1] if runs else None
+            new_run = [previous, point] if previous else [point]
+            runs.append((sign, new_run))
+
+    _push(1 if pts[0][1] >= 0 else -1, pts[0])
+    for (x0, v0), (x1, v1) in zip(pts, pts[1:]):
+        if (v0 >= 0) == (v1 >= 0):
+            _push(1 if v1 >= 0 else -1, (x1, v1))
+            continue
+        # Cruce por cero: se interpola el punto exacto y se corta el tramo ahí
+        span = v1 - v0
+        x_zero = x0 if span == 0 else x0 + (0.0 - v0) * (x1 - x0) / span
+        _push(1 if v0 >= 0 else -1, (x_zero, 0.0))
+        _push(1 if v1 >= 0 else -1, (x_zero, 0.0))
+        _push(1 if v1 >= 0 else -1, (x1, v1))
+    return runs
+
+
+def momentum_chart(
+    graph_points: list[dict],
+    *,
+    width: int = WIDTH,
+    height: int = CHART_HEIGHT,
+    start_label: str = "",
+    period_label: str = "",
+    current_minute: int | None = None,
+    finished: bool = False,
+    total_minutes: float | None = None,
+) -> Image.Image | None:
+    """
+    Dibuja el gráfico de momentum con el estilo EXACTO de la web oficial de
+    SofaScore (modo dark): relleno verde para presión local sobre la línea
+    base, relleno añil para la visitante, tintes de zona, separadores de
+    cuarto sin etiquetas, etiquetas de escala en verde a la derecha, hora de
+    inicio abajo-izquierda y marcador rojo del cuarto en curso.
+
+    Devuelve una imagen RGBA de (width × height) o None si no hay datos.
+    """
+    pts = _series_points(graph_points)
+    if len(pts) < 2:
+        return None
+
+    ss = CHART_SS
+    w, h = width * ss, height * ss
+    img = Image.new("RGB", (w, h), SS_BG)
+    draw = ImageDraw.Draw(img)
+
+    top = CHART_TOP_STRIP * ss
+    bottom = h - CHART_BOTTOM_LABELS * ss
+    if bottom - top < 40 * ss:
+        return None
+    baseline = (top + bottom) // 2
+    half = min(baseline - top, bottom - baseline)
+
+    max_abs = max(abs(v) for _, v in pts)
+    if max_abs <= 0:
+        return None
+
+    # Rango temporal: el partido completo (o el minuto jugado si se pasa).
+    last_minute = pts[-1][0]
+    total = float(total_minutes) if total_minutes else max(last_minute, 1.0)
+    if not finished and total < last_minute:
+        total = last_minute
+
+    def x_of(minute: float) -> float:
+        return max(0.0, min(1.0, minute / total)) * w
+
+    # Tintes de zona (mitad local arriba, mitad visitante abajo)
+    draw.rectangle([0, top, w, baseline], fill=SS_ZONE_HOME)
+    draw.rectangle([0, baseline, w, bottom], fill=SS_ZONE_AWAY)
+
+    # Separadores de cuarto (sin etiquetas, como la web oficial)
+    for i in range(1, 4):
+        x = w * i / 4.0
+        draw.line([(x, top), (x, bottom)], fill=SS_SEPARATOR, width=ss)
+
+    # Rellenos por tramos de signo
+    for sign, run in _split_runs(pts):
+        poly: list[tuple[float, float]] = []
+        for minute, value in run:
+            y = baseline - (value / max_abs) * half if sign > 0 else baseline + (abs(value) / max_abs) * half
+            poly.append((x_of(minute), y))
+        if len(poly) < 2:
+            continue
+        area = [(x_of(run[0][0]), baseline)] + poly + [(x_of(run[-1][0]), baseline)]
+        draw.polygon(area, fill=SS_FILL_HOME if sign > 0 else SS_FILL_AWAY)
+
+    # Línea base
+    draw.line([(0, baseline), (w, baseline)], fill=SS_BASELINE, width=max(2, ss))
+
+    # Escala a la derecha: máximo arriba y abajo (verde) y 0 (gris claro)
+    font_y = _font(21 * ss, True)
+    label = f"{int(round(max_abs))}"
+    draw.text((w - 6 * ss, top + 2 * ss), label, font=font_y, fill=SS_Y_LABEL, anchor="ra")
+    draw.text((w - 6 * ss, baseline), "0", font=font_y, fill=SS_Y_ZERO, anchor="rm")
+    draw.text((w - 6 * ss, bottom - 2 * ss), label, font=font_y, fill=SS_Y_LABEL, anchor="rd")
+
+    # Hora de inicio (verde, abajo-izquierda) con el punto de origen y "FT" a la derecha
+    font_x = _font(22 * ss, True)
+    if start_label:
+        draw.ellipse(
+            [6 * ss - 3 * ss, baseline - 3 * ss, 6 * ss + 3 * ss, baseline + 3 * ss],
+            outline=SS_X_LABEL,
+            width=max(2, ss),
+        )
+        draw.text((6 * ss, bottom - 2 * ss), start_label, font=font_x, fill=SS_X_LABEL, anchor="la")
+    draw.text((w - 6 * ss, bottom - 2 * ss), "FT", font=font_x, fill=SS_X_FT, anchor="ra")
+
+    # Marcador de tiempo real: línea roja + punto + etiqueta del cuarto en curso
+    if not finished:
+        live_minute = float(current_minute) if current_minute is not None else last_minute
+        x_live = x_of(live_minute)
+        draw.line([(x_live, top), (x_live, bottom)], fill=SS_LIVE, width=max(2, ss))
+        r = 5 * ss
+        draw.ellipse([x_live - r, top - r, x_live + r, top + r], fill=SS_BG, outline=SS_LIVE, width=max(2, ss))
+        if period_label:
+            font_live = _font(23 * ss, True)
+            draw.text((w - 6 * ss, 4 * ss), period_label, font=font_live, fill=SS_LIVE, anchor="ra")
+
+    return img.resize((width, height), getattr(getattr(Image, "Resampling", Image), "LANCZOS", 1))
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -477,20 +645,23 @@ def build_q4_alert_image(
         cy += 20
         _draw_bet_panel(draw, PAD, cy, WIDTH - 2 * PAD, bets, is_late, has_real_bet)
 
-        # ── Gráfica de momentum debajo ──
-        graph_bytes = momentum_png(match_data)
-        if not graph_bytes:
+        # ── Gráfica de momentum debajo (estilo oficial SofaScore dark) ──
+        graph_points = match_data.get("graph_points") or []
+        chart = momentum_chart(
+            graph_points,
+            start_label=hhmm,
+            period_label=_period_label(str(match.get("status_description") or ""), q_key),
+            current_minute=minute,
+            finished=(status_type == "finished"),
+            total_minutes=_total_minutes(match, score, graph_points),
+        )
+        if chart is None:
             out = io.BytesIO()
             card.save(out, format="JPEG", quality=JPEG_QUALITY)
             log_debug("TELEGRAM", "[IMG] Tarjeta Q4 generada sin gráfica (sin momentum)")
             return out.getvalue()
 
-        with Image.open(io.BytesIO(graph_bytes)) as graph:
-            graph = graph.convert("RGB")
-            scale = WIDTH / graph.width
-            resample = getattr(getattr(Image, "Resampling", Image), "LANCZOS", 1)
-            graph = graph.resize((WIDTH, max(1, int(graph.height * scale))), resample)
-
+        graph = chart.convert("RGB")
         sep_h = 2
         total_h = card_h + sep_h + graph.height
         canvas = Image.new("RGB", (WIDTH, total_h), COLOR_BG)
