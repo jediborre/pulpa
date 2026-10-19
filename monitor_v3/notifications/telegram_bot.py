@@ -278,9 +278,10 @@ async def _send_bet_photo(
     minute: int | None = None,
     q_key: str | None = None,
     scheduled_ts: int | None = None,
+    is_result: bool = False,
 ) -> list[dict] | None:
     """
-    Intenta enviar la alerta como imagen fusionada (tarjeta + momentum).
+    Intenta enviar el aviso como imagen fusionada (tarjeta + momentum).
     Devuelve None si no se pudo generar la imagen (el caller cae a texto plano).
     """
     try:
@@ -293,6 +294,7 @@ async def _send_bet_photo(
             minute=minute,
             q_key=q_key,
             scheduled_ts=scheduled_ts,
+            is_result=is_result,
         )
     except Exception as e:  # noqa: BLE001
         log_warning("TELEGRAM", f"[IMG] Fallo generando tarjeta Q4 ({type(e).__name__}: {e})")
@@ -743,7 +745,32 @@ async def send_combined_final_confirmation(
     if match_id:
         match_url = _sofascore_match_url(match_id, match_data=match_data, home_team=home_team, away_team=away_team)
         
-    results = await broadcast_message(text, signal_type_filter="bet", match_url=match_url)
+    bets = []
+    for log in logs:
+        is_home = str(log.get("picked_side") or "").upper() == "HOME"
+        bets.append(
+            {
+                "model": log.get("model_version"),
+                "signal": log.get("signal_type"),
+                "picked_team": home_team if is_home else away_team,
+                "is_home": is_home,
+                "confidence": log.get("confidence"),
+                "result": log.get("result"),
+                "decimal_odds": _decimal_odds_for_side(match_data, is_home),
+            }
+        )
+    results = await _send_bet_photo(
+        text,
+        bets,
+        match_data,
+        match_url,
+        minute=minute,
+        q_key=q_key,
+        scheduled_ts=scheduled_ts,
+        is_result=True,
+    )
+    if results is None:
+        results = await broadcast_message(text, signal_type_filter="bet", match_url=match_url)
     res = dict(results[0]) if results else {"ok": False, "description": "Sin suscriptores"}
     res["match_url"] = match_url
     return res
@@ -801,7 +828,29 @@ async def send_final_confirmation(
     if match_id:
         match_url = _sofascore_match_url(match_id, match_data=match_data, home_team=home_team, away_team=away_team)
 
-    results = await broadcast_message(text, signal_type_filter="bet", match_url=match_url)
+    bets = [
+        {
+            "model": model,
+            "signal": signal,
+            "picked_team": picked_team,
+            "is_home": is_home,
+            "confidence": confidence,
+            "result": outcome,
+            "decimal_odds": _decimal_odds_for_side(match_data, is_home),
+        }
+    ]
+    results = await _send_bet_photo(
+        text,
+        bets,
+        match_data,
+        match_url,
+        minute=minute,
+        q_key=q_key,
+        scheduled_ts=scheduled_ts,
+        is_result=True,
+    )
+    if results is None:
+        results = await broadcast_message(text, signal_type_filter="bet", match_url=match_url)
     res = dict(results[0]) if results else {"ok": False, "description": "Sin suscriptores"}
     res["match_url"] = match_url
     return res

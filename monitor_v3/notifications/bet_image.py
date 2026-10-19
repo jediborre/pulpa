@@ -63,7 +63,7 @@ JPEG_QUALITY = 92
 
 # Gráfica de momentum (estilo oficial de SofaScore modo dark)
 CHART_HEIGHT = 320             # alto final de la gráfica dentro de la imagen
-CHART_TOP_STRIP = 30           # franja superior para la etiqueta roja del cuarto en vivo
+CHART_TOP_STRIP = 60           # franja superior: etiquetas Q1..Q4 + cuarto en vivo en rojo
 CHART_BOTTOM_LABELS = 32       # franja inferior para "18:00" / "FT"
 CHART_SS = 2                   # supersampling (se dibuja al doble y se reduce: bordes suaves)
 
@@ -74,12 +74,15 @@ SS_ZONE_AWAY = (31, 40, 64)    # tinte azul de la mitad visitante
 SS_FILL_HOME = (63, 203, 92)   # #3FCB5C relleno de presión local
 SS_FILL_AWAY = (140, 156, 247)  # #8C9CF7 relleno de presión visitante
 SS_BASELINE = (208, 214, 222)
-SS_SEPARATOR = (110, 120, 135)
+SS_SEPARATOR = (0, 0, 0)       # separadores de cuarto en negro (como la web oficial)
 SS_Y_LABEL = (76, 208, 94)     # etiquetas 11/0/11 en verde
 SS_Y_ZERO = (200, 208, 218)
 SS_X_LABEL = (76, 208, 94)     # hora de inicio en verde
 SS_X_FT = (143, 160, 180)
 SS_LIVE = (255, 77, 87)        # marcador de tiempo real y cuarto en curso
+SS_Q_LABEL = (143, 160, 180)   # etiquetas Q1..Q4 sobre la gráfica
+SS_RESULT_WIN = (63, 203, 92)  # resultado FT ganada
+SS_RESULT_LOSS = (255, 77, 87)  # resultado FT perdida
 
 # Fuentes: Segoe UI en Windows, con respaldo Arial/DejaVu y, en último caso, default.
 _FONT_CANDIDATES_REGULAR = [
@@ -243,6 +246,37 @@ def _period_label(status_description: str, q_key: str | None) -> str:
     return q_key or ""
 
 
+def _current_quarter(status_description: str, q_key: str | None) -> int | None:
+    """Número de cuarto en curso (1..4) para resaltar su etiqueta Qn."""
+    desc = (status_description or "").lower()
+    for number, word in ((1, "1st"), (2, "2nd"), (3, "3rd"), (4, "4th")):
+        if word in desc:
+            return number
+    if q_key:
+        digits = q_key.strip().upper().lstrip("Q")
+        if digits.isdigit() and 1 <= int(digits) <= 4:
+            return int(digits)
+    return None
+
+
+def _is_real_bet(bet: dict) -> bool:
+    """True si la señal es una apuesta operable (BET y no NO_BET)."""
+    signal = str(bet.get("signal") or "")
+    return "BET" in signal and "NO_BET" not in signal
+
+
+def _result_tag(result: str | None) -> tuple[str, tuple]:
+    """Etiqueta y color del resultado de una apuesta en la confirmación FT."""
+    value = str(result or "").lower()
+    if value in ("win", "hit"):
+        return "GANADA", SS_RESULT_WIN
+    if value in ("loss", "miss"):
+        return "PERDIDA", SS_RESULT_LOSS
+    if value == "push":
+        return "PUSH", COLOR_MUTED
+    return "PENDIENTE", COLOR_MUTED
+
+
 def _total_minutes(match: dict, score: dict, graph_points: list[dict]) -> float:
     """
     Duración total de la gráfica (eje 0..FT). Usa `period_length` del API
@@ -325,6 +359,7 @@ def momentum_chart(
     start_label: str = "",
     period_label: str = "",
     current_minute: int | None = None,
+    current_quarter: int | None = None,
     finished: bool = False,
     total_minutes: float | None = None,
 ) -> Image.Image | None:
@@ -332,8 +367,8 @@ def momentum_chart(
     Dibuja el gráfico de momentum con el estilo EXACTO de la web oficial de
     SofaScore (modo dark): relleno verde para presión local sobre la línea
     base, relleno añil para la visitante, tintes de zona, separadores de
-    cuarto sin etiquetas, etiquetas de escala en verde a la derecha, hora de
-    inicio abajo-izquierda y marcador rojo del cuarto en curso.
+    cuarto en NEGRO, etiquetas Q1..Q4 SOBRE la gráfica, escala en verde a la
+    derecha, hora de inicio abajo-izquierda y marcador rojo del cuarto en curso.
 
     Devuelve una imagen RGBA de (width × height) o None si no hay datos.
     """
@@ -370,10 +405,25 @@ def momentum_chart(
     draw.rectangle([0, top, w, baseline], fill=SS_ZONE_HOME)
     draw.rectangle([0, baseline, w, bottom], fill=SS_ZONE_AWAY)
 
-    # Separadores de cuarto (sin etiquetas, como la web oficial)
-    for i in range(1, 4):
-        x = w * i / 4.0
-        draw.line([(x, top), (x, bottom)], fill=SS_SEPARATOR, width=ss)
+    # Separadores de cuarto en negro (atraviesan toda la gráfica)
+    n_quarters = 4
+    for i in range(1, n_quarters):
+        x = w * i / n_quarters
+        draw.line([(x, top), (x, bottom)], fill=SS_SEPARATOR, width=max(2, ss))
+
+    # Etiquetas Q1..Q4 SOBRE la gráfica (centradas por cuarto); el cuarto en
+    # curso se resalta en rojo para ligarlo con el marcador de tiempo real.
+    font_q = _font(22 * ss, True)
+    for i in range(n_quarters):
+        cx = w * (i + 0.5) / n_quarters
+        is_current = current_quarter is not None and (i + 1) == current_quarter
+        draw.text(
+            (cx, 4 * ss),
+            f"Q{i + 1}",
+            font=font_q,
+            fill=SS_LIVE if is_current else SS_Q_LABEL,
+            anchor="ma",
+        )
 
     # Rellenos por tramos de signo
     for sign, run in _split_runs(pts):
@@ -416,7 +466,7 @@ def momentum_chart(
         draw.ellipse([x_live - r, top - r, x_live + r, top + r], fill=SS_BG, outline=SS_LIVE, width=max(2, ss))
         if period_label:
             font_live = _font(23 * ss, True)
-            draw.text((w - 6 * ss, 4 * ss), period_label, font=font_live, fill=SS_LIVE, anchor="ra")
+            draw.text((w - 6 * ss, 30 * ss), period_label, font=font_live, fill=SS_LIVE, anchor="ra")
 
     return img.resize((width, height), getattr(getattr(Image, "Resampling", Image), "LANCZOS", 1))
 
@@ -425,14 +475,69 @@ def momentum_chart(
 # Tarjeta de la apuesta
 # ─────────────────────────────────────────────────────────────────────
 
+def _payout_detail(decimal, confidence, probability, result: str, is_result: bool) -> str:
+    """Línea informativa de la apuesta: cuota/proyección o confianza."""
+    value = str(result or "").lower()
+    if decimal:
+        dec = float(decimal)
+        american = decimal_to_american(dec)
+        am_str = f" ({american:+d})" if american is not None else ""
+        head = f"Cuota {dec:.2f}{am_str}"
+        if is_result:
+            if value in ("win", "hit"):
+                gain, total = payout(dec, STAKE)
+                return f"{head}   ·   ${STAKE:,.0f} -> ${total:,.2f}  (+${gain:,.2f})"
+            if value in ("loss", "miss"):
+                return f"{head}   ·   ${STAKE:,.0f} -> $0.00  (-${STAKE:,.2f})"
+            if value == "push":
+                return f"{head}   ·   ${STAKE:,.0f} -> ${STAKE:,.2f}  ($0.00)"
+        gain, total = payout(dec, STAKE)
+        return f"{head}   ·   ${STAKE:,.0f} -> ${total:,.2f}  (+${gain:,.2f})"
+
+    prob_str = f" · P={float(probability):.2f}" if probability is not None else ""
+    tail = {
+        "win": "  ·   ganada",
+        "hit": "  ·   ganada",
+        "loss": "  ·   perdida",
+        "miss": "  ·   perdida",
+        "push": "  ·   push",
+    }.get(value, "")
+    if is_result and tail:
+        return f"Confianza {confidence if confidence is not None else '?'}%{prob_str}{tail}"
+    return (
+        f"Confianza {confidence if confidence is not None else '?'}%{prob_str}"
+        f"   ·   sin cuota in-play disponible"
+    )
+
+
 def _draw_bet_panel(
-    draw, x0: int, y0: int, w: int, bets: list[dict], is_late: bool, has_real_bet: bool = True
+    draw,
+    x0: int,
+    y0: int,
+    w: int,
+    bets: list[dict],
+    is_late: bool,
+    has_real_bet: bool = True,
+    is_result: bool = False,
 ) -> int:
-    """Dibuja la banda de la apuesta. Devuelve la Y inferior del panel."""
+    """Dibuja la banda de la apuesta/resultado. Devuelve la Y inferior del panel."""
     pad = 18
     accent = COLOR_ALERT if is_late else COLOR_ACCENT
+    if is_result:
+        tags = [_result_tag(b.get("result"))[1] for b in bets if _is_real_bet(b)]
+        if tags and all(t == SS_RESULT_WIN for t in tags):
+            accent = SS_RESULT_WIN
+        elif tags and all(t == SS_RESULT_LOSS for t in tags):
+            accent = SS_RESULT_LOSS
+        elif any(t == SS_RESULT_LOSS for t in tags) and any(t == SS_RESULT_WIN for t in tags):
+            accent = COLOR_ACCENT
+        elif is_late:
+            accent = COLOR_ALERT
+
     if not has_real_bet:
         title = "SIN APUESTA Q4"
+    elif is_result:
+        title = "RESULTADO TARDIO Q4" if is_late else "RESULTADO Q4"
     elif is_late:
         title = "APUESTA TARDIA Q4"
     else:
@@ -454,13 +559,16 @@ def _draw_bet_panel(
     y = y0 + pad + 46
     for bet in bets:
         signal = str(bet.get("signal") or "")
-        is_real_bet = "BET" in signal and "NO_BET" not in signal
+        is_real_bet = _is_real_bet(bet)
         is_home = bool(bet.get("is_home"))
         side_color = COLOR_HOME if is_home else COLOR_AWAY
         side_label = "LOCAL" if is_home else "VISITANTE"
         model = str(bet.get("model") or "?")
         conf = _conf_pct(bet.get("confidence"))
         team = str(bet.get("picked_team") or "")
+
+        # Etiqueta de resultado (solo en las confirmaciones FT)
+        tag_text, tag_color = _result_tag(bet.get("result")) if is_result else ("", COLOR_MUTED)
 
         # Línea 1: modelo + confianza + lado + equipo (colores por tramos)
         x = inner_x
@@ -470,6 +578,14 @@ def _draw_bet_panel(
         font1 = _font(30, True)
         draw.text((x, y), head, font=font1, fill=COLOR_TEXT if is_real_bet else COLOR_MUTED)
         x += _text_len(draw, head, font1) + 18
+
+        tag_w = 0.0
+        if tag_text:
+            font_tag = _font(24, True)
+            tag_w = _text_len(draw, tag_text, font_tag) + 16
+            draw.text(
+                (inner_x + max_w, y + 6), tag_text, font=font_tag, fill=tag_color, anchor="ra"
+            )
 
         if is_real_bet:
             arrow = "->"
@@ -482,35 +598,27 @@ def _draw_bet_panel(
             draw.text((x, y + 1), label, font=font2, fill=side_color)
             x += _text_len(draw, label, font2)
 
-            remaining = max(60.0, (inner_x + max_w) - x)
+            remaining = max(60.0, (inner_x + max_w) - x - tag_w)
             team_font = _fit_font(draw, team, remaining, 28, bold=False)
             draw.text((x, y + 1), team, font=team_font, fill=COLOR_TEXT)
         else:
             tag = "NO BET"
-            font_tag = _font(26, True)
-            draw.text((x, y + 2), tag, font=font_tag, fill=COLOR_MUTED)
-            x += _text_len(draw, tag, font_tag) + 16
-            remaining = max(60.0, (inner_x + max_w) - x)
+            font_tag2 = _font(26, True)
+            draw.text((x, y + 2), tag, font=font_tag2, fill=COLOR_MUTED)
+            x += _text_len(draw, tag, font_tag2) + 16
+            remaining = max(60.0, (inner_x + max_w) - x - tag_w)
             team_font = _fit_font(draw, team, remaining, 26, bold=False)
             draw.text((x, y + 2), team, font=team_font, fill=COLOR_MUTED)
 
-        # Línea 2: cuota + proyección (si hay cuota) o confianza/probabilidad
+        # Línea 2: cuota + proyección/resultado, o confianza/probabilidad
         y2 = y + line1_h
-        decimal = bet.get("decimal_odds") if is_real_bet else None
-        if decimal:
-            american = decimal_to_american(decimal)
-            gain, total = payout(float(decimal), STAKE)
-            am_str = f" ({american:+d})" if american is not None else ""
-            detail = (
-                f"Cuota {float(decimal):.2f}{am_str}   ·   "
-                f"${STAKE:,.0f} -> ${total:,.2f}  (+${gain:,.2f})"
-            )
-        elif is_real_bet:
-            prob = bet.get("probability")
-            prob_str = f" · P={float(prob):.2f}" if prob is not None else ""
-            detail = (
-                f"Confianza {conf if conf is not None else '?'}%{prob_str}"
-                f"   ·   sin cuota in-play disponible"
+        if is_real_bet:
+            detail = _payout_detail(
+                bet.get("decimal_odds"),
+                conf,
+                bet.get("probability"),
+                bet.get("result"),
+                is_result,
             )
         else:
             detail = "sin valor suficiente para operar"
@@ -532,13 +640,17 @@ def build_q4_alert_image(
     minute: int | None = None,
     q_key: str | None = None,
     scheduled_ts: int | None = None,
+    is_result: bool = False,
 ) -> bytes | None:
     """
     Construye el JPEG fusionado (tarjeta + gráfica) y lo devuelve como bytes.
 
     `bets` es una lista de diccionarios con:
         model, signal, picked_team, is_home, confidence,
-        decimal_odds (opcional), probability (opcional)
+        decimal_odds (opcional), probability (opcional), result (FT)
+
+    `is_result=True` dibuja el panel como confirmación de resultado FT
+    (título RESULTADO Q4 y etiqueta GANADA/PERDIDA por modelo).
 
     Devuelve None si no hay datos suficientes o si falla el dibujo, para que el
     caller degrade a texto plano.
@@ -643,7 +755,7 @@ def build_q4_alert_image(
             cy += 34
 
         cy += 20
-        _draw_bet_panel(draw, PAD, cy, WIDTH - 2 * PAD, bets, is_late, has_real_bet)
+        _draw_bet_panel(draw, PAD, cy, WIDTH - 2 * PAD, bets, is_late, has_real_bet, is_result)
 
         # ── Gráfica de momentum debajo (estilo oficial SofaScore dark) ──
         graph_points = match_data.get("graph_points") or []
@@ -652,6 +764,11 @@ def build_q4_alert_image(
             start_label=hhmm,
             period_label=_period_label(str(match.get("status_description") or ""), q_key),
             current_minute=minute,
+            current_quarter=(
+                None
+                if status_type == "finished"
+                else _current_quarter(str(match.get("status_description") or ""), q_key)
+            ),
             finished=(status_type == "finished"),
             total_minutes=_total_minutes(match, score, graph_points),
         )

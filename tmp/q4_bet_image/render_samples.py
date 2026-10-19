@@ -73,7 +73,11 @@ async def _get_live_match_with_graph() -> tuple[str, dict, str] | tuple[None, No
         match = data.get("match") or {}
         if gp >= 2:
             print(f"  EN VIVO {mid}: gp={gp} | {match.get('home_team')} vs {match.get('away_team')} | {desc}")
-            q_key = "Q4" if "4th" in desc else ("Q3" if "3rd" in desc else "Q4")
+            q_key = "Q4"
+            for number, word in ((1, "1st"), (2, "2nd"), (3, "3rd"), (4, "4th")):
+                if word in desc:
+                    q_key = f"Q{number}"
+                    break
             return mid, data, q_key
     return None, None, None
 
@@ -97,6 +101,31 @@ def _bets(home: str, away: str, variant: str) -> list[dict]:
                 "is_home": False, "confidence": 0.41, "decimal_odds": None,
             },
         ]
+    if variant == "resultado_win":
+        return [
+            {
+                "model": "m27_v5_3", "signal": "HOME_BET_Q4", "picked_team": home,
+                "is_home": True, "confidence": 0.72, "decimal_odds": 1.85, "result": "win",
+            }
+        ]
+    if variant == "resultado_loss":
+        return [
+            {
+                "model": "m27_v5_3", "signal": "AWAY_BET_Q4", "picked_team": away,
+                "is_home": False, "confidence": 0.58, "decimal_odds": 2.10, "result": "loss",
+            }
+        ]
+    if variant == "resultado_combinado":
+        return [
+            {
+                "model": "m27_v5_3", "signal": "HOME_BET_Q4", "picked_team": home,
+                "is_home": True, "confidence": 0.72, "decimal_odds": 1.85, "result": "win",
+            },
+            {
+                "model": "v6_2", "signal": "AWAY_BET_Q4", "picked_team": away,
+                "is_home": False, "confidence": 0.44, "decimal_odds": 2.10, "result": "loss",
+            },
+        ]
     return [
         {
             "model": "m27_v5_3", "signal": "AWAY_BET_Q4_LATE", "picked_team": away,
@@ -109,10 +138,15 @@ async def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--send", action="store_true", help="enviar las imágenes por Telegram")
     ap.add_argument("--live", action="store_true", help="usar un partido EN VIVO real (caso de producción)")
+    ap.add_argument("--match-id", help="renderizar un partido concreto (p. ej. uno ya finalizado)")
     args = ap.parse_args()
 
     q_key = "Q4"
-    if args.live:
+    if args.match_id:
+        print(f"Descargando partido {args.match_id}...")
+        data = await fetch_match_by_id(args.match_id, is_ft=False)
+        mid = args.match_id
+    elif args.live:
         print("Buscando un partido EN VIVO con gráfica de momentum...")
         mid, data, q_key = await _get_live_match_with_graph()
     else:
@@ -137,13 +171,14 @@ async def main() -> None:
     print(f"\nPartido de prueba: {mid} | {home} vs {away} | marcador {score.get('home')}-{score.get('away')} "
           f"| {q_key} | min={minute}")
 
-    for variant in ("simple", "combinada", "tardia"):
+    for variant in ("simple", "combinada", "tardia", "resultado_win", "resultado_loss", "resultado_combinado"):
         photo = bet_image.build_q4_alert_image(
             data,
             _bets(home, away, variant),
             minute=minute,
             q_key=q_key,
             scheduled_ts=scheduled_ts,
+            is_result=variant.startswith("resultado"),
         )
         if not photo:
             print(f"❌ variante {variant}: no se generó imagen")
