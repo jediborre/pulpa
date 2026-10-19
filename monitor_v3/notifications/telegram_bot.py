@@ -135,30 +135,42 @@ async def _send_to_chat(chat_id: int, text: str, match_url: str | None = None) -
     return res
 
 
+def _resolve_recipients(signal_type_filter: str = "all") -> list[int] | None:
+    """
+    Chat IDs que deben recibir el aviso según sus preferencias.
+    Con 'bet' se excluye a los suscriptores 'info_only'.
+    Devuelve None si no hay suscriptores configurados.
+    """
+    subscribers = _get_subscribers_from_db()
+    if not subscribers:
+        return None
+
+    if signal_type_filter == "bet":
+        return [cid for cid, prefs in subscribers.items() if prefs.get("signal_type") != "info_only"]
+
+    active: list[int] = []
+    for chat_id, prefs in subscribers.items():
+        sub_signal = prefs.get("signal_type", "all")
+        if sub_signal == "bet_only" and signal_type_filter == "info":
+            continue
+        active.append(chat_id)
+    return active
+
+
 async def broadcast_message(text: str, signal_type_filter: str = "all", match_url: str | None = None) -> list[dict]:
     """
     Envía `text` a todos los chat IDs suscritos en matches.db en raíz.
-    - signal_type_filter: 'all' envía a todos; 'bet_only' solo a quienes tienen señal operable.
+    - signal_type_filter: 'all' envía a todos; 'bet' solo a quienes tienen señal operable.
     Retorna lista de respuestas (una por suscriptor).
     """
     if not TELEGRAM_BOT_TOKEN:
         log_warning("TELEGRAM", "[SKIP] TELEGRAM_BOT_TOKEN no configurado")
         return [{"ok": False, "description": "Sin token"}]
 
-    subscribers = await asyncio.to_thread(_get_subscribers_from_db)
-
-    if not subscribers:
+    active_chat_ids = await asyncio.to_thread(_resolve_recipients, signal_type_filter)
+    if active_chat_ids is None:
         log_warning("TELEGRAM", "[SKIP] Sin suscriptores en monitor_subscribers (DB settings)")
         return [{"ok": False, "description": "Sin suscriptores"}]
-
-    # Filtrar destinatarios reales según las preferencias de señal
-    active_chat_ids = []
-    for chat_id, prefs in subscribers.items():
-        sub_signal = prefs.get("signal_type", "all")
-        if sub_signal == "bet_only" and signal_type_filter == "info":
-            continue
-        active_chat_ids.append(chat_id)
-
     if not active_chat_ids:
         return []
 
@@ -175,6 +187,138 @@ async def broadcast_message(text: str, signal_type_filter: str = "all", match_ur
         results.append(res)
 
     return results
+
+
+def _send_photo_request(
+    chat_id: int, photo: bytes, caption: str, match_url: str | None = None
+) -> dict:
+    """
+    Sube una imagen a Telegram (sendPhoto) vía multipart/form-data.
+
+    Detalle: la Bot API NO acepta sendPhoto con cuerpo JSON; la imagen debe ir
+    como multipart. Se usa `requests` (ya presente en el entorno) por ser la vía
+    más robusta para el upload binario.
+    """
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
+    data: dict = {
+        "chat_id": str(chat_id),
+        "caption": caption or "",
+        "parse_mode": "HTML",
+    }
+    if match_url:
+        data["reply_markup"] = json.dumps(
+            {"inline_keyboard": [[{"text": "📱 Sofascore", "url": match_url}]]}
+        )
+    try:
+        import requests
+
+        with requests.post(
+            url,
+            data=data,
+            files={"photo": ("apuesta_q4.jpg", photo, "image/jpeg")},
+            timeout=45,
+        ) as resp:
+            try:
+                return resp.json()
+            except Exception:
+                return {"ok": False, "description": f"HTTP {resp.status_code}"}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "description": str(e)}
+
+
+async def broadcast_photo(
+    photo: bytes, caption: str, signal_type_filter: str = "bet", match_url: str | None = None
+) -> list[dict]:
+    """
+    Envía una imagen con caption a los suscriptores, con la misma política de
+    destinatarios que `broadcast_message`. Devuelve una respuesta por suscriptor.
+    """
+    if not TELEGRAM_BOT_TOKEN:
+        log_warning("TELEGRAM", "[SKIP] TELEGRAM_BOT_TOKEN no configurado")
+        return [{"ok": False, "description": "Sin token"}]
+
+    active_chat_ids = await asyncio.to_thread(_resolve_recipients, signal_type_filter)
+    if active_chat_ids is None:
+        log_warning("TELEGRAM", "[SKIP] Sin suscriptores en monitor_subscribers (DB settings)")
+        return [{"ok": False, "description": "Sin suscriptores"}]
+    if not active_chat_ids:
+        return []
+
+    chats_str = ", ".join(f"{COLOR_GREEN}{cid}{COLOR_RESET}" for cid in active_chat_ids)
+    log_info(
+        "TELEGRAM",
+        f"{COLOR_GREEN}[BROADCAST-IMG]{COLOR_RESET} Enviando imagen ({len(photo)} bytes) a {chats_str}",
+    )
+
+    results = []
+    for chat_id in active_chat_ids:
+        res = await asyncio.to_thread(_send_photo_request, chat_id, photo, caption, match_url)
+        if not res.get("ok"):
+            log_error("TELEGRAM", f"[FAIL] chat_id={chat_id} (imagen) | {res.get('description', '?')}")
+        results.append(res)
+    return results
+
+
+_CAPTION_MAX = 1024  # límite de Telegram para el caption de una foto
+
+
+def _photo_caption(text: str) -> str:
+    """Recorta el texto del aviso para usarlo como caption de la foto."""
+    if len(text) <= _CAPTION_MAX:
+        return text
+    return text[: _CAPTION_MAX - 3].rstrip() + "..."
+
+
+async def _send_bet_photo(
+    text: str,
+    bets: list[dict],
+    match_data: dict | None,
+    match_url: str | None,
+    *,
+    minute: int | None = None,
+    q_key: str | None = None,
+    scheduled_ts: int | None = None,
+) -> list[dict] | None:
+    """
+    Intenta enviar la alerta como imagen fusionada (tarjeta + momentum).
+    Devuelve None si no se pudo generar la imagen (el caller cae a texto plano).
+    """
+    try:
+        from monitor_v3.notifications.bet_image import build_q4_alert_image
+
+        photo = await asyncio.to_thread(
+            build_q4_alert_image,
+            match_data,
+            bets,
+            minute=minute,
+            q_key=q_key,
+            scheduled_ts=scheduled_ts,
+        )
+    except Exception as e:  # noqa: BLE001
+        log_warning("TELEGRAM", f"[IMG] Fallo generando tarjeta Q4 ({type(e).__name__}: {e})")
+        return None
+
+    if not photo:
+        return None
+
+    results = await broadcast_photo(photo, _photo_caption(text), match_url=match_url)
+    # Si TODOS los envíos fallaron, se degrada a texto plano desde el caller.
+    if results and any(r.get("ok") for r in results):
+        return results
+    return None
+
+
+def _decimal_odds_for_side(match_data: dict | None, is_home: bool) -> float | None:
+    """Cuota decimal in-play (ML) del lado apostado, si el payload la trae."""
+    odds_live = (match_data or {}).get("odds_live") or {}
+    key = "ml_home" if is_home else "ml_away"
+    value = odds_live.get(key)
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return None
+    return value if value > 1.0 else None
+
 
 
 async def send_telegram_message(text: str) -> dict:
@@ -315,7 +459,29 @@ async def send_bet_alert(
         match_url = _sofascore_match_url(match_id, match_data=match_data, home_team=home_team, away_team=away_team)
 
     # Las apuestas solo van a suscriptores que quieren señales operable (todos excepto info_only)
-    results = await broadcast_message(text, signal_type_filter="bet", match_url=match_url)
+    bets = [
+        {
+            "model": model,
+            "signal": signal,
+            "picked_team": picked_team,
+            "is_home": is_home,
+            "confidence": confidence,
+            "decimal_odds": _decimal_odds_for_side(match_data, is_home),
+        }
+    ]
+    results = await _send_bet_photo(
+        text,
+        bets,
+        match_data,
+        match_url,
+        minute=minute,
+        q_key=q_key,
+        scheduled_ts=scheduled_ts,
+    )
+    if results is None:
+        # Sin imagen (o todos los envíos de imagen fallaron): aviso en texto plano
+        results = await broadcast_message(text, signal_type_filter="bet", match_url=match_url)
+
     res = dict(results[0]) if results else {"ok": False, "description": "Sin suscriptores"}
     res["match_url"] = match_url
     return res
@@ -413,7 +579,42 @@ async def send_combined_bet_alert(
     if match_id:
         match_url = _sofascore_match_url(match_id, match_data=match_data, home_team=home_team, away_team=away_team)
         
-    results = await broadcast_message(text, signal_type_filter="bet", match_url=match_url)
+    bets = []
+    for model_name, pred in predictions.items():
+        is_home = str(pred.get("pick") or "").upper() == "HOME"
+        p_home = pred.get("p_home_win")
+        try:
+            p_home = float(p_home) if p_home is not None else None
+        except (TypeError, ValueError):
+            p_home = None
+        prob = None
+        if p_home is not None:
+            prob = p_home if is_home else (1.0 - p_home)
+        bets.append(
+            {
+                "model": model_name,
+                "signal": pred.get("signal"),
+                "picked_team": home_team if is_home else away_team,
+                "is_home": is_home,
+                "confidence": pred.get("confidence"),
+                "probability": prob,
+                "decimal_odds": _decimal_odds_for_side(match_data, is_home),
+            }
+        )
+
+    results = await _send_bet_photo(
+        text,
+        bets,
+        match_data,
+        match_url,
+        minute=minute,
+        q_key=q_key,
+        scheduled_ts=scheduled_ts,
+    )
+    if results is None:
+        # Sin imagen (o todos los envíos de imagen fallaron): aviso en texto plano
+        results = await broadcast_message(text, signal_type_filter="bet", match_url=match_url)
+
     res = dict(results[0]) if results else {"ok": False, "description": "Sin suscriptores"}
     res["match_url"] = match_url
     return res

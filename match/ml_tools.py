@@ -223,11 +223,14 @@ def export_feature_rows(rows: list[dict], out_path: str, fmt: str) -> str:
     return str(path)
 
 
-def plot_graph(match_data: dict, out_path: str) -> str:
+def plot_graph(match_data: dict, out_path: str, show_title: bool = True) -> str:
     """Reconstruct SofaScore pressure graph using seaborn + matplotlib.
 
     Positive values are interpreted as home-team pressure advantage,
     negative values as away-team pressure advantage.
+
+    `show_title=False` omite el título con equipos y marcador (útil cuando la
+    gráfica se fusiona dentro de una tarjeta que ya los muestra).
     """
     import matplotlib
     matplotlib.use("Agg", force=True)
@@ -467,13 +470,14 @@ def plot_graph(match_data: dict, out_path: str) -> str:
     else:
         score_line = f"FT {s['home']}-{s['away']}"
 
-    ax.set_title(
-        f"{m['home_team']} vs {m['away_team']}\n{score_line}",
-        color=text_color,
-        pad=18,
-        fontsize=18,
-        fontweight="semibold",
-    )
+    if show_title:
+        ax.set_title(
+            f"{m['home_team']} vs {m['away_team']}\n{score_line}",
+            color=text_color,
+            pad=18,
+            fontsize=18,
+            fontweight="semibold",
+        )
 
     for spine in ax.spines.values():
         spine.set_visible(False)
