@@ -324,7 +324,10 @@ def _quarters_items(score: dict) -> list[tuple[str, object, object]]:
     return items
 
 
-_SCOREBOARD_H = 112
+_SB_PAD = 14
+_SB_HEAD = 26
+_SB_ROW = 36
+_SCOREBOARD_H = _SB_PAD * 2 + _SB_HEAD + _SB_ROW * 2 + 6
 
 
 def _cell_color(value, other) -> tuple:
@@ -343,9 +346,9 @@ def _cell_color(value, other) -> tuple:
 
 def _draw_scoreboard(draw, x: float, y: float, width: float, items, total_home, total_away) -> float:
     """
-    Tabla de marcadores por cuarto (estilo SofaScore): una fila por equipo con
-    Q1..Qn y TOTAL, coloreando en verde al ganador de cada cuarto y en rojo al
-    perdedor. Devuelve la Y inferior.
+    Tabla de marcadores por cuarto (estilo SofaScore) dentro de un panel con
+    borde redondeado: una fila por equipo con Q1..Qn y TOTAL, coloreando en
+    verde al ganador de cada cuarto y en rojo al perdedor. Devuelve la Y inferior.
     """
     if not items:
         return y
@@ -353,25 +356,36 @@ def _draw_scoreboard(draw, x: float, y: float, width: float, items, total_home, 
     margin_w = 56.0   # emoji del lado
     total_w = 96.0
     n = len(items)
-    col_w = (width - margin_w - total_w) / max(1, n)
+    inner_x = x + _SB_PAD
+    inner_w = width - 2 * _SB_PAD
+    col_w = (inner_w - margin_w - total_w) / max(1, n)
+    total_cx = x + width - _SB_PAD - total_w / 2
 
     f_head = _font(19, True)
     f_cell = _font(27, True)
 
-    # Cabecera Q1..Qn + TOTAL
-    for index, (label, _h, _a) in enumerate(items):
-        cx = x + margin_w + col_w * (index + 0.5)
-        draw.text((cx, y), label, font=f_head, fill=COLOR_MUTED, anchor="ma")
-    draw.text((x + width - total_w / 2, y), "TOTAL", font=f_head, fill=COLOR_MUTED, anchor="ma")
-    draw.line([(x, y + 26), (x + width, y + 26)], fill=COLOR_BORDER, width=1)
+    # Panel redondeado de la tabla
+    draw.rounded_rectangle(
+        [x, y, x + width, y + _SCOREBOARD_H], radius=14, fill=COLOR_PANEL, outline=COLOR_BORDER, width=2
+    )
 
-    row_y = y + 34
+    # Cabecera Q1..Qn + TOTAL
+    head_y = y + _SB_PAD
+    for index, (label, _h, _a) in enumerate(items):
+        cx = inner_x + margin_w + col_w * (index + 0.5)
+        draw.text((cx, head_y), label, font=f_head, fill=COLOR_MUTED, anchor="ma")
+    draw.text((total_cx, head_y), "TOTAL", font=f_head, fill=COLOR_MUTED, anchor="ma")
+
+    sep_y = head_y + _SB_HEAD
+    draw.line([(inner_x, sep_y), (x + width - _SB_PAD, sep_y)], fill=COLOR_BORDER, width=1)
+
+    row_y = sep_y + 2
     for is_home in (True, False):
-        _draw_side_icon(draw, x, row_y + 2, is_home, size=24)
+        _draw_side_icon(draw, inner_x + 2, row_y + 4, is_home, size=24)
         for index, (_label, h, a) in enumerate(items):
             value = h if is_home else a
             other = a if is_home else h
-            cx = x + margin_w + col_w * (index + 0.5)
+            cx = inner_x + margin_w + col_w * (index + 0.5)
             if value is None:
                 draw.text((cx, row_y), "-", font=f_cell, fill=COLOR_MUTED, anchor="ma")
             else:
@@ -379,14 +393,13 @@ def _draw_scoreboard(draw, x: float, y: float, width: float, items, total_home, 
 
         total = total_home if is_home else total_away
         other_total = total_away if is_home else total_home
-        tx = x + width - total_w / 2
         if total is None:
-            draw.text((tx, row_y), "-", font=f_cell, fill=COLOR_MUTED, anchor="ma")
+            draw.text((total_cx, row_y), "-", font=f_cell, fill=COLOR_MUTED, anchor="ma")
         else:
-            draw.text((tx, row_y), str(total), font=f_cell, fill=_cell_color(total, other_total), anchor="ma")
-        row_y += 36
+            draw.text((total_cx, row_y), str(total), font=f_cell, fill=_cell_color(total, other_total), anchor="ma")
+        row_y += _SB_ROW
 
-    return row_y + 4
+    return y + _SCOREBOARD_H + 4
     """Ancho de la línea de cuartos (marcadores en negrita, como se dibujan)."""
     number_font = _bold(font)
     total = 0.0
@@ -592,7 +605,9 @@ def momentum_chart(
     img = Image.new("RGB", (w, h), SS_BG)
     draw = ImageDraw.Draw(img)
 
-    top = CHART_TOP_STRIP * ss
+    # Franja superior: etiquetas Q1..Q4 (avisos sin tabla) o nada si la tabla
+    # de cuartos ya está en la tarjeta (resultados) → sin hueco vacío ni FT.
+    top = (CHART_TOP_STRIP if quarter_labels else 10) * ss
     bottom = h - CHART_BOTTOM_LABELS * ss
     if bottom - top < 40 * ss:
         return None
@@ -622,8 +637,7 @@ def momentum_chart(
         x = w * i / n_quarters
         draw.line([(x, top), (x, bottom)], fill=SS_SEPARATOR, width=max(2, ss))
 
-    # Etiquetas de cuarto sobre la gráfica: si la tabla de cuartos ya está en
-    # la tarjeta (resultados), solo se marca el final del eje (FT).
+    # Etiquetas de cuarto sobre la gráfica solo si la tarjeta no trae la tabla.
     font_q = _font(22 * ss, True)
     if quarter_labels:
         for i in range(n_quarters):
@@ -636,8 +650,6 @@ def momentum_chart(
                 fill=SS_LIVE if is_current else SS_Q_LABEL,
                 anchor="ma",
             )
-    else:
-        draw.text((w - 6 * ss, 4 * ss), "FT", font=font_q, fill=SS_FT, anchor="ra")
 
     # Rellenos por tramos de signo
     for sign, run in _split_runs(pts):
@@ -660,8 +672,7 @@ def momentum_chart(
     draw.text((w - 6 * ss, baseline), "0", font=font_y, fill=SS_Y_ZERO, anchor="rm")
     draw.text((w - 6 * ss, bottom - 2 * ss), label, font=font_y, fill=SS_Y_LABEL, anchor="rd")
 
-    # Hora de inicio (verde, abajo-izquierda) con el punto de origen y "FT" a la
-    # derecha (este último solo si no se pintó ya arriba con las etiquetas).
+    # Hora de inicio (verde, abajo-izquierda) con el punto de origen.
     font_x = _font(22 * ss, True)
     if start_label:
         draw.ellipse(
@@ -670,8 +681,6 @@ def momentum_chart(
             width=max(2, ss),
         )
         draw.text((6 * ss, bottom - 2 * ss), start_label, font=font_x, fill=SS_X_LABEL, anchor="la")
-    if quarter_labels:
-        draw.text((w - 6 * ss, bottom - 2 * ss), "FT", font=font_x, fill=SS_X_FT, anchor="ra")
 
     # Marcador de tiempo real: línea roja + punto + etiqueta del cuarto en curso
     if not finished:
