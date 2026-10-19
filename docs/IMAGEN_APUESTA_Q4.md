@@ -24,8 +24,10 @@ La imagen sustituye al mensaje de texto (se envía como **foto con caption**); e
 │ ARGENTINA | LIGA ARGENTINA, CONFERENCE SOUTH                  │  país gris · liga cian
 │ #12  Deportivo Viedma  vs  PFC Básquet                        │  nº del día · local verde · visitante violeta
 │                                                               │  (ganador en negrita)
-│ 00:46 · FT · MIN~40 · MARCADOR 86-76                          │  FT verde · 86 verde · 76 rojo
-│ Q1 29-18   Q2 24-19   Q3 12-22   Q4 21-17                     │  Q cian · ganador verde · perdedor rojo
+│ 00:46 · FT · MIN~40                                          │  FT verde
+│           Q1      Q2      Q3      Q4      TOTAL               │  tabla de cuartos
+│ 🏠        29      24      12      21       86                  │  verde = gana el cuarto
+│ ✈️        18      19      22      17       76                  │  rojo = pierde el cuarto
 │ ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓ │
 │ ┃ RESULTADO Q4                          Q4 21-17 (mercado)  ┃ │  barra de acento lateral
 │ ┃ BET     m27_v5_3 78%  ->  🏠 Deportivo Viedma    GANADA   ┃ │
@@ -147,9 +149,10 @@ El texto que acompaña a la imagen repite las mismas cifras (y se usa como capti
 
 ## 5. Marcadores y cuartos
 
-- **Marcador global**: `MARCADOR ` en gris + ganador en **verde negrita** + `-` gris + perdedor en **rojo negrita** (empate sin color).
-- **Marcador por cuarto**: `Q1 29-18  Q2 24-19 …`, con la etiqueta `Q` en **cian negrita** y cada parcial coloreado igual que el global. La línea se auto-ajusta de tamaño si hay muchas entradas (prórrogas `OT`).
+- **Tabla de cuartos (estilo SofaScore)**: una fila por equipo (🏠 local / ✈️ visitante) con columnas `Q1..Qn` y `TOTAL`. Cada celda se colorea **verde si ese equipo ganó el cuarto** y **rojo si lo perdió** (empate sin color); la columna `TOTAL` hace lo mismo con el marcador global. Solo se muestran los cuartos con datos.
+- Si el partido no tiene desglose por cuartos, la cabecera cae al **marcador global** (`MARCADOR 86-76`) con el mismo criterio de color.
 - **Nombres de equipos**: el ganador del partido va en **negrita**; el perdedor en regular.
+- **Panel de apuesta**: a la derecha del título se muestra el parcial del **cuarto objetivo** (`Q4 21-17`), coloreado por quién ganó ese cuarto.
 
 ---
 

@@ -324,7 +324,69 @@ def _quarters_items(score: dict) -> list[tuple[str, object, object]]:
     return items
 
 
-def _quarters_width(draw, items, font) -> float:
+_SCOREBOARD_H = 112
+
+
+def _cell_color(value, other) -> tuple:
+    """Color de una celda del marcador: verde si gana, rojo si pierde."""
+    try:
+        v = int(value)
+        o = int(other)
+    except (TypeError, ValueError):
+        return COLOR_MUTED
+    if v > o:
+        return SS_SCORE_WIN
+    if v < o:
+        return SS_SCORE_LOSS
+    return COLOR_TEXT
+
+
+def _draw_scoreboard(draw, x: float, y: float, width: float, items, total_home, total_away) -> float:
+    """
+    Tabla de marcadores por cuarto (estilo SofaScore): una fila por equipo con
+    Q1..Qn y TOTAL, coloreando en verde al ganador de cada cuarto y en rojo al
+    perdedor. Devuelve la Y inferior.
+    """
+    if not items:
+        return y
+
+    margin_w = 56.0   # emoji del lado
+    total_w = 96.0
+    n = len(items)
+    col_w = (width - margin_w - total_w) / max(1, n)
+
+    f_head = _font(19, True)
+    f_cell = _font(27, True)
+
+    # Cabecera Q1..Qn + TOTAL
+    for index, (label, _h, _a) in enumerate(items):
+        cx = x + margin_w + col_w * (index + 0.5)
+        draw.text((cx, y), label, font=f_head, fill=COLOR_MUTED, anchor="ma")
+    draw.text((x + width - total_w / 2, y), "TOTAL", font=f_head, fill=COLOR_MUTED, anchor="ma")
+    draw.line([(x, y + 26), (x + width, y + 26)], fill=COLOR_BORDER, width=1)
+
+    row_y = y + 34
+    for is_home in (True, False):
+        _draw_side_icon(draw, x, row_y + 2, is_home, size=24)
+        for index, (_label, h, a) in enumerate(items):
+            value = h if is_home else a
+            other = a if is_home else h
+            cx = x + margin_w + col_w * (index + 0.5)
+            if value is None:
+                draw.text((cx, row_y), "-", font=f_cell, fill=COLOR_MUTED, anchor="ma")
+            else:
+                draw.text((cx, row_y), str(value), font=f_cell, fill=_cell_color(value, other), anchor="ma")
+
+        total = total_home if is_home else total_away
+        other_total = total_away if is_home else total_home
+        tx = x + width - total_w / 2
+        if total is None:
+            draw.text((tx, row_y), "-", font=f_cell, fill=COLOR_MUTED, anchor="ma")
+        else:
+            draw.text((tx, row_y), str(total), font=f_cell, fill=_cell_color(total, other_total), anchor="ma")
+        row_y += 36
+
+    return row_y + 4
     """Ancho de la línea de cuartos (marcadores en negrita, como se dibujan)."""
     number_font = _bold(font)
     total = 0.0
@@ -334,23 +396,6 @@ def _quarters_width(draw, items, font) -> float:
         total += _text_len(draw, "-", font) + 1
         total += _text_len(draw, str(away), number_font) + 26
     return total
-
-
-def _draw_quarters(draw, x: float, y: float, items, font) -> float:
-    """Dibuja 'Q1 20-18  Q2 ...' con la etiqueta Q destacada y el ganador en verde."""
-    number_font = _bold(font)
-    for label, home, away in items:
-        draw.text((x, y), label, font=_bold(font), fill=SS_Q_LABEL)
-        x += _text_len(draw, label, font) + 8
-
-        h_color, a_color = _score_colors(home, away)
-        draw.text((x, y), str(home), font=number_font, fill=h_color)
-        x += _text_len(draw, str(home), number_font)
-        draw.text((x, y), "-", font=font, fill=COLOR_MUTED)
-        x += _text_len(draw, "-", font) + 1
-        draw.text((x, y), str(away), font=number_font, fill=a_color)
-        x += _text_len(draw, str(away), number_font) + 26
-    return x
 
 
 def _bold(font):
@@ -897,8 +942,12 @@ def build_q4_alert_image(
         if minute is not None:
             situation_runs.append((f"MIN~{minute}", COLOR_MUTED))
 
+        quarters_items = _quarters_items(score)
+
+        # Marcador global en la cabecera: solo si NO hay tabla de cuartos
+        # (la tabla ya muestra la columna TOTAL).
         home_score, away_score = score.get("home"), score.get("away")
-        if home_score is not None and away_score is not None:
+        if not quarters_items and home_score is not None and away_score is not None:
             h_color, a_color = _score_colors(home_score, away_score)
             situation_runs.extend(
                 [
@@ -909,7 +958,6 @@ def build_q4_alert_image(
                 ]
             )
 
-        quarters_items = _quarters_items(score)
         real_bets = [
             b
             for b in bets
@@ -930,17 +978,6 @@ def build_q4_alert_image(
         badge_w = (_text_len(probe_draw, badge_text, font_badge) + 16) if badge_text else 0.0
         font_teams, font_vs = _fit_teams(probe_draw, home, away, WIDTH - 2 * PAD - badge_w)
         font_meta = _font(24)
-        # La línea de cuartos se ajusta midiendo su composición real (etiqueta + marcadores)
-        font_quarters = None
-        if quarters_items:
-            q_size = 21
-            while q_size > 12:
-                candidate = _font(q_size)
-                if _quarters_width(probe_draw, quarters_items, candidate) <= WIDTH - 2 * PAD:
-                    font_quarters = candidate
-                    break
-                q_size -= 1
-            font_quarters = font_quarters or _font(12)
 
         y = PAD
         if has_head:
@@ -948,7 +985,7 @@ def build_q4_alert_image(
         y += (_font_size(font_teams) + 14)
         y += 38
         if quarters_items:
-            y += 34
+            y += _SCOREBOARD_H
         y += 20  # separación antes del panel
 
         panel_h = _panel_height(len(bets))
@@ -997,12 +1034,11 @@ def build_q4_alert_image(
         draw.text((x, cy), away_txt, font=away_font, fill=COLOR_AWAY)
         cy += _font_size(font_teams) + 14
 
-        # Situación (con FT y marcador coloreados) y cuartos (Q destacado)
+        # Situación (con FT y marcador coloreados) y tabla de cuartos
         _draw_runs(draw, PAD, cy, situation_runs, font_meta)
         cy += 38
-        if quarters_items and font_quarters:
-            _draw_quarters(draw, PAD, cy, quarters_items, font_quarters)
-            cy += 34
+        if quarters_items:
+            cy = _draw_scoreboard(draw, PAD, cy, WIDTH - 2 * PAD, quarters_items, home_score, away_score)
 
         cy += 20
         # Marcador del mercado: parcial del cuarto objetivo (o el global si falta)
