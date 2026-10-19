@@ -325,47 +325,55 @@ def _quarters_items(score: dict) -> list[tuple[str, object, object]]:
 
 
 def _quarters_width(draw, items, font) -> float:
+    """Ancho de la línea de cuartos (marcadores en negrita, como se dibujan)."""
+    number_font = _bold(font)
     total = 0.0
     for label, home, away in items:
         total += _text_len(draw, label, font) + 8
-        total += _text_len(draw, str(home), font)
+        total += _text_len(draw, str(home), number_font)
         total += _text_len(draw, "-", font) + 1
-        total += _text_len(draw, str(away), font) + 26
+        total += _text_len(draw, str(away), number_font) + 26
     return total
 
 
 def _draw_quarters(draw, x: float, y: float, items, font) -> float:
     """Dibuja 'Q1 20-18  Q2 ...' con la etiqueta Q destacada y el ganador en verde."""
+    number_font = _bold(font)
     for label, home, away in items:
-        draw.text((x, y), label, font=font, fill=SS_Q_LABEL)
+        draw.text((x, y), label, font=_bold(font), fill=SS_Q_LABEL)
         x += _text_len(draw, label, font) + 8
 
         h_color, a_color = _score_colors(home, away)
-        draw.text((x, y), str(home), font=font, fill=h_color)
-        x += _text_len(draw, str(home), font)
+        draw.text((x, y), str(home), font=number_font, fill=h_color)
+        x += _text_len(draw, str(home), number_font)
         draw.text((x, y), "-", font=font, fill=COLOR_MUTED)
         x += _text_len(draw, "-", font) + 1
-        draw.text((x, y), str(away), font=font, fill=a_color)
-        x += _text_len(draw, str(away), font) + 26
+        draw.text((x, y), str(away), font=number_font, fill=a_color)
+        x += _text_len(draw, str(away), number_font) + 26
     return x
+
+
+def _bold(font):
+    """Variante en negrita del mismo tamaño (para destacar marcadores)."""
+    return _font(_font_size(font), True)
 
 
 def _draw_runs(draw, x: float, y: float, runs, font, default_sep: str = "  ·  ") -> float:
     """
-    Dibuja una secuencia de (texto, color[, separador]) separada por `default_sep`.
-    Un separador vacío ("") permite agrupar piezas sin separación (p. ej. el 86-76).
+    Dibuja una secuencia de (texto, color[, separador[, negrita]]).
+    Un separador vacío ("") agrupa piezas sin separación (p. ej. el 86-76).
     """
+    bold_font = _bold(font)
     for index, item in enumerate(runs):
         text, color = item[0], item[1]
-        if len(item) > 2:
-            sep = item[2]
-        else:
-            sep = default_sep if index else ""
+        sep = item[2] if len(item) > 2 else (default_sep if index else "")
+        bold = bool(item[3]) if len(item) > 3 else False
         if sep:
             draw.text((x, y), sep, font=font, fill=COLOR_MUTED)
             x += _text_len(draw, sep, font)
-        draw.text((x, y), text, font=font, fill=color)
-        x += _text_len(draw, text, font)
+        used = bold_font if bold else font
+        draw.text((x, y), text, font=used, fill=color)
+        x += _text_len(draw, text, used)
     return x
 
 
@@ -863,9 +871,9 @@ def build_q4_alert_image(
             situation_runs.extend(
                 [
                     ("MARCADOR ", COLOR_MUTED),
-                    (str(home_score), h_color, ""),
-                    ("-", COLOR_MUTED, ""),
-                    (str(away_score), a_color, ""),
+                    (str(home_score), h_color, "", True),
+                    ("-", COLOR_MUTED, "", True),
+                    (str(away_score), a_color, "", True),
                 ]
             )
 
@@ -928,14 +936,26 @@ def build_q4_alert_image(
                 draw.text((x, cy), league.upper(), font=lg_font, fill=COLOR_ACCENT)
             cy += 32
 
-        # Equipos: local en verde, "vs" atenuado, visitante en violeta
+        # Equipos: local en verde, "vs" atenuado, visitante en violeta.
+        # El ganador del partido se destaca en negrita; el perdedor va en regular.
+        font_teams_regular = _font(_font_size(font_teams), False)
+        home_wins = away_wins = False
+        if home_score is not None and away_score is not None:
+            try:
+                home_wins = float(home_score) > float(away_score)
+                away_wins = float(away_score) > float(home_score)
+            except (TypeError, ValueError):
+                home_wins = away_wins = False
+        home_font = font_teams if (home_wins or not away_wins) else font_teams_regular
+        away_font = font_teams if (away_wins or not home_wins) else font_teams_regular
+
         x = PAD
-        draw.text((x, cy), home, font=font_teams, fill=COLOR_HOME)
+        draw.text((x, cy), home, font=home_font, fill=COLOR_HOME)
         x += _text_len(draw, home, font_teams) + 16
         draw.text((x, cy + 8), "vs", font=font_vs, fill=COLOR_MUTED)
         x += _text_len(draw, "vs", font_vs) + 16
         away_txt = _ellipsize(draw, away, font_teams, max(40.0, (WIDTH - PAD) - x))
-        draw.text((x, cy), away_txt, font=font_teams, fill=COLOR_AWAY)
+        draw.text((x, cy), away_txt, font=away_font, fill=COLOR_AWAY)
         cy += _font_size(font_teams) + 14
 
         # Situación (con FT y marcador coloreados) y cuartos (Q destacado)

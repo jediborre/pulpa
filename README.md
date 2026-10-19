@@ -53,6 +53,7 @@ Toda la documentación técnica, científica y operativa del proyecto ha sido co
 | [`docs/monitor_arquitectura.md`](file:///C:/Users/App/Desktop/pulpa/docs/monitor_arquitectura.md) | `findings/monitor_arquitectura.md` | Diagramas de flujo y arquitectura interna del sistema de monitoreo en tiempo real. |
 | [`docs/glosario.md`](file:///C:/Users/App/Desktop/pulpa/docs/glosario.md) | `glosario.md (Raíz)` | Glosario de mensajes de log coloreados (`[SYSTEM]`, `[WATCHER]`, `[PROBE]`, `[LIVE]`, `[EVAL]`, `[FT]`). |
 | [`docs/FORMATO_LOGS_V3.md`](file:///C:/Users/App/Desktop/pulpa/docs/FORMATO_LOGS_V3.md) | `docs/FORMATO_LOGS_V3.md` | Especificación del formato de logs de `monitor_v3`: anatomía de la línea, niveles y códigos ANSI, componentes, tags, catálogo de mensajes por fase, archivo diario `logs/` y prefijos de Telegram. |
+| [`docs/IMAGEN_APUESTA_Q4.md`](file:///C:/Users/App/Desktop/pulpa/docs/IMAGEN_APUESTA_Q4.md) | `docs/IMAGEN_APUESTA_Q4.md` | Imagen de Telegram de apuesta Q4 y de resultados FT: modo (solo tarjeta vs tarjeta + gráfica), layout, paleta, semáforo de confianza con umbral real, emojis de lado, etiquetas GANADA/PERDIDA/HUBIERA …, marcadores y detalles técnicos. |
 
 ### 🛡️ Evasión Anti-Bot y Scraping (Obscura vs. Chrome)
 | Archivo en `docs/` | Ubicación Original | Contenido Principal |

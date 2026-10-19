@@ -287,6 +287,7 @@ Ejemplo de línea por modelo: `🟢 APUESTA Q4 [m27_v3 72%] → 🏠 CD Universi
 - Formato de mensajes: `parse_mode="HTML"`; mensajes largos se trocean a **3 800 caracteres** respetando saltos de línea.
 - Bot interactivo (`bot_runner.py`): teclado persistente `🎯 Apuestas` / `📊 Status` y comandos `/start`, `/signals`, `/status`.
 - Los envíos salientes se reintentan hasta 3 veces con backoff (1 s → 2 s → 4 s) ante `NetworkError`/`TimedOut`, y respetan `RetryAfter`.
+- Los avisos de apuesta y de resultado FT se envían además como **imagen** (tarjeta y, en FT, tarjeta + gráfica de momentum): ver [`IMAGEN_APUESTA_Q4.md`](IMAGEN_APUESTA_Q4.md). Si la imagen falla, el aviso cae a texto plano.
 
 ---
 
