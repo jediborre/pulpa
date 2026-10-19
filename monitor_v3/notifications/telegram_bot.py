@@ -269,6 +269,41 @@ def _photo_caption(text: str) -> str:
     return text[: _CAPTION_MAX - 3].rstrip() + "..."
 
 
+def _is_real_bet_signal(signal: str | None) -> bool:
+    """True si la señal es una apuesta operable (BET y no NO_BET)."""
+    value = str(signal or "")
+    return "BET" in value and "NO_BET" not in value
+
+
+def _hypothetical_result(is_home: bool, match_data: dict | None) -> str | None:
+    """
+    Resultado que HUBIERA tenido el pick de un modelo que no apostó, según el
+    marcador final del partido. None si hay empate o no hay marcador.
+    """
+    score = (match_data or {}).get("score") or {}
+    try:
+        home = float(score.get("home"))
+        away = float(score.get("away"))
+    except (TypeError, ValueError):
+        return None
+    if home == away:
+        return None
+    home_won = home > away
+    won = home_won if is_home else not home_won
+    return "would_win" if won else "would_loss"
+
+
+def _inference_json(log: dict) -> dict | None:
+    """Normaliza `inference_json` (str JSON o dict) para leer el umbral del modelo."""
+    value = log.get("inference_json")
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except Exception:
+            return None
+    return value if isinstance(value, dict) else None
+
+
 async def _send_bet_photo(
     text: str,
     bets: list[dict],
@@ -279,9 +314,10 @@ async def _send_bet_photo(
     q_key: str | None = None,
     scheduled_ts: int | None = None,
     is_result: bool = False,
+    include_chart: bool = True,
 ) -> list[dict] | None:
     """
-    Intenta enviar el aviso como imagen fusionada (tarjeta + momentum).
+    Intenta enviar el aviso como imagen (tarjeta + gráfica opcional).
     Devuelve None si no se pudo generar la imagen (el caller cae a texto plano).
     """
     try:
@@ -295,6 +331,7 @@ async def _send_bet_photo(
             q_key=q_key,
             scheduled_ts=scheduled_ts,
             is_result=is_result,
+            include_chart=include_chart,
         )
     except Exception as e:  # noqa: BLE001
         log_warning("TELEGRAM", f"[IMG] Fallo generando tarjeta Q4 ({type(e).__name__}: {e})")
@@ -469,6 +506,7 @@ async def send_bet_alert(
             "is_home": is_home,
             "confidence": confidence,
             "decimal_odds": _decimal_odds_for_side(match_data, is_home),
+            "inference_json": None,
         }
     ]
     results = await _send_bet_photo(
@@ -479,6 +517,7 @@ async def send_bet_alert(
         minute=minute,
         q_key=q_key,
         scheduled_ts=scheduled_ts,
+        include_chart=False,
     )
     if results is None:
         # Sin imagen (o todos los envíos de imagen fallaron): aviso en texto plano
@@ -601,6 +640,7 @@ async def send_combined_bet_alert(
                 "confidence": pred.get("confidence"),
                 "probability": prob,
                 "decimal_odds": _decimal_odds_for_side(match_data, is_home),
+                "inference_json": pred.get("inference_json"),
             }
         )
 
@@ -612,6 +652,7 @@ async def send_combined_bet_alert(
         minute=minute,
         q_key=q_key,
         scheduled_ts=scheduled_ts,
+        include_chart=False,
     )
     if results is None:
         # Sin imagen (o todos los envíos de imagen fallaron): aviso en texto plano
@@ -747,16 +788,23 @@ async def send_combined_final_confirmation(
         
     bets = []
     for log in logs:
+        signal = str(log.get("signal_type") or "")
+        is_real = _is_real_bet_signal(signal)
         is_home = str(log.get("picked_side") or "").upper() == "HOME"
+        result = log.get("result")
+        if not is_real:
+            # El modelo no apostó: se muestra qué HUBIERA pasado con su pick.
+            result = _hypothetical_result(is_home, match_data) or result
         bets.append(
             {
                 "model": log.get("model_version"),
-                "signal": log.get("signal_type"),
+                "signal": signal,
                 "picked_team": home_team if is_home else away_team,
                 "is_home": is_home,
                 "confidence": log.get("confidence"),
-                "result": log.get("result"),
+                "result": result,
                 "decimal_odds": _decimal_odds_for_side(match_data, is_home),
+                "inference_json": _inference_json(log),
             }
         )
     results = await _send_bet_photo(
@@ -768,6 +816,7 @@ async def send_combined_final_confirmation(
         q_key=q_key,
         scheduled_ts=scheduled_ts,
         is_result=True,
+        include_chart=True,
     )
     if results is None:
         results = await broadcast_message(text, signal_type_filter="bet", match_url=match_url)
@@ -835,7 +884,11 @@ async def send_final_confirmation(
             "picked_team": picked_team,
             "is_home": is_home,
             "confidence": confidence,
-            "result": outcome,
+            "result": (
+                outcome
+                if _is_real_bet_signal(signal)
+                else (_hypothetical_result(is_home, match_data) or outcome)
+            ),
             "decimal_odds": _decimal_odds_for_side(match_data, is_home),
         }
     ]
@@ -848,6 +901,7 @@ async def send_final_confirmation(
         q_key=q_key,
         scheduled_ts=scheduled_ts,
         is_result=True,
+        include_chart=True,
     )
     if results is None:
         results = await broadcast_message(text, signal_type_filter="bet", match_url=match_url)

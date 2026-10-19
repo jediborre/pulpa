@@ -29,6 +29,7 @@ from PIL import Image  # noqa: E402
 from monitor_v3.notifications import bet_image as bi  # noqa: E402
 from monitor_v3.notifications.telegram_bot import (  # noqa: E402
     _decimal_odds_for_side,
+    _hypothetical_result,
     _photo_caption,
 )
 
@@ -111,6 +112,32 @@ def main() -> None:
     largo = "x" * 2000
     cap = _photo_caption(largo)
     check(f"largo recortado ({len(cap)} chars)", len(cap) <= 1024 and cap.endswith("..."))
+
+    print("\n[7] Umbral real del modelo desde raw_json")
+    check(
+        "m27_v5_3 -> 0.72",
+        abs(bi._model_threshold("m27_v5_3", {"raw_json": {"min_conf_threshold": 0.72}}) - 0.72) < 1e-9,
+    )
+    check("v6_2 -> threshold_bet", abs(bi._model_threshold("v6_2", {"threshold_bet": 0.14}) - 0.14) < 1e-9)
+    check("m27_v3 sin raw_json -> 0.68", abs(bi._model_threshold("m27_v3", None) - 0.68) < 1e-9)
+    check("desconocido -> 0.65", abs(bi._model_threshold("m99", {}) - 0.65) < 1e-9)
+
+    print("\n[8] Semáforo del porcentaje")
+    check("apostó -> verde", bi._conf_color(0.55, 0.72, True) == bi.SS_CONF_BET)
+    cerca = bi._conf_color(0.70, 0.72, False)
+    lejos = bi._conf_color(0.05, 0.72, False)
+    check(f"cerca del umbral -> amarillento {cerca}", cerca[0] > 200 and cerca[1] > 150 and cerca[2] < 120)
+    check(f"lejos del umbral -> rojizo {lejos}", lejos[0] > 200 and lejos[1] < 110)
+
+    print("\n[9] Resultado hipotético de un NO_BET")
+    md_local = {"score": {"home": 86, "away": 76}}
+    md_visita = {"score": {"home": 70, "away": 80}}
+    check("pick local y ganó local -> would_win", _hypothetical_result(True, md_local) == "would_win")
+    check("pick visita y ganó local -> would_loss", _hypothetical_result(False, md_local) == "would_loss")
+    check("pick visita y ganó visita -> would_win", _hypothetical_result(False, md_visita) == "would_win")
+    check("empate -> None", _hypothetical_result(True, {"score": {"home": 80, "away": 80}}) is None)
+    check("sin marcador -> None", _hypothetical_result(True, {}) is None)
+    check("etiquetas", bi._result_tag("would_win")[0] == "HUBIERA GANADO" and bi._result_tag("would_loss")[1] == bi.SS_CONF_FAR)
 
     print("\nRESULTADO:", "✅ TODO OK" if ok else "❌ HAY FALLOS")
     sys.exit(0 if ok else 1)

@@ -83,53 +83,43 @@ async def _get_live_match_with_graph() -> tuple[str, dict, str] | tuple[None, No
 
 
 def _bets(home: str, away: str, variant: str) -> list[dict]:
-    if variant == "simple":
+    """Datos de prueba con valores reales de producción (umbrales de raw_json)."""
+    thr_v5_3 = {"raw_json": {"min_conf_threshold": 0.72}}
+    thr_v5_2 = {"raw_json": {"min_conf_threshold": 0.75}}
+    thr_v6_2 = {"raw_json": {"threshold_bet": 0.14}}
+
+    bet_v5_3 = {
+        "model": "m27_v5_3", "signal": "BET_HOME", "picked_team": home, "is_home": True,
+        "confidence": 0.78, "decimal_odds": 1.85, "inference_json": thr_v5_3,
+    }
+    nobet_v5_2 = {  # cerca del umbral (0.507/0.75) → ámbar
+        "model": "m27_v5_2", "signal": "NO_BET", "picked_team": away, "is_home": False,
+        "confidence": 0.51, "decimal_odds": 2.10, "inference_json": thr_v5_2,
+    }
+    nobet_v6_2 = {  # lejos del umbral (0.05/0.14) → rojo
+        "model": "v6_2", "signal": "NO_BET", "picked_team": away, "is_home": False,
+        "confidence": 0.05, "decimal_odds": 2.10, "inference_json": thr_v6_2,
+    }
+    nobet_mid_v6_2 = {  # a medio camino (0.10/0.14) → ámbar anaranjado
+        "model": "v6_2", "signal": "NO_BET", "picked_team": home, "is_home": True,
+        "confidence": 0.10, "decimal_odds": 1.85, "inference_json": thr_v6_2,
+    }
+
+    if variant == "apuesta":
+        return [bet_v5_3]
+    if variant == "apuesta_combinada":
+        return [bet_v5_3, dict(nobet_v5_2), dict(nobet_mid_v6_2)]
+    if variant == "resultado":
         return [
-            {
-                "model": "m27_v5_3", "signal": "HOME_BET_Q4", "picked_team": home,
-                "is_home": True, "confidence": 0.72, "decimal_odds": 1.85,
-            }
-        ]
-    if variant == "combinada":
-        return [
-            {
-                "model": "m27_v5_3", "signal": "HOME_BET_Q4", "picked_team": home,
-                "is_home": True, "confidence": 0.72, "decimal_odds": 1.85,
-            },
-            {
-                "model": "v6_2", "signal": "NO_BET_Q4", "picked_team": away,
-                "is_home": False, "confidence": 0.41, "decimal_odds": None,
-            },
-        ]
-    if variant == "resultado_win":
-        return [
-            {
-                "model": "m27_v5_3", "signal": "HOME_BET_Q4", "picked_team": home,
-                "is_home": True, "confidence": 0.72, "decimal_odds": 1.85, "result": "win",
-            }
-        ]
-    if variant == "resultado_loss":
-        return [
-            {
-                "model": "m27_v5_3", "signal": "AWAY_BET_Q4", "picked_team": away,
-                "is_home": False, "confidence": 0.58, "decimal_odds": 2.10, "result": "loss",
-            }
-        ]
-    if variant == "resultado_combinado":
-        return [
-            {
-                "model": "m27_v5_3", "signal": "HOME_BET_Q4", "picked_team": home,
-                "is_home": True, "confidence": 0.72, "decimal_odds": 1.85, "result": "win",
-            },
-            {
-                "model": "v6_2", "signal": "AWAY_BET_Q4", "picked_team": away,
-                "is_home": False, "confidence": 0.44, "decimal_odds": 2.10, "result": "loss",
-            },
+            {**bet_v5_3, "result": "win"},
+            {**nobet_v5_2, "result": "would_win"},
+            {**nobet_v6_2, "result": "would_loss"},
         ]
     return [
         {
-            "model": "m27_v5_3", "signal": "AWAY_BET_Q4_LATE", "picked_team": away,
-            "is_home": False, "confidence": 0.58, "decimal_odds": 2.10,
+            "model": "m27_v5_3", "signal": "BET_AWAY_LATE", "picked_team": away,
+            "is_home": False, "confidence": 0.62, "decimal_odds": 2.10,
+            "inference_json": thr_v5_3,
         }
     ]
 
@@ -171,14 +161,18 @@ async def main() -> None:
     print(f"\nPartido de prueba: {mid} | {home} vs {away} | marcador {score.get('home')}-{score.get('away')} "
           f"| {q_key} | min={minute}")
 
-    for variant in ("simple", "combinada", "tardia", "resultado_win", "resultado_loss", "resultado_combinado"):
+    for variant in ("apuesta", "apuesta_combinada", "tardia", "resultado"):
+        is_result = variant == "resultado"
         photo = bet_image.build_q4_alert_image(
             data,
             _bets(home, away, variant),
             minute=minute,
             q_key=q_key,
             scheduled_ts=scheduled_ts,
-            is_result=variant.startswith("resultado"),
+            is_result=is_result,
+            # Los avisos de apuesta en vivo van SIN gráfica (solo la tarjeta);
+            # las confirmaciones FT llevan la gráfica completa.
+            include_chart=is_result,
         )
         if not photo:
             print(f"❌ variante {variant}: no se generó imagen")

@@ -55,6 +55,13 @@ COLOR_AWAY = (120, 130, 235)   # #7882EB  (visitante / presión negativa)
 COLOR_ACCENT = (79, 211, 255)  # #4FD3FF  (acento / línea de tiempo)
 COLOR_ALERT = (255, 77, 87)    # #FF4D57  (tardía / alerta)
 
+# Semáforo de confianza para modelos que NO apostaron
+SS_CONF_BET = (63, 203, 92)    # #3FCB5C  el modelo apostó → verde
+SS_CONF_NEAR = (255, 210, 74)  # #FFD24A  cerca del umbral → amarillo
+SS_CONF_FAR = (255, 77, 87)    # #FF4D57  lejísimos del umbral → rojo
+SS_BET = (63, 203, 92)         # palabra BET en verde
+SS_NO_BET = (255, 77, 87)      # palabra NO BET en rojo
+
 # Layout
 WIDTH = 1080
 PAD = 32
@@ -81,8 +88,6 @@ SS_X_LABEL = (76, 208, 94)     # hora de inicio en verde
 SS_X_FT = (143, 160, 180)
 SS_LIVE = (255, 77, 87)        # marcador de tiempo real y cuarto en curso
 SS_Q_LABEL = (143, 160, 180)   # etiquetas Q1..Q4 sobre la gráfica
-SS_RESULT_WIN = (63, 203, 92)  # resultado FT ganada
-SS_RESULT_LOSS = (255, 77, 87)  # resultado FT perdida
 
 # Fuentes: Segoe UI en Windows, con respaldo Arial/DejaVu y, en último caso, default.
 _FONT_CANDIDATES_REGULAR = [
@@ -96,7 +101,15 @@ _FONT_CANDIDATES_BOLD = [
     r"C:\Windows\Fonts\arialbd.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
 ]
+# Fuente de emoji en color (casa = local, avión = visitante)
+_FONT_CANDIDATES_EMOJI = [
+    r"C:\Windows\Fonts\seguiemj.ttf",
+    "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",
+]
+EMOJI_HOME = "\U0001F3E0"      # 🏠
+EMOJI_AWAY = "\u2708\ufe0f"    # ✈️
 _font_cache: dict[tuple[int, bool], ImageFont.FreeTypeFont] = {}
+_emoji_font_cache: dict[int, ImageFont.FreeTypeFont | None] = {}
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -105,6 +118,87 @@ _font_cache: dict[tuple[int, bool], ImageFont.FreeTypeFont] = {}
 
 def _font_size(font) -> int:
     return int(getattr(font, "size", 16) or 16)
+
+
+def _emoji_font(size: int):
+    """Fuente de emoji en color, o None si el sistema no la tiene."""
+    if size in _emoji_font_cache:
+        return _emoji_font_cache[size]
+    font = None
+    for path in _FONT_CANDIDATES_EMOJI:
+        try:
+            font = ImageFont.truetype(path, size=size)
+            break
+        except Exception:
+            continue
+    _emoji_font_cache[size] = font
+    return font
+
+
+def _lerp_color(c1: tuple, c2: tuple, t: float) -> tuple:
+    """Interpola entre dos colores (t=0 → c1, t=1 → c2)."""
+    t = max(0.0, min(1.0, t))
+    return tuple(int(round(a + (b - a) * t)) for a, b in zip(c1, c2))
+
+
+def _model_threshold(model: str, inference_json: dict | None, raw_payload: dict | None = None) -> float:
+    """
+    Umbral de confianza real del modelo (para el semáforo del porcentaje).
+    Se lee de `raw_json` (min_conf_threshold / threshold_bet) y, si no está,
+    se cae a los umbrales de referencia por familia de modelo.
+    """
+    raw: dict = {}
+    for source in (inference_json, raw_payload):
+        if isinstance(source, dict):
+            maybe = source.get("raw_json") if isinstance(source.get("raw_json"), dict) else source
+            if isinstance(maybe, dict) and maybe:
+                raw = maybe
+                break
+    for key in ("min_conf_threshold", "threshold_bet", "bet_thr"):
+        try:
+            value = float(raw.get(key))
+            if 0.0 < value < 1.0:
+                return value
+        except (TypeError, ValueError):
+            continue
+    thresholds = raw.get("thresholds")
+    if isinstance(thresholds, dict):
+        for key in ("bet", "min_conf"):
+            try:
+                value = float(thresholds.get(key))
+                if 0.0 < value < 1.0:
+                    return value
+            except (TypeError, ValueError):
+                continue
+
+    name = str(model or "").lower()
+    if "v6_" in name:
+        return 0.18
+    if "m27_v5" in name:
+        return 0.75
+    if "m27_v3" in name:
+        return 0.68
+    return 0.65
+
+
+def _conf_color(confidence: float | None, threshold: float, is_bet: bool) -> tuple:
+    """
+    Color del porcentaje del modelo:
+      - apostó → verde
+      - no apostó → semáforo amarillo→rojo según lo cerca que estuvo del umbral
+        (desde el 90% del umbral ya es amarillo; por debajo baja hacia rojo).
+    """
+    if is_bet:
+        return SS_CONF_BET
+    try:
+        conf = float(confidence or 0.0)
+        thr = float(threshold or 0.0)
+    except (TypeError, ValueError):
+        return SS_CONF_FAR
+    if thr <= 0:
+        return SS_CONF_FAR
+    ratio = conf / thr
+    return _lerp_color(SS_CONF_FAR, SS_CONF_NEAR, (ratio - 0.45) / 0.45)
 
 
 def _panel_height(n_bets: int) -> int:
@@ -269,9 +363,13 @@ def _result_tag(result: str | None) -> tuple[str, tuple]:
     """Etiqueta y color del resultado de una apuesta en la confirmación FT."""
     value = str(result or "").lower()
     if value in ("win", "hit"):
-        return "GANADA", SS_RESULT_WIN
+        return "GANADA", SS_CONF_BET
     if value in ("loss", "miss"):
-        return "PERDIDA", SS_RESULT_LOSS
+        return "PERDIDA", SS_CONF_FAR
+    if value == "would_win":
+        return "HUBIERA GANADO", SS_CONF_BET
+    if value == "would_loss":
+        return "HUBIERA PERDIDO", SS_CONF_FAR
     if value == "push":
         return "PUSH", COLOR_MUTED
     return "PENDIENTE", COLOR_MUTED
@@ -510,6 +608,27 @@ def _payout_detail(decimal, confidence, probability, result: str, is_result: boo
     )
 
 
+def _draw_side_icon(draw, x: float, y: float, is_home: bool, size: int = 28) -> float:
+    """
+    Dibuja el emoji del lado apostado (🏠 local / ✈️ visitante) en color.
+    Si el sistema no tiene fuente de emoji, cae a la palabra LOCAL/VISITANTE.
+    Devuelve el ancho consumido.
+    """
+    emoji = EMOJI_HOME if is_home else EMOJI_AWAY
+    font = _emoji_font(size)
+    if font is None:
+        label = "LOCAL" if is_home else "VISITANTE"
+        label_font = _font(size, True)
+        draw.text((x, y + 2), label, font=label_font, fill=COLOR_TEXT)
+        return _text_len(draw, label, label_font)
+    try:
+        draw.text((x, y), emoji, font=font, embedded_color=True)
+    except TypeError:
+        # Pillow antiguo sin embedded_color: se dibuja monocromo
+        draw.text((x, y), emoji, font=font, fill=COLOR_TEXT)
+    return size * 1.35
+
+
 def _draw_bet_panel(
     draw,
     x0: int,
@@ -524,12 +643,12 @@ def _draw_bet_panel(
     pad = 18
     accent = COLOR_ALERT if is_late else COLOR_ACCENT
     if is_result:
-        tags = [_result_tag(b.get("result"))[1] for b in bets if _is_real_bet(b)]
-        if tags and all(t == SS_RESULT_WIN for t in tags):
-            accent = SS_RESULT_WIN
-        elif tags and all(t == SS_RESULT_LOSS for t in tags):
-            accent = SS_RESULT_LOSS
-        elif any(t == SS_RESULT_LOSS for t in tags) and any(t == SS_RESULT_WIN for t in tags):
+        tags = [_result_tag(b.get("result"))[1] for b in bets if b.get("result")]
+        if tags and all(t == SS_CONF_BET for t in tags):
+            accent = SS_CONF_BET
+        elif tags and all(t == SS_CONF_FAR for t in tags):
+            accent = SS_CONF_FAR
+        elif any(t == SS_CONF_FAR for t in tags) and any(t == SS_CONF_BET for t in tags):
             accent = COLOR_ACCENT
         elif is_late:
             accent = COLOR_ALERT
@@ -558,59 +677,54 @@ def _draw_bet_panel(
 
     y = y0 + pad + 46
     for bet in bets:
-        signal = str(bet.get("signal") or "")
         is_real_bet = _is_real_bet(bet)
         is_home = bool(bet.get("is_home"))
-        side_color = COLOR_HOME if is_home else COLOR_AWAY
-        side_label = "LOCAL" if is_home else "VISITANTE"
         model = str(bet.get("model") or "?")
         conf = _conf_pct(bet.get("confidence"))
         team = str(bet.get("picked_team") or "")
+        threshold = bet.get("threshold")
+        if threshold is None:
+            threshold = _model_threshold(model, bet.get("inference_json"), bet.get("raw_payload"))
+        conf_color = _conf_color(bet.get("confidence"), threshold, is_real_bet)
 
         # Etiqueta de resultado (solo en las confirmaciones FT)
         tag_text, tag_color = _result_tag(bet.get("result")) if is_result else ("", COLOR_MUTED)
 
-        # Línea 1: modelo + confianza + lado + equipo (colores por tramos)
+        # 1) Palabra BET (verde) / NO BET (rojo)
         x = inner_x
-        head = f"{model}"
+        bet_font = _font(28, True)
+        bet_label = "BET" if is_real_bet else "NO BET"
+        draw.text((x, y + 1), bet_label, font=bet_font, fill=SS_BET if is_real_bet else SS_NO_BET)
+        x += _text_len(draw, bet_label, bet_font) + 18
+
+        # 2) Modelo + porcentaje coloreado por semáforo
+        model_font = _font(30, True)
+        draw.text((x, y), model, font=model_font, fill=COLOR_TEXT)
+        x += _text_len(draw, model, model_font) + 10
         if conf is not None:
-            head += f" {conf}%"
-        font1 = _font(30, True)
-        draw.text((x, y), head, font=font1, fill=COLOR_TEXT if is_real_bet else COLOR_MUTED)
-        x += _text_len(draw, head, font1) + 18
+            conf_text = f"{conf}%"
+            draw.text((x, y), conf_text, font=model_font, fill=conf_color)
+            x += _text_len(draw, conf_text, model_font) + 16
 
         tag_w = 0.0
         if tag_text:
-            font_tag = _font(24, True)
+            font_tag = _font(26, True)
             tag_w = _text_len(draw, tag_text, font_tag) + 16
-            draw.text(
-                (inner_x + max_w, y + 6), tag_text, font=font_tag, fill=tag_color, anchor="ra"
-            )
+            draw.text((inner_x + max_w, y + 6), tag_text, font=font_tag, fill=tag_color, anchor="ra")
 
-        if is_real_bet:
-            arrow = "->"
-            font_arrow = _font(28, True)
-            draw.text((x, y + 2), arrow, font=font_arrow, fill=COLOR_MUTED)
-            x += _text_len(draw, arrow, font_arrow) + 18
+        # 3) Flecha + emoji del lado (🏠/✈️) + equipo
+        arrow_font = _font(28, True)
+        draw.text((x, y + 2), "->", font=arrow_font, fill=COLOR_MUTED)
+        x += _text_len(draw, "->", arrow_font) + 14
 
-            label = f"{side_label} "
-            font2 = _font(28, True)
-            draw.text((x, y + 1), label, font=font2, fill=side_color)
-            x += _text_len(draw, label, font2)
+        side_w = _draw_side_icon(draw, x, y + 5, is_home, size=26)
+        x += side_w + 10
 
-            remaining = max(60.0, (inner_x + max_w) - x - tag_w)
-            team_font = _fit_font(draw, team, remaining, 28, bold=False)
-            draw.text((x, y + 1), team, font=team_font, fill=COLOR_TEXT)
-        else:
-            tag = "NO BET"
-            font_tag2 = _font(26, True)
-            draw.text((x, y + 2), tag, font=font_tag2, fill=COLOR_MUTED)
-            x += _text_len(draw, tag, font_tag2) + 16
-            remaining = max(60.0, (inner_x + max_w) - x - tag_w)
-            team_font = _fit_font(draw, team, remaining, 26, bold=False)
-            draw.text((x, y + 2), team, font=team_font, fill=COLOR_MUTED)
+        remaining = max(60.0, (inner_x + max_w) - x - tag_w)
+        team_font = _fit_font(draw, team, remaining, 28, bold=is_real_bet)
+        draw.text((x, y + 1), team, font=team_font, fill=COLOR_TEXT if is_real_bet else COLOR_MUTED)
 
-        # Línea 2: cuota + proyección/resultado, o confianza/probabilidad
+        # 4) Línea 2: cuota + proyección/resultado, o confianza/probabilidad
         y2 = y + line1_h
         if is_real_bet:
             detail = _payout_detail(
@@ -621,7 +735,7 @@ def _draw_bet_panel(
                 is_result,
             )
         else:
-            detail = "sin valor suficiente para operar"
+            detail = f"no operó (umbral {int(round(float(threshold) * 100))}%)"
 
         draw.text((inner_x, y2 + 2), detail, font=_font(22), fill=COLOR_MUTED)
         y = y2 + line2_h + gap
@@ -641,16 +755,19 @@ def build_q4_alert_image(
     q_key: str | None = None,
     scheduled_ts: int | None = None,
     is_result: bool = False,
+    include_chart: bool = True,
 ) -> bytes | None:
     """
-    Construye el JPEG fusionado (tarjeta + gráfica) y lo devuelve como bytes.
+    Construye el JPEG (tarjeta + gráfica opcional) y lo devuelve como bytes.
 
     `bets` es una lista de diccionarios con:
         model, signal, picked_team, is_home, confidence,
-        decimal_odds (opcional), probability (opcional), result (FT)
+        decimal_odds (opcional), probability (opcional), result (FT),
+        threshold (opcional; umbral para el semáforo del porcentaje)
 
     `is_result=True` dibuja el panel como confirmación de resultado FT
-    (título RESULTADO Q4 y etiqueta GANADA/PERDIDA por modelo).
+    (título RESULTADO Q4 y etiqueta GANADA/PERDIDA/HUBIERA ...).
+    `include_chart=False` deja solo la tarjeta (avisos de apuesta en vivo).
 
     Devuelve None si no hay datos suficientes o si falla el dibujo, para que el
     caller degrade a texto plano.
@@ -757,25 +874,28 @@ def build_q4_alert_image(
         cy += 20
         _draw_bet_panel(draw, PAD, cy, WIDTH - 2 * PAD, bets, is_late, has_real_bet, is_result)
 
-        # ── Gráfica de momentum debajo (estilo oficial SofaScore dark) ──
+        # ── Gráfica de momentum (solo cuando se pide; los avisos de apuesta en
+        #    vivo van sin gráfica, y las confirmaciones FT con el partido completo) ──
         graph_points = match_data.get("graph_points") or []
-        chart = momentum_chart(
-            graph_points,
-            start_label=hhmm,
-            period_label=_period_label(str(match.get("status_description") or ""), q_key),
-            current_minute=minute,
-            current_quarter=(
-                None
-                if status_type == "finished"
-                else _current_quarter(str(match.get("status_description") or ""), q_key)
-            ),
-            finished=(status_type == "finished"),
-            total_minutes=_total_minutes(match, score, graph_points),
-        )
+        chart = None
+        if include_chart:
+            chart = momentum_chart(
+                graph_points,
+                start_label=hhmm,
+                period_label=_period_label(str(match.get("status_description") or ""), q_key),
+                current_minute=minute,
+                current_quarter=(
+                    None
+                    if status_type == "finished"
+                    else _current_quarter(str(match.get("status_description") or ""), q_key)
+                ),
+                finished=(status_type == "finished"),
+                total_minutes=_total_minutes(match, score, graph_points),
+            )
         if chart is None:
             out = io.BytesIO()
             card.save(out, format="JPEG", quality=JPEG_QUALITY)
-            log_debug("TELEGRAM", "[IMG] Tarjeta Q4 generada sin gráfica (sin momentum)")
+            log_debug("TELEGRAM", "[IMG] Tarjeta Q4 generada sin gráfica")
             return out.getvalue()
 
         graph = chart.convert("RGB")
