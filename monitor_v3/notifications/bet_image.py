@@ -884,8 +884,8 @@ def _draw_bet_panel(
             tag_w = _text_len(draw, tag_text, font_tag) + 16
             draw.text((inner_x + max_w, y + 6), tag_text, font=font_tag, fill=tag_color, anchor="ra")
 
-        # 3) Flecha gruesa + emoji del lado (🏠/✈️) + equipo
-        x += _draw_arrow(draw, x, y + 19, 26, COLOR_MUTED) + 14
+        # 3) Flecha gruesa destacada + emoji del lado (🏠/✈️) + equipo
+        x += _draw_arrow(draw, x, y + 19, 28, COLOR_ACCENT, 5) + 14
 
         side_w = _draw_side_icon(draw, x, y + 5, is_home, size=26)
         x += side_w + 10
