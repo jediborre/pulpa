@@ -150,7 +150,8 @@ menu.bat
 |:---|:---:|---|
 | **[1] Operacion en Vivo** | `1`-`11` | Monitor V3 + Bot (`1`), **detener todo** (`2`), Bot V3 solo (`3`), Monitor V2 Chrome (`4`), Monitor V2 CDP (`5`), Monitor V1 (`6`), API FastAPI (`7`), Dashboard (`8`) y All-in-One con V3/V2/V1 (`9`-`11`). |
 | **[2] Analisis y Consenso** | `12`-`17` | Estadisticas / Fusion Consensus / Excel (`12`), reportes ROI M27_V3 (`13`), M27_V1 (`14`-`15`) y V6.2 / V6.3 (`16`-`17`). |
-| **[3] Ingesta y Backfill** | `18`-`29` | Fechas faltantes (`18`), backfill general (`19`), H2H masivo (`20`), detalles (`21`), team_strength (`22`), comparador (`23`) y Smart Backfill con sus fases (`24`-`29`). |
-| **[4] Modelos ML** | `30`-`35` | Entrenamiento V2 (`30`), V6 (`31`), ambos (`32`), M27_V1 (`33`), V6.2 (`34`-`35`). |
-| **[5] Mantenimiento** | `36`-`39` | Menu Obscura (`36`), instalador de dependencias (`37`), token JWT por ADB (`38`) y reinstalacion de SofaScore (`39`). |
+| **[3] Ingesta y Backfill** | `18`-`23` | Fechas faltantes (`18`), backfill general (`19`), H2H masivo (`20`), detalles (`21`), team_strength (`22`) y comparador de scrapers (`23`). |
+| **[4] Smart Backfill Historico** | `24`-`29` | Submenu interactivo (`24`) y fases 2023-2025 / NBA 2018-2023 / Genesis 2015-2018 (`25`-`27`), descarga personalizada (`28`) y reanudar pausada (`29`). |
+| **[5] Modelos ML** | `30`-`35` | Entrenamiento V2 (`30`), V6 (`31`), ambos (`32`), M27_V1 (`33`), V6.2 (`34`-`35`). |
+| **[6] Mantenimiento** | `36`-`39` | Menu Obscura (`36`), instalador de dependencias (`37`), token JWT por ADB (`38`) y reinstalacion de SofaScore (`39`). |
 

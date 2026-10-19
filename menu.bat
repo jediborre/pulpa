@@ -93,6 +93,8 @@ echo   20) Backfill masivo H2H (SofaScore - priorizado por ligas)
 echo   21) Rellenar datos de detalle faltantes (lineups, stats, odds, pbp, team_strength)
 echo   22) Backfill solo team_strength (fortaleza de equipos)
 echo   23) Comparar scraper tradicional vs obscura
+echo.
+echo  [4] SMART BACKFILL HISTORICO (2015-2026)
 echo   24) Submenu Smart Backfill (Modo interactivo y fases guiadas)
 echo   25) Descarga Fase 1: 2023-2025 (Full ML para m27_v4 - Todos los clusters)
 echo   26) Descarga Fase 2: NBA 2018-2023 (Para m34_nba_12m)
@@ -100,7 +102,7 @@ echo   27) Descarga Fase 3: Genesis Elo y H2H 2015-2018 (Memoria 10 Anos)
 echo   28) Descarga Personalizada por Cluster, Modo y Rango de Fechas
 echo   29) Reanudar Ultima Descarga Pausada (--resume)
 echo.
-echo  [4] MODELOS MACHINE LEARNING (ENTRENAMIENTO Y REPORTES)
+echo  [5] MODELOS MACHINE LEARNING (ENTRENAMIENTO Y REPORTES)
 echo   30) Entrenar V2 (clasificador base)
 echo   31) Entrenar V6 (clasificador base)
 echo   32) Entrenar V2 + V6 (en orden)
@@ -108,7 +110,7 @@ echo   33) M27_V1: Entrenar modelo
 echo   34) V6.2: Entrenar modelo
 echo   35) V6.2: Entrenar + Reporte completo
 echo.
-echo  [5] MANTENIMIENTO, OBSCURA Y SISTEMA
+echo  [6] MANTENIMIENTO, OBSCURA Y SISTEMA
 echo   36) Menu Obscura (Iniciar / Apagar / Instalar / Estado)
 echo   37) Instalar / Reparar dependencias (.venv, pip, playwright, npm)
 echo   38) Sincronizar Token JWT desde Android (ADB Directo / USB)
@@ -157,6 +159,8 @@ if /i "%OPT%"=="backfill_details" goto BACKFILL_DETAILS
 if "%OPT%"=="22" goto BACKFILL_TEAM_STRENGTH
 if /i "%OPT%"=="backfill_team_strength" goto BACKFILL_TEAM_STRENGTH
 if "%OPT%"=="23" goto COMPARE_SCRAPER
+
+:: [4] Smart Backfill historico
 if "%OPT%"=="24" goto MENU_SMART_BACKFILL
 if /i "%OPT%"=="smart_backfill" goto MENU_SMART_BACKFILL
 if /i "%OPT%"=="backfill_smart" goto MENU_SMART_BACKFILL
@@ -167,7 +171,7 @@ if "%OPT%"=="28" goto RUN_CUSTOM_BACKFILL
 if "%OPT%"=="29" goto RUN_RESUME_BACKFILL
 if /i "%OPT%"=="resume" goto RUN_RESUME_BACKFILL
 
-:: [4] Modelos Machine Learning
+:: [5] Modelos Machine Learning
 if "%OPT%"=="30" goto TRAIN_V2
 if "%OPT%"=="31" goto TRAIN_V6
 if "%OPT%"=="32" goto TRAIN_ALL
@@ -175,7 +179,7 @@ if "%OPT%"=="33" goto TRAIN_M27_V1
 if "%OPT%"=="34" goto TRAIN_V62_ONLY
 if "%OPT%"=="35" goto TRAIN_AND_REPORT_V62
 
-:: [5] Mantenimiento, Obscura y sistema
+:: [6] Mantenimiento, Obscura y sistema
 if "%OPT%"=="36" goto MENU_OBSCURA
 if "%OPT%"=="37" goto INSTALAR
 if "%OPT%"=="99" goto INSTALAR
