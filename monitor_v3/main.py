@@ -145,6 +145,12 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
         
         if gp_total < FINAL_FETCH_MIN_GP:
             if gp_total == 0:
+                # Sin gráfica no se guarda el histórico, pero SÍ los marcadores
+                # por cuarto: son imprescindibles para liquidar las apuestas Q4.
+                quarters_no_graph = (data.get("score") or {}).get("quarters", {})
+                if quarters_no_graph:
+                    save_quarter_scores(match_id, quarters_no_graph)
+                    reconcile_pending_results()
                 log_info("DESCARGA", f"[FT] Descartado (sin gráfica) | {home} vs {away}")
                 update_schedule_status(match_id, status="done", skip_reason="no_graph")
                 return
