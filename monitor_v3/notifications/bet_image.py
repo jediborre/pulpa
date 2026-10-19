@@ -205,6 +205,26 @@ def _conf_color(confidence: float | None, threshold: float, is_bet: bool) -> tup
     return _lerp_color(SS_CONF_FAR, SS_CONF_NEAR, (ratio - 0.45) / 0.45)
 
 
+def _draw_arrow(draw, x: float, cy: float, length: float = 26, color: tuple = COLOR_MUTED, thickness: int = 4) -> float:
+    """
+    Dibuja una flecha horizontal gruesa (línea + cabeza triangular) en lugar del
+    texto "->": se ve más sólida y no depende de los glifos de la fuente.
+    Devuelve el ancho consumido.
+    """
+    head = 9.0
+    body_end = x + length - head
+    draw.line([(x, cy), (body_end, cy)], fill=color, width=thickness)
+    draw.polygon(
+        [
+            (body_end - 1, cy - head * 0.62),
+            (body_end - 1, cy + head * 0.62),
+            (x + length, cy),
+        ],
+        fill=color,
+    )
+    return length
+
+
 def _panel_height(n_bets: int) -> int:
     """Altura total de la banda de apuesta (misma fórmula que el dibujo)."""
     pad, line1_h, line2_h, gap = 18, 40, 30, 10
@@ -864,10 +884,8 @@ def _draw_bet_panel(
             tag_w = _text_len(draw, tag_text, font_tag) + 16
             draw.text((inner_x + max_w, y + 6), tag_text, font=font_tag, fill=tag_color, anchor="ra")
 
-        # 3) Flecha + emoji del lado (🏠/✈️) + equipo
-        arrow_font = _font(28, True)
-        draw.text((x, y + 2), "->", font=arrow_font, fill=COLOR_MUTED)
-        x += _text_len(draw, "->", arrow_font) + 14
+        # 3) Flecha gruesa + emoji del lado (🏠/✈️) + equipo
+        x += _draw_arrow(draw, x, y + 19, 26, COLOR_MUTED) + 14
 
         side_w = _draw_side_icon(draw, x, y + 5, is_home, size=26)
         x += side_w + 10
