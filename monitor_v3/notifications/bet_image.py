@@ -705,6 +705,7 @@ def _draw_bet_panel(
     is_late: bool,
     has_real_bet: bool = True,
     is_result: bool = False,
+    market_score: tuple[object, object, str] | None = None,
 ) -> int:
     """Dibuja la banda de la apuesta/resultado. Devuelve la Y inferior del panel."""
     pad = 18
@@ -741,6 +742,26 @@ def _draw_bet_panel(
     max_w = w - 2 * pad - 20
 
     draw.text((inner_x, y0 + pad), title, font=_font(27, True), fill=accent)
+
+    # Marcador del mercado (parcial del cuarto objetivo) a la derecha del título,
+    # coloreado por quién va ganando.
+    if market_score:
+        s_home, s_away, s_label = market_score
+        if s_home is not None and s_away is not None:
+            h_col, a_col = _score_colors(s_home, s_away)
+            f_label = _font(21, True)
+            f_num = _font(26, True)
+            pieces = [
+                (f"{s_label} ", COLOR_MUTED, f_label),
+                (str(s_home), h_col, f_num),
+                ("-", COLOR_MUTED, f_num),
+                (str(s_away), a_col, f_num),
+            ]
+            total_w = sum(_text_len(draw, text, font) for text, _color, font in pieces)
+            xx = x0 + w - pad - total_w
+            for text, color, font in pieces:
+                draw.text((xx, y0 + pad + 2), text, font=font, fill=color)
+                xx += _text_len(draw, text, font)
 
     y = y0 + pad + 46
     for bet in bets:
@@ -984,7 +1005,19 @@ def build_q4_alert_image(
             cy += 34
 
         cy += 20
-        _draw_bet_panel(draw, PAD, cy, WIDTH - 2 * PAD, bets, is_late, has_real_bet, is_result)
+        # Marcador del mercado: parcial del cuarto objetivo (o el global si falta)
+        target_quarter = q_key or "Q4"
+        q_payload = (score.get("quarters") or {}).get(target_quarter) or {}
+        if q_payload.get("home") is not None and q_payload.get("away") is not None:
+            market_score = (q_payload.get("home"), q_payload.get("away"), target_quarter)
+        elif home_score is not None and away_score is not None:
+            market_score = (home_score, away_score, "MARCADOR")
+        else:
+            market_score = None
+
+        _draw_bet_panel(
+            draw, PAD, cy, WIDTH - 2 * PAD, bets, is_late, has_real_bet, is_result, market_score
+        )
 
         # ── Gráfica de momentum (solo cuando se pide; los avisos de apuesta en
         #    vivo van sin gráfica, y las confirmaciones FT con el partido completo) ──

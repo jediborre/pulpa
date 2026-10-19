@@ -27,7 +27,7 @@ La imagen sustituye al mensaje de texto (se envía como **foto con caption**); e
 │ 00:46 · FT · MIN~40 · MARCADOR 86-76                          │  FT verde · 86 verde · 76 rojo
 │ Q1 29-18   Q2 24-19   Q3 12-22   Q4 21-17                     │  Q cian · ganador verde · perdedor rojo
 │ ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓ │
-│ ┃ RESULTADO Q4                        (o APUESTA Q4)        ┃ │  barra de acento lateral
+│ ┃ RESULTADO Q4                          Q4 21-17 (mercado)  ┃ │  barra de acento lateral
 │ ┃ BET     m27_v5_3 78%  ->  🏠 Deportivo Viedma    GANADA   ┃ │
 │ ┃ Cuota 1.85 (-118) · $500 -> $925.00 (+$425.00)            ┃ │
 │ ┃ NO BET  m27_v5_2 51%  ->  ✈️ PFC Básquet    HUBIERA GANADO┃ │
