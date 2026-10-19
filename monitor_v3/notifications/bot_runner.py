@@ -278,45 +278,76 @@ def _day_caption(date_str: str, stats: dict) -> str:
     return "\n".join(lines)
 
 
-def _match_caption(logs: list[dict]) -> str:
-    """Caption del detalle de un partido (una línea por modelo)."""
+def _match_caption(logs: list[dict], data: dict | None = None) -> str:
+    """
+    Caption del detalle de un partido, con el mismo formato de los avisos FT:
+
+        #9 REG BBC vs Foxes Divas
+        FIBA ... Group A
+        Lu Oct 19, 04:30 am | Q4 19 - 18
+
+        ➖ m27_v5_2 72% [NO BET (<72%)] → 🏠REG BBC
+        ✅ m27_v5_3 75% → 🏠REG BBC
+    """
     if not logs:
         return "Sin datos del partido."
+
+    from monitor_v3.notifications.telegram_bot import _format_utc6_datetime, _threshold_pct
+
     first = logs[0]
-    seq = f"#{first['daily_seq']} · " if first.get("daily_seq") else ""
+    seq = f"#{first['daily_seq']} " if first.get("daily_seq") else ""
     home = html.escape(str(first.get("home_team") or "?"), quote=False)
     away = html.escape(str(first.get("away_team") or "?"), quote=False)
     league = html.escape(str(first.get("league") or ""), quote=False)
-    ts = first.get("scheduled_utc_ts")
-    hhmm = ""
-    if ts:
-        tz = timezone(timedelta(hours=UTC_OFFSET_HOURS))
-        hhmm = datetime.fromtimestamp(int(ts), tz=tz).strftime("%H:%M")
 
-    lines = [f"🎯 <b>{seq}{home} vs {away}</b>"]
+    lines = [f"{seq}{home} vs {away}"]
     if league:
-        lines.append(f"<i>{league}</i>")
-    if hhmm:
-        lines.append(hhmm)
+        lines.append(league)
+
+    # Fecha/hora + parcial del cuarto objetivo (mercado de la apuesta)
+    when = ""
+    ts = first.get("scheduled_utc_ts")
+    if ts:
+        when = _format_utc6_datetime(int(ts))
+    quarter = f"Q{first.get('target_quarter') or 4}"
+    q_data = ((data or {}).get("score") or {}).get("quarters", {}).get(quarter) or {}
+    partial = ""
+    if q_data.get("home") is not None and q_data.get("away") is not None:
+        partial = f"{quarter} {q_data['home']} - {q_data['away']}"
+    detail = " | ".join(part for part in (when, partial) if part)
+    if detail:
+        lines.append(detail)
     lines.append("")
+
     for log in logs:
         sig = str(log.get("signal_type") or "")
+        is_real = "BET" in sig and "NO_BET" not in sig
         model = html.escape(str(log.get("model_version") or "?"), quote=False)
         conf = log.get("confidence") or 0.0
         if conf > 1.0:
             conf = conf / 100.0
         is_home = str(log.get("picked_side") or "").upper() == "HOME"
         side = "🏠" if is_home else "✈️"
+        team = home if is_home else away
+
         res = str(log.get("result") or "").lower()
-        if "NO_BET" in sig or "BET" not in sig:
-            tag = {
-                "would_win": " · HUBIERA GANADO",
-                "would_loss": " · HUBIERA PERDIDO",
-            }.get(res, "")
-            lines.append(f"⚪️ {model} {int(round(conf * 100))}% → {side}{tag}")
+        if res in ("win", "hit"):
+            result_emoji = "✅"
+        elif res in ("loss", "miss"):
+            result_emoji = "❌"
+        elif res in ("push", "void", ""):
+            result_emoji = "➖"
         else:
-            emoji = "✅" if res in ("win", "hit") else ("❌" if res in ("loss", "miss") else "⏳")
-            lines.append(f"{emoji} {model} {int(round(conf * 100))}% → {side}")
+            result_emoji = "⏳"
+
+        if is_real:
+            lines.append(f"{result_emoji} {model} {int(round(conf * 100))}% → {side}{team}")
+        else:
+            threshold = _threshold_pct(model, log)
+            lines.append(
+                f"{result_emoji} {model} {int(round(conf * 100))}% "
+                f"[NO BET (&lt;{threshold}%)] → {side}{team}"
+            )
     return "\n".join(lines)
 
 
@@ -454,7 +485,6 @@ async def _send_day_view(message, date_str: str) -> None:
 async def _send_match_view(message, match_id: str) -> None:
     """Detalle del partido: imagen generada (FT con gráfica) + botón de volver."""
     logs = await asyncio.to_thread(fetch_match_logs, match_id)
-    caption = _match_caption(logs)
 
     # El payload se descarga en el loop del bot (el cliente móvil y su pool de
     # tokens usan primitivas asyncio y no deben moverse a otro event loop).
@@ -467,6 +497,7 @@ async def _send_match_view(message, match_id: str) -> None:
         except Exception as e:  # noqa: BLE001
             log_warning("TELEGRAM", f"[BOT_V3] Sin payload de {match_id}: {type(e).__name__}: {e}")
 
+    caption = _match_caption(logs, data)
     photo = await asyncio.to_thread(_build_detail_image, data, logs) if logs else None
 
     date_str = str((logs[0].get("event_date") if logs else "") or "")[:10]

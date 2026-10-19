@@ -1380,7 +1380,7 @@ def _format_utc6_datetime(scheduled_ts: int) -> str:
             hour_12 = 12
         am_pm = "am" if dt.hour < 12 else "pm"
         
-        return f"{day_abbrev} {month_abbrev} {day_num}, {hour_12}:{dt.minute:02d} {am_pm}"
+        return f"{day_abbrev} {month_abbrev} {day_num}, {hour_12:02d}:{dt.minute:02d} {am_pm}"
     except Exception:
         return "Desconocida"
 
