@@ -54,9 +54,16 @@ def init_tables() -> None:
                     final_fetched INTEGER DEFAULT 0,
                     final_fetch_at TEXT DEFAULT '',
                     skip_reason TEXT DEFAULT '',
+                    daily_seq INTEGER,
                     updated_at TEXT
                 );
             """)
+            # Migración: numeración diaria de partidos (1..N por event_date)
+            existing_cols = {
+                row["name"] for row in conn.execute("PRAGMA table_info(bet_monitor_schedule_v3)").fetchall()
+            }
+            if "daily_seq" not in existing_cols:
+                conn.execute("ALTER TABLE bet_monitor_schedule_v3 ADD COLUMN daily_seq INTEGER;")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_schedule_date_status_v3 ON bet_monitor_schedule_v3 (event_date, status);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_schedule_utc_ts_v3 ON bet_monitor_schedule_v3 (scheduled_utc_ts);")
 
@@ -135,6 +142,56 @@ def init_tables() -> None:
                     ot_away INTEGER
                 );
             """)
+
+    # Numeración diaria (1..N por fecha) para las filas que aún no la tengan.
+    # Se ejecuta fuera de la transacción anterior para no bloquear la conexión.
+    backfill_daily_seq()
+
+
+def backfill_daily_seq() -> None:
+    """
+    Asigna `daily_seq` (1..N dentro de cada `event_date`) a los partidos del
+    itinerario, en orden cronológico. Idempotente: solo procesa fechas que
+    tengan alguna fila sin numerar.
+    """
+    try:
+        with get_db_connection() as conn:
+            with conn:
+                dates = [
+                    row["event_date"]
+                    for row in conn.execute(
+                        "SELECT DISTINCT event_date FROM bet_monitor_schedule_v3 "
+                        "WHERE daily_seq IS NULL AND event_date IS NOT NULL AND event_date != ''"
+                    ).fetchall()
+                ]
+                for date in dates:
+                    rows = conn.execute(
+                        "SELECT match_id FROM bet_monitor_schedule_v3 "
+                        "WHERE event_date = ? ORDER BY scheduled_utc_ts, match_id",
+                        (date,),
+                    ).fetchall()
+                    for index, row in enumerate(rows, start=1):
+                        conn.execute(
+                            "UPDATE bet_monitor_schedule_v3 SET daily_seq = ? WHERE match_id = ?",
+                            (index, row["match_id"]),
+                        )
+    except Exception as e:
+        log_error("DATABASE", f"Error asignando numeración diaria: {e}")
+
+
+def get_daily_seq(match_id: str) -> int | None:
+    """Número del partido dentro de su día (1..N), o None si no está numerado."""
+    try:
+        with get_db_connection() as conn:
+            row = conn.execute(
+                "SELECT daily_seq FROM bet_monitor_schedule_v3 WHERE match_id = ?",
+                (str(match_id),),
+            ).fetchone()
+        if row and row["daily_seq"] is not None:
+            return int(row["daily_seq"])
+    except Exception:
+        pass
+    return None
 
 def ensure_eval_match_results_columns(conn: sqlite3.Connection, model_versions: list[str]) -> None:
     """
@@ -224,13 +281,17 @@ def save_schedule_matches(matches: list[dict]) -> None:
                         match_id, home_team, away_team, league, event_date,
                         scheduled_utc_ts, scheduled_utc, status_type, status,
                         q4_checked, q4_signal, q4_notified, q4_model,
-                        final_fetched, final_fetch_at, skip_reason, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, 'UNAVAILABLE', 0, '', 0, '', '', ?)
+                        final_fetched, final_fetch_at, skip_reason, daily_seq, updated_at
+                    ) VALUES (
+                        ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, 'UNAVAILABLE', 0, '', 0, '', '',
+                        (SELECT COALESCE(MAX(daily_seq), 0) + 1 FROM bet_monitor_schedule_v3 WHERE event_date = ?),
+                        ?
+                    )
                 """, (
                     str(m["match_id"]), m.get("home_team", ""), m.get("away_team", ""),
                     m.get("league", ""), m.get("event_date", ""),
                     m.get("scheduled_utc_ts", 0), m.get("scheduled_utc", ""),
-                    m.get("status_type", ""), now
+                    m.get("status_type", ""), m.get("event_date", ""), now
                 ))
 
 def update_schedule_status(match_id: str, status: str, skip_reason: str = "") -> None:

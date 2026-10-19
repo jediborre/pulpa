@@ -819,6 +819,7 @@ def build_q4_alert_image(
     scheduled_ts: int | None = None,
     is_result: bool = False,
     include_chart: bool = True,
+    seq: int | None = None,
 ) -> bytes | None:
     """
     Construye el JPEG (tarjeta + gráfica opcional) y lo devuelve como bytes.
@@ -827,6 +828,9 @@ def build_q4_alert_image(
         model, signal, picked_team, is_home, confidence,
         decimal_odds (opcional), probability (opcional), result (FT),
         threshold (opcional; umbral para el semáforo del porcentaje)
+
+    `seq` es el número del partido dentro del día (1..N) y se dibuja como
+    distintivo `#N` delante de los equipos.
 
     `is_result=True` dibuja el panel como confirmación de resultado FT
     (título RESULTADO Q4 y etiqueta GANADA/PERDIDA/HUBIERA ...).
@@ -892,7 +896,11 @@ def build_q4_alert_image(
 
         has_head = bool(country or league)
         font_league = _font(22, True)
-        font_teams, font_vs = _fit_teams(probe_draw, home, away, WIDTH - 2 * PAD)
+        # Distintivo del número del partido (#N) antes de los equipos
+        badge_text = f"#{seq}" if seq else ""
+        font_badge = _font(30, True)
+        badge_w = (_text_len(probe_draw, badge_text, font_badge) + 16) if badge_text else 0.0
+        font_teams, font_vs = _fit_teams(probe_draw, home, away, WIDTH - 2 * PAD - badge_w)
         font_meta = _font(24)
         # La línea de cuartos se ajusta midiendo su composición real (etiqueta + marcadores)
         font_quarters = None
@@ -950,6 +958,9 @@ def build_q4_alert_image(
         away_font = font_teams if (away_wins or not home_wins) else font_teams_regular
 
         x = PAD
+        if badge_text:
+            draw.text((x, cy + 4), badge_text, font=font_badge, fill=COLOR_ACCENT)
+            x += _text_len(draw, badge_text, font_badge) + 16
         draw.text((x, cy), home, font=home_font, fill=COLOR_HOME)
         x += _text_len(draw, home, font_teams) + 16
         draw.text((x, cy + 8), "vs", font=font_vs, fill=COLOR_MUTED)

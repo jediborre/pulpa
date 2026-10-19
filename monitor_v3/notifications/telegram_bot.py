@@ -288,22 +288,45 @@ def _threshold_pct(model: str, payload: dict | None) -> int:
     return int(round(float(threshold) * 100))
 
 
-def _hypothetical_result(is_home: bool, match_data: dict | None) -> str | None:
+def _hypothetical_result(
+    is_home: bool,
+    match_data: dict | None = None,
+    *,
+    q_home=None,
+    q_away=None,
+    quarter: str | None = None,
+) -> str | None:
     """
-    Resultado que HUBIERA tenido el pick de un modelo que no apostó, según el
-    marcador final del partido. None si hay empate o no hay marcador.
+    Resultado que HUBIERA tenido el pick de un modelo que no apostó.
+
+    IMPORTANTE: las apuestas de los modelos son al **cuarto objetivo** (Q4), y
+    la liquidación real (`reconcile_pending_results`) compara
+    `quarter_scores_v2.q4_home` vs `q4_away`, NO el marcador final del partido.
+    Por eso aquí se usa el parcial del cuarto (q_home/q_away o
+    `score.quarters[q_key]`) y nunca los totales del partido.
+
+    Devuelve "would_win"/"would_loss", o None si hay empate o faltan datos.
     """
-    score = (match_data or {}).get("score") or {}
+    home, away = q_home, q_away
+    if home is None or away is None:
+        quarters = ((match_data or {}).get("score") or {}).get("quarters") or {}
+        data = quarters.get(quarter or "Q4") or {}
+        if data.get("home") is not None:
+            home, away = data.get("home"), data.get("away")
     try:
-        home = float(score.get("home"))
-        away = float(score.get("away"))
+        home = float(home)
+        away = float(away)
     except (TypeError, ValueError):
         return None
     if home == away:
         return None
-    home_won = home > away
-    won = home_won if is_home else not home_won
+    won = (home > away) if is_home else (away > home)
     return "would_win" if won else "would_loss"
+
+
+def _quarter_of_log(log: dict) -> str:
+    """Etiqueta del cuarto objetivo del log (Q4 por defecto)."""
+    return f"Q{log.get('target_quarter') or 4}"
 
 
 def _inference_json(log: dict) -> dict | None:
@@ -317,6 +340,18 @@ def _inference_json(log: dict) -> dict | None:
     return value if isinstance(value, dict) else None
 
 
+def _match_seq(match_id: str | None) -> int | None:
+    """Número del partido dentro del día (1..N) para identificarlo en los avisos."""
+    if not match_id:
+        return None
+    try:
+        from monitor_v3.database.repository import get_daily_seq
+
+        return get_daily_seq(str(match_id))
+    except Exception:
+        return None
+
+
 async def _send_bet_photo(
     text: str,
     bets: list[dict],
@@ -328,6 +363,7 @@ async def _send_bet_photo(
     scheduled_ts: int | None = None,
     is_result: bool = False,
     include_chart: bool = True,
+    seq: int | None = None,
 ) -> list[dict] | None:
     """
     Intenta enviar el aviso como imagen (tarjeta + gráfica opcional).
@@ -345,6 +381,7 @@ async def _send_bet_photo(
             scheduled_ts=scheduled_ts,
             is_result=is_result,
             include_chart=include_chart,
+            seq=seq,
         )
     except Exception as e:  # noqa: BLE001
         log_warning("TELEGRAM", f"[IMG] Fallo generando tarjeta Q4 ({type(e).__name__}: {e})")
@@ -447,16 +484,18 @@ def _format_telegram_details(
     q_key: str | None,
     q_home: int | None,
     q_away: int | None,
-    is_final: bool = False
+    is_final: bool = False,
+    seq: int | None = None,
 ) -> str:
     """Format the multiline detailed match info block for Telegram."""
     details = []
     
-    # Line 2: {home} vs {away}
+    # Line 2: [{n}] {home} vs {away}  (n = número del partido dentro del día)
     if home_team and away_team:
         clean_home = html.escape(str(home_team), quote=False)
         clean_away = html.escape(str(away_team), quote=False)
-        details.append(f"{clean_home} vs {clean_away}")
+        prefix = f"<b>#{seq}</b> · " if seq else ""
+        details.append(f"{prefix}{clean_home} vs {clean_away}")
         
     # Line 3: {league} (raw string, no prefix)
     if league:
@@ -502,8 +541,9 @@ async def send_bet_alert(
     Retorna el primer resultado de la lista para compatibilidad con el caller.
     """
     base_text = format_bet_message(model, picked_team, is_home, signal, confidence=confidence)
+    seq = _match_seq(match_id)
     text = _format_telegram_details(
-        base_text, home_team, away_team, league, scheduled_ts, minute, q_key, q_home, q_away
+        base_text, home_team, away_team, league, scheduled_ts, minute, q_key, q_home, q_away, seq=seq
     )
 
     match_url = None
@@ -531,6 +571,7 @@ async def send_bet_alert(
         q_key=q_key,
         scheduled_ts=scheduled_ts,
         include_chart=False,
+        seq=seq,
     )
     if results is None:
         # Sin imagen (o todos los envíos de imagen fallaron): aviso en texto plano
@@ -625,8 +666,9 @@ async def send_combined_bet_alert(
     Despacha una alerta de apuesta combinada en vivo a todos los suscriptores.
     """
     base_text = format_combined_bet_message(predictions, home_team, away_team)
+    seq = _match_seq(match_id)
     text = _format_telegram_details(
-        base_text, home_team, away_team, league, scheduled_ts, minute, q_key, q_home, q_away
+        base_text, home_team, away_team, league, scheduled_ts, minute, q_key, q_home, q_away, seq=seq
     )
     
     match_url = None
@@ -666,6 +708,7 @@ async def send_combined_bet_alert(
         q_key=q_key,
         scheduled_ts=scheduled_ts,
         include_chart=False,
+        seq=seq,
     )
     if results is None:
         # Sin imagen (o todos los envíos de imagen fallaron): aviso en texto plano
@@ -791,8 +834,9 @@ async def send_combined_final_confirmation(
     Consolida la verificación final del partido para múltiples modelos en un solo mensaje.
     """
     base_text = format_combined_final_message(logs, home_team, away_team)
+    seq = _match_seq(match_id)
     text = _format_telegram_details(
-        base_text, home_team, away_team, league, scheduled_ts, minute, q_key, q_home, q_away, is_final=True
+        base_text, home_team, away_team, league, scheduled_ts, minute, q_key, q_home, q_away, is_final=True, seq=seq
     )
             
     match_url = None
@@ -806,8 +850,17 @@ async def send_combined_final_confirmation(
         is_home = str(log.get("picked_side") or "").upper() == "HOME"
         result = log.get("result")
         if not is_real:
-            # El modelo no apostó: se muestra qué HUBIERA pasado con su pick.
-            result = _hypothetical_result(is_home, match_data) or result
+            # El modelo no apostó: se muestra qué HUBIERA pasado con su pick
+            # en el PARCIAL DEL CUARTO objetivo (mercado real de la apuesta).
+            quarter = _quarter_of_log(log)
+            qdata = ((match_data or {}).get("score") or {}).get("quarters", {}).get(quarter) or {}
+            result = _hypothetical_result(
+                is_home,
+                match_data,
+                q_home=qdata.get("home") if qdata.get("home") is not None else q_home,
+                q_away=qdata.get("away") if qdata.get("away") is not None else q_away,
+                quarter=quarter,
+            ) or result
         bets.append(
             {
                 "model": log.get("model_version"),
@@ -830,6 +883,7 @@ async def send_combined_final_confirmation(
         scheduled_ts=scheduled_ts,
         is_result=True,
         include_chart=True,
+        seq=seq,
     )
     if results is None:
         results = await broadcast_message(text, signal_type_filter="bet", match_url=match_url)
@@ -882,8 +936,10 @@ async def send_final_confirmation(
     
     base_text = f"{title}\n{model_line}"
     
+    seq = _match_seq(match_id)
     text = _format_telegram_details(
-        base_text, home_team, away_team, league, scheduled_ts, minute, q_key, q_home, q_away, is_final=True
+        base_text, home_team, away_team, league, scheduled_ts, minute, q_key, q_home, q_away,
+        is_final=True, seq=seq,
     )
 
     match_url = None
@@ -900,7 +956,10 @@ async def send_final_confirmation(
             "result": (
                 outcome
                 if _is_real_bet_signal(signal)
-                else (_hypothetical_result(is_home, match_data) or outcome)
+                else (
+                    _hypothetical_result(is_home, match_data, q_home=q_home, q_away=q_away, quarter=q_key)
+                    or outcome
+                )
             ),
             "decimal_odds": _decimal_odds_for_side(match_data, is_home),
         }
@@ -915,6 +974,7 @@ async def send_final_confirmation(
         scheduled_ts=scheduled_ts,
         is_result=True,
         include_chart=True,
+        seq=seq,
     )
     if results is None:
         results = await broadcast_message(text, signal_type_filter="bet", match_url=match_url)

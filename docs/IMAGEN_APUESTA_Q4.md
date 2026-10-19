@@ -22,7 +22,7 @@ La imagen sustituye al mensaje de texto (se envía como **foto con caption**); e
 ```text
 ┌─ 1080 px ─────────────────────────────────────────────────────┐
 │ ARGENTINA | LIGA ARGENTINA, CONFERENCE SOUTH                  │  país gris · liga cian
-│ Deportivo Viedma  vs  PFC Básquet                             │  local verde · visitante violeta
+│ #12  Deportivo Viedma  vs  PFC Básquet                        │  nº del día · local verde · visitante violeta
 │                                                               │  (ganador en negrita)
 │ 00:46 · FT · MIN~40 · MARCADOR 86-76                          │  FT verde · 86 verde · 76 rojo
 │ Q1 29-18   Q2 24-19   Q3 12-22   Q4 21-17                     │  Q cian · ganador verde · perdedor rojo
@@ -130,7 +130,10 @@ Emoji en **color real** con `seguiemj.ttf` (`embedded_color=True`): 🏠 local, 
 | Push | `PUSH` | gris |
 | Otro | `PENDIENTE` | gris |
 
-El resultado hipotético se calcula con el **marcador final** del payload FT (`_hypothetical_result()`); se omite si hay empate o falta marcador. La **barra de acento** del panel resume el conjunto: verde si todo ganó, roja si todo perdió, cian si está mezclado.
+El resultado hipotético se calcula con el **parcial del cuarto objetivo** (Q4 por defecto), que es el mercado real de la apuesta: `reconcile_pending_results()` liquida comparando `quarter_scores_v2.q4_home` vs `q4_away`, **no** el marcador final del partido. Por eso un modelo que pickeó al local puede mostrar `HUBIERA PERDIDO` aunque el local haya ganado el partido, si perdió el Q4. Se omite la hipótesis si el cuarto está empatado o no hay datos del cuarto. La **barra de acento** del panel resume el conjunto: verde si todo ganó, roja si todo perdió, cian si está mezclado.
+
+### 4.5 Número del partido dentro del día (`#N`)
+Cada partido del itinerario recibe un número secuencial **por fecha** (columna `daily_seq` de `bet_monitor_schedule_v3`, ordenado por hora de inicio, reiniciando en 1 cada día). Se muestra como distintivo `#12` en cian antes de los equipos, tanto en la imagen como en el texto del aviso, para poder seguir un partido sin ambigüedad.
 
 ---
 

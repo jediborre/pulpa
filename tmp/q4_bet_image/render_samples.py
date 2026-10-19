@@ -173,6 +173,7 @@ async def main() -> None:
             # Los avisos de apuesta en vivo van SIN gráfica (solo la tarjeta);
             # las confirmaciones FT llevan la gráfica completa.
             include_chart=is_result,
+            seq=12,
         )
         if not photo:
             print(f"❌ variante {variant}: no se generó imagen")

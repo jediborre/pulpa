@@ -288,6 +288,7 @@ Ejemplo de línea por modelo: `🟢 APUESTA Q4 [m27_v3 72%] → 🏠 CD Universi
 - Bot interactivo (`bot_runner.py`): teclado persistente `🎯 Apuestas` / `📊 Status` y comandos `/start`, `/signals`, `/status`.
 - Los envíos salientes se reintentan hasta 3 veces con backoff (1 s → 2 s → 4 s) ante `NetworkError`/`TimedOut`, y respetan `RetryAfter`.
 - Los avisos de apuesta y de resultado FT se envían además como **imagen** (tarjeta y, en FT, tarjeta + gráfica de momentum): ver [`IMAGEN_APUESTA_Q4.md`](IMAGEN_APUESTA_Q4.md). Si la imagen falla, el aviso cae a texto plano.
+- Cada partido lleva un **`#N`** secuencial dentro del día (columna `daily_seq`, reinicia en 1 cada fecha) para facilitar el seguimiento en el chat.
 
 ---
 

@@ -129,14 +129,19 @@ def main() -> None:
     check(f"cerca del umbral -> amarillento {cerca}", cerca[0] > 200 and cerca[1] > 150 and cerca[2] < 120)
     check(f"lejos del umbral -> rojizo {lejos}", lejos[0] > 200 and lejos[1] < 110)
 
-    print("\n[9] Resultado hipotético de un NO_BET")
-    md_local = {"score": {"home": 86, "away": 76}}
-    md_visita = {"score": {"home": 70, "away": 80}}
-    check("pick local y ganó local -> would_win", _hypothetical_result(True, md_local) == "would_win")
-    check("pick visita y ganó local -> would_loss", _hypothetical_result(False, md_local) == "would_loss")
-    check("pick visita y ganó visita -> would_win", _hypothetical_result(False, md_visita) == "would_win")
-    check("empate -> None", _hypothetical_result(True, {"score": {"home": 80, "away": 80}}) is None)
-    check("sin marcador -> None", _hypothetical_result(True, {}) is None)
+    print("\n[9] Resultado hipotético de un NO_BET (mercado = PARCIAL DEL CUARTO)")
+    # Caso real del bug: el total favorece al local, pero el Q4 lo gana el visitante.
+    md = {"score": {"home": 85, "away": 80, "quarters": {"Q4": {"home": 22, "away": 27}}}}
+    check("pick local: total gana local pero Q4 pierde -> would_loss",
+          _hypothetical_result(True, md, quarter="Q4") == "would_loss")
+    check("pick visita en ese Q4 -> would_win",
+          _hypothetical_result(False, md, quarter="Q4") == "would_win")
+    check("q_home/q_away explícitos mandan sobre el payload",
+          _hypothetical_result(True, md, q_home=30, q_away=20) == "would_win")
+    check("Q4 empatado -> None",
+          _hypothetical_result(True, {"score": {"quarters": {"Q4": {"home": 20, "away": 20}}}}) is None)
+    check("sin cuartos ni q_* -> None (NO usa los totales)",
+          _hypothetical_result(True, {"score": {"home": 90, "away": 80}}) is None)
     check("etiquetas", bi._result_tag("would_win")[0] == "HUBIERA GANADO" and bi._result_tag("would_loss")[1] == bi.SS_CONF_FAR)
 
     print("\nRESULTADO:", "✅ TODO OK" if ok else "❌ HAY FALLOS")
