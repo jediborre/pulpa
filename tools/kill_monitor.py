@@ -9,17 +9,16 @@ import psutil
 def kill_existing_monitors(include_v1_v2: bool = True, verbose: bool = True) -> int:
     """
     Busca y termina cualquier proceso activo de monitoreo (monitor_v3, monitor_v2, monitor_v1)
-    incluyendo sus terminales cmd.exe lanzadas con start /k.
+    incluyendo sus terminales cmd.exe lanzadas con start /k y el bot interactivo V3
+    (`python -m monitor_v3.notifications.bot_runner`).
+
+    Importante: se matan TAMBIÉN las ventanas `cmd /k` contenedoras, aunque su
+    python hijo ya haya muerto; si no, se acumulan ventanas en cada reinicio.
     """
     current_pid = os.getpid()
-    targets = [
-        "monitor_v3/main.py", "monitor_v3\\main.py", "monitor_v3.main",
-    ]
+    target_tokens = ["monitor_v3"]
     if include_v1_v2:
-        targets.extend([
-            "monitor_v2/main.py", "monitor_v2\\main.py", "monitor_v2.main",
-            "monitor_v1/main.py", "monitor_v1\\main.py", "monitor_v1.main",
-        ])
+        target_tokens.extend(["monitor_v2", "monitor_v1"])
 
     to_kill = []
     for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
@@ -37,7 +36,7 @@ def kill_existing_monitors(include_v1_v2: bool = True, verbose: bool = True) -> 
             if not any(name.startswith(p) for p in ("python", "py", "cmd")):
                 continue
 
-            if any(t in cmdline for t in targets):
+            if any(t in cmdline for t in target_tokens):
                 to_kill.append((proc, proc.pid, name, cmdline))
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue

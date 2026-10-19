@@ -106,6 +106,7 @@ echo   27) Instalar / Reparar dependencias (.venv, pip, playwright, npm)
 echo   28) Sincronizar Token JWT desde Android (ADB Directo / USB)
 echo   29) Reinstalar SofaScore Parcheada en Android (ADB)
 echo   30) Iniciar Bot Telegram V3 (consultas /signals, /status)
+echo   41) Detener Monitor V3 + Bot Telegram (cierra tambien las ventanas)
 echo.
 echo  [6] SMART BACKFILL Y DESCARGAS HISTORICAS (2015-2026)
 echo   35) Submenu Smart Backfill (Modo interactivo y fases guiadas)
@@ -178,6 +179,9 @@ if /i "%OPT%"=="reinstall" goto REINSTALL_APP
 if /i "%OPT%"=="reinstall_app" goto REINSTALL_APP
 if "%OPT%"=="30" goto RUN_BOT_V3
 if /i "%OPT%"=="bot_v3" goto RUN_BOT_V3
+if "%OPT%"=="41" goto STOP_MONITOR_V3
+if /i "%OPT%"=="stop" goto STOP_MONITOR_V3
+if /i "%OPT%"=="detener" goto STOP_MONITOR_V3
 
 :: [6] Smart Backfill y Descargas Historicas
 if "%OPT%"=="35" goto MENU_SMART_BACKFILL
@@ -197,6 +201,23 @@ goto MENU
 :: ─────────────────────────────────────────────────
 :: [1] OPERACION EN VIVO Y SERVICIOS
 :: ─────────────────────────────────────────────────
+
+:STOP_MONITOR_V3
+cls
+echo.
+echo ========================================================
+echo  Deteniendo Monitor V3 + Bot Telegram
+echo ========================================================
+echo.
+if exist ".venv\Scripts\python.exe" (
+    ".venv\Scripts\python.exe" tools\kill_monitor.py
+) else (
+    python tools\kill_monitor.py 2>nul
+)
+echo.
+echo [i] Tambien se cierran las ventanas cmd asociadas.
+timeout /t 2 /nobreak >nul
+goto MENU
 
 :RUN_MONITOR_V3
 cls
@@ -242,6 +263,14 @@ echo.
 echo ====================================================
 echo  Iniciando Bot Telegram V3 (consultas /signals, /status)
 echo ====================================================
+echo.
+echo [*] Cerrando instancias previas del bot (evita conflicto 409 de polling)...
+if exist ".venv\Scripts\python.exe" (
+    ".venv\Scripts\python.exe" tools\kill_monitor.py
+) else (
+    python tools\kill_monitor.py 2>nul
+)
+timeout /t 1 /nobreak >nul
 echo.
 echo [+] Levantando Bot Telegram V3 en una nueva ventana...
 start "Pulpa - Bot Telegram V3" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python -m monitor_v3.notifications.bot_runner"
