@@ -79,6 +79,38 @@ Cada vez que realices cualquier cambio, corrección, ajuste de umbrales, formate
 3. **Verificación de Arranque Limpio:** Confirmar que el nuevo proceso del monitor haya iniciado correctamente sin errores de sintaxis o excepciones inmediatas en el log de arranque.
 > ⚠️ **NUNCA** dejar código modificado sin reiniciar el monitor en vivo si este se encontraba en ejecución, para evitar que continúe operando o enviando alertas con código desactualizado en memoria.
 
+### 7.1 CIERRE OBLIGATORIO DE VENTANAS Y PROCESOS REMANENTES (ANTI-ACUMULACIÓN)
+Cada reinicio debe dejar el sistema con **exactamente 2 procesos** (daemon + bot) y **cero ventanas de consola** del proyecto.
+Si se arranca con `cmd /k`, al matar solo el `python.exe` **la ventana `cmd.exe` queda abierta** y se acumulan decenas de ventanas tras cada reinicio. Por eso:
+
+1. **Matar el árbol completo, incluida la ventana padre `cmd.exe`:**
+   ```powershell
+   Get-CimInstance Win32_Process | Where-Object {
+       $_.Name -in @('python.exe','python3.11.exe','cmd.exe') -and $_.CommandLine -match 'monitor_v3'
+   } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+   ```
+   (Mata el `cmd /k` padre, los `python.exe` hijos y los wrappers `python3.11.exe`.)
+
+2. **Arrancar en segundo plano SIN ventana nueva** (oculto y con stdout/stderr a `logs/`):
+   ```powershell
+   Start-Process -FilePath ".venv\Scripts\python.exe" -ArgumentList "monitor_v3\main.py" `
+       -WorkingDirectory "C:\Users\App\Desktop\pulpa" -WindowStyle Hidden `
+       -RedirectStandardOutput "logs\monitor_v3_stdout.log" -RedirectStandardError "logs\monitor_v3_stderr.log"
+
+   Start-Process -FilePath ".venv\Scripts\python.exe" -ArgumentList "-m","monitor_v3.notifications.bot_runner" `
+       -WorkingDirectory "C:\Users\App\Desktop\pulpa" -WindowStyle Hidden `
+       -RedirectStandardOutput "logs\bot_v3_stdout.log" -RedirectStandardError "logs\bot_v3_stderr.log"
+   ```
+
+3. **Verificar el resultado** (debe devolver 2 procesos python y 0 ventanas `cmd`):
+   ```powershell
+   @(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'python.exe' -and $_.CommandLine -match 'monitor_v3' }).Count
+   @(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'cmd.exe' -and $_.CommandLine -match 'monitor_v3' }).Count
+   ```
+   Si quedan ventanas de reinicios anteriores (aunque ya no tengan python vivo), **cerrarlas también** en el mismo paso.
+
+> 📌 Regla: **ningún reinicio puede dejar una ventana de consola abierta**. Si el usuario tenía el monitor lanzado a mano desde `menu.bat`, cerrar también esa ventana antes de relanzar en segundo plano.
+
 ---
 
 ## 🗺️ Mapa del Repositorio: Dónde Encontrar Todo

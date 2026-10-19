@@ -90,6 +90,20 @@ def _write_file_log(level: str, component: str, msg: str) -> None:
     except Exception:
         pass
 
+def _colorize_keywords(msg: str) -> str:
+    """
+    Colorea palabras clave dentro del mensaje (solo consola; el archivo va limpio).
+      WIN → verde · LOSS → rojo · Q4 / MIN → naranja · [FT] → verde · → → rojo
+    """
+    msg = re.sub(r"\bWIN\b", f"{COLOR_GREEN}WIN{COLOR_RESET}", msg)
+    msg = re.sub(r"\bLOSS\b", f"{COLOR_ERROR}LOSS{COLOR_RESET}", msg)
+    msg = re.sub(r"\bQ4\b", f"{COLOR_ORANGE}Q4{COLOR_RESET}", msg)
+    msg = re.sub(r"\bMIN\b", f"{COLOR_ORANGE}MIN{COLOR_RESET}", msg)
+    msg = msg.replace("[FT]", f"{COLOR_GREEN}[FT]{COLOR_RESET}")
+    msg = msg.replace("→", f"{COLOR_ERROR}→{COLOR_RESET}")
+    return msg
+
+
 def _log_base(level: str, color: str, component: str, msg: str, q4_orange: bool = False) -> None:
     """Escribe el log en consola colorizada y en el archivo rotativo correspondiente."""
     now = get_utc6_now()
@@ -106,11 +120,14 @@ def _log_base(level: str, color: str, component: str, msg: str, q4_orange: bool 
         fmt_component = f"{COLOR_CYAN}[{component}]{COLOR_RESET}"
     elif component in ("SYSTEM", "TOKEN_POOL"):
         fmt_component = f"{COLOR_MAGENTA}[{component}]{COLOR_RESET}"
+    elif component in ("DATABASE", "DB"):
+        fmt_component = f"{COLOR_WARNING}[{component}]{COLOR_RESET}"
     
     # Colorizar pipes (|) y tags
     formatted_msg = formatted_msg.replace(" | ", f" {COLOR_GREEN}|{COLOR_RESET} ")
     formatted_msg = formatted_msg.replace("[PROBE]", f"{COLOR_ORANGE}[PROBE]{COLOR_RESET}")
     formatted_msg = formatted_msg.replace("[WATCHER]", f"{COLOR_ORANGE}[WATCHER]{COLOR_RESET}")
+    formatted_msg = _colorize_keywords(formatted_msg)
     
     sys.stdout.write(f"{time_str} {color}[{level}]{COLOR_RESET} {fmt_component} {prefix}{formatted_msg}\n")
     sys.stdout.flush()

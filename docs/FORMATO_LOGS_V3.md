@@ -55,12 +55,14 @@ Ejemplo real anotado (consola):
 | Constante | Código | Uso en el sistema |
 | --- | --- | --- |
 | `COLOR_RESET` | `\033[0m` | Cierre de cualquier color inline. |
-| `COLOR_GREEN` | `\033[92m` | `ETA`, `SOLO FT`, `[EVAL COMPLETADA]`, `[BROADCAST]`, ganador del marcador. |
+| `COLOR_GREEN` | `\033[92m` | `ETA`, `SOLO FT`, `[EVAL COMPLETADA]`, `[BROADCAST]`, `WIN`, `[FT]`, ganador del marcador. |
 | `COLOR_BRIGHT_RED` | `\033[91;1m` | Etiqueta `[LIVE]`, `HTTP 403`/`HTTP 404`, perdedor del marcador. |
-| `COLOR_ORANGE` | `\033[38;5;208m` | Tags `[PROBE]` y `[WATCHER]`. |
+| `COLOR_ORANGE` | `\033[38;5;208m` | Tags `[PROBE]`/`[WATCHER]`, `Q4` y `MIN` dentro del mensaje. |
 | `COLOR_CYAN` | `\033[96m` | Componentes `MONITOREO` y `TELEGRAM`. |
 | `COLOR_MAGENTA` | `\033[95m` | Componentes `SYSTEM` y `TOKEN_POOL`. |
-| `COLOR_DEBUG/INFO/WARNING/ERROR` | `\033[90m` `\033[94m` `\033[93m` `\033[91m` | Color del nivel. |
+| `COLOR_WARNING` | `\033[93m` | Nivel `WARNING` y componente **`[DATABASE]` / `[DB]`**. |
+| `COLOR_ERROR` | `\033[91m` | Nivel `ERROR`, `LOSS` y la flecha `→`. |
+| `COLOR_DEBUG/INFO` | `\033[90m` `\033[94m` | Color del nivel. |
 | `COLOR_LATE_APUESTA` | `\033[37m` | Definida y reservada para apuestas tardías (en la práctica el aviso va por emoji en Telegram). |
 
 > Los colores son **solo consola**: al escribir el archivo se eliminan con `re.sub(r"\033\[[0-9;]*m", "", msg)`.
@@ -91,7 +93,8 @@ Aplicadas por `_log_base()` **antes** de imprimir. El desarrollador escribe text
 3. **Errores de red en rojo brillante:** `HTTP 403` y `HTTP 404` (y los `403`/`404` sueltos, con guardas de regex para **no** corromper IDs de partido ni otras cifras) → `\033[91;1m`.
 4. **Prefijo de cuarto final:** si se pasa `q4_orange=True`, la línea se antepone con `Q4 🟠 `.
 5. **Colores inline del emisor:** se permite incrustar `COLOR_GREEN`, `COLOR_BRIGHT_RED`, etc. dentro del mensaje (patrón usado para `[LIVE]`, `ETA`, `SOLO FT`, `[EVAL COMPLETADA]`, `[BROADCAST]`).
-6. **Limpieza en archivo:** todo ANSI se elimina al escribir el `.log`.
+6. **Palabras clave** (`_colorize_keywords`): `WIN` → verde, `LOSS` → rojo, `Q4` y `MIN` → naranja, `[FT]` → verde y la flecha `→` → rojo.
+7. **Limpieza en archivo:** todo ANSI se elimina al escribir el `.log`.
 
 ---
 
