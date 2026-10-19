@@ -636,8 +636,11 @@ def momentum_chart(
 # Tarjeta de la apuesta
 # ─────────────────────────────────────────────────────────────────────
 
-def _payout_detail(decimal, confidence, probability, result: str, is_result: bool) -> str:
-    """Línea informativa de la apuesta: cuota/proyección o confianza."""
+def _payout_detail(decimal, confidence, probability, result: str, is_result: bool) -> list[tuple[str, tuple]]:
+    """
+    Línea informativa de la apuesta como tramos (texto, color):
+    cuota + proyección/resultado, o confianza y un 'Sin ODDS' en rojo.
+    """
     value = str(result or "").lower()
     if decimal:
         dec = float(decimal)
@@ -647,13 +650,13 @@ def _payout_detail(decimal, confidence, probability, result: str, is_result: boo
         if is_result:
             if value in ("win", "hit"):
                 gain, total = payout(dec, STAKE)
-                return f"{head}   ·   ${STAKE:,.0f} -> ${total:,.2f}  (+${gain:,.2f})"
+                return [(f"{head}   ·   ${STAKE:,.0f} -> ${total:,.2f}  (+${gain:,.2f})", COLOR_MUTED)]
             if value in ("loss", "miss"):
-                return f"{head}   ·   ${STAKE:,.0f} -> $0.00  (-${STAKE:,.2f})"
+                return [(f"{head}   ·   ${STAKE:,.0f} -> $0.00  (-${STAKE:,.2f})", COLOR_MUTED)]
             if value == "push":
-                return f"{head}   ·   ${STAKE:,.0f} -> ${STAKE:,.2f}  ($0.00)"
+                return [(f"{head}   ·   ${STAKE:,.0f} -> ${STAKE:,.2f}  ($0.00)", COLOR_MUTED)]
         gain, total = payout(dec, STAKE)
-        return f"{head}   ·   ${STAKE:,.0f} -> ${total:,.2f}  (+${gain:,.2f})"
+        return [(f"{head}   ·   ${STAKE:,.0f} -> ${total:,.2f}  (+${gain:,.2f})", COLOR_MUTED)]
 
     prob_str = f" · P={float(probability):.2f}" if probability is not None else ""
     tail = {
@@ -664,11 +667,12 @@ def _payout_detail(decimal, confidence, probability, result: str, is_result: boo
         "push": "  ·   push",
     }.get(value, "")
     if is_result and tail:
-        return f"Confianza {confidence if confidence is not None else '?'}%{prob_str}{tail}"
-    return (
-        f"Confianza {confidence if confidence is not None else '?'}%{prob_str}"
-        f"   ·   sin cuota in-play disponible"
-    )
+        return [(f"Confianza {confidence if confidence is not None else '?'}%{prob_str}{tail}", COLOR_MUTED)]
+    return [
+        (f"Confianza {confidence if confidence is not None else '?'}%{prob_str}", COLOR_MUTED),
+        ("   ·   ", COLOR_MUTED),
+        ("Sin ODDS", SS_CONF_FAR),
+    ]
 
 
 def _draw_side_icon(draw, x: float, y: float, is_home: bool, size: int = 28) -> float:
@@ -785,12 +789,15 @@ def _draw_bet_panel(
 
         remaining = max(60.0, (inner_x + max_w) - x - tag_w)
         team_font = _fit_font(draw, team, remaining, 28, bold=is_real_bet)
-        draw.text((x, y + 1), team, font=team_font, fill=COLOR_TEXT if is_real_bet else COLOR_MUTED)
+        # El nombre del equipo va coloreado por lado, igual que en la cabecera:
+        # local en verde, visitante en azul. Los NO_BET quedan atenuados.
+        team_color = (COLOR_HOME if is_home else COLOR_AWAY) if is_real_bet else COLOR_MUTED
+        draw.text((x, y + 1), team, font=team_font, fill=team_color)
 
-        # 4) Línea 2: cuota + proyección/resultado, o confianza/probabilidad
+        # 4) Línea 2: cuota + proyección/resultado, o confianza y "Sin ODDS"
         y2 = y + line1_h
         if is_real_bet:
-            detail = _payout_detail(
+            detail_runs = _payout_detail(
                 bet.get("decimal_odds"),
                 conf,
                 bet.get("probability"),
@@ -798,9 +805,9 @@ def _draw_bet_panel(
                 is_result,
             )
         else:
-            detail = f"no operó (umbral {int(round(float(threshold) * 100))}%)"
+            detail_runs = [(f"no operó (umbral {int(round(float(threshold) * 100))}%)", COLOR_MUTED)]
 
-        draw.text((inner_x, y2 + 2), detail, font=_font(22), fill=COLOR_MUTED)
+        _draw_runs(draw, inner_x, y2 + 2, detail_runs, _font(22), default_sep="")
         y = y2 + line2_h + gap
 
     return y0 + panel_h

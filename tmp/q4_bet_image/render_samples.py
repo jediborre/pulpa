@@ -109,6 +109,15 @@ def _bets(home: str, away: str, variant: str) -> list[dict]:
         return [bet_v5_3]
     if variant == "apuesta_combinada":
         return [bet_v5_3, dict(nobet_v5_2), dict(nobet_mid_v6_2)]
+    if variant == "colores":
+        return [
+            {**bet_v5_3},
+            {
+                "model": "m27_v3", "signal": "BET_AWAY", "picked_team": away,
+                "is_home": False, "confidence": 0.71, "decimal_odds": None,
+            },
+            {**nobet_v5_2, "result": None},
+        ]
     if variant == "resultado":
         return [
             {**bet_v5_3, "result": "win"},
@@ -161,7 +170,7 @@ async def main() -> None:
     print(f"\nPartido de prueba: {mid} | {home} vs {away} | marcador {score.get('home')}-{score.get('away')} "
           f"| {q_key} | min={minute}")
 
-    for variant in ("apuesta", "apuesta_combinada", "tardia", "resultado"):
+    for variant in ("apuesta", "apuesta_combinada", "tardia", "colores", "resultado"):
         is_result = variant == "resultado"
         photo = bet_image.build_q4_alert_image(
             data,
