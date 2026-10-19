@@ -958,7 +958,7 @@ def build_q4_alert_image(
             situation_runs.append(("FT", SS_FT))
         else:
             situation_runs.append((q_key or "Q4", COLOR_TEXT))
-        if minute is not None:
+        if minute is not None and status_type != "finished":
             situation_runs.append((f"MIN~{minute}", COLOR_TIME))
 
         quarters_items = _quarters_items(score)

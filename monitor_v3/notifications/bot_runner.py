@@ -25,12 +25,15 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
     ReplyKeyboardMarkup,
     Update,
 )
 from telegram.error import NetworkError, RetryAfter, TelegramError, TimedOut
 from telegram.ext import (
     Application,
+    CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
     MessageHandler,
@@ -131,8 +134,386 @@ async def _send_with_retry(send, *, description: str, attempts: int = SEND_MAX_A
 
 
 # ─────────────────────────────────────────────────────────────────────
-# Acceso a datos (_v3)
+# Apuestas: selector por fecha y partido (botones inline)
 # ─────────────────────────────────────────────────────────────────────
+
+DIAS_ES = ["LU", "MA", "MI", "JU", "VI", "SA", "DO"]
+MESES_ABR = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
+
+
+def _fmt_date_button(date_str: str, count: int) -> str:
+    """'LU 19 OCT 2026 [80]' a partir de 'YYYY-MM-DD'."""
+    try:
+        d = datetime.strptime(date_str, "%Y-%m-%d")
+    except (TypeError, ValueError):
+        return f"{date_str} [{count}]"
+    return f"{DIAS_ES[d.weekday()]} {d.day:02d} {MESES_ABR[d.month - 1]} {d.year} [{count}]"
+
+
+def fetch_signal_dates(limit: int = 14) -> list[dict]:
+    """Fechas (UTC-6) con señales, más recientes primero, con nº de partidos."""
+    db = _db_path()
+    if not db.exists():
+        return []
+    with sqlite3.connect(str(db)) as conn:
+        rows = conn.execute(
+            """
+            SELECT date(created_at) AS d, COUNT(DISTINCT match_id) AS n
+            FROM bet_monitor_log_v3
+            GROUP BY d
+            ORDER BY d DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+    return [{"date": r[0], "count": int(r[1])} for r in rows if r[0]]
+
+
+def fetch_day_matches(date_str: str) -> list[dict]:
+    """Partidos con señales de una fecha, en orden de su número del día."""
+    db = _db_path()
+    if not db.exists():
+        return []
+    with sqlite3.connect(str(db)) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT l.match_id,
+                   MAX(s.daily_seq)        AS seq,
+                   MAX(s.home_team)        AS home_team,
+                   MAX(s.away_team)        AS away_team,
+                   MAX(s.league)           AS league,
+                   MAX(s.scheduled_utc_ts) AS ts,
+                   SUM(CASE WHEN l.signal_type LIKE '%BET%'
+                             AND l.signal_type NOT LIKE '%NO_BET%' THEN 1 ELSE 0 END) AS bets,
+                   SUM(CASE WHEN l.result IN ('win','hit')   THEN 1 ELSE 0 END) AS wins,
+                   SUM(CASE WHEN l.result IN ('loss','miss') THEN 1 ELSE 0 END) AS losses
+            FROM bet_monitor_log_v3 l
+            LEFT JOIN bet_monitor_schedule_v3 s ON s.match_id = l.match_id
+            WHERE date(l.created_at) = ?
+            GROUP BY l.match_id
+            ORDER BY (seq IS NULL), seq, ts, l.match_id
+            """,
+            (date_str,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def fetch_match_logs(match_id: str) -> list[dict]:
+    """Logs de todos los modelos para un partido (para la tarjeta de detalle)."""
+    db = _db_path()
+    if not db.exists():
+        return []
+    with sqlite3.connect(str(db)) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            """
+            SELECT l.*, s.home_team, s.away_team, s.league, s.scheduled_utc_ts, s.daily_seq,
+                   s.final_fetched, s.event_date
+            FROM bet_monitor_log_v3 l
+            LEFT JOIN bet_monitor_schedule_v3 s ON s.match_id = l.match_id
+            WHERE l.match_id = ?
+            ORDER BY l.id
+            """,
+            (str(match_id),),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _match_button_label(row: dict) -> str:
+    """Etiqueta corta del botón de un partido."""
+    seq = f"#{row['seq']}" if row.get("seq") else "#?"
+    ts = row.get("ts")
+    hhmm = ""
+    if ts:
+        tz = timezone(timedelta(hours=UTC_OFFSET_HOURS))
+        hhmm = datetime.fromtimestamp(int(ts), tz=tz).strftime("%H:%M")
+    home = str(row.get("home_team") or "?")
+    away = str(row.get("away_team") or "?")
+    names = f"{home} vs {away}"
+    if len(names) > 34:
+        names = names[:31] + "..."
+    record = ""
+    wins, losses = int(row.get("wins") or 0), int(row.get("losses") or 0)
+    if wins or losses:
+        record = f" {wins}-{losses}"
+    return f"{seq} {hhmm} {names}{record}".strip()
+
+
+def _day_stats_image(stats: dict, date_str: str) -> bytes | None:
+    """Imagen del resumen del día (una sola sección, estilo /status)."""
+    try:
+        from monitor_v3.notifications.stats_image import build_stats_image
+        from monitor_v3.notifications.stats_image import _section_from_stats
+
+        section = _section_from_stats(date_str, stats, ACTIVE_MODELS)
+        return build_stats_image(
+            title="Apuestas del día",
+            sections=[section],
+            footer="Bet Monitor V3 · datos de bet_monitor_log_v3",
+        )
+    except Exception as e:  # noqa: BLE001
+        log_warning("TELEGRAM", f"[BOT_V3] Sin imagen del día ({type(e).__name__}: {e})")
+        return None
+
+
+def _day_caption(date_str: str, stats: dict) -> str:
+    """Caption con el resumen del día (mismos números que la imagen)."""
+    t = stats.get("total") or {}
+    resolved = int(t.get("win") or 0) + int(t.get("loss") or 0)
+    acc = f"{int(round(int(t.get('win') or 0) * 100 / resolved))}%" if resolved else "—"
+    try:
+        d = datetime.strptime(date_str, "%Y-%m-%d")
+        pretty = f"{DIAS_ES[d.weekday()]} {d.day:02d} {MESES_ABR[d.month - 1]} {d.year}"
+    except (TypeError, ValueError):
+        pretty = date_str
+    lines = [
+        f"🎯 <b>Apuestas del día</b> · {pretty}",
+        f"Apuestas: <b>{t.get('bets', 0)}</b> | ✅ {t.get('win', 0)}  ❌ {t.get('loss', 0)}  "
+        f"➖ {t.get('push', 0)}  ⏳ {t.get('pending', 0)}",
+        f"Acierto: <b>{acc}</b>",
+        "",
+        "<i>Elige un partido para ver su detalle.</i>",
+    ]
+    return "\n".join(lines)
+
+
+def _match_caption(logs: list[dict]) -> str:
+    """Caption del detalle de un partido (una línea por modelo)."""
+    if not logs:
+        return "Sin datos del partido."
+    first = logs[0]
+    seq = f"#{first['daily_seq']} · " if first.get("daily_seq") else ""
+    home = html.escape(str(first.get("home_team") or "?"), quote=False)
+    away = html.escape(str(first.get("away_team") or "?"), quote=False)
+    league = html.escape(str(first.get("league") or ""), quote=False)
+    ts = first.get("scheduled_utc_ts")
+    hhmm = ""
+    if ts:
+        tz = timezone(timedelta(hours=UTC_OFFSET_HOURS))
+        hhmm = datetime.fromtimestamp(int(ts), tz=tz).strftime("%H:%M")
+
+    lines = [f"🎯 <b>{seq}{home} vs {away}</b>"]
+    if league:
+        lines.append(f"<i>{league}</i>")
+    if hhmm:
+        lines.append(hhmm)
+    lines.append("")
+    for log in logs:
+        sig = str(log.get("signal_type") or "")
+        model = html.escape(str(log.get("model_version") or "?"), quote=False)
+        conf = log.get("confidence") or 0.0
+        if conf > 1.0:
+            conf = conf / 100.0
+        is_home = str(log.get("picked_side") or "").upper() == "HOME"
+        side = "🏠" if is_home else "✈️"
+        res = str(log.get("result") or "").lower()
+        if "NO_BET" in sig or "BET" not in sig:
+            tag = {
+                "would_win": " · HUBIERA GANADO",
+                "would_loss": " · HUBIERA PERDIDO",
+            }.get(res, "")
+            lines.append(f"⚪️ {model} {int(round(conf * 100))}% → {side}{tag}")
+        else:
+            emoji = "✅" if res in ("win", "hit") else ("❌" if res in ("loss", "miss") else "⏳")
+            lines.append(f"{emoji} {model} {int(round(conf * 100))}% → {side}")
+    return "\n".join(lines)
+
+
+def _build_detail_image(data: dict | None, logs: list[dict]) -> bytes | None:
+    """
+    Construye la imagen del partido con los logs y el payload ya descargado.
+
+    - Partido terminado (final_fetched o status finished) → tarjeta + gráfica.
+    - En vivo / sin gráfica → solo tarjeta.
+    """
+    if not logs:
+        return None
+    try:
+        from monitor_v3.notifications.bet_image import build_q4_alert_image
+
+        first = logs[0]
+        finished = bool(first.get("final_fetched")) or str(
+            ((data or {}).get("match") or {}).get("status_type") or ""
+        ).lower() == "finished"
+
+        bets = []
+        for log in logs:
+            is_home = str(log.get("picked_side") or "").upper() == "HOME"
+            signal = str(log.get("signal_type") or "")
+            is_real = "BET" in signal and "NO_BET" not in signal
+            result = log.get("result")
+            if not is_real and finished:
+                # Lo que HUBIERA pasado con el pick, usando el parcial del cuarto
+                # objetivo (mismo criterio que la liquidación real).
+                try:
+                    from monitor_v3.notifications.telegram_bot import _hypothetical_result
+
+                    quarter = f"Q{log.get('target_quarter') or 4}"
+                    q_data = ((data or {}).get("score") or {}).get("quarters", {}).get(quarter) or {}
+                    result = _hypothetical_result(
+                        is_home,
+                        data,
+                        q_home=q_data.get("home"),
+                        q_away=q_data.get("away"),
+                        quarter=quarter,
+                    ) or result
+                except Exception:
+                    pass
+            bets.append(
+                {
+                    "model": log.get("model_version"),
+                    "signal": signal,
+                    "picked_team": first.get("home_team") if is_home else first.get("away_team"),
+                    "is_home": is_home,
+                    "confidence": log.get("confidence"),
+                    "result": result,
+                    "inference_json": _inference_json_dict(log.get("inference_json")),
+                }
+            )
+
+        return build_q4_alert_image(
+            data,
+            bets,
+            minute=None,
+            q_key=f"Q{first.get('target_quarter') or 4}",
+            scheduled_ts=first.get("scheduled_utc_ts"),
+            is_result=finished,
+            include_chart=finished,
+            seq=first.get("daily_seq"),
+        )
+    except Exception as e:  # noqa: BLE001
+        match_id = str((logs[0] or {}).get("match_id") or "?")
+        log_warning("TELEGRAM", f"[BOT_V3] Sin imagen de detalle para {match_id}: {type(e).__name__}: {e}")
+        return None
+
+
+def _inference_json_dict(value) -> dict | None:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            import json as _json
+
+            parsed = _json.loads(value)
+            return parsed if isinstance(parsed, dict) else None
+        except Exception:
+            return None
+    return None
+
+
+async def _show_date_picker(message) -> None:
+    """Muestra los días con señales como botones inline."""
+    dates = await asyncio.to_thread(fetch_signal_dates)
+    if not dates:
+        await _send_with_retry(
+            lambda: message.reply_text("Sin señales registradas todavía."),
+            description="/signals (sin datos)",
+        )
+        return
+    keyboard = [
+        [InlineKeyboardButton(_fmt_date_button(d["date"], d["count"]), callback_data=f"d:{d['date']}")]
+        for d in dates
+    ]
+    await _send_with_retry(
+        lambda: message.reply_text(
+            "🎯 <b>Apuestas</b>\nElige el día:",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        ),
+        description="/signals (fechas)",
+    )
+
+
+async def _send_day_view(message, date_str: str) -> None:
+    """Resumen del día (imagen estilo status) + botones con cada partido."""
+    stats = await asyncio.to_thread(fetch_v3_stats, date_str, None)
+    matches = await asyncio.to_thread(fetch_day_matches, date_str)
+    photo = await asyncio.to_thread(_day_stats_image, stats, date_str)
+    caption = _day_caption(date_str, stats)
+
+    rows = [
+        [InlineKeyboardButton(_match_button_label(m), callback_data=f"m:{m['match_id']}")]
+        for m in matches
+    ]
+    rows.append([InlineKeyboardButton("◀ Días", callback_data="x:dates")])
+    keyboard = InlineKeyboardMarkup(rows)
+
+    if photo:
+        await _send_with_retry(
+            lambda: message.reply_photo(photo, caption=caption, parse_mode="HTML", reply_markup=keyboard),
+            description=f"día {date_str}",
+        )
+    else:
+        await _send_with_retry(
+            lambda: message.reply_text(caption, parse_mode="HTML", reply_markup=keyboard),
+            description=f"día {date_str} (texto)",
+        )
+
+
+async def _send_match_view(message, match_id: str) -> None:
+    """Detalle del partido: imagen generada (FT con gráfica) + botón de volver."""
+    logs = await asyncio.to_thread(fetch_match_logs, match_id)
+    caption = _match_caption(logs)
+
+    # El payload se descarga en el loop del bot (el cliente móvil y su pool de
+    # tokens usan primitivas asyncio y no deben moverse a otro event loop).
+    data = None
+    if logs:
+        try:
+            from monitor_v3.scrapers.match_detail_scraper import fetch_match_by_id
+
+            data = await fetch_match_by_id(match_id, is_ft=False)
+        except Exception as e:  # noqa: BLE001
+            log_warning("TELEGRAM", f"[BOT_V3] Sin payload de {match_id}: {type(e).__name__}: {e}")
+
+    photo = await asyncio.to_thread(_build_detail_image, data, logs) if logs else None
+
+    date_str = str((logs[0].get("event_date") if logs else "") or "")[:10]
+    back_row = []
+    if date_str:
+        back_row.append(InlineKeyboardButton("◀ Día", callback_data=f"d:{date_str}"))
+    back_row.append(InlineKeyboardButton("📱 Sofascore", url=f"https://www.sofascore.com/event/{match_id}"))
+    keyboard = InlineKeyboardMarkup([back_row])
+
+    if photo:
+        await _send_with_retry(
+            lambda: message.reply_photo(
+                photo, caption=caption[:1024], parse_mode="HTML", reply_markup=keyboard
+            ),
+            description=f"partido {match_id}",
+        )
+    else:
+        await _send_with_retry(
+            lambda: message.reply_text(caption, parse_mode="HTML", reply_markup=keyboard),
+            description=f"partido {match_id} (texto)",
+        )
+
+
+async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Router de los botones inline del flujo de apuestas."""
+    query = update.callback_query
+    if query is None:
+        return
+    if not _is_allowed(update):
+        await query.answer("No autorizado", show_alert=True)
+        return
+
+    data = query.data or ""
+    if data.startswith("d:"):
+        await query.answer("Cargando día...")
+        await _send_day_view(query.message, data[2:])
+    elif data.startswith("m:"):
+        await query.answer("Generando imagen...")
+        await _send_match_view(query.message, data[2:])
+    elif data == "x:dates":
+        await query.answer()
+        await _show_date_picker(query.message)
+    else:
+        await query.answer()
+
+
+
 
 def _db_path() -> Path:
     return Path(get_real_db_path())
@@ -463,8 +844,8 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = (
         "🤖 <b>Bot Monitor V3</b>\n\n"
         "Consulta el estado del monitor:\n"
-        f"• {SIGNALS_BUTTON_TEXT} — señales de hoy (apuestas + resultados)\n"
-        f"• {STATUS_BUTTON_TEXT} — estadísticas de la BD v3"
+        f"• {SIGNALS_BUTTON_TEXT} — elige un día y luego un partido (imagen de detalle)\n"
+        f"• {STATUS_BUTTON_TEXT} — estadísticas de hoy y del mes"
     )
     await _send_with_retry(
         lambda: update.effective_message.reply_text(
@@ -495,24 +876,16 @@ async def _reply_long(message, text: str) -> None:
 
 
 async def signals_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Botón/comando de apuestas: selector de día con botones inline."""
     if not _is_allowed(update):
         return
     msg = await _send_with_retry(
-        lambda: update.effective_message.reply_text("⏳ Procesando señales de hoy..."),
+        lambda: update.effective_message.reply_text("⏳ Cargando días..."),
         description="/signals (aviso)",
     )
-    try:
-        text = await asyncio.to_thread(build_signals_text)
-        if msg:
-            await _send_with_retry(msg.delete, description="/signals (borrar aviso)")
-        await _reply_long(update.effective_message, text)
-    except Exception as e:
-        log_error("TELEGRAM", f"[BOT_V3] Error en /signals: {e}")
-        if msg:
-            await _send_with_retry(
-                lambda: msg.edit_text("❌ Error al procesar señales"),
-                description="/signals (error)",
-            )
+    if msg:
+        await _send_with_retry(msg.delete, description="/signals (borrar aviso)")
+    await _show_date_picker(update.effective_message)
 
 
 async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -640,6 +1013,7 @@ def main() -> None:
     app.add_handler(CommandHandler("start", start_cmd))
     app.add_handler(CommandHandler("signals", signals_cmd))
     app.add_handler(CommandHandler("status", status_cmd))
+    app.add_handler(CallbackQueryHandler(on_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _handle_text))
     app.add_error_handler(_on_handler_error)
 
