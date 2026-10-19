@@ -150,9 +150,11 @@ El texto que acompaña a la imagen repite las mismas cifras (y se usa como capti
 ## 5. Marcadores y cuartos
 
 - **Tabla de cuartos (estilo SofaScore)**: una fila por equipo (🏠 local / ✈️ visitante) con columnas `Q1..Qn` y `TOTAL`. Cada celda se colorea **verde si ese equipo ganó el cuarto** y **rojo si lo perdió** (empate sin color); la columna `TOTAL` hace lo mismo con el marcador global. Solo se muestran los cuartos con datos.
+- **Posición**: en las alertas de apuesta la tabla va sobre el panel; en las **confirmaciones FT va debajo del panel**, antes de la gráfica.
 - Si el partido no tiene desglose por cuartos, la cabecera cae al **marcador global** (`MARCADOR 86-76`) con el mismo criterio de color.
 - **Nombres de equipos**: el ganador del partido va en **negrita**; el perdedor en regular.
 - **Panel de apuesta**: a la derecha del título se muestra el parcial del **cuarto objetivo** (`Q4 21-17`), coloreado por quién ganó ese cuarto.
+- **Gráfica**: cuando la tabla está presente no repite `Q1..Q4`; solo marca `FT` al final del eje (el inicio, en verde, queda abajo a la izquierda).
 
 ---
 

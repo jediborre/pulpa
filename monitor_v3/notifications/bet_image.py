@@ -568,13 +568,18 @@ def momentum_chart(
     current_quarter: int | None = None,
     finished: bool = False,
     total_minutes: float | None = None,
+    quarter_labels: bool = True,
 ) -> Image.Image | None:
     """
     Dibuja el gráfico de momentum con el estilo EXACTO de la web oficial de
     SofaScore (modo dark): relleno verde para presión local sobre la línea
     base, relleno añil para la visitante, tintes de zona, separadores de
-    cuarto en NEGRO, etiquetas Q1..Q4 SOBRE la gráfica, escala en verde a la
-    derecha, hora de inicio abajo-izquierda y marcador rojo del cuarto en curso.
+    cuarto en NEGRO, escala en verde a la derecha, hora de inicio abajo-
+    izquierda y marcador rojo del cuarto en curso.
+
+    `quarter_labels=True` rotula Q1..Q4 sobre la gráfica (avisos sin tabla).
+    Con `quarter_labels=False` (resultados, donde la tabla ya lista los
+    cuartos) solo se marca `FT` al final del eje para no repetir etiquetas.
 
     Devuelve una imagen RGBA de (width × height) o None si no hay datos.
     """
@@ -617,19 +622,22 @@ def momentum_chart(
         x = w * i / n_quarters
         draw.line([(x, top), (x, bottom)], fill=SS_SEPARATOR, width=max(2, ss))
 
-    # Etiquetas Q1..Q4 SOBRE la gráfica (centradas por cuarto); el cuarto en
-    # curso se resalta en rojo para ligarlo con el marcador de tiempo real.
+    # Etiquetas de cuarto sobre la gráfica: si la tabla de cuartos ya está en
+    # la tarjeta (resultados), solo se marca el final del eje (FT).
     font_q = _font(22 * ss, True)
-    for i in range(n_quarters):
-        cx = w * (i + 0.5) / n_quarters
-        is_current = current_quarter is not None and (i + 1) == current_quarter
-        draw.text(
-            (cx, 4 * ss),
-            f"Q{i + 1}",
-            font=font_q,
-            fill=SS_LIVE if is_current else SS_Q_LABEL,
-            anchor="ma",
-        )
+    if quarter_labels:
+        for i in range(n_quarters):
+            cx = w * (i + 0.5) / n_quarters
+            is_current = current_quarter is not None and (i + 1) == current_quarter
+            draw.text(
+                (cx, 4 * ss),
+                f"Q{i + 1}",
+                font=font_q,
+                fill=SS_LIVE if is_current else SS_Q_LABEL,
+                anchor="ma",
+            )
+    else:
+        draw.text((w - 6 * ss, 4 * ss), "FT", font=font_q, fill=SS_FT, anchor="ra")
 
     # Rellenos por tramos de signo
     for sign, run in _split_runs(pts):
@@ -652,7 +660,8 @@ def momentum_chart(
     draw.text((w - 6 * ss, baseline), "0", font=font_y, fill=SS_Y_ZERO, anchor="rm")
     draw.text((w - 6 * ss, bottom - 2 * ss), label, font=font_y, fill=SS_Y_LABEL, anchor="rd")
 
-    # Hora de inicio (verde, abajo-izquierda) con el punto de origen y "FT" a la derecha
+    # Hora de inicio (verde, abajo-izquierda) con el punto de origen y "FT" a la
+    # derecha (este último solo si no se pintó ya arriba con las etiquetas).
     font_x = _font(22 * ss, True)
     if start_label:
         draw.ellipse(
@@ -661,7 +670,8 @@ def momentum_chart(
             width=max(2, ss),
         )
         draw.text((6 * ss, bottom - 2 * ss), start_label, font=font_x, fill=SS_X_LABEL, anchor="la")
-    draw.text((w - 6 * ss, bottom - 2 * ss), "FT", font=font_x, fill=SS_X_FT, anchor="ra")
+    if quarter_labels:
+        draw.text((w - 6 * ss, bottom - 2 * ss), "FT", font=font_x, fill=SS_X_FT, anchor="ra")
 
     # Marcador de tiempo real: línea roja + punto + etiqueta del cuarto en curso
     if not finished:
@@ -984,12 +994,18 @@ def build_q4_alert_image(
             y += 32
         y += (_font_size(font_teams) + 14)
         y += 38
-        if quarters_items:
+        # En los RESULTADOS la tabla de cuartos va después del panel de apuesta;
+        # en las alertas en vivo se mantiene arriba (no hay gráfica).
+        table_after_panel = bool(is_result and quarters_items)
+        if quarters_items and not table_after_panel:
             y += _SCOREBOARD_H
         y += 20  # separación antes del panel
 
         panel_h = _panel_height(len(bets))
-        card_h = y + panel_h + PAD
+        y += panel_h
+        if table_after_panel:
+            y += 16 + _SCOREBOARD_H
+        card_h = y + PAD
 
         card = Image.new("RGB", (WIDTH, card_h), COLOR_BG)
         draw = ImageDraw.Draw(card)
@@ -1034,10 +1050,10 @@ def build_q4_alert_image(
         draw.text((x, cy), away_txt, font=away_font, fill=COLOR_AWAY)
         cy += _font_size(font_teams) + 14
 
-        # Situación (con FT y marcador coloreados) y tabla de cuartos
+        # Situación (con FT y marcador coloreados)
         _draw_runs(draw, PAD, cy, situation_runs, font_meta)
         cy += 38
-        if quarters_items:
+        if quarters_items and not table_after_panel:
             cy = _draw_scoreboard(draw, PAD, cy, WIDTH - 2 * PAD, quarters_items, home_score, away_score)
 
         cy += 20
@@ -1051,9 +1067,14 @@ def build_q4_alert_image(
         else:
             market_score = None
 
-        _draw_bet_panel(
+        cy = _draw_bet_panel(
             draw, PAD, cy, WIDTH - 2 * PAD, bets, is_late, has_real_bet, is_result, market_score
         )
+
+        # En resultados, la tabla de cuartos va DEBAJO del panel de apuesta.
+        if quarters_items and table_after_panel:
+            cy += 16
+            _draw_scoreboard(draw, PAD, cy, WIDTH - 2 * PAD, quarters_items, home_score, away_score)
 
         # ── Gráfica de momentum (solo cuando se pide; los avisos de apuesta en
         #    vivo van sin gráfica, y las confirmaciones FT con el partido completo) ──
@@ -1072,6 +1093,8 @@ def build_q4_alert_image(
                 ),
                 finished=(status_type == "finished"),
                 total_minutes=_total_minutes(match, score, graph_points),
+                # En resultados la tabla ya lista Q1..Q4: no se repiten en la gráfica.
+                quarter_labels=not bool(quarters_items),
             )
         if chart is None:
             out = io.BytesIO()
