@@ -275,6 +275,19 @@ def _is_real_bet_signal(signal: str | None) -> bool:
     return "BET" in value and "NO_BET" not in value
 
 
+def _threshold_pct(model: str, payload: dict | None) -> int:
+    """Umbral REAL de confianza del modelo, en porcentaje (para los textos)."""
+    from monitor_v3.notifications.bet_image import _model_threshold
+
+    payload = payload or {}
+    threshold = _model_threshold(
+        model,
+        payload.get("inference_json"),
+        payload.get("raw_payload") or payload.get("raw_json"),
+    )
+    return int(round(float(threshold) * 100))
+
+
 def _hypothetical_result(is_home: bool, match_data: dict | None) -> str | None:
     """
     Resultado que HUBIERA tenido el pick de un modelo que no apostó, según el
@@ -584,8 +597,8 @@ def format_combined_bet_message(predictions: dict, home_team: str, away_team: st
         picked_team_name = home_team if is_home_pick else away_team
         clean_team = html.escape(str(picked_team_name), quote=False)
         
-        # Umbral específico del modelo (usar &lt; para parse_mode HTML)
-        threshold_note = "&lt;75%" if ("v5_2" in model or "v5_3" in model) else ("&lt;68%" if "v5" in model else "&lt;65%")
+        # Umbral REAL del modelo, leído de su raw_json (usar &lt; para parse_mode HTML)
+        threshold_note = f"&lt;{_threshold_pct(model, pred)}%"
 
         if is_bet:
             lines.append(f"{model_conf_str} → {side_emoji} {clean_team}")
@@ -732,7 +745,7 @@ def format_combined_final_message(logs: list, home_team: str, away_team: str) ->
                 side_emoji = "🏠" if is_home_pick else "✈️"
                 picked_team_name = home_team if is_home_pick else away_team
                 clean_team = html.escape(str(picked_team_name), quote=False)
-                threshold_note = "&lt;75%" if ("v5_2" in model or "v5_3" in model) else ("&lt;68%" if "v5" in model else "&lt;65%")
+                threshold_note = f"&lt;{_threshold_pct(model, log)}%"
                 
                 lines.append(f"🔴 {model} {conf_pct}% [NO BET ({threshold_note})] → {side_emoji} {clean_team}")
             else:

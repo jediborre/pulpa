@@ -85,9 +85,12 @@ SS_SEPARATOR = (0, 0, 0)       # separadores de cuarto en negro (como la web ofi
 SS_Y_LABEL = (76, 208, 94)     # etiquetas 11/0/11 en verde
 SS_Y_ZERO = (200, 208, 218)
 SS_X_LABEL = (76, 208, 94)     # hora de inicio en verde
-SS_X_FT = (143, 160, 180)
+SS_X_FT = (63, 203, 92)        # "FT" del eje destacado en verde
 SS_LIVE = (255, 77, 87)        # marcador de tiempo real y cuarto en curso
-SS_Q_LABEL = (143, 160, 180)   # etiquetas Q1..Q4 sobre la gráfica
+SS_Q_LABEL = (79, 211, 255)    # etiquetas Q1..Q4 sobre la gráfica (destacadas)
+SS_SCORE_WIN = (63, 203, 92)   # marcador del ganador
+SS_SCORE_LOSS = (255, 77, 87)  # marcador del perdedor
+SS_FT = (63, 203, 92)          # etiqueta FT destacada en verde
 
 # Fuentes: Segoe UI en Windows, con respaldo Arial/DejaVu y, en último caso, default.
 _FONT_CANDIDATES_REGULAR = [
@@ -296,22 +299,74 @@ def _fmt_hhmm(scheduled_ts: int | None, match: dict) -> str:
     return str(match.get("time") or "").strip()
 
 
-def _score_line(score: dict) -> str:
-    home = score.get("home")
-    away = score.get("away")
-    if home is None or away is None:
-        return ""
-    return f"{home}-{away}"
+def _score_colors(home, away) -> tuple[tuple, tuple]:
+    """Color del marcador: ganador en verde, perdedor en rojo (empate sin color)."""
+    try:
+        h_val = int(home)
+        a_val = int(away)
+    except (TypeError, ValueError):
+        return COLOR_TEXT, COLOR_TEXT
+    if h_val > a_val:
+        return SS_SCORE_WIN, SS_SCORE_LOSS
+    if a_val > h_val:
+        return SS_SCORE_LOSS, SS_SCORE_WIN
+    return COLOR_TEXT, COLOR_TEXT
 
 
-def _quarters_line(score: dict) -> str:
+def _quarters_items(score: dict) -> list[tuple[str, object, object]]:
+    """[(etiqueta, home, away)] de los cuartos con marcador disponible."""
     quarters = score.get("quarters") or {}
-    parts = []
+    items: list[tuple[str, object, object]] = []
     for q in ("Q1", "Q2", "Q3", "Q4", "OT", "OT1", "OT2"):
         data = quarters.get(q)
-        if isinstance(data, dict) and data.get("home") is not None:
-            parts.append(f"{q} {data['home']}-{data['away']}")
-    return "   ".join(parts)
+        if isinstance(data, dict) and data.get("home") is not None and data.get("away") is not None:
+            items.append((q, data["home"], data["away"]))
+    return items
+
+
+def _quarters_width(draw, items, font) -> float:
+    total = 0.0
+    for label, home, away in items:
+        total += _text_len(draw, label, font) + 8
+        total += _text_len(draw, str(home), font)
+        total += _text_len(draw, "-", font) + 1
+        total += _text_len(draw, str(away), font) + 26
+    return total
+
+
+def _draw_quarters(draw, x: float, y: float, items, font) -> float:
+    """Dibuja 'Q1 20-18  Q2 ...' con la etiqueta Q destacada y el ganador en verde."""
+    for label, home, away in items:
+        draw.text((x, y), label, font=font, fill=SS_Q_LABEL)
+        x += _text_len(draw, label, font) + 8
+
+        h_color, a_color = _score_colors(home, away)
+        draw.text((x, y), str(home), font=font, fill=h_color)
+        x += _text_len(draw, str(home), font)
+        draw.text((x, y), "-", font=font, fill=COLOR_MUTED)
+        x += _text_len(draw, "-", font) + 1
+        draw.text((x, y), str(away), font=font, fill=a_color)
+        x += _text_len(draw, str(away), font) + 26
+    return x
+
+
+def _draw_runs(draw, x: float, y: float, runs, font, default_sep: str = "  ·  ") -> float:
+    """
+    Dibuja una secuencia de (texto, color[, separador]) separada por `default_sep`.
+    Un separador vacío ("") permite agrupar piezas sin separación (p. ej. el 86-76).
+    """
+    for index, item in enumerate(runs):
+        text, color = item[0], item[1]
+        if len(item) > 2:
+            sep = item[2]
+        else:
+            sep = default_sep if index else ""
+        if sep:
+            draw.text((x, y), sep, font=font, fill=COLOR_MUTED)
+            x += _text_len(draw, sep, font)
+        draw.text((x, y), text, font=font, fill=color)
+        x += _text_len(draw, text, font)
+    return x
 
 
 def _conf_pct(confidence: float | None) -> int | None:
@@ -787,25 +842,34 @@ def build_q4_alert_image(
         country = str(match.get("country") or "")
         status_type = str(match.get("status_type") or "").lower()
 
-        # Cabecera de situación: hora · cuarto · minuto · marcador
-        bits = []
+        # Cabecera de situación: hora · FT (verde) · cuarto · minuto · marcador
         hhmm = _fmt_hhmm(scheduled_ts, match)
-        if hhmm:
-            bits.append(hhmm)
-        if status_type == "finished":
-            bits.append("FT")
-        else:
-            bits.append(q_key or "Q4")
         if minute is None and match.get("game_seconds_played") is not None:
             minute = int(int(match["game_seconds_played"]) // 60)
-        if minute is not None:
-            bits.append(f"MIN~{minute}")
-        score_str = _score_line(score)
-        if score_str:
-            bits.append(f"MARCADOR {score_str}")
-        situation = "  ·  ".join(bits)
 
-        quarters_str = _quarters_line(score)
+        situation_runs: list[tuple[str, tuple]] = []
+        if hhmm:
+            situation_runs.append((hhmm, COLOR_MUTED))
+        if status_type == "finished":
+            situation_runs.append(("FT", SS_FT))
+        else:
+            situation_runs.append((q_key or "Q4", COLOR_TEXT))
+        if minute is not None:
+            situation_runs.append((f"MIN~{minute}", COLOR_MUTED))
+
+        home_score, away_score = score.get("home"), score.get("away")
+        if home_score is not None and away_score is not None:
+            h_color, a_color = _score_colors(home_score, away_score)
+            situation_runs.extend(
+                [
+                    ("MARCADOR ", COLOR_MUTED),
+                    (str(home_score), h_color, ""),
+                    ("-", COLOR_MUTED, ""),
+                    (str(away_score), a_color, ""),
+                ]
+            )
+
+        quarters_items = _quarters_items(score)
         real_bets = [
             b
             for b in bets
@@ -822,14 +886,24 @@ def build_q4_alert_image(
         font_league = _font(22, True)
         font_teams, font_vs = _fit_teams(probe_draw, home, away, WIDTH - 2 * PAD)
         font_meta = _font(24)
-        font_quarters = _fit_font(probe_draw, quarters_str, WIDTH - 2 * PAD, 21) if quarters_str else None
+        # La línea de cuartos se ajusta midiendo su composición real (etiqueta + marcadores)
+        font_quarters = None
+        if quarters_items:
+            q_size = 21
+            while q_size > 12:
+                candidate = _font(q_size)
+                if _quarters_width(probe_draw, quarters_items, candidate) <= WIDTH - 2 * PAD:
+                    font_quarters = candidate
+                    break
+                q_size -= 1
+            font_quarters = font_quarters or _font(12)
 
         y = PAD
         if has_head:
             y += 32
         y += (_font_size(font_teams) + 14)
         y += 38
-        if quarters_str:
+        if quarters_items:
             y += 34
         y += 20  # separación antes del panel
 
@@ -864,11 +938,11 @@ def build_q4_alert_image(
         draw.text((x, cy), away_txt, font=font_teams, fill=COLOR_AWAY)
         cy += _font_size(font_teams) + 14
 
-        # Situación y cuartos
-        draw.text((PAD, cy), situation, font=font_meta, fill=COLOR_TEXT)
+        # Situación (con FT y marcador coloreados) y cuartos (Q destacado)
+        _draw_runs(draw, PAD, cy, situation_runs, font_meta)
         cy += 38
-        if quarters_str and font_quarters:
-            draw.text((PAD, cy), quarters_str, font=font_quarters, fill=COLOR_MUTED)
+        if quarters_items and font_quarters:
+            _draw_quarters(draw, PAD, cy, quarters_items, font_quarters)
             cy += 34
 
         cy += 20
