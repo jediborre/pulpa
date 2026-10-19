@@ -328,9 +328,14 @@ def _section_from_stats(label: str, stats: dict | None, active_models: list[str]
     # (los que aún no tienen apuestas resueltas quedan al final).
     models.sort(key=_model_rate, reverse=True)
 
+    subtitle = f"Señales {_fmt_count(signals)}  ·  Apuestas {_fmt_count(bets)}  ·  No bet {_fmt_count(nobet)}"
+    void = int(total.get("void") or 0)
+    if void:
+        subtitle += f"  ·  Anuladas {_fmt_count(void)}"
+
     return {
         "label": label,
-        "subtitle": f"Señales {_fmt_count(signals)}  ·  Apuestas {_fmt_count(bets)}  ·  No bet {_fmt_count(nobet)}",
+        "subtitle": subtitle,
         "accuracy": _acc(total.get("win") or 0, total.get("loss") or 0),
         "kpis": [
             ("Ganadas", total.get("win"), SS_CONF_BET),
@@ -398,9 +403,14 @@ def summary_image(
             {"label": cat.get("label") or label, "win": cat.get("win", 0), "loss": cat.get("loss", 0), "dots": dots}
         )
 
+    sub = f"Apuestas {_fmt_count(total.get('bets'))}  ·  No bet {_fmt_count(total.get('nobet'))}"
+    void = int(total.get("void") or 0)
+    if void:
+        sub += f"  ·  Anuladas {_fmt_count(void)}"
+
     section = {
         "label": day or "Hoy",
-        "subtitle": f"Apuestas {_fmt_count(total.get('bets'))}  ·  No bet {_fmt_count(total.get('nobet'))}",
+        "subtitle": sub,
         "accuracy": _acc(total.get("win") or 0, total.get("loss") or 0),
         "kpis": [
             ("Ganadas", total.get("win"), SS_CONF_BET),

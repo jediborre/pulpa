@@ -102,6 +102,13 @@ PROBE_GLOBAL_TIMEOUT_SECS = 21600   # Timeout global (6h) para evitar tareas col
 WATCH_OBSOLETE_SECS = 12600         # 3.5h sin datos tras su hora de inicio → partido obsoleto (se descarta)
 PROBE_MAX_CONSECUTIVE_ERRORS = 8    # Fallos de sondeo consecutivos antes de abandonar un partido
 
+# --- Barrido de apuestas pendientes (nunca dejar 'pending' para siempre) ---
+PENDING_SWEEP_INTERVAL_SECS = 7200      # Cada 2h se revisan los pendientes sin cuartos
+PENDING_SWEEP_MIN_AGE_SECS = 10800      # Solo partidos que empezaron hace >3h (ya deberían tener FT)
+PENDING_SWEEP_MAX_PER_RUN = 40          # Tope de descargas FT por barrido (protege el token)
+PENDING_SWEEP_RATE = 1.5                # Partidos por segundo durante el barrido
+PENDING_VOID_AFTER_SECS = 86400         # Tras 24h sin poder liquidar → se anula (no cuenta)
+
 # --- Polling y Descarga Final (FT) ---
 POLL_INTERVAL_LIVE_SECS = 15        # Polling frecuente en vivo para Q4
 POLL_NEAR_SECS = 45                 # Polling en ventana activa previa

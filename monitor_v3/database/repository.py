@@ -21,6 +21,7 @@
 
 import json
 import sqlite3
+import time
 from datetime import datetime
 from pathlib import Path
 import yaml
@@ -332,6 +333,60 @@ def get_pending_schedule_matches() -> list[dict]:
     with get_db_connection() as conn:
         cursor = conn.execute("SELECT * FROM bet_monitor_schedule_v3 WHERE status IN ('pending', 'in_progress')")
         return [dict(r) for r in cursor.fetchall()]
+
+
+def get_stale_pending_bets(min_age_secs: int, limit: int = 40) -> list[dict]:
+    """
+    Partidos con apuestas en 'pending' y sin Q4 guardado, cuyo inicio ya pasó
+    hace más de `min_age_secs` (deberían tener el FT publicado).
+    """
+    cutoff = int(time.time()) - int(min_age_secs)
+    with get_db_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT l.match_id,
+                   COALESCE(s.home_team, '?') AS home_team,
+                   COALESCE(s.away_team, '?') AS away_team,
+                   COALESCE(s.scheduled_utc_ts, 0) AS scheduled_utc_ts
+            FROM bet_monitor_log_v3 l
+            LEFT JOIN bet_monitor_schedule_v3 s ON s.match_id = l.match_id
+            LEFT JOIN quarter_scores_v2 q ON q.match_id = l.match_id
+            WHERE l.result = 'pending'
+              AND (q.q4_home IS NULL OR q.q4_away IS NULL)
+              AND COALESCE(s.scheduled_utc_ts, 0) < ?
+            ORDER BY s.scheduled_utc_ts
+            LIMIT ?
+            """,
+            (cutoff, int(limit)),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def void_pending_older_than(older_than_secs: int) -> int:
+    """
+    Anula ('void') las apuestas que siguen pendientes demasiado tiempo después
+    del inicio del partido: no hay datos para liquidarlas, así que dejan de
+    contar en las estadísticas en lugar de quedarse en 'pending' para siempre.
+    Devuelve cuántas apuestas se anularon.
+    """
+    cutoff = int(time.time()) - int(older_than_secs)
+    with get_db_connection() as conn:
+        with conn:
+            rows = conn.execute(
+                """
+                SELECT l.id
+                FROM bet_monitor_log_v3 l
+                LEFT JOIN bet_monitor_schedule_v3 s ON s.match_id = l.match_id
+                WHERE l.result = 'pending'
+                  AND COALESCE(s.scheduled_utc_ts, 0) < ?
+                """,
+                (cutoff,),
+            ).fetchall()
+            for row in rows:
+                conn.execute(
+                    "UPDATE bet_monitor_log_v3 SET result = 'void' WHERE id = ?", (row["id"],)
+                )
+    return len(rows)
 
 def save_quarter_scores(match_id: str, scores: dict) -> None:
     """Guarda los marcadores por cuarto en quarter_scores_v2."""

@@ -1191,7 +1191,7 @@ def _daily_summary_data() -> dict | None:
     if not rows:
         return None
 
-    win = loss = push = pending = nobet = 0
+    win = loss = push = pending = nobet = void = 0
     per_model: dict[str, dict] = {}
     # Categorías (mismo criterio que los avisos): clave → [ganadas, perdidas]
     cats: dict[str, list[int]] = {"🟢": [0, 0], "🟡": [0, 0], "⚪️": [0, 0], "🟡⚪️": [0, 0]}
@@ -1203,6 +1203,11 @@ def _daily_summary_data() -> dict | None:
         if "NO_BET" in sig or "BET" not in sig:
             nobet += 1
             continue
+        res = (r["result"] or "").lower()
+        if res == "void":
+            # Anuladas por falta de datos: fuera del cómputo de apuestas/acierto.
+            void += 1
+            continue
         m["bets"] += 1
 
         conf = r["confidence"] or 0.0
@@ -1212,7 +1217,6 @@ def _daily_summary_data() -> dict | None:
         is_low_conf = round(float(conf), 4) < 0.30
         cat = ("🟡⚪️" if is_low_conf else "⚪️") if is_late else ("🟡" if is_low_conf else "🟢")
 
-        res = (r["result"] or "").lower()
         if res in ("win", "hit"):
             win += 1
             m["win"] += 1
@@ -1242,6 +1246,7 @@ def _daily_summary_data() -> dict | None:
             "push": push,
             "pending": pending,
             "nobet": nobet,
+            "void": void,
         },
         "per_model": per_model,
         "categories": categories,
@@ -1258,7 +1263,8 @@ def _render_daily_summary_text(data: dict) -> str:
 
     lines = [f"📊 <b>Resumen del día</b> ({data['day']})", ""]
     lines.append(f"Apuestas: <b>{bets}</b> | ✅ {win}  ❌ {loss}  ➖ {push}  ⏳ {pending}")
-    lines.append(f"No bet: <b>{total['nobet']}</b> | Acierto (resueltas): <b>{acc}</b>")
+    extra = f" | Anuladas: <b>{total.get('void', 0)}</b>" if total.get("void") else ""
+    lines.append(f"No bet: <b>{total['nobet']}</b> | Acierto (resueltas): <b>{acc}</b>{extra}")
     lines.append("")
     lines.append("<b>Por modelo</b>")
     for model, s in data["per_model"].items():

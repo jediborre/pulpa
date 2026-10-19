@@ -241,7 +241,10 @@ def fetch_v3_stats(created_date: str | None = None, created_month: str | None = 
     - Sin filtros: histórico completo.
     """
     db = _db_path()
-    stats = {"per_model": {}, "total": {"signals": 0, "bets": 0, "win": 0, "loss": 0, "push": 0, "pending": 0}}
+    stats = {
+        "per_model": {},
+        "total": {"signals": 0, "bets": 0, "win": 0, "loss": 0, "push": 0, "pending": 0, "void": 0},
+    }
     if not db.exists():
         return stats
     query = "SELECT model_version, signal_type, confidence, result FROM bet_monitor_log_v3"
@@ -260,13 +263,18 @@ def fetch_v3_stats(created_date: str | None = None, created_month: str | None = 
     for r in rows:
         model = r["model_version"] or "?"
         m = stats["per_model"].setdefault(
-            model, {"signals": 0, "bets": 0, "win": 0, "loss": 0, "push": 0, "pending": 0}
+            model, {"signals": 0, "bets": 0, "win": 0, "loss": 0, "push": 0, "pending": 0, "void": 0}
         )
         m["signals"] += 1
         stats["total"]["signals"] += 1
         sig = r["signal_type"] or ""
         is_bet = "BET" in sig and "NO_BET" not in sig
         res = (r["result"] or "").lower()
+        if res == "void":
+            # Anuladas por falta de datos: no cuentan como apuesta ni en acierto.
+            m["void"] += 1
+            stats["total"]["void"] += 1
+            continue
         if is_bet:
             m["bets"] += 1
             stats["total"]["bets"] += 1
@@ -349,7 +357,8 @@ def _range_block(title: str, stats: dict, emoji: str = "") -> list[str]:
         f"Apuestas: <b>{t.get('bets', 0)}</b> | ✅ {t.get('win', 0)}  ❌ {t.get('loss', 0)}  "
         f"➖ {t.get('push', 0)}  ⏳ {t.get('pending', 0)}"
     )
-    lines.append(f"Señales: <b>{t.get('signals', 0)}</b> | Acierto: <b>{acc}</b>")
+    extra = f" | Anuladas: <b>{t.get('void', 0)}</b>" if t.get("void") else ""
+    lines.append(f"Señales: <b>{t.get('signals', 0)}</b> | Acierto: <b>{acc}</b>{extra}")
 
     # Modelos ordenados por efectividad (mejor % de acierto primero)
     rows = []

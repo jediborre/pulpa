@@ -36,6 +36,11 @@ from monitor_v3.config.constants import (
     DAILY_SUMMARY_MINUTE,
     WATCH_OBSOLETE_SECS,
     PROBE_MAX_CONSECUTIVE_ERRORS,
+    PENDING_SWEEP_INTERVAL_SECS,
+    PENDING_SWEEP_MIN_AGE_SECS,
+    PENDING_SWEEP_MAX_PER_RUN,
+    PENDING_SWEEP_RATE,
+    PENDING_VOID_AFTER_SECS,
 )
 from monitor_v3.core.token_manager import get_token_pool
 from monitor_v3.core.mobile_client import get_mobile_client
@@ -49,6 +54,8 @@ from monitor_v3.database.repository import (
     update_schedule_status,
     update_schedule_q4,
     get_pending_schedule_matches,
+    get_stale_pending_bets,
+    void_pending_older_than,
     save_quarter_scores,
     save_bet_log,
     save_eval_match_results,
@@ -668,6 +675,12 @@ async def _daily_summary_task(stop_event: asyncio.Event) -> None:
                 and now_local.hour == DAILY_SUMMARY_HOUR
                 and now_local.minute >= DAILY_SUMMARY_MINUTE
             ):
+                # Barrido final antes del resumen: liquida lo que falte o lo anula,
+                # para que el resumen del día salga sin pendientes.
+                try:
+                    await _sweep_pending_bets()
+                except Exception as e:
+                    log_error("DATABASE", f"Error en barrido previo al resumen: {e}")
                 await send_daily_summary()
                 sent_for = today
                 log_info("TELEGRAM", f"[RESUMEN] Resumen diario enviado ({today})")
@@ -735,6 +748,66 @@ async def _live_discovery_task(stop_event: asyncio.Event) -> None:
 
         await asyncio.sleep(POLL_INTERVAL_LIVE_SECS)
 
+async def _pending_sweep_task(stop_event: asyncio.Event) -> None:
+    """Barrido periódico de apuestas pendientes sin cuartos (ver `_sweep_pending_bets`)."""
+    while not stop_event.is_set():
+        try:
+            await _sweep_pending_bets()
+        except Exception as e:
+            log_error("DATABASE", f"Error en barrido de pendientes: {e}")
+
+        elapsed = 0
+        while elapsed < PENDING_SWEEP_INTERVAL_SECS and not stop_event.is_set():
+            await asyncio.sleep(30)
+            elapsed += 30
+
+
+async def _sweep_pending_bets() -> None:
+    """
+    Garantiza que ninguna apuesta quede en 'pending' para siempre.
+
+    1. Reintenta el FT de los partidos con apuestas pendientes y sin cuartos
+       (empezaron hace >3h): si el API publica el desglose, se guarda y se liquida.
+    2. Las que tras 24h siguen sin datos se marcan como 'void' (anuladas): no
+       cuentan en acierto ni en apuestas, pero quedan auditadas.
+    """
+    stale = get_stale_pending_bets(PENDING_SWEEP_MIN_AGE_SECS, PENDING_SWEEP_MAX_PER_RUN)
+    if not stale:
+        voided = void_pending_older_than(PENDING_VOID_AFTER_SECS)
+        if voided:
+            log_warning("DATABASE", f"[SWEEP] {voided} apuestas anuladas por falta de datos (>24h)")
+        return
+
+    spacing = 1.0 / PENDING_SWEEP_RATE if PENDING_SWEEP_RATE > 0 else 1.0
+    recovered = 0
+    log_info("DATABASE", f"[SWEEP] Revisando {len(stale)} partidos con apuestas pendientes sin cuartos")
+
+    for item in stale:
+        match_id = str(item["match_id"])
+        t0 = time.monotonic()
+        try:
+            data = await fetch_match_by_id(match_id, is_ft=True)
+            quarters = (data.get("score") or {}).get("quarters") or {}
+            q4 = quarters.get("Q4") or {}
+            if q4.get("home") is not None and q4.get("away") is not None:
+                save_quarter_scores(match_id, quarters)
+                recovered += 1
+        except Exception as e:  # noqa: BLE001
+            log_debug("DESCARGA", f"[SWEEP] Sin datos para {match_id}: {type(e).__name__}: {e}")
+        elapsed = time.monotonic() - t0
+        if spacing > elapsed:
+            await asyncio.sleep(spacing - elapsed)
+
+    if recovered:
+        reconcile_pending_results()
+
+    voided = void_pending_older_than(PENDING_VOID_AFTER_SECS)
+    log_info(
+        "DATABASE",
+        f"[SWEEP] Cuartos recuperados: {recovered} | pendientes anuladas: {voided}",
+    )
+
+
 async def main_async() -> None:
     """Punto de entrada principal del daemon Monitor V3."""
     log_info("SYSTEM", "==================================================")
@@ -771,6 +844,7 @@ async def main_async() -> None:
         asyncio.create_task(_reconcile_loop_task(stop_event)),
         asyncio.create_task(_live_discovery_task(stop_event)),
         asyncio.create_task(_daily_summary_task(stop_event)),
+        asyncio.create_task(_pending_sweep_task(stop_event)),
     ]
 
     log_info("SYSTEM", "Daemon V3 inicializado y operando. Monitoreando partidos en tiempo real...")
