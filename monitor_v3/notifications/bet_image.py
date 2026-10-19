@@ -328,6 +328,14 @@ _SB_PAD = 14
 _SB_HEAD = 26
 _SB_ROW = 36
 _SCOREBOARD_H = _SB_PAD * 2 + _SB_HEAD + _SB_ROW * 2 + 6
+_NO_Q_H = 40
+_NO_Q_TEXT = "NO HUBO RESULTADOS Q"
+
+
+def _draw_no_quarters(draw, x: float, y: float) -> float:
+    """Mensaje en rojo cuando el partido no trae desglose por cuartos."""
+    draw.text((x, y + 2), _NO_Q_TEXT, font=_font(22, True), fill=SS_CONF_FAR)
+    return y + _NO_Q_H
 
 
 def _cell_color(value, other) -> tuple:
@@ -994,18 +1002,21 @@ def build_q4_alert_image(
             y += 32
         y += (_font_size(font_teams) + 14)
         y += 38
-        # En los RESULTADOS la tabla de cuartos va después del panel de apuesta;
-        # en las alertas en vivo se mantiene arriba (no hay gráfica).
-        table_after_panel = bool(is_result and quarters_items)
-        if quarters_items and not table_after_panel:
-            y += _SCOREBOARD_H
+        # Bloque de desglose: tabla de cuartos (o aviso si el partido no la trae).
+        # En los RESULTADOS va después del panel de apuesta; en las alertas en
+        # vivo se mantiene arriba (no hay gráfica).
+        has_quarters = bool(quarters_items)
+        q_block_below = bool(is_result)
+        block_h = _SCOREBOARD_H if has_quarters else _NO_Q_H
+        if not q_block_below:
+            y += block_h
         y += 20  # separación antes del panel
 
         panel_h = _panel_height(len(bets))
         y += panel_h
-        if table_after_panel:
-            y += 16 + _SCOREBOARD_H
-            # La tabla es el último bloque: se pega a la gráfica (sin aire extra).
+        if q_block_below:
+            y += 16 + block_h
+            # El bloque de desglose es el último: se pega a la gráfica.
             card_h = y + 10
         else:
             card_h = y + PAD
@@ -1056,8 +1067,12 @@ def build_q4_alert_image(
         # Situación (con FT y marcador coloreados)
         _draw_runs(draw, PAD, cy, situation_runs, font_meta)
         cy += 38
-        if quarters_items and not table_after_panel:
-            cy = _draw_scoreboard(draw, PAD, cy, WIDTH - 2 * PAD, quarters_items, home_score, away_score)
+        if not q_block_below:
+            cy = (
+                _draw_scoreboard(draw, PAD, cy, WIDTH - 2 * PAD, quarters_items, home_score, away_score)
+                if has_quarters
+                else _draw_no_quarters(draw, PAD, cy)
+            )
 
         cy += 20
         # Marcador del mercado: parcial del cuarto objetivo (o el global si falta)
@@ -1074,10 +1089,13 @@ def build_q4_alert_image(
             draw, PAD, cy, WIDTH - 2 * PAD, bets, is_late, has_real_bet, is_result, market_score
         )
 
-        # En resultados, la tabla de cuartos va DEBAJO del panel de apuesta.
-        if quarters_items and table_after_panel:
+        # En resultados, el desglose (tabla o aviso) va DEBAJO del panel.
+        if q_block_below:
             cy += 16
-            _draw_scoreboard(draw, PAD, cy, WIDTH - 2 * PAD, quarters_items, home_score, away_score)
+            if has_quarters:
+                _draw_scoreboard(draw, PAD, cy, WIDTH - 2 * PAD, quarters_items, home_score, away_score)
+            else:
+                _draw_no_quarters(draw, PAD, cy)
 
         # ── Gráfica de momentum (solo cuando se pide; los avisos de apuesta en
         #    vivo van sin gráfica, y las confirmaciones FT con el partido completo) ──

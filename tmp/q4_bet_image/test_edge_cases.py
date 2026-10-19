@@ -93,6 +93,16 @@ def main() -> None:
     )
     check("genera imagen sin excepción", isinstance(photo2, (bytes, bytearray)) and len(photo2) > 5000)
 
+    print("\n[3b] Sin desglose de cuartos -> aviso rojo y sin tabla")
+    md_nq = _match_data([{"minute": 1, "value": 3}, {"minute": 2, "value": -4}])
+    md_nq["score"] = {"home": 71, "away": 68, "quarters": {}}
+    photo_nq = bi.build_q4_alert_image(
+        md_nq, BETS, minute=27, q_key="Q4", is_result=True, include_chart=True
+    )
+    check("genera imagen con aviso", isinstance(photo_nq, (bytes, bytearray)) and len(photo_nq) > 5000)
+    if photo_nq:
+        (OUT_DIR / "edge_sin_cuartos.jpg").write_bytes(photo_nq)
+
     print("\n[4] Cuota decimal -> americana y proyección")
     check("1.85 -> -118", bi.decimal_to_american(1.85) == -118)
     check("2.10 -> +110", bi.decimal_to_american(2.10) == 110)

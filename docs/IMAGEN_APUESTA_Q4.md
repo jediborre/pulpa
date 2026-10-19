@@ -151,7 +151,7 @@ El texto que acompaña a la imagen repite las mismas cifras (y se usa como capti
 
 - **Tabla de cuartos (estilo SofaScore)** dentro de un **panel con borde redondeado**: una fila por equipo (🏠 local / ✈️ visitante) con columnas `Q1..Qn` y `TOTAL`. Cada celda se colorea **verde si ese equipo ganó el cuarto** y **rojo si lo perdió** (empate sin color); la columna `TOTAL` hace lo mismo con el marcador global. Solo se muestran los cuartos con datos.
 - **Posición**: en las alertas de apuesta la tabla va sobre el panel; en las **confirmaciones FT va debajo del panel**, antes de la gráfica.
-- Si el partido no tiene desglose por cuartos, la cabecera cae al **marcador global** (`MARCADOR 86-76`) con el mismo criterio de color.
+- Si el partido **no trae desglose por cuartos**, en lugar de la tabla se muestra el aviso **`NO HUBO RESULTADOS Q` en rojo** (y el panel cae al marcador global `MARCADOR 86-76`).
 - **Nombres de equipos**: el ganador del partido va en **negrita**; el perdedor en regular.
 - **Panel de apuesta**: a la derecha del título se muestra el parcial del **cuarto objetivo** (`Q4 21-17`), coloreado por quién ganó ese cuarto.
 - **Gráfica**: cuando la tabla está presente no reserva franja superior ni repite `Q1..Q4`/`FT`, y **no hay eje inferior** (la hora ya está en la cabecera): el área de datos ocupa todo el alto disponible. La tabla queda pegada a la gráfica, separada solo por la línea divisoria. Sin tabla (partidos sin desglose) la gráfica vuelve a mostrar `Q1..Q4` arriba.
