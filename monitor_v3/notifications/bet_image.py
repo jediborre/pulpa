@@ -54,6 +54,7 @@ COLOR_HOME = (76, 208, 94)     # #4CD05E  (local / presión positiva)
 COLOR_AWAY = (120, 130, 235)   # #7882EB  (visitante / presión negativa)
 COLOR_ACCENT = (79, 211, 255)  # #4FD3FF  (acento / línea de tiempo)
 COLOR_ALERT = (255, 77, 87)    # #FF4D57  (tardía / alerta)
+COLOR_TIME = (255, 149, 0)     # #FF9500  hora y minuto del partido (naranja)
 
 # Semáforo de confianza para modelos que NO apostaron
 SS_CONF_BET = (63, 203, 92)    # #3FCB5C  el modelo apostó → verde
@@ -952,13 +953,13 @@ def build_q4_alert_image(
 
         situation_runs: list[tuple[str, tuple]] = []
         if hhmm:
-            situation_runs.append((hhmm, COLOR_MUTED))
+            situation_runs.append((hhmm, COLOR_TIME))
         if status_type == "finished":
             situation_runs.append(("FT", SS_FT))
         else:
             situation_runs.append((q_key or "Q4", COLOR_TEXT))
         if minute is not None:
-            situation_runs.append((f"MIN~{minute}", COLOR_MUTED))
+            situation_runs.append((f"MIN~{minute}", COLOR_TIME))
 
         quarters_items = _quarters_items(score)
 
@@ -1123,12 +1124,11 @@ def build_q4_alert_image(
             return out.getvalue()
 
         graph = chart.convert("RGB")
-        sep_h = 2
-        total_h = card_h + sep_h + graph.height
+        # Sin línea divisoria: la tabla (o el aviso) queda pegada a la gráfica.
+        total_h = card_h + graph.height
         canvas = Image.new("RGB", (WIDTH, total_h), COLOR_BG)
         canvas.paste(card, (0, 0))
-        ImageDraw.Draw(canvas).rectangle([0, card_h, WIDTH, card_h + sep_h], fill=COLOR_BORDER)
-        canvas.paste(graph, (0, card_h + sep_h))
+        canvas.paste(graph, (0, card_h))
 
         out = io.BytesIO()
         canvas.save(out, format="JPEG", quality=JPEG_QUALITY)

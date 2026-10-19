@@ -350,14 +350,25 @@ def _range_block(title: str, stats: dict, emoji: str = "") -> list[str]:
         f"➖ {t.get('push', 0)}  ⏳ {t.get('pending', 0)}"
     )
     lines.append(f"Señales: <b>{t.get('signals', 0)}</b> | Acierto: <b>{acc}</b>")
+
+    # Modelos ordenados por efectividad (mejor % de acierto primero)
+    rows = []
     for m in models:
         s = (stats.get("per_model") or {}).get(m)
         if not s:
             continue
-        r = int(s.get("win") or 0) + int(s.get("loss") or 0)
-        a = f"{int(round(int(s.get('win') or 0) * 100 / r))}%" if r else "—"
+        win = int(s.get("win") or 0)
+        loss = int(s.get("loss") or 0)
+        resolved = win + loss
+        rate = (win / resolved) if resolved else -1.0
+        rows.append((rate, resolved, m, s, win, loss))
+    rows.sort(key=lambda r: (r[0], r[1]), reverse=True)
+
+    for _rate, _resolved, m, s, win, loss in rows:
+        r = win + loss
+        a = f"{int(round(win * 100 / r))}%" if r else "—"
         lines.append(
-            f"  {m}: BET {s.get('bets', 0)} | ✅ {s.get('win', 0)}  ❌ {s.get('loss', 0)}  "
+            f"  {m}: BET {s.get('bets', 0)} | ✅ {win}  ❌ {loss}  "
             f"⏳ {s.get('pending', 0)} | {a}"
         )
     return lines

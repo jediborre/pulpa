@@ -297,6 +297,15 @@ def build_stats_image(*, title: str, sections: list[dict], subtitle: str = "", f
 # Envoltorios por caso de uso
 # ─────────────────────────────────────────────────────────────────────
 
+def _model_rate(model: dict) -> tuple[float, int]:
+    """Clave de orden por efectividad: % de acierto (desc) y resueltas (desc)."""
+    win = int(model.get("win") or 0)
+    loss = int(model.get("loss") or 0)
+    resolved = win + loss
+    rate = (win / resolved) if resolved else -1.0
+    return (rate, resolved)
+
+
 def _section_from_stats(label: str, stats: dict | None, active_models: list[str] | None = None) -> dict:
     """Sección (KPIs + modelos) a partir del dict de `fetch_v3_stats()`."""
     total = (stats or {}).get("total") or {}
@@ -315,6 +324,9 @@ def _section_from_stats(label: str, stats: dict | None, active_models: list[str]
         }
         for name in order
     ]
+    # Orden por efectividad: primero los de mejor % de acierto, al final los peores
+    # (los que aún no tienen apuestas resueltas quedan al final).
+    models.sort(key=_model_rate, reverse=True)
 
     return {
         "label": label,
