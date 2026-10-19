@@ -7,15 +7,18 @@
 #   interactivo (`/status`) y el resumen diario del daemon.
 #
 #   ┌──────────────────────────────────────────────────┐
-#   │ STATUS BD (V3)                      ACIERTO 56.7%│
-#   │ Señales 12 480 · Apuestas 1 234 · No bet 11 246  │
-#   │ ┌────────┐ ┌────────┐ ┌──────┐ ┌───────────┐     │
-#   │ │GANADAS │ │PERDIDAS│ │ PUSH │ │PENDIENTES │     │  KPI cards
-#   │ │  700   │ │  480   │ │  54  │ │     0     │     │
-#   │ └────────┘ └────────┘ └──────┘ └───────────┘     │
-#   │ POR MODELO                                       │
-#   │ m27_v5_3   BET 320   ganadas 180  perdidas 140   │
-#   │ ████████████████████░░░░░░░░░░░░░  56.2%         │  barra apilada
+#   │ STATUS BD (V3)                                   │
+#   │ Mié 19 oct 2026 · octubre 2026                   │
+#   │ HOY                                  ACIERTO 60%│
+#   │ ┌──────────┐ ┌──────────┐ ┌──────┐ ┌───────────┐ │  KPI cards
+#   │ │ GANADAS  │ │ PERDIDAS │ │ PUSH │ │PENDIENTES │ │
+#   │ │   341    │ │   231    │ │  31  │ │    46     │ │
+#   │ └──────────┘ └──────────┘ └──────┘ └───────────┘ │
+#   │ m27_v5_3  BET 28 ganadas 16 perdidas 9 ...   64% │
+#   │ ████████████████░░░░░░░░░▨▨▨▨▨                   │  barra apilada
+#   │ ─────────────────────────────────────────────────│
+#   │ MES                                  ACIERTO 58%│
+#   │ ...                                              │
 #   └──────────────────────────────────────────────────┘
 #
 # Paleta y utilidades: se reutilizan las de `bet_image.py` (mismo estilo
@@ -52,14 +55,13 @@ from monitor_v3.notifications.bet_image import (
     WIDTH,
     _bold,
     _font,
-    _font_size,
     _text_len,
 )
 
 PAD = 32
-KPI_H = 118
+KPI_H = 108
 BAR_H = 12
-ROW_H = 60
+ROW_H = 58
 
 # Estilo de las categorías de apuesta (mismo criterio que los avisos):
 # clave del clasificador → (etiqueta, colores de los puntos)
@@ -81,13 +83,13 @@ def _fmt_count(value) -> str:
 
 
 def _acc(win: int, loss: int) -> str:
-    total = int(win) + int(loss)
+    total = int(win or 0) + int(loss or 0)
     if total <= 0:
         return "—"
-    return f"{int(round(win * 100 / total))}%"
+    return f"{int(round(int(win) * 100 / total))}%"
 
 
-def _draw_kpis(draw, x: float, y: float, kpis: list[tuple[str, object, tuple]], width: float) -> float:
+def _draw_kpis(draw, x: float, y: float, kpis, width: float) -> float:
     """Fila de tarjetas KPI. Devuelve la Y inferior."""
     n = max(1, len(kpis))
     gap = 16
@@ -97,25 +99,26 @@ def _draw_kpis(draw, x: float, y: float, kpis: list[tuple[str, object, tuple]], 
         draw.rounded_rectangle(
             [cx, y, cx + card_w, y + KPI_H], radius=14, fill=COLOR_PANEL_ALT, outline=COLOR_BORDER, width=2
         )
-        draw.text((cx + 18, y + 16), label.upper(), font=_font(20, True), fill=COLOR_MUTED)
-        draw.text((cx + 18, y + 44), _fmt_count(value), font=_font(44, True), fill=color)
+        draw.text((cx + 16, y + 14), label.upper(), font=_font(19, True), fill=COLOR_MUTED)
+        draw.text((cx + 16, y + 40), _fmt_count(value), font=_font(40, True), fill=color)
     return y + KPI_H
 
 
 def _draw_bar(draw, x: float, y: float, width: float, win: int, loss: int, pending: int = 0) -> None:
     """Barra apilada: verde = ganadas, rojo = perdidas, gris = pendientes."""
     draw.rounded_rectangle([x, y, x + width, y + BAR_H], radius=BAR_H // 2, fill=COLOR_PANEL)
-    total = int(win) + int(loss) + int(pending)
+    total = int(win or 0) + int(loss or 0) + int(pending or 0)
     if total <= 0:
         return
     cursor = x
     for value, color in ((win, SS_CONF_BET), (loss, SS_CONF_FAR), (pending, COLOR_BORDER)):
         if not value:
             continue
-        segment = width * (value / total)
-        segment = max(segment, 6.0)
+        segment = max(width * (value / total), 6.0)
         if cursor + segment > x + width:
             segment = (x + width) - cursor
+        if segment <= 0:
+            break
         draw.rounded_rectangle([cursor, y, cursor + segment, y + BAR_H], radius=BAR_H // 2, fill=color)
         cursor += segment
 
@@ -142,11 +145,12 @@ def _draw_row(
             cx += 2 * r + 6
         cx += 6
 
-    draw.text((cx, y), label, font=_font(26, True), fill=label_color)
-    cx += _text_len(draw, label, _font(26, True)) + 22
+    name_font = _font(25, True)
+    draw.text((cx, y), label, font=name_font, fill=label_color)
+    cx += _text_len(draw, label, name_font) + 20
 
     parts = [
-        (f"BET {_fmt_count(win + loss + pending)}", COLOR_MUTED),
+        (f"BET {_fmt_count((win or 0) + (loss or 0) + (pending or 0))}", COLOR_MUTED),
         (f"ganadas {_fmt_count(win)}", SS_CONF_BET),
         (f"perdidas {_fmt_count(loss)}", SS_CONF_FAR),
     ]
@@ -155,77 +159,92 @@ def _draw_row(
 
     for index, (text, color) in enumerate(parts):
         if index:
-            draw.text((cx, y + 4), "·", font=_font(22), fill=COLOR_BORDER)
-            cx += _text_len(draw, "·", _font(22)) + 10
-        font = _font(22, True)
-        draw.text((cx, y + 4), text, font=font, fill=color)
-        cx += _text_len(draw, text, font) + 10
+            draw.text((cx, y + 3), "·", font=_font(21), fill=COLOR_BORDER)
+            cx += _text_len(draw, "·", _font(21)) + 8
+        font = _font(21, True)
+        draw.text((cx, y + 3), text, font=font, fill=color)
+        cx += _text_len(draw, text, font) + 8
 
-    right_font = _font(26, True)
-    draw.text((x + width, y), right_text, font=right_font, fill=COLOR_TEXT, anchor="ra")
-
-    _draw_bar(draw, x, y + 38, width, win, loss, pending)
+    draw.text((x + width, y), right_text, font=_font(25, True), fill=COLOR_TEXT, anchor="ra")
+    _draw_bar(draw, x, y + 36, width, win, loss, pending)
     return y + ROW_H
 
 
-def build_stats_image(
-    *,
-    title: str,
-    subtitle: str = "",
-    accuracy: str = "",
-    accuracy_label: str = "ACIERTO",
-    kpis: list[tuple[str, object, tuple]] | None = None,
-    models: list[dict] | None = None,
-    categories: list[dict] | None = None,
-    footer: str = "",
-) -> bytes | None:
-    """
-    Construye la imagen de estadísticas y la devuelve como bytes JPEG.
+def _section_height(section: dict) -> int:
+    height = 44  # etiqueta de la sección + acierto
+    if section.get("subtitle"):
+        height += 30
+    if section.get("kpis"):
+        height += KPI_H + 20
+    if section.get("models"):
+        height += ROW_H * len(section["models"])
+    if section.get("categories"):
+        height += 28 + ROW_H * len(section["categories"])
+    return height + 20
 
-    - `kpis`: [(etiqueta, valor, color)]
-    - `models`: [{"name", "win", "loss", "pending", "label_color"?}]
-    - `categories`: [{"label", "win", "loss", "dots": [color, ...]}]
+
+def build_stats_image(*, title: str, sections: list[dict], subtitle: str = "", footer: str = "") -> bytes | None:
+    """
+    Construye la imagen de estadísticas con una o varias secciones.
+
+    Cada sección es un dict con:
+        label (str), subtitle (str, opcional), accuracy (str, opcional),
+        kpis: [(etiqueta, valor, color)],
+        models: [{"name", "win", "loss", "pending"}],
+        categories: [{"label", "win", "loss", "dots": [color, ...]}]
     """
     try:
-        models = models or []
-        categories = categories or []
-        kpis = kpis or []
+        sections = [s for s in (sections or []) if s]
+        if not sections:
+            return None
 
-        # Altura dinámica
-        y_cursor = PAD + 48 + 40
-        if kpis:
-            y_cursor += KPI_H + 28
-        if models:
-            y_cursor += 34 + ROW_H * len(models) + 10
-        if categories:
-            y_cursor += 34 + ROW_H * len(categories) + 10
+        height = PAD + 52
+        if subtitle:
+            height += 32
+        height += sum(_section_height(s) for s in sections)
         if footer:
-            y_cursor += 30
-        height = int(y_cursor + PAD - 20)
+            height += 30
+        height = int(height + PAD - 16)
 
         img = Image.new("RGB", (WIDTH, height), COLOR_BG)
         draw = ImageDraw.Draw(img)
         draw.rectangle([0, 0, WIDTH, 5], fill=COLOR_ACCENT)
 
-        # Cabecera
         y = PAD
         draw.text((PAD, y), title.upper(), font=_font(34, True), fill=COLOR_ACCENT)
-        if accuracy:
-            draw.text((WIDTH - PAD, y + 6), f"{accuracy_label} {accuracy}", font=_font(30, True), fill=SS_CONF_BET, anchor="ra")
-        y += 48
+        y += 52
         if subtitle:
             draw.text((PAD, y), subtitle, font=_font(22), fill=COLOR_MUTED)
-        y += 40
+            y += 32
 
         inner_w = WIDTH - 2 * PAD
+        for index, section in enumerate(sections):
+            if index:
+                draw.line([(PAD, y), (WIDTH - PAD, y)], fill=COLOR_BORDER, width=2)
+                y += 16
 
-        if kpis:
-            _draw_kpis(draw, PAD, y, kpis, inner_w)
-            y += KPI_H + 28
+            draw.text((PAD, y), str(section.get("label") or "").upper(), font=_font(26, True), fill=COLOR_ACCENT)
+            accuracy = section.get("accuracy")
+            if accuracy:
+                draw.text(
+                    (WIDTH - PAD, y + 2),
+                    f"ACIERTO {accuracy}",
+                    font=_font(24, True),
+                    fill=SS_CONF_BET,
+                    anchor="ra",
+                )
+            y += 38
 
-        if models:
-            draw.text((PAD, y), "POR MODELO", font=_font(22, True), fill=COLOR_ACCENT)
-            y += 34
+            if section.get("subtitle"):
+                draw.text((PAD, y), section["subtitle"], font=_font(21), fill=COLOR_MUTED)
+                y += 30
+
+            kpis = section.get("kpis") or []
+            if kpis:
+                _draw_kpis(draw, PAD, y, kpis, inner_w)
+                y += KPI_H + 20
+
+            models = section.get("models") or []
             for model in models:
                 win, loss = int(model.get("win") or 0), int(model.get("loss") or 0)
                 y = _draw_row(
@@ -234,36 +253,37 @@ def build_stats_image(
                     y,
                     inner_w,
                     str(model.get("name") or "?"),
-                    model.get("label_color") or COLOR_TEXT,
+                    COLOR_TEXT,
                     win,
                     loss,
                     int(model.get("pending") or 0),
                     _acc(win, loss),
                 )
-            y += 10
+            if models:
+                y += 8
 
-        if categories:
-            draw.text((PAD, y), "POR CATEGORÍA", font=_font(22, True), fill=COLOR_ACCENT)
-            y += 34
-            for cat in categories:
-                win, loss = int(cat.get("win") or 0), int(cat.get("loss") or 0)
-                y = _draw_row(
-                    draw,
-                    PAD,
-                    y,
-                    inner_w,
-                    str(cat.get("label") or "?"),
-                    COLOR_TEXT,
-                    win,
-                    loss,
-                    0,
-                    _acc(win, loss),
-                    dots=cat.get("dots"),
-                )
-            y += 10
+            categories = section.get("categories") or []
+            if categories:
+                draw.text((PAD, y), "POR CATEGORÍA", font=_font(21, True), fill=COLOR_ACCENT)
+                y += 28
+                for cat in categories:
+                    win, loss = int(cat.get("win") or 0), int(cat.get("loss") or 0)
+                    y = _draw_row(
+                        draw,
+                        PAD,
+                        y,
+                        inner_w,
+                        str(cat.get("label") or "?"),
+                        COLOR_TEXT,
+                        win,
+                        loss,
+                        0,
+                        _acc(win, loss),
+                        dots=cat.get("dots"),
+                    )
 
         if footer:
-            draw.text((PAD, y), footer, font=_font(20), fill=COLOR_MUTED)
+            draw.text((PAD, int(height - PAD + 2)), footer, font=_font(19), fill=COLOR_MUTED)
 
         out = io.BytesIO()
         img.save(out, format="JPEG", quality=JPEG_QUALITY)
@@ -277,48 +297,59 @@ def build_stats_image(
 # Envoltorios por caso de uso
 # ─────────────────────────────────────────────────────────────────────
 
-def status_image(stats: dict, active_models: list[str] | None = None, *, footer: str = "") -> bytes | None:
-    """
-    Imagen para el `/status` del bot interactivo, a partir del dict que
-    devuelve `fetch_v3_stats()` de `bot_runner`:
-    {"total": {signals, bets, win, loss, pending}, "per_model": {model: {...}}}
-    """
+def _section_from_stats(label: str, stats: dict | None, active_models: list[str] | None = None) -> dict:
+    """Sección (KPIs + modelos) a partir del dict de `fetch_v3_stats()`."""
     total = (stats or {}).get("total") or {}
     per_model = (stats or {}).get("per_model") or {}
-    if not total and not per_model:
-        return None
-
     bets = int(total.get("bets") or 0)
     signals = int(total.get("signals") or 0)
     nobet = max(0, signals - bets)
 
-    kpis = [
-        ("Ganadas", total.get("win"), SS_CONF_BET),
-        ("Perdidas", total.get("loss"), SS_CONF_FAR),
-        ("Push", total.get("push"), COLOR_MUTED),
-        ("Pendientes", total.get("pending"), COLOR_MUTED),
+    order = list(per_model.keys()) or list(active_models or [])
+    models = [
+        {
+            "name": name,
+            "win": (per_model.get(name) or {}).get("win", 0),
+            "loss": (per_model.get(name) or {}).get("loss", 0),
+            "pending": (per_model.get(name) or {}).get("pending", 0),
+        }
+        for name in order
     ]
 
-    order = list(per_model.keys()) or list(active_models or [])
-    models = []
-    for name in order:
-        data = per_model.get(name) or {}
-        models.append(
-            {
-                "name": name,
-                "win": data.get("win", 0),
-                "loss": data.get("loss", 0),
-                "pending": data.get("pending", 0),
-            }
-        )
+    return {
+        "label": label,
+        "subtitle": f"Señales {_fmt_count(signals)}  ·  Apuestas {_fmt_count(bets)}  ·  No bet {_fmt_count(nobet)}",
+        "accuracy": _acc(total.get("win") or 0, total.get("loss") or 0),
+        "kpis": [
+            ("Ganadas", total.get("win"), SS_CONF_BET),
+            ("Perdidas", total.get("loss"), SS_CONF_FAR),
+            ("Push", total.get("push"), COLOR_MUTED),
+            ("Pendientes", total.get("pending"), COLOR_MUTED),
+        ],
+        "models": models,
+    }
 
-    subtitle = f"Señales {_fmt_count(signals)}  ·  Apuestas {_fmt_count(bets)}  ·  No bet {_fmt_count(nobet)}"
+
+def status_image(
+    day_stats: dict | None,
+    month_stats: dict | None = None,
+    active_models: list[str] | None = None,
+    *,
+    subtitle: str = "",
+    footer: str = "",
+) -> bytes | None:
+    """Imagen del `/status`: resumen de HOY y del MES (tablas _v3)."""
+    sections = []
+    if day_stats:
+        sections.append(_section_from_stats("Hoy", day_stats, active_models))
+    if month_stats:
+        sections.append(_section_from_stats("Mes", month_stats, active_models))
+    if not sections:
+        return None
     return build_stats_image(
         title="Status BD (v3)",
         subtitle=subtitle,
-        accuracy=_acc(total.get("win") or 0, total.get("loss") or 0),
-        kpis=kpis,
-        models=models,
+        sections=sections,
         footer=footer,
     )
 
@@ -337,13 +368,6 @@ def summary_image(
     if not total:
         return None
 
-    kpis = [
-        ("Ganadas", total.get("win"), SS_CONF_BET),
-        ("Perdidas", total.get("loss"), SS_CONF_FAR),
-        ("Push", total.get("push"), COLOR_MUTED),
-        ("Pendientes", total.get("pending"), COLOR_MUTED),
-    ]
-
     models = [
         {
             "name": name,
@@ -354,7 +378,6 @@ def summary_image(
         for name, data in per_model.items()
     ]
 
-    # Resolver el estilo de cada categoría (etiqueta + puntos de color)
     resolved_categories = []
     for cat in categories or []:
         key = str(cat.get("key") or cat.get("label") or "?")
@@ -363,20 +386,17 @@ def summary_image(
             {"label": cat.get("label") or label, "win": cat.get("win", 0), "loss": cat.get("loss", 0), "dots": dots}
         )
 
-    bets = int(total.get("bets") or 0)
-    nobet = int(total.get("nobet") or 0)
-    subtitle = f"Apuestas {_fmt_count(bets)}  ·  No bet {_fmt_count(nobet)}"
-    if day:
-        subtitle = f"{day}  ·  {subtitle}"
-
-    return build_stats_image(
-        title="Resumen del día",
-        subtitle=subtitle,
-        accuracy=_acc(total.get("win") or 0, total.get("loss") or 0),
-        accuracy_label="ACIERTO",
-        kpis=kpis,
-        models=models,
-        categories=resolved_categories,
-        footer=footer,
-    )
-
+    section = {
+        "label": day or "Hoy",
+        "subtitle": f"Apuestas {_fmt_count(total.get('bets'))}  ·  No bet {_fmt_count(total.get('nobet'))}",
+        "accuracy": _acc(total.get("win") or 0, total.get("loss") or 0),
+        "kpis": [
+            ("Ganadas", total.get("win"), SS_CONF_BET),
+            ("Perdidas", total.get("loss"), SS_CONF_FAR),
+            ("Push", total.get("push"), COLOR_MUTED),
+            ("Pendientes", total.get("pending"), COLOR_MUTED),
+        ],
+        "models": models,
+        "categories": resolved_categories,
+    }
+    return build_stats_image(title="Resumen del día", sections=[section], footer=footer)

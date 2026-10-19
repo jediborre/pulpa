@@ -133,7 +133,15 @@ Emoji en **color real** con `seguiemj.ttf` (`embedded_color=True`): 🏠 local, 
 El resultado hipotético se calcula con el **parcial del cuarto objetivo** (Q4 por defecto), que es el mercado real de la apuesta: `reconcile_pending_results()` liquida comparando `quarter_scores_v2.q4_home` vs `q4_away`, **no** el marcador final del partido. Por eso un modelo que pickeó al local puede mostrar `HUBIERA PERDIDO` aunque el local haya ganado el partido, si perdió el Q4. Se omite la hipótesis si el cuarto está empatado o no hay datos del cuarto. La **barra de acento** del panel resume el conjunto: verde si todo ganó, roja si todo perdió, cian si está mezclado.
 
 ### 4.5 Número del partido dentro del día (`#N`)
-Cada partido del itinerario recibe un número secuencial **por fecha** (columna `daily_seq` de `bet_monitor_schedule_v3`, ordenado por hora de inicio, reiniciando en 1 cada día). Se muestra como distintivo `#12` en cian antes de los equipos, tanto en la imagen como en el texto del aviso, para poder seguir un partido sin ambigüedad.
+Cada partido del itinerario recibe un número secuencial **por fecha** (columna `daily_seq` de `bet_monitor_schedule_v3`, ordenado por hora de inicio, reiniciando en 1 cada día). Se muestra como distintivo `#12` en cian antes de los equipos, tanto en la imagen como en el texto del aviso, y encabeza cada partido en el listado `🎯 Apuestas` del bot interactivo.
+
+### 4.6 `/status`: resumen de HOY y del MES
+El comando `/status` (y el botón `📊 Status`) responde con una imagen de **dos secciones** —`HOY` y `MES` (mes natural en curso)— cada una con:
+- Acierto (resueltas) y línea de `Señales · Apuestas · No bet`.
+- KPIs `GANADAS / PERDIDAS / PUSH / PENDIENTES`.
+- Fila por modelo con `BET n · ganadas · perdidas · pendientes` y barra apilada + `%` de acierto.
+
+El texto que acompaña a la imagen repite las mismas cifras (y se usa como caption). El **resumen diario** de las 23:55 usa el mismo motor de imágenes con una sola sección y el desglose por categoría.
 
 ---
 

@@ -30,7 +30,12 @@ sys.path.insert(0, str(ROOT))
 
 from monitor_v3.config.constants import ACTIVE_MODELS  # noqa: E402
 from monitor_v3.notifications import stats_image  # noqa: E402
-from monitor_v3.notifications.bot_runner import fetch_v3_stats  # noqa: E402
+from monitor_v3.notifications.bot_runner import (  # noqa: E402
+    _day_label,
+    _month_label,
+    _today_str,
+    fetch_v3_stats,
+)
 from monitor_v3.notifications.telegram_bot import (  # noqa: E402
     _daily_summary_data,
     _render_daily_summary_text,
@@ -39,12 +44,32 @@ from monitor_v3.notifications.telegram_bot import (  # noqa: E402
 OUT_DIR = Path(__file__).resolve().parent
 
 
+def status_image_demo(day_stats: dict, month_stats: dict) -> bytes | None:
+    """Replica el subtítulo real que usa el bot (fecha en español)."""
+    from datetime import datetime as _dt
+    from datetime import timedelta, timezone
+
+    from monitor_v3.config.constants import UTC_OFFSET_HOURS
+
+    now = _dt.now(timezone(timedelta(hours=UTC_OFFSET_HOURS)))
+    return stats_image.status_image(
+        day_stats,
+        month_stats,
+        ACTIVE_MODELS,
+        subtitle=f"{_day_label(now)}  ·  {_month_label(now)}",
+        footer="Bet Monitor V3 · datos de bet_monitor_log_v3",
+    )
+
+
 def main_sync(send: bool) -> None:
-    print("=== 1. Imagen de /status ===")
-    stats = fetch_v3_stats()
-    total = stats.get("total") or {}
-    print(f"  total: {total}")
-    photo = stats_image.status_image(stats, ACTIVE_MODELS, footer="Bet Monitor V3 · datos de bet_monitor_log_v3")
+    print("=== 1. Imagen de /status (HOY + MES) ===")
+    from datetime import datetime as _dt
+
+    day_stats = fetch_v3_stats(_today_str(), None)
+    month_stats = fetch_v3_stats(None, _today_str()[:7])
+    print(f"  hoy:   {day_stats['total']}")
+    print(f"  mes:   {month_stats['total']}")
+    photo = status_image_demo(day_stats, month_stats)
     if photo:
         path = OUT_DIR / "stats_status.jpg"
         path.write_bytes(photo)

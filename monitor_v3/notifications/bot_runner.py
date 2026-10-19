@@ -221,28 +221,41 @@ def fetch_today_signals() -> list[dict]:
             """
             SELECT l.match_id, l.model_version, l.signal_type, l.picked_side,
                    l.confidence, l.result, l.inference_minute,
-                   s.home_team, s.away_team, s.league, s.scheduled_utc_ts
+                   s.home_team, s.away_team, s.league, s.scheduled_utc_ts, s.daily_seq
             FROM bet_monitor_log_v3 l
             LEFT JOIN bet_monitor_schedule_v3 s ON s.match_id = l.match_id
             WHERE date(l.created_at) = ?
-            ORDER BY s.scheduled_utc_ts, l.match_id, l.model_version
+            ORDER BY s.daily_seq, s.scheduled_utc_ts, l.match_id, l.model_version
             """,
             (today,),
         ).fetchall()
         return [dict(r) for r in rows]
 
 
-def fetch_v3_stats() -> dict:
-    """Estadísticas globales y por modelo desde bet_monitor_log_v3."""
+def fetch_v3_stats(created_date: str | None = None, created_month: str | None = None) -> dict:
+    """
+    Estadísticas (globales, de un día o de un mes) y por modelo desde bet_monitor_log_v3.
+
+    - `created_date`: 'YYYY-MM-DD' → solo ese día.
+    - `created_month`: 'YYYY-MM' → solo ese mes.
+    - Sin filtros: histórico completo.
+    """
     db = _db_path()
     stats = {"per_model": {}, "total": {"signals": 0, "bets": 0, "win": 0, "loss": 0, "push": 0, "pending": 0}}
     if not db.exists():
         return stats
+    query = "SELECT model_version, signal_type, confidence, result FROM bet_monitor_log_v3"
+    params: list[str] = []
+    if created_date:
+        query += " WHERE date(created_at) = ?"
+        params.append(created_date)
+    elif created_month:
+        query += " WHERE strftime('%Y-%m', created_at) = ?"
+        params.append(created_month)
+
     with sqlite3.connect(str(db)) as conn:
         conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            "SELECT model_version, signal_type, confidence, result FROM bet_monitor_log_v3"
-        ).fetchall()
+        rows = conn.execute(query, params).fetchall()
 
     for r in rows:
         model = r["model_version"] or "?"
@@ -302,7 +315,9 @@ def build_signals_text() -> str:
         if ts:
             tz = timezone(timedelta(hours=UTC_OFFSET_HOURS))
             hhmm = datetime.fromtimestamp(int(ts), tz=tz).strftime("%H:%M")
-        lines.append(f"{hhmm} <b>{_esc(home)} vs {_esc(away)}</b>")
+        seq = s0.get("daily_seq")
+        badge = f"<b>#{seq}</b> · " if seq else ""
+        lines.append(f"{badge}{hhmm} <b>{_esc(home)} vs {_esc(away)}</b>")
         if league:
             lines.append(f"  <i>{_esc(league)}</i>")
         for r in items:
@@ -322,32 +337,59 @@ def build_signals_text() -> str:
     return "\n".join(lines).rstrip()
 
 
-def build_status_text(stats: dict | None = None) -> str:
-    if stats is None:
-        stats = fetch_v3_stats()
-    t = stats["total"]
-    models = list(stats["per_model"].keys()) or list(ACTIVE_MODELS)
+def _range_block(title: str, stats: dict, emoji: str = "") -> list[str]:
+    """Bloque de texto con las cifras de un rango (hoy/mes)."""
+    t = stats.get("total") or {}
+    models = list((stats.get("per_model") or {}).keys()) or list(ACTIVE_MODELS)
+    resolved = int(t.get("win") or 0) + int(t.get("loss") or 0)
+    acc = f"{int(round(int(t.get('win') or 0) * 100 / resolved))}%" if resolved else "—"
+
+    lines = [f"{emoji} <b>{title}</b>".strip()]
+    lines.append(
+        f"Apuestas: <b>{t.get('bets', 0)}</b> | ✅ {t.get('win', 0)}  ❌ {t.get('loss', 0)}  "
+        f"➖ {t.get('push', 0)}  ⏳ {t.get('pending', 0)}"
+    )
+    lines.append(f"Señales: <b>{t.get('signals', 0)}</b> | Acierto: <b>{acc}</b>")
+    for m in models:
+        s = (stats.get("per_model") or {}).get(m)
+        if not s:
+            continue
+        r = int(s.get("win") or 0) + int(s.get("loss") or 0)
+        a = f"{int(round(int(s.get('win') or 0) * 100 / r))}%" if r else "—"
+        lines.append(
+            f"  {m}: BET {s.get('bets', 0)} | ✅ {s.get('win', 0)}  ❌ {s.get('loss', 0)}  "
+            f"⏳ {s.get('pending', 0)} | {a}"
+        )
+    return lines
+
+
+_DIAS_ES = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+_MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
+             "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+
+
+def _month_label(dt: datetime) -> str:
+    return f"{_MESES_ES[dt.month - 1]} {dt.year}".capitalize()
+
+
+def _day_label(dt: datetime) -> str:
+    return f"{_DIAS_ES[dt.weekday()]} {dt.day} {_MESES_ES[dt.month - 1]} {dt.year}"
+
+
+def build_status_text(day_stats: dict | None = None, month_stats: dict | None = None) -> str:
+    """Texto del /status con el resumen de HOY y del MES."""
+    if day_stats is None:
+        day_stats = fetch_v3_stats(created_date=_today_str())
+    if month_stats is None:
+        month_stats = fetch_v3_stats(created_month=_today_str()[:7])
+
+    tz = timezone(timedelta(hours=UTC_OFFSET_HOURS))
+    now = datetime.now(tz)
 
     lines = ["📊 <b>Status BD (v3)</b>", ""]
-    lines.append(f"Señales totales: <b>{t['signals']}</b>")
-    lines.append(
-        f"Apuestas (BET): <b>{t['bets']}</b> | ✅ {t['win']}  ❌ {t['loss']}  ➖ {t.get('push', 0)}  ⏳ {t['pending']}"
-    )
-    resolved = t["win"] + t["loss"]
-    acc = f"{int(round(t['win'] * 100 / resolved))}%" if resolved else "—"
-    lines.append(f"Acierto: <b>{acc}</b>")
+    lines.extend(_range_block("Hoy", day_stats, "📅"))
     lines.append("")
-    lines.append("<b>Por modelo</b>")
-    for m in models:
-        s = stats["per_model"].get(m)
-        if not s:
-            lines.append(f"  {m}: sin datos")
-            continue
-        r = s["win"] + s["loss"]
-        a = f"{int(round(s['win'] * 100 / r))}%" if r else "—"
-        lines.append(
-            f"  {m}: BET {s['bets']} | ✅ {s['win']}  ❌ {s['loss']}  ⏳ {s['pending']} | {a}"
-        )
+    lines.extend(_range_block(f"Mes ({_month_label(now)})", month_stats, "🗓"))
     return "\n".join(lines)
 
 
@@ -461,11 +503,12 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         description="/status (aviso)",
     )
     try:
-        stats = await asyncio.to_thread(fetch_v3_stats)
-        text = build_status_text(stats)
+        day_stats = await asyncio.to_thread(fetch_v3_stats, _today_str(), None)
+        month_stats = await asyncio.to_thread(fetch_v3_stats, None, _today_str()[:7])
+        text = build_status_text(day_stats, month_stats)
 
-        # Imagen de estadísticas (KPIs + barra por modelo); si falla, cae a texto.
-        photo = await asyncio.to_thread(_status_image, stats)
+        # Imagen de estadísticas (HOY + MES); si falla, cae a texto.
+        photo = await asyncio.to_thread(_status_image, day_stats, month_stats)
         if photo:
             if msg:
                 await _send_with_retry(msg.delete, description="/status (borrar aviso)")
@@ -498,12 +541,21 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
             )
 
 
-def _status_image(stats: dict) -> bytes | None:
-    """Imagen del status (importa Pillow solo cuando se usa)."""
+def _status_image(day_stats: dict, month_stats: dict) -> bytes | None:
+    """Imagen del status HOY + MES (importa Pillow solo cuando se usa)."""
     try:
         from monitor_v3.notifications.stats_image import status_image
 
-        return status_image(stats, ACTIVE_MODELS, footer="Bet Monitor V3 · datos de bet_monitor_log_v3")
+        tz = timezone(timedelta(hours=UTC_OFFSET_HOURS))
+        now = datetime.now(tz)
+        subtitle = f"{_day_label(now)}  ·  {_month_label(now)}"
+        return status_image(
+            day_stats,
+            month_stats,
+            ACTIVE_MODELS,
+            subtitle=subtitle,
+            footer="Bet Monitor V3 · datos de bet_monitor_log_v3",
+        )
     except Exception as e:  # noqa: BLE001
         log_warning("TELEGRAM", f"[BOT_V3] Sin imagen de status ({type(e).__name__}: {e})")
         return None
