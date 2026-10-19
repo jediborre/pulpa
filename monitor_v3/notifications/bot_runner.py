@@ -45,7 +45,6 @@ from monitor_v3.config.constants import (
 )
 from monitor_v3.database.connection import get_real_db_path
 from monitor_v3.utils.logger import log_info, log_warning, log_error
-
 # Textos de los botones persistentes (debajo del input de Telegram)
 SIGNALS_BUTTON_TEXT = "🎯 Apuestas"
 STATUS_BUTTON_TEXT = "📊 Status"
@@ -236,7 +235,7 @@ def fetch_today_signals() -> list[dict]:
 def fetch_v3_stats() -> dict:
     """Estadísticas globales y por modelo desde bet_monitor_log_v3."""
     db = _db_path()
-    stats = {"per_model": {}, "total": {"signals": 0, "bets": 0, "win": 0, "loss": 0, "pending": 0}}
+    stats = {"per_model": {}, "total": {"signals": 0, "bets": 0, "win": 0, "loss": 0, "push": 0, "pending": 0}}
     if not db.exists():
         return stats
     with sqlite3.connect(str(db)) as conn:
@@ -248,7 +247,7 @@ def fetch_v3_stats() -> dict:
     for r in rows:
         model = r["model_version"] or "?"
         m = stats["per_model"].setdefault(
-            model, {"signals": 0, "bets": 0, "win": 0, "loss": 0, "pending": 0}
+            model, {"signals": 0, "bets": 0, "win": 0, "loss": 0, "push": 0, "pending": 0}
         )
         m["signals"] += 1
         stats["total"]["signals"] += 1
@@ -264,6 +263,9 @@ def fetch_v3_stats() -> dict:
             elif res in ("loss", "miss"):
                 m["loss"] += 1
                 stats["total"]["loss"] += 1
+            elif res == "push":
+                m["push"] += 1
+                stats["total"]["push"] += 1
             elif res in ("", "pending"):
                 m["pending"] += 1
                 stats["total"]["pending"] += 1
@@ -320,15 +322,16 @@ def build_signals_text() -> str:
     return "\n".join(lines).rstrip()
 
 
-def build_status_text() -> str:
-    stats = fetch_v3_stats()
+def build_status_text(stats: dict | None = None) -> str:
+    if stats is None:
+        stats = fetch_v3_stats()
     t = stats["total"]
     models = list(stats["per_model"].keys()) or list(ACTIVE_MODELS)
 
     lines = ["📊 <b>Status BD (v3)</b>", ""]
     lines.append(f"Señales totales: <b>{t['signals']}</b>")
     lines.append(
-        f"Apuestas (BET): <b>{t['bets']}</b> | ✅ {t['win']}  ❌ {t['loss']}  ⏳ {t['pending']}"
+        f"Apuestas (BET): <b>{t['bets']}</b> | ✅ {t['win']}  ❌ {t['loss']}  ➖ {t.get('push', 0)}  ⏳ {t['pending']}"
     )
     resolved = t["win"] + t["loss"]
     acc = f"{int(round(t['win'] * 100 / resolved))}%" if resolved else "—"
@@ -458,7 +461,29 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         description="/status (aviso)",
     )
     try:
-        text = await asyncio.to_thread(build_status_text)
+        stats = await asyncio.to_thread(fetch_v3_stats)
+        text = build_status_text(stats)
+
+        # Imagen de estadísticas (KPIs + barra por modelo); si falla, cae a texto.
+        photo = await asyncio.to_thread(_status_image, stats)
+        if photo:
+            if msg:
+                await _send_with_retry(msg.delete, description="/status (borrar aviso)")
+            if len(text) <= 1024:
+                await _send_with_retry(
+                    lambda: update.effective_message.reply_photo(
+                        photo, caption=text, parse_mode="HTML"
+                    ),
+                    description="/status (imagen)",
+                )
+            else:
+                await _send_with_retry(
+                    lambda: update.effective_message.reply_photo(photo),
+                    description="/status (imagen)",
+                )
+                await _reply_long(update.effective_message, text)
+            return
+
         if msg:
             await _send_with_retry(
                 lambda: msg.edit_text(text=text, parse_mode="HTML"),
@@ -471,6 +496,17 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
                 lambda: msg.edit_text("❌ Error al leer estadísticas"),
                 description="/status (error)",
             )
+
+
+def _status_image(stats: dict) -> bytes | None:
+    """Imagen del status (importa Pillow solo cuando se usa)."""
+    try:
+        from monitor_v3.notifications.stats_image import status_image
+
+        return status_image(stats, ACTIVE_MODELS, footer="Bet Monitor V3 · datos de bet_monitor_log_v3")
+    except Exception as e:  # noqa: BLE001
+        log_warning("TELEGRAM", f"[BOT_V3] Sin imagen de status ({type(e).__name__}: {e})")
+        return None
 
 
 async def _handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -1106,33 +1106,36 @@ async def send_stats_message(active_models: list | None = None) -> dict:
     return dict(results[0]) if results else {"ok": False, "description": "Sin suscriptores"}
 
 
-def build_daily_summary_text() -> str:
+def _daily_summary_data() -> dict | None:
     """
-    Resumen del día desde las tablas _v3: apuestas ganadas/perdidas/push/pendientes,
-    no-bet y acierto, con desglose por modelo.
+    Datos del resumen del día desde las tablas _v3 (sin formatear), para poder
+    construir tanto el texto como la imagen con las mismas cifras.
     """
     db_path = Path(get_real_db_path())
     if not db_path.exists():
-        return ""
+        return None
     tz = timezone(timedelta(hours=UTC_OFFSET_HOURS))
     today = datetime.now(tz).strftime("%Y-%m-%d")
     try:
         with sqlite3.connect(db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
-                "SELECT model_version, signal_type, result FROM bet_monitor_log_v3 "
+                "SELECT model_version, signal_type, result, confidence FROM bet_monitor_log_v3 "
                 "WHERE date(created_at) = ?",
                 (today,),
             ).fetchall()
     except Exception as e:
         log_error("TELEGRAM", f"[DB] Error en resumen diario: {e}")
-        return ""
+        return None
 
     if not rows:
-        return ""
+        return None
 
     win = loss = push = pending = nobet = 0
     per_model: dict[str, dict] = {}
+    # Categorías (mismo criterio que los avisos): clave → [ganadas, perdidas]
+    cats: dict[str, list[int]] = {"🟢": [0, 0], "🟡": [0, 0], "⚪️": [0, 0], "🟡⚪️": [0, 0]}
+
     for r in rows:
         model = r["model_version"] or "?"
         m = per_model.setdefault(model, {"bets": 0, "win": 0, "loss": 0, "pending": 0})
@@ -1141,40 +1144,110 @@ def build_daily_summary_text() -> str:
             nobet += 1
             continue
         m["bets"] += 1
+
+        conf = r["confidence"] or 0.0
+        if conf > 1.0:
+            conf = conf / 100.0
+        is_late = "LATE" in sig
+        is_low_conf = round(float(conf), 4) < 0.30
+        cat = ("🟡⚪️" if is_low_conf else "⚪️") if is_late else ("🟡" if is_low_conf else "🟢")
+
         res = (r["result"] or "").lower()
         if res in ("win", "hit"):
             win += 1
             m["win"] += 1
+            cats[cat][0] += 1
         elif res in ("loss", "miss"):
             loss += 1
             m["loss"] += 1
+            cats[cat][1] += 1
         elif res == "push":
             push += 1
         else:
             pending += 1
             m["pending"] += 1
 
-    bets = win + loss + push + pending
+    categories = [
+        {"key": key, "win": values[0], "loss": values[1]}
+        for key, values in cats.items()
+        if values[0] or values[1]
+    ]
+
+    return {
+        "day": today,
+        "total": {
+            "bets": win + loss + push + pending,
+            "win": win,
+            "loss": loss,
+            "push": push,
+            "pending": pending,
+            "nobet": nobet,
+        },
+        "per_model": per_model,
+        "categories": categories,
+    }
+
+
+def _render_daily_summary_text(data: dict) -> str:
+    """Texto del resumen diario a partir de `_daily_summary_data()`."""
+    total = data["total"]
+    win, loss, push, pending = total["win"], total["loss"], total["push"], total["pending"]
+    bets = total["bets"]
     resolved = win + loss
     acc = f"{int(round(win * 100 / resolved))}%" if resolved else "—"
 
-    lines = [f"📊 <b>Resumen del día</b> ({today})", ""]
+    lines = [f"📊 <b>Resumen del día</b> ({data['day']})", ""]
     lines.append(f"Apuestas: <b>{bets}</b> | ✅ {win}  ❌ {loss}  ➖ {push}  ⏳ {pending}")
-    lines.append(f"No bet: <b>{nobet}</b> | Acierto (resueltas): <b>{acc}</b>")
+    lines.append(f"No bet: <b>{total['nobet']}</b> | Acierto (resueltas): <b>{acc}</b>")
     lines.append("")
     lines.append("<b>Por modelo</b>")
-    for model, s in per_model.items():
+    for model, s in data["per_model"].items():
         r = s["win"] + s["loss"]
         a = f"{int(round(s['win'] * 100 / r))}%" if r else "—"
         lines.append(f"  {model}: BET {s['bets']} | ✅ {s['win']}  ❌ {s['loss']}  ⏳ {s['pending']} | {a}")
     return "\n".join(lines)
 
 
+def build_daily_summary_text() -> str:
+    """
+    Resumen del día desde las tablas _v3: apuestas ganadas/perdidas/push/pendientes,
+    no-bet y acierto, con desglose por modelo.
+    """
+    data = _daily_summary_data()
+    if not data:
+        return ""
+    return _render_daily_summary_text(data)
+
+
 async def send_daily_summary() -> dict:
-    """Construye y transmite el resumen del día a los suscriptores."""
-    text = await asyncio.to_thread(build_daily_summary_text)
-    if not text:
+    """Construye y transmite el resumen del día (imagen + texto) a los suscriptores."""
+    data = await asyncio.to_thread(_daily_summary_data)
+    if not data:
         return {"ok": False, "description": "Sin datos para hoy"}
+    text = _render_daily_summary_text(data)
+
+    # Imagen con las mismas cifras; si falla, el resumen cae a texto plano.
+    photo = None
+    try:
+        from monitor_v3.notifications.stats_image import summary_image
+
+        photo = await asyncio.to_thread(
+            lambda: summary_image(
+                data["total"],
+                data["per_model"],
+                day=data["day"],
+                categories=data["categories"],
+                footer="Bet Monitor V3 · resumen diario (tablas _v3)",
+            )
+        )
+    except Exception as e:  # noqa: BLE001
+        log_warning("TELEGRAM", f"[IMG] Sin imagen de resumen diario ({type(e).__name__}: {e})")
+
+    if photo:
+        results = await broadcast_photo(photo, _photo_caption(text))
+        if results and any(r.get("ok") for r in results):
+            return dict(results[0])
+
     return await broadcast_message(text, signal_type_filter="bet")
 
 
