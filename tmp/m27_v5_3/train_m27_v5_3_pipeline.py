@@ -41,9 +41,12 @@ sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from models.m27_v5_3.features import FEATURE_NAMES, FEATURE_SPEC, IDX, MODEL_DIR, mirror  # noqa: E402
+from models.common.calibration import PlattCalibrator  # noqa: E402
 
 DATASET = ROOT / "tmp" / "m27_v5_3" / "dataset_v5_3.pkl"
 W = {"xgb": 0.40, "hgb": 0.35, "lr": 0.25}
+# Calibracion del clasificador: "platt" (continua, por defecto) o "isotonic".
+CALIBRATION_KIND = "platt"
 BE_140 = 1 / 1.40  # punto de equilibrio con cuota 1.40
 
 # Suelo de calidad para el umbral operativo: el acierto fuera de muestra debe
@@ -158,9 +161,21 @@ def margin_sym(m, X):
 
 
 def fit_calibrator(p, y):
-    iso = IsotonicRegression(out_of_bounds="clip", y_min=0.03, y_max=0.95)
-    iso.fit(np.concatenate([p, 1 - p]), np.concatenate([y, 1 - y]))  # simetrica por construccion
-    return iso
+    """Calibrador monotono SIMETRICO de la probabilidad del local.
+
+    Por defecto usa `PlattCalibrator` (continuo): la isotonica es escalonada y
+    produce una meseta en el umbral operativo (0.75 = 0.76 = 0.78 = 0.80
+    elegian las MISMAS apuestas) ademas de dejar la confianza cuantizada.
+    Medido en el bloque C: platt AUC 0.6537 / Brier 0.2306 / LogLoss 0.6524
+    frente a isotonica AUC 0.6536 / Brier 0.2307 / LogLoss 0.6528, y +13 % de
+    beneficio esperado al mismo umbral 0.75.
+    Ver docs/PLAN_V5_4.md.
+    """
+    if CALIBRATION_KIND == "isotonic":
+        iso = IsotonicRegression(out_of_bounds="clip", y_min=0.03, y_max=0.95)
+        iso.fit(np.concatenate([p, 1 - p]), np.concatenate([y, 1 - y]))
+        return iso
+    return PlattCalibrator().fit(p, y)
 
 
 def green(p, y, thr, margin=None, mm=0.0):

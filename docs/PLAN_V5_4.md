@@ -13,10 +13,48 @@
 | F3 · ventaja extrema por liga | ❌ **no aporta** | (incluida en V1: −0.0002) |
 | F1 · prior contextual liga × estado | ❌ **empeora** | **−0.0164** (Acc −1.46 pp, LogLoss +0.0094) |
 | Feature de mercado (1st quarter / partido) | ❌ **redundante** | mejor mezcla: peso 0.1 → **+0.0007** |
+| P0 · recalibración condicional (Platt/isotónica por población) | ❌ **no mejora** | AUC plana; a 0.75 el WR **baja** (−1.6 pp) |
+| **Calibración continua (Platt) en vez de isotónica** | ✅ **la que sí aporta** | LogLoss **0.6522 → 0.6518**, AUC 0.6550 → **0.6552**, meseta eliminada |
 | **Población sin mercado** | ✅ **ahí está el edge** | WR **83.3 %** vs 74.1 % con mercado |
 | **Calibración condicional al mercado** | ✅ candidata nueva | el modelo va **7 pp** sobreconfiado con mercado, 2 pp sin |
 | **Arquitectura de distribución del margen** | ✅ la idea estructural que queda | la meseta 0.75 ≈ 0.80 delata la confianza cuantizada |
 | EV real | ⏳ **prospectivo** | no hay mercado de "4th quarter" pre-partido |
+
+### El hallazgo que sí cambió la calibración: la isotónica es escalonada
+
+La isotónica es una función **escalonada**: dentro de un escalón la confianza no distingue nada. Efectos medidos:
+
+- El holdout C tenía una **meseta**: los umbrales 0.75, 0.76, 0.78 y 0.80 elegían **las mismas 2.171 apuestas**. Por eso subir el umbral no hacía nada y no se podía afinar.
+- Las confianzas en vivo de `m27_v5_3` tomaban solo **9 valores útiles** (0.727, 0.749, 0.751, 0.779, 0.799, 0.801, 0.826, 0.882, 0.915).
+
+`PlattCalibrator` (`models/common/calibration.py`) es una calibración monótona **continua** y simétrica (`p_cal = sigmoid(a·logit(p_raw) + b)`, ajustada con `(z,y)` y `(-z,1-y)` para respetar la simetría local/visitante). Interfaz compatible con `IsotonicRegression` → `predict.py` no cambia.
+
+| | isotónica | **Platt** |
+|---|---|---|
+| valores distintos de confianza (C) | 135 | **7.838** |
+| AUC test | 0.6550 | **0.6552** |
+| Brier | 0.2304 | 0.2304 |
+| LogLoss | 0.6522 | **0.6518** |
+| @0.75 · apuestas | 6.346 | **7.987** |
+| @0.75 · WR | 82.11 % | 80.77 % |
+| @0.75 · ROI@1.40 | +14.96 % | +13.08 % |
+| @0.75 · **beneficio @1.40** | 949 u | **1.044 u** (+10 %) |
+| @0.75 · **beneficio @1.83** | 3.190 u | **3.818 u** (+20 %) |
+
+Con la calibración continua el umbral **sí se puede afinar** (curva suave, sin meseta) y el mismo umbral da más beneficio esperado.
+
+### La frontera del umbral con la calibración continua (bloque C completo)
+
+| umbral | apuestas | WR | ROI@1.40 | u@1.40 | ROI@1.83 | u@1.83 |
+|---|---|---|---|---|---|---|
+| 0.70 | 15.962 | 75.96 % | +6.34 % | 1.012 | +39.0 % | 6.225 |
+| 0.72 | 12.330 | 77.96 % | +9.15 % | **1.128** | +42.7 % | 5.262 |
+| 0.74 | 9.253 | 79.80 % | +11.72 % | 1.085 | +46.4 % | 4.260 |
+| **0.75 (actual)** | 7.987 | 80.77 % | +13.08 % | 1.044 | +48.2 % | 3.818 |
+| 0.78 | 5.182 | 83.94 % | +17.52 % | 908 | +53.6 % | 2.778 |
+| 0.80 | 3.814 | 86.03 % | +20.44 % | 779 | +58.7 % | 2.190 |
+
+El óptimo está en **0.72 a cuota 1.40** y en **0.70 a cuota 1.83**: el umbral depende de la cuota real, que es justo lo que falta por medir (P4). El 0.75 actual es una posición intermedia y prudente (WR más alto, menos volumen).
 
 ---
 
@@ -92,20 +130,34 @@ Consecuencia: **no hay backtest posible del EV**; hay que acumular datos. Herram
 
 ## 5. Plan de v5_4 (revisado con lo medido)
 
-### P0 · Calibración condicional (sin reentrenar, bajo riesgo)
-Recalibrar `p_cal` **condicionando a la presencia de mercado** (y a la categoría de fase), ajustando en el bloque **B** y midiendo en **C**. Es la vía más barata y la que ataca el defecto medido (−7 pp de sobreconfianza). Se puede hacer como post-hoc sobre las probabilidades del modelo.
+### P0 · Calibración condicional (sin reentrenar, bajo riesgo) — ❌ **RECHAZADA por la medición**
+
+Recalibrar `p_cal` condicionando a la presencia de mercado (y a la categoría de fase), ajustando en el bloque **B** y midiendo en **C**:
+
+| variante | AUC | thr 0.75 · apuestas | WR | ROI@1.40 |
+|---|---|---|---|---|
+| A isotonica global (actual) | 0.6536 | 2.172 | **82.04 %** | **+14.86 %** |
+| B Platt por población | 0.6532 | 2.701 | 80.41 % | +12.58 % |
+| C Isotónica por población | 0.6529 | 3.289 | 79.48 % | +11.27 % |
+| D Platt + isotónica por fase | 0.6536 | 2.915 | 80.24 % | +12.34 % |
+
+Ninguna mejora: el AUC queda plana y **el WR a 0.75 baja**. La recalibración condicional se descarta.
+
+### P0' · Calibración continua (Platt) — ✅ **APLICADA**
+
+Es el P0-bis: en vez de calibrar *por grupo*, calibrar de forma **continua** para eliminar la meseta de la isotónica. Detalle en §0. Implementado en `models/common/calibration.py` + `train_m27_v5_3_pipeline.py` (`CALIBRATION_KIND = "platt"`), con el backup de la isotónica en `model_outputs/calibrator_isotonic_backup.pkl`.
 
 ### P1 · Política por población
 Umbral más alto (o no operar) en la población con mercado. La evidencia dice que ahí el modelo apenas rompe el equilibrio (74.1 % vs 71.4 %). La cifra exacta la fija el EV real.
 
 ### P2 · Arquitectura: distribución del margen
-La calibración isotónica tiene una **meseta (0.75 ≈ 0.80)**: la confianza del modelo está cuantizada y no puede expresar diferencias finas. Un modelo de **distribución del margen de Q4** (quantile regression) daría de un solo objeto el pick y una confianza continua → más volumen con el mismo edge. Es el cambio estructural con más recorrido. Las dos cabezas actuales (clasificador y margen) se contradicen en el 4.3 % de las filas, aunque en **0 de 6.346 apuestas** (la regla de disparo ya filtra esas).
+La calibración isotónica tenía una **meseta (0.75 ≈ 0.80)**: la confianza del modelo estaba cuantizada y no podía expresar diferencias finas. **La Platt lo resuelve en parte** (7.838 valores distintos), pero el modelo sigue calculando el pick con dos cabezas (clasificador y margen) que se contradicen en el 4.3 % de las filas, aunque en 0 de 6.346 apuestas. Un modelo de **distribución del margen de Q4** (quantile regression) daría de un solo objeto el pick y una confianza continua → más volumen con el mismo edge.
 
 ### P3 · Fine-tuning con foco en la banda de decisión
 Hoy `w = 1/partidos` y se entrena en todo el espacio, incluido el ~50 % de filas que nunca se betting. Pesar ∝ probabilidad de que la fila se aposte (o focal loss centrado en p ∈ [0.6, 0.9]) concentra capacidad donde se decide. Una sola prueba con el harness existente (`phase_exclusion_ablation.py`).
 
 ### P4 · EV real (prospectivo)
-Dejar correr el monitor y medir con `ev_calculator.py`. Es lo que decide el umbral final y si la población con mercado se opera o no.
+Dejar correr el monitor y medir con `ev_calculator.py`. Es lo que decide el umbral final (0.70 a 1.83, 0.72 a 1.40) y si la población con mercado se opera o no.
 
 ### Descartado (con evidencia)
 - F1 prior contextual por liga × estado → **−0.0164 AUC**.

@@ -1,8 +1,8 @@
 # 🔬 m27_v5_3 — qué arregla, por qué cada feature, datos que faltan y cómo se mide
 
-> **Reentrenado el 2026-10-20** (v2: filtro de formatos de torneo + umbral 0.75). Entrenado originalmente el 2026-10-18.
+> **Reentrenado el 2026-10-20** (v2: filtro de formatos de torneo + umbral 0.75 + calibración continua Platt). Entrenado originalmente el 2026-10-18.
 > Código: [`models/m27_v5_3/`](../models/m27_v5_3) · Pipeline: [`tmp/m27_v5_3/`](../tmp/m27_v5_3) · Diagnóstico previo: [`findings_m27_2.md`](./findings_m27_2.md).
-> Análisis live y decisiones operativas: [`ANALISIS_LIVE_M27_V5_3.md`](./ANALISIS_LIVE_M27_V5_3.md) · Conclusión ejecutiva: [`CONCLUSION_M27_V5_3.md`](./CONCLUSION_M27_V5_3.md).
+> Análisis live y decisiones operativas: [`ANALISIS_LIVE_M27_V5_3.md`](./ANALISIS_LIVE_M27_V5_3.md) · Conclusión ejecutiva: [`CONCLUSION_M27_V5_3.md`](./CONCLUSION_M27_V5_3.md) · Plan v5_4: [`PLAN_V5_4.md`](./PLAN_V5_4.md).
 > Artefactos (ignorados por git, ver `.gitignore`): `models/m27_v5_3/model_outputs/` → pesos, `model_config.json`, `m27_v5_3_summary.json`, `league_calibration.json`, `feature_justification.md`, `m27_v5_3_diagnostic_dashboard.png`.
 
 ---
@@ -17,7 +17,7 @@
 | Priors | ELO final de hoy + fórmulas distintas en live | `PriorState` as-of, mismo código, refresco incremental cada 30 min |
 | Cuotas | ML (a veces in-play) | ML **solo pre-partido** + spread/total con línea (cuando existe) |
 | Simetría local/visitante | no | **espejo** (aumentación + promedio) |
-| Calibración | isotónica in-sample | isotónica **fuera de muestra** (bloque B), simétrica, techo 0.95 |
+| Calibración | isotónica in-sample | isotónica **fuera de muestra** (bloque B), simétrica, techo 0.95 | **Platt simétrica fuera de muestra** (bloque B): continua, sin meseta en el umbral |
 | Formatos de torneo | todos en el train | **fuera**: amistosos, 2ª fase, promoción, preliminar, colocación |
 | Umbral | P ≥ 0.68 elegido sobre test | **P ≥ 0.75** (decisión explícita, `OPERATING_CONF`) |
 
@@ -25,25 +25,25 @@ Resultados sobre el holdout C (último 18 % de **184.173 partidos elegibles** �
 
 | Métrica | v5_2 (reportado) | **v5_3 (2026-10-20)** |
 |---|---|---|
-| AUC train / calib (B) / **test** | 0.6368 / – / 0.6376 | 0.6460 / 0.6499 / **0.6550** |
-| Brecha train−test | −0.0007 | −0.0091 (sin sobreajuste) |
-| Brier / LogLoss / Acc (test) | 0.2350 / 0.6623 / 59.6 % | **0.2304 / 0.6522 / 61.2 %** |
+| AUC train / calib (B) / **test** | 0.6368 / – / 0.6376 | 0.6461 / 0.6493 / **0.6552** |
+| Brecha train−test | −0.0007 | −0.0090 (sin sobreajuste) |
+| Brier / LogLoss / Acc (test) | 0.2350 / 0.6623 / 59.6 % | **0.2304 / 0.6518 / 61.3 %** |
 | MAE margen Q4 | – | 6.23 pts |
 
 Tabla de umbrales en C, **solo ancla (t=30, un partido = una fila)**, comparable con v5_2:
 
 | P ≥ | Apuestas | WR (IC95) | ROI @1.40 | ROI @1.83 |
 |---|---|---|---|---|
-| 0.65 | 10,978 | 70.7 % (69.9–71.6) | −1.0 % | +29.5 % |
-| 0.68 | 6,068 | 75.2 % (74.0–76.2) | +5.2 % | +37.5 % |
-| 0.70 | 5,477 | 76.3 % (75.1–77.4) | +6.7 % | +39.5 % |
-| 0.72 | 4,228 | 77.9 % (76.7–79.2) | +9.1 % | +42.6 % |
-| **0.75** *(operativo)* | **2,172** | **82.0 % (80.4–83.6)** | **+14.9 %** | **+50.1 %** |
-| 0.80 | 2,171 | 82.0 % (80.4–83.6) | +14.9 % | +50.1 % |
+| 0.65 | 9.764 | 71.7 % (70.8–72.6) | +0.4 % | +31.2 % |
+| 0.68 | 6.988 | 74.0 % (73.0–75.0) | +3.6 % | +35.5 % |
+| 0.70 | 5.457 | 76.3 % (75.1–77.4) | +6.8 % | +39.5 % |
+| 0.72 | 4.206 | 78.0 % (76.7–79.2) | +9.1 % | +42.7 % |
+| **0.75** *(operativo)* | **2.728** | **81.2 % (79.7–82.7)** | **+13.7 %** | **+48.7 %** |
+| 0.80 | 1.312 | 86.3 % (84.3–88.0) | +20.8 % | +57.9 % |
 
-> ⚠️ **La meseta 0.75 ≈ 0.80 es real**: la isotónica tiene un tramo plano, así que ambos umbrales_eligen prácticamente el mismo conjunto de apuestas. Por eso subir de 0.72 a 0.75 no cuesta volumen en la práctica y sube el acierto 4 pp.
+> ⚠️ **La meseta desapareció.** Con la calibración isotónica los umbrales 0.75, 0.76, 0.78 y 0.80 elegían **las mismas 2.171 apuestas** (la isotónica es escalonada y la confianza quedaba cuantizada: 9 valores útiles en vivo). Con la **calibración Platt simétrica** (`models/common/calibration.py`) la confianza es continua (7.838 valores distintos), el LogLoss mejora (0.6522 → 0.6518) y **el umbral se puede afinar**. El óptimo de beneficio esperado está en **0.72 a cuota 1.40** y en **0.70 a cuota 1.83**; se mantiene 0.75 como posición prudente hasta disponer del EV real (ver [`PLAN_V5_4.md`](./PLAN_V5_4.md)).
 >
-> ⚠️ Honestidad: el equilibrio a cuota 1.40 es 71.4 % de WR. A P ≥ 0.65 el ROI es negativo. La cuota real de Q4 no se registra aún (ver §5), así que el ROI es teórico.
+> ⚠️ Honestidad: el equilibrio a cuota 1.40 es 71.4 % de WR. La cuota real de Q4 no se registra aún (ver §5), así que el ROI es teórico.
 
 ---
 
@@ -97,23 +97,23 @@ Holdout C, partidos con eventos (umbral operativo 0.75):
 
 | Minuto del snapshot | Filas | AUC | Apuestas | WR |
 |---|---|---|---|---|
-| 25.5–26.5 | 13,422 | 0.6606 | 962 | 83.9 % |
-| 26.5–27.5 | 13,319 | 0.6545 | 954 | 81.0 % |
-| 27.5–28.5 | 13,366 | 0.6563 | 973 | 81.3 % |
-| 28.5–29.5 | 13,365 | 0.6500 | 909 | 82.2 % |
-| 29.5–30 | 38,370 | 0.6547 | 2,548 | 82.1 % |
+| 25.5–26.5 | 13,422 | 0.6606 | 1,220 | 81.4 % |
+| 26.5–27.5 | 13,319 | 0.6544 | 1,199 | 79.9 % |
+| 27.5–28.5 | 13,366 | 0.6566 | 1,211 | 79.9 % |
+| 28.5–29.5 | 13,365 | 0.6504 | 1,144 | 80.1 % |
+| 29.5–30 | 38,370 | 0.6547 | 3,213 | 81.4 % |
 
-AUC entre 0.650 y 0.661: **no se desploma por el minuto**. Política de disparo (partidos con eventos, umbral 0.75): primer disparo 81.9 % WR (+14.6 % ROI@1.40), solo cierre de Q3 82.1 % (+14.9 %), tick aleatorio 82.3 % (+15.2 %) → da igual cuándo caiga el tick. Robustez probada (`audit_feature_parity.py`): sin eventos, sin gráfica, sin odds, equipo sin historial, Q1/Q2 ausentes (se derivan de eventos), ya en Q4, reloj en 27.4, liga 12m (no soportada), liga tóxica (PASS). **Fuera de [25.5, 30] devuelve `unavailable`**: antes de 25.5 por poco y **después de 30** (no solo antes de 25), porque más allá del cierre de Q3 el modelo predice el ganador de un Q4 ya empezado con datos de Q3.
+AUC entre 0.650 y 0.661: **no se desploma por el minuto**. Política de disparo (partidos con eventos, umbral 0.75): primer disparo 80.3 % WR (+12.4 % ROI@1.40), solo cierre de Q3 81.3 % (+13.8 %), tick aleatorio 80.5 % (+12.7 %) → da igual cuándo caiga el tick. Robustez probada (`audit_feature_parity.py`): sin eventos, sin gráfica, sin odds, equipo sin historial, Q1/Q2 ausentes (se derivan de eventos), ya en Q4, reloj en 27.4, liga 12m (no soportada), liga tóxica (PASS). **Fuera de [25.5, 30] devuelve `unavailable`**: antes de 25.5 por poco y **después de 30** (no solo antes de 25), porque más allá del cierre de Q3 el modelo predice el ganador de un Q4 ya empezado con datos de Q3.
 
 Walk-forward (train ≤ año anterior, umbral 0.75):
 
 | Corte | AUC | Apuestas | WR | ROI@1.40 |
 |---|---|---|---|---|
-| Train ≤ 2022 → Test 2023 | 0.6267 | 895 | 75.0 % | **+5.0 %** (v5_2: −2.8 %) |
-| Train ≤ 2023 → Test 2024 | 0.6365 | 2,056 | 81.5 % | **+14.1 %** |
-| Train ≤ 2024 → Test 2025-26 | 0.6481 | 13,186 | 80.3 % | **+12.4 %** |
+| Train ≤ 2022 → Test 2023 | 0.6276 | 365 | 78.4 % | **+9.7 %** (v5_2: −2.8 %) |
+| Train ≤ 2023 → Test 2024 | 0.6369 | 2,935 | 80.4 % | **+12.5 %** |
+| Train ≤ 2024 → Test 2025-26 | 0.6483 | 13,681 | 79.9 % | **+11.8 %** |
 
-Calibración (C): sesgo ≤ ±3.4 %; (0.7,0.8] ahora casi plano (**+0.3 %**, antes +2.4 %); sobreestimación en (0.9,1.0] (+3.4 %) y subestimación en la cola baja (0–0.1: −5.4 %, N pequeño).
+Calibración (C): sesgo ≤ ±2.9 % en todo el rango, y **plano** en el tramo operativo (0.7,0.8] → **+1.2 %** (antes +2.4 % con la isotónica). Solo las colas de 0.9+ quedan subestimadas (−2.9 %, N pequeño).
 
 ### Comparativo por el camino LIVE (2,500 partidos del holdout, `compare_v5_2_vs_v5_3_live_path.py`)
 
