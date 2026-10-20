@@ -165,3 +165,41 @@ Dejar correr el monitor y medir con `ev_calculator.py`. Es lo que decide el umbr
 - F3 ventaja extrema → **−0.0002 AUC**.
 - Feature de mercado → **redundante** (corr 0.79-0.86 con `p_cal`).
 - **F5 backfill de "contexto de competencia"** (quién necesita ganar el Q4): es otra feature de estado, y las features de estado no funcionan. No gastar una semana en un backfill nuevo antes de tener el EV.
+- **P0 recalibración condicional** (por población o por fase) → el AUC queda plana y el WR a 0.75 baja 1.6 pp.
+
+---
+
+## 6. Decisiones operativas tomadas (2026-10-20)
+
+### 6.1 Qué formatos de torneo se descartan y cuáles se mantienen
+
+| categoría | partidos fuera del train | decisión | motivo |
+|---|---|---|---|
+| AMISTOSOS | 3.486 | ❌ **descartado** | sin formato de liga (ritmo, localía y número de equipos distintos) |
+| SEGUNDA FASE (*championship round*) | 3.653 | ❌ **descartado** | grupo con formato de segunda fase |
+| PROMOCION | 2.583 | ❌ **descartado** | formato de supervivencia |
+| PRELIMINAR | 2.290 | ❌ **descartado** | formato clasificatorio |
+| PUESTO | 186 | ❌ **descartado** | partidos por puesto, no por título |
+| ELIMINATORIA | 18.435 | ✅ **se mantiene** | el modelo acierta **84.3 %** ahí, por encima del 77.0 % de la temporada regular |
+| COPA | 11.065 | ✅ **se mantiene** | **82.8 %** WR, ROI@1.40 +15.9 % |
+
+> La decisión de mantener eliminatorias y copas es **opuesta** a la premisa original de la guía, y está respaldada por medición sobre el holdout C, no por criterio. Si en el futuro se construye el modelo propio para esas fases, el filtro por `stage_detail` es el sitio donde se activa.
+
+### 6.2 Cambios en el monitoreo
+
+| cambio | motivo |
+|---|---|
+| `ACTIVE_MODELS = ["m27_v5_3", "m27_v5_2"]` | `v6_2` apostó con **28 % de confianza** (min 27 del match 17230818) y su WR vivo es de los más bajos; `m27_v3` no expone `p_cal` (no se puede auditar ni calibrar) |
+| `m27_v5_3` sale del **modo sombra** | el usuario lo sigue de cerca y pide verlo en las alertas. **Aviso:** sigue sin evidencia suficiente en vivo (40 apuestas, WR 72.5 %, IC95 56-85 %) |
+| La alerta muestra **todos** los modelos con su motivo | antes un modelo en estado "vigilando la zona verde" **desaparecía** de la alerta y solo aparecía en la tarjeta de resultado (inconsistencia) |
+| Estados en la tarjeta y el mensaje | `BET` (verde) · `PENDIENTE` (naranja, todavía puede apostar) · `NO BET (<umbral>)` · `NO BET — <motivo del descarte>` |
+| Orden | `m27_v5_3` primero (`model_display_sort_key`) |
+
+### 6.3 Corrección de la liquidación (bug del 2026-10-20)
+
+La migración de `quarter_scores` a `quarter_scores_v2` (la tabla canónica) revelou que **la liquidación usaba un Q4 provisional**: 7 apuestas quedaron mal (ninguna de `m27_v5_2`/`m27_v5_3`). Se corrigió con dos guards:
+1. No cerrar ni liquidar un partido que la API sigue marcando `inprogress`.
+2. No liquidar si la suma de los cuartos no cuadra con el marcador final **y no hay prórroga** (el primer guard confundía los partidos AET con un Q4 parcial y los dejaba pendientes para siempre).
+
+Bonus de la migración: `quarter_scores_v2` pasó de 2.916 a **250.143 partidos** con el dato definitivo de fin de partido, y el pipeline de entrenamiento ya lee esa tabla (mismos 184.173 elegibles, 0 diferencias).
+
