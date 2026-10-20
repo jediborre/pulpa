@@ -110,14 +110,22 @@ def main() -> None:
         }
 
     print("[4/5] Cargando partidos y cuartos...", flush=True)
+    # quarter_scores_v2 es la tabla CANONICA (formato ancho, 1 fila por
+    # partido): la escribe el monitor y la migracion de 2026-10-20 la dejo
+    # completa (250.098 partidos con el dato DEFINITIVO de fin de partido).
+    # Antes se leia `quarter_scores` (formato largo) y se hacia un pivot en
+    # memoria; esa tabla sigue existiendo como respaldo historico.
     rows = conn.execute(
         "SELECT m.match_id, m.date, m.league, m.home_team, m.away_team, "
-        "MAX(CASE WHEN q.quarter='Q1' THEN q.home END), MAX(CASE WHEN q.quarter='Q1' THEN q.away END), "
-        "MAX(CASE WHEN q.quarter='Q2' THEN q.home END), MAX(CASE WHEN q.quarter='Q2' THEN q.away END), "
-        "MAX(CASE WHEN q.quarter='Q3' THEN q.home END), MAX(CASE WHEN q.quarter='Q3' THEN q.away END), "
-        "MAX(CASE WHEN q.quarter='Q4' THEN q.home END), MAX(CASE WHEN q.quarter='Q4' THEN q.away END) "
-        "FROM matches m JOIN quarter_scores q ON q.match_id = m.match_id "
-        "WHERE m.status_type='finished' AND m.date IS NOT NULL GROUP BY m.match_id ORDER BY m.date ASC, m.match_id ASC"
+        "q.q1_home, q.q1_away, q.q2_home, q.q2_away, q.q3_home, q.q3_away, "
+        "q.q4_home, q.q4_away "
+        "FROM matches m JOIN quarter_scores_v2 q ON q.match_id = m.match_id "
+        "WHERE m.status_type='finished' AND m.date IS NOT NULL "
+        "  AND q.q1_home IS NOT NULL AND q.q1_away IS NOT NULL "
+        "  AND q.q2_home IS NOT NULL AND q.q2_away IS NOT NULL "
+        "  AND q.q3_home IS NOT NULL AND q.q3_away IS NOT NULL "
+        "  AND q.q4_home IS NOT NULL AND q.q4_away IS NOT NULL "
+        "ORDER BY m.date ASC, m.match_id ASC"
     ).fetchall()
     conn.close()
     print(f"   -> {len(rows):,} partidos terminados con cuartos ({time.time()-t0:.0f}s)", flush=True)

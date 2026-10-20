@@ -588,6 +588,31 @@ def reconcile_pending_results() -> None:
                 if qs and qs["q4_home"] is not None and qs["q4_away"] is not None:
                     q4h = qs["q4_home"]
                     q4a = qs["q4_away"]
+
+                    # GUARD: no liquidar con un Q4 PARCIAL. Si la suma de los
+                    # cuartos no cuadra con el marcador final del partido y no
+                    # hay prolongation, el Q4 estaba en curso cuando se guardo
+                    # (7 liquidaciones quedaron mal). Se deja pendiente: el
+                    # sweep recuperara los cuartos definitivos.
+                    full = conn.execute(
+                        "SELECT q1_home,q1_away,q2_home,q2_away,q3_home,q3_away,"
+                        "ot_home,ot_away FROM quarter_scores_v2 WHERE match_id = ?",
+                        (match_id,)).fetchone()
+                    m_row = conn.execute(
+                        "SELECT home_score, away_score, status_type FROM matches WHERE match_id = ?",
+                        (match_id,)).fetchone()
+                    if full and m_row and m_row["home_score"] is not None:
+                        partes = [full["q1_home"], full["q1_away"], full["q2_home"],
+                                  full["q2_away"], full["q3_home"], full["q3_away"],
+                                  qs["q4_home"], qs["q4_away"]]
+                        if all(p is not None for p in partes):
+                            suma = sum(partes)
+                            final = int(m_row["home_score"]) + int(m_row["away_score"])
+                            if final - suma > 0 and full["ot_home"] is None:
+                                log_warning("DATABASE", f"Q4 parcial en {match_id}: suma de cuartos "
+                                                       f"{suma} != marcador final {final} | "
+                                                       f"apuesta {model_ver} queda pendiente")
+                                continue
                     
                     if q4h == q4a:
                         # Criterio de negocio: un cuarto EMPATADO no gana la apuesta,

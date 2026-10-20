@@ -150,7 +150,19 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
     try:
         data = await fetch_match_by_id(match_id, is_ft=True)
         gp_total = len(data.get("graph_points") or [])
-        
+
+        # GUARD: no cerrar ni liquidar un partido que la API sigue marcando
+        # como EN VIVO. En ese caso el Q4 que llega esta EN CURSO: guardarlo y
+        # liquidar con el produce resultados equivocados (7 liquidaciones mal
+        # hechas: p. ej. Q4 15-13 provisional por 20-22 definitivo). Se
+        # devuelve sin marcar final_fetched para que el watcher reintente.
+        m_info = data.get("match") or {}
+        status_type = str(m_info.get("status_type") or "").lower()
+        if status_type == "inprogress":
+            log_warning("DESCARGA", f"[FT] Partido todavia en juego (status={status_type}) | "
+                                    f"{home} vs {away} | no se liquidan los cuartos aun")
+            return
+
         if gp_total < FINAL_FETCH_MIN_GP:
             if gp_total == 0:
                 # Sin gráfica no se guarda el histórico, pero SÍ los marcadores

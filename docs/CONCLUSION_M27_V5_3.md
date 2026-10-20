@@ -107,10 +107,13 @@ Motivos que puede mostrar el sistema:
 
 ---
 
-## 6. Dos bugs colaterales que aparecieron por el camino
+## 6. Bugs colaterales que aparecieron por el camino
 
 - **La línea de handicap nunca se capturaba**: `re.match` exigía que el nombre empezara por `(`, y SofaScore devuelve `"Home (-3.5)"`. Corregido a `re.search`.
 - **`stage_detail` clasifica por liga base, no por variante**: `NBA, Playoffs`, `Argentina Liga Nacional, Playoffs`, `Brazil NBB, Playoffs`, `Mexico LNBP, Playoffs` y `Korisliiga, Playoffs` (18k partidos de eliminatorias) estaban marcados como "Regular Season".
+- **La tabla de cuartos tenía dos fuentes de verdad** (`quarter_scores` legacy con 252.956 partidos, que era la que leía el entrenamiento, y `quarter_scores_v2` "canónica" con 2.916, la que escribía el monitor) y **la liquidación usaba datos provisionales**: el monitor guardaba y liquidaba en el mismo instante, con un Q4 que podía estar todavía en curso. 7 apuestas quedaron mal liquidadas (ninguna de `m27_v5_2`/`m27_v5_3`). Corregido con una migración SQL (0,5 s, 250.098 partidos, 0 discrepancias) + dos guards: no cerrar un partido que la API sigue marcando `inprogress`, y no liquidar si la suma de los cuartos no cuadra con el marcador final.
+
+> **No había nada que descargar**: los 2.876 partidos con menos de 4 filas en la tabla legacy tampoco tienen 4 periodos en la API (25/25 en la muestra: son partidos abandonados a los 2 cuartos). El dato ya estaba en la base.
 
 ---
 

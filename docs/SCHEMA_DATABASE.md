@@ -146,9 +146,11 @@ erDiagram
 ---
 
 ### 3. Tabla `quarter_scores_v2` (Parciales Pivotados - Formato Ancho)
-- **Rol:** Versión aplanada (pivot) optimizada para inferencia rápida de ML en `monitor_v2` y `monitor_v3`. Evita tener que hacer `JOIN` o agregaciones en tiempo real para obtener Q1 a Q4.
-- **Volumen Actual:** 1,475 filas.
+
+- **Rol:** Versión aplanada (pivot) optimizada para inferencia rápida de ML en `monitor_v2` y `monitor_v3`. Evita tener que hacer `JOIN` o agregaciones en tiempo real para obtener Q1 a Q4. **Es la tabla CANÓNICA de cuartos**: la escribe el monitor y la lee el pipeline de entrenamiento (`tmp/m27_v5_3/build_dataset.py`).
+- **Volumen Actual:** 250,098 partidos (migración del 2026-10-20 desde la legacy `quarter_scores`, que sigue existiendo como respaldo histórico).
 - **Clave Primaria:** `match_id`.
+- **Guard de liquidación:** `reconcile_pending_results()` no liquida si la suma de los cuartos no cuadra con el marcador final del partido (Q4 parcial) ni cierra un partido que la API sigue marcando `inprogress`.
 
 | Columna | Tipo SQLite | Nulo | PK | Descripción Semántica |
 | :--- | :--- | :---: | :---: | :--- |
