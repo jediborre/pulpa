@@ -191,3 +191,7 @@ Umbral en producción: `model_config.json` → `min_conf = 0.72`, `min_margin = 
 4. Backfill de `graph_points` (39 % faltante, solo si la ablación de `gp_*` lo justifica; hoy ΔAUC +0.0005).
 5. Extender a 12m (NBA/CBA/PBA) con su propio modelo (roadmap `m34_*`); `m27_v5_3` los rechaza explícitamente.
 6. Revisar mensualmente `league_calibration.json` para actualizar los bloqueos con evidencia (IC95 del WR < 71.4 %).
+
+---
+
+> ?? **Auditor?a en producci?n:** d?nde pierde realmente el modelo, barrido de `min_conf` y guards ? [`AUDITORIA_M27_V5_3_PERDIDAS.md`](./AUDITORIA_M27_V5_3_PERDIDAS.md).
