@@ -720,27 +720,93 @@ def momentum_chart(
 # Tarjeta de la apuesta
 # ─────────────────────────────────────────────────────────────────────
 
-def _payout_detail(decimal, confidence, probability, result: str, is_result: bool) -> list[tuple[str, tuple]]:
+def _value_color(pct: float | None) -> tuple:
     """
-    Línea informativa de la apuesta como tramos (texto, color):
-    cuota + proyección/resultado, o confianza y un 'Sin ODDS' en rojo.
+    Semáforo por VALOR (para porcentajes de confianza y umbrales):
+      ≥ 70 % → verde · 40-69 % → amarillo · < 40 % → rojo.
+    """
+    if pct is None:
+        return COLOR_MUTED
+    if pct >= 70:
+        return SS_CONF_BET
+    if pct >= 40:
+        return SS_CONF_NEAR
+    return SS_CONF_FAR
+
+
+def _draw_segments(draw, x: float, y: float, segments, font, cy: float | None = None) -> float:
+    """
+    Dibuja una secuencia de segmentos (tipo, texto, color) donde tipo puede ser
+    "text" (texto normal) o "arrow" (flecha vectorial gruesa).
+    """
+    center = cy if cy is not None else y + _font_size(font) * 0.62
+    for kind, text, color in segments:
+        if kind == "arrow":
+            x += _draw_arrow(draw, x, center, 24, color, 4) + 6
+        else:
+            draw.text((x, y), text, font=font, fill=color)
+            x += _text_len(draw, text, font)
+    return x
+
+
+def _payout_detail(decimal, confidence, probability, result: str, is_result: bool) -> list[tuple]:
+    """
+    Línea informativa de la apuesta como segmentos (tipo, texto, color):
+      - "$" y "+" en verde, cantidades en blanco, "-" de momios/negativos en rojo.
+      - Sin cuota: "Confianza X% · Sin ODDS" (X% con semáforo, "Sin ODDS" rojo).
     """
     value = str(result or "").lower()
+    conf_pct = _conf_pct(confidence)
+    conf_color = _value_color(conf_pct)
+
     if decimal:
         dec = float(decimal)
         american = decimal_to_american(dec)
-        am_str = f" ({american:+d})" if american is not None else ""
-        head = f"Cuota {dec:.2f}{am_str}"
-        if is_result:
-            if value in ("win", "hit"):
-                gain, total = payout(dec, STAKE)
-                return [(f"{head}   ·   ${STAKE:,.0f} -> ${total:,.2f}  (+${gain:,.2f})", COLOR_MUTED)]
-            if value in ("loss", "miss"):
-                return [(f"{head}   ·   ${STAKE:,.0f} -> $0.00  (-${STAKE:,.2f})", COLOR_MUTED)]
-            if value == "push":
-                return [(f"{head}   ·   ${STAKE:,.0f} -> ${STAKE:,.2f}  ($0.00)", COLOR_MUTED)]
-        gain, total = payout(dec, STAKE)
-        return [(f"{head}   ·   ${STAKE:,.0f} -> ${total:,.2f}  (+${gain:,.2f})", COLOR_MUTED)]
+        seg: list[tuple] = [
+            ("text", "Cuota ", COLOR_MUTED),
+            ("text", f"{dec:.2f}", COLOR_TEXT),
+        ]
+        if american is not None:
+            sign = "+" if american > 0 else "-"
+            seg += [
+                ("text", " (", COLOR_MUTED),
+                ("text", sign, SS_CONF_BET if american > 0 else SS_CONF_FAR),
+                ("text", f"{abs(american)}", COLOR_TEXT),
+                ("text", ")", COLOR_MUTED),
+            ]
+
+        if is_result and value in ("win", "hit"):
+            gain, total = payout(dec, STAKE)
+            amount, suffix = total, f"+{gain:,.2f}"
+        elif is_result and value in ("loss", "miss"):
+            amount, suffix = 0.0, f"-{STAKE:,.2f}"
+        elif is_result and value == "push":
+            amount, suffix = STAKE, "0.00"
+        else:
+            gain, total = payout(dec, STAKE)
+            amount, suffix = total, f"+{gain:,.2f}"
+
+        sign = ""
+        if suffix[0] in "+-":
+            sign, suffix = suffix[0], suffix[1:]
+        seg += [
+            ("text", "   ·   ", COLOR_MUTED),
+            ("text", "$", SS_CONF_BET),
+            ("text", f"{STAKE:,.0f}", COLOR_TEXT),
+            ("text", "  ", COLOR_MUTED),
+            ("arrow", "", COLOR_ACCENT),
+            ("text", "  $", SS_CONF_BET),
+            ("text", f"{amount:,.2f}", COLOR_TEXT),
+            ("text", "  (", COLOR_MUTED),
+        ]
+        if sign:
+            seg.append(("text", sign, SS_CONF_BET if sign == "+" else SS_CONF_FAR))
+        seg += [
+            ("text", "$", SS_CONF_BET),
+            ("text", suffix, COLOR_TEXT),
+            ("text", ")", COLOR_MUTED),
+        ]
+        return seg
 
     prob_str = f" · P={float(probability):.2f}" if probability is not None else ""
     tail = {
@@ -751,11 +817,16 @@ def _payout_detail(decimal, confidence, probability, result: str, is_result: boo
         "push": "  ·   push",
     }.get(value, "")
     if is_result and tail:
-        return [(f"Confianza {confidence if confidence is not None else '?'}%{prob_str}{tail}", COLOR_MUTED)]
+        return [
+            ("text", "Confianza ", COLOR_MUTED),
+            ("text", f"{conf_pct if conf_pct is not None else '?'}%", conf_color),
+            ("text", f"{prob_str}{tail}", COLOR_MUTED),
+        ]
     return [
-        (f"Confianza {confidence if confidence is not None else '?'}%{prob_str}", COLOR_MUTED),
-        ("   ·   ", COLOR_MUTED),
-        ("Sin ODDS", SS_CONF_FAR),
+        ("text", "Confianza ", COLOR_MUTED),
+        ("text", f"{conf_pct if conf_pct is not None else '?'}%", conf_color),
+        ("text", f"{prob_str}   ·   ", COLOR_MUTED),
+        ("text", "Sin ODDS", SS_CONF_FAR),
     ]
 
 
@@ -857,7 +928,8 @@ def _draw_bet_panel(
         threshold = bet.get("threshold")
         if threshold is None:
             threshold = _model_threshold(model, bet.get("inference_json"), bet.get("raw_payload"))
-        conf_color = _conf_color(bet.get("confidence"), threshold, is_real_bet)
+        # Semáforo por valor: verde ≥70 %, amarillo 40-69 %, rojo <40 %
+        conf_color = _value_color(conf)
 
         # Etiqueta de resultado (solo en las confirmaciones FT)
         tag_text, tag_color = _result_tag(bet.get("result")) if is_result else ("", COLOR_MUTED)
@@ -884,8 +956,10 @@ def _draw_bet_panel(
             tag_w = _text_len(draw, tag_text, font_tag) + 16
             draw.text((inner_x + max_w, y + 6), tag_text, font=font_tag, fill=tag_color, anchor="ra")
 
-        # 3) Flecha gruesa destacada + emoji del lado (🏠/✈️) + equipo
-        x += _draw_arrow(draw, x, y + 19, 28, COLOR_ACCENT, 5) + 14
+        # 3) Flecha gruesa (color del lado, con sombra) + emoji + equipo
+        arrow_color = COLOR_HOME if is_home else COLOR_AWAY
+        _draw_arrow(draw, x + 1, y + 20, 28, (6, 10, 14), 5)  # sombra
+        x += _draw_arrow(draw, x, y + 19, 28, arrow_color, 5) + 14
 
         side_w = _draw_side_icon(draw, x, y + 5, is_home, size=26)
         x += side_w + 10
@@ -900,17 +974,22 @@ def _draw_bet_panel(
         # 4) Línea 2: cuota + proyección/resultado, o confianza y "Sin ODDS"
         y2 = y + line1_h
         if is_real_bet:
-            detail_runs = _payout_detail(
+            detail_segments = _payout_detail(
                 bet.get("decimal_odds"),
-                conf,
+                bet.get("confidence"),
                 bet.get("probability"),
                 bet.get("result"),
                 is_result,
             )
         else:
-            detail_runs = [(f"no operó (umbral {int(round(float(threshold) * 100))}%)", COLOR_MUTED)]
+            thr_pct = int(round(float(threshold) * 100))
+            detail_segments = [
+                ("text", "no operó (umbral ", COLOR_MUTED),
+                ("text", f"{thr_pct}", _value_color(thr_pct)),
+                ("text", "%)", COLOR_MUTED),
+            ]
 
-        _draw_runs(draw, inner_x, y2 + 2, detail_runs, _font(22), default_sep="")
+        _draw_segments(draw, inner_x, y2 + 2, detail_segments, _font(22), cy=y2 + 14)
         y = y2 + line2_h + gap
 
     return y0 + panel_h
