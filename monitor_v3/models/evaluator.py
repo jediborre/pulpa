@@ -25,6 +25,8 @@ from pathlib import Path
 
 from monitor_v3.config.constants import (
     ACTIVE_MODELS,
+    DEFAULT_VALID_WINDOW,
+    MODEL_VALID_WINDOW,
     Q4_STALE_MAX_TICKS,
     Q4_LATE_BET_MAX_DISADVANTAGE,
     Q4_TOO_LATE_BET_MINUTE,
@@ -228,7 +230,8 @@ async def evaluate_match_q4(
     if is_12m and minute_est < 32:
         return {"ok": False, "reason": "waiting_nba_12m_q3_window"}
 
-    if int(minute_est) != watcher_state.last_snapshot_minute:
+    minute_changed = int(minute_est) != watcher_state.last_snapshot_minute
+    if minute_changed:
         watcher_state.last_snapshot_minute = int(minute_est)
         asyncio.create_task(asyncio.to_thread(_record_live_snapshot, match_id, float(minute_est), match_payload))
     asyncio.create_task(asyncio.to_thread(_refresh_priors_if_stale))
@@ -255,6 +258,29 @@ async def evaluate_match_q4(
 
     tasks = [run_model_inference(m) for m in ACTIVE_MODELS]
     results = await asyncio.gather(*tasks)
+
+    # Serie de inferencia POR MINUTO dentro de la ventana valida de cada
+    # modelo: permite analizar acierto y calibracion por minuto despues
+    # (bet_monitor_log_v3 solo guarda una fila por partido y modelo).
+    if minute_changed:
+        from monitor_v3.database.repository import save_model_inference
+        for mv, pred in results:
+            if not pred.available:
+                continue
+            lo_m, hi_m = MODEL_VALID_WINDOW.get(mv, DEFAULT_VALID_WINDOW)
+            snap_used = (pred.raw_json or {}).get("snapshot_minute_used")
+            snap = float(snap_used) if snap_used is not None else float(minute_est)
+            if not (lo_m - 1e-6 <= snap <= hi_m + 1e-6):
+                continue
+            rawj = pred.raw_json or {}
+            asyncio.create_task(asyncio.to_thread(
+                save_model_inference,
+                match_id, float(minute_est), mv,
+                pred.p_home_win, pred.p_away_win, rawj.get("p_cal"),
+                rawj.get("expected_q4_margin", rawj.get("margin")),
+                str(pred.signal or ""), str(pred.pick or ""), pred.confidence,
+                snap, rawj.get("block_reason"), rawj.get("features"),
+            ))
 
     # Verificar si algún modelo emitió señal de apuesta operable en este tick
     any_bet_in_tick = any(

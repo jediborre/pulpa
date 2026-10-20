@@ -29,6 +29,7 @@ from monitor_v3.config.constants import (
     PRESTART_PROBE_BACKOFF,
     Q4_ONLY_EARLY_WAKE_MINUTE,
     SCHEDULE_REFRESH_HOURS,
+    SHADOW_MODELS,
     PENDING_RECHECK_SECS,
     SECS_PER_GAME_MIN,
     UTC_OFFSET_HOURS,
@@ -574,10 +575,23 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                             quarters_data = score_data.get("quarters", {})
                             # Mostrar el marcador del cuarto ACTUAL (no el de Q4, que aún va 0-0).
                             current_q_scores = quarters_data.get(q_key, {}) if q_key else {}
-                            
+
+                            # Modelos en MODO SOMBRA: su apuesta se REGISTRA (bet_monitor_log_v3
+                            # y model_inference_v3) pero NO dispara alerta de Telegram hasta
+                            # reunir evidencia suficiente (ver constants.SHADOW_MODELS).
+                            notify_models = {m: p for m, p in operable_to_send.items()
+                                             if m not in SHADOW_MODELS}
+                            shadow_hit = [m for m in operable_to_send if m in SHADOW_MODELS]
+                            if shadow_hit:
+                                log_info("EVALUACION", f"[EVAL] MODO SOMBRA (registrado, sin alerta) | "
+                                                     f"Modelos: {', '.join(shadow_hit)} | {match_display}",
+                                         q4_orange=True)
+
                             # Mostrar todas las predicciones del tick para consenso transparente
-                            display_preds = {m: preds[m] for m in preds if preds[m].get("signal") not in ("UNAVAILABLE", None)}
-                            
+                            display_preds = {m: preds[m] for m in preds
+                                             if preds[m].get("signal") not in ("UNAVAILABLE", None)
+                                             and m not in SHADOW_MODELS}
+
                             if len(display_preds) > 1:
                                 await send_combined_bet_alert(
                                     predictions=display_preds,
@@ -592,8 +606,8 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                     league=league,
                                     scheduled_ts=scheduled_ts
                                 )
-                            elif len(operable_to_send) == 1:
-                                m_name, pred0 = next(iter(operable_to_send.items()))
+                            elif len(notify_models) == 1:
+                                m_name, pred0 = next(iter(notify_models.items()))
                                 picked_side = pred0.get("pick")
                                 await send_bet_alert(
                                     model=m_name,
@@ -613,7 +627,7 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                     confidence=pred0.get("confidence")
                                 )
 
-                            update_schedule_q4(match_id, signal="BET_SENT", model=",".join(operable_to_send.keys()))
+                            update_schedule_q4(match_id, signal="BET_SENT", model=",".join(notify_models.keys() or operable_to_send.keys()))
 
                         # Si todos los modelos evaluaron, podemos dormir hasta el final del juego
                         if all(q4_done.values()):

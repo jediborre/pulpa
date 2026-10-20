@@ -20,8 +20,8 @@ warnings.filterwarnings("ignore", message="Skipping features without any observe
 from models.common.data_loader import get_db_connection, load_match
 from models.common.schema import PredictionResult
 from models.m27_v5_3.features import (
-    FEATURE_NAMES, IDX, MODEL_DIR, SNAPSHOT_MAX, SNAPSHOT_MIN, ctx_from_payload, get_state,
-    is_blocked_league, mirror, snapshot_features,
+    FEATURE_NAMES, IDX, MODEL_DIR, SNAPSHOT_MAX, SNAPSHOT_MIN, block_reason, ctx_from_payload,
+    get_state, mirror, snapshot_features,
 )
 
 MODEL_VERSION = "m27_v5_3"
@@ -123,7 +123,8 @@ def predict(
         cfg = models["cfg"]
         p_cal, margin = res["p_cal"], res["margin"]
         league = ctx["league"]
-        toxic = bool(cfg.get("block_toxic_leagues", True)) and is_blocked_league(league)
+        block_why = block_reason(league) if cfg.get("block_toxic_leagues", True) else None
+        toxic = block_why is not None
 
         thr, mm = float(cfg["min_conf"]), float(cfg["min_margin"])
         default_pick = "HOME" if p_cal >= 0.5 else "AWAY"
@@ -140,6 +141,7 @@ def predict(
             "expected_q4_margin": round(margin, 2),
             "is_green": signal == "BET",
             "toxic_league_blocked": toxic,
+            "block_reason": block_why,
             "min_conf_threshold": thr,
             "snapshot_minute_used": round(float(ctx["minute"]), 2),
             "features_missing": int(np.isnan(x).sum()),

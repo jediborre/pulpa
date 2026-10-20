@@ -78,6 +78,21 @@ TOKEN_REFRESH_MINUTES = 60 * 24 * 7 # Chequeo preventivo semanal (tokens duran ~
 # Modelos Activos para Inferencia (M27 V5.3 al frente + M27 V5.2 Champion + v6_2 + m27_v3)
 ACTIVE_MODELS = ["m27_v5_3", "m27_v5_2", "v6_2", "m27_v3"]
 
+# Modelos en MODO SOMBRA: se evaluan y se registran en bet_monitor_log_v3 y en
+# model_inference_v3, pero NO disparan la alerta de apuesta en Telegram.
+# Motivo: m27_v5_3 acumula 40 apuestas resueltas con WR 72.5 % (IC95 56-85 %),
+# compatible con su backtest (77.7 %) pero SIN evidencia de ventaja en vivo.
+# Ver docs/ANALISIS_LIVE_M27_V5_3.md (R5). Quitar de la lista para reactivarlo.
+SHADOW_MODELS = ["m27_v5_3"]
+
+# Ventana de inferencia VALIDA por modelo (minutos de juego). Fuera de ella el
+# modelo no fue entrenado: su salida no es comparable con el entrenamiento y no
+# se archiva en model_inference_v3. m27_v5_3 se entreno en t in [25.5, 30.0].
+MODEL_VALID_WINDOW = {
+    "m27_v5_3": (25.5, 30.0),
+}
+DEFAULT_VALID_WINDOW = (25.0, 33.0)
+
 # --- Ritmo de Juego y Ventana de Monitoreo Q4 ---
 SECS_PER_GAME_MIN = 170             # Estimación inicial de segundos reales por minuto de juego
 # Snapshot de inferencia Q4: AMBOS modelos activos (m27_v3 y v6_2) se evalúan al min 27.

@@ -127,6 +127,35 @@ def init_tables() -> None:
             """)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_live_snap_match_v3 ON live_snapshots_v3 (match_id, game_minute);")
 
+            # 7. model_inference_v3: inferencia del modelo POR MINUTO dentro de su
+            #    ventana de entrenamiento valida. Es la serie que permite
+            #    analizar calibracion y acierto por minuto (y no solo la
+            #    apuesta final que queda en bet_monitor_log_v3, que es una fila
+            #    por partido y modelo).
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS model_inference_v3 (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    match_id TEXT,
+                    game_minute REAL,
+                    model_version TEXT,
+                    p_home REAL,
+                    p_away REAL,
+                    p_cal REAL,
+                    margin REAL,
+                    signal TEXT,
+                    pick TEXT,
+                    confidence REAL,
+                    snapshot_minute REAL,
+                    block_reason TEXT,
+                    features_json TEXT,
+                    created_at TEXT
+                );
+            """)
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_model_inf_uniq_v3 "
+                         "ON model_inference_v3 (match_id, model_version, game_minute);")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_model_inf_match_v3 "
+                         "ON model_inference_v3 (match_id, model_version);")
+
             # 5. Asegurar existencia de quarter_scores_v2 para persistencia canónica de cuartos
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS quarter_scores_v2 (
@@ -466,6 +495,39 @@ def update_bet_log_result(log_id: int, result: str) -> None:
     with get_db_connection() as conn:
         with conn:
             conn.execute("UPDATE bet_monitor_log_v3 SET result = ? WHERE id = ?", (result, log_id))
+
+
+def save_model_inference(
+    match_id: str, game_minute: float | None, model_version: str,
+    p_home: float | None, p_away: float | None, p_cal: float | None,
+    margin: float | None, signal: str, pick: str, confidence: float | None,
+    snapshot_minute: float | None, block_reason: str | None, features: dict | None,
+) -> None:
+    """Persiste la inferencia del modelo en UN minuto concreto (best-effort).
+
+    Es la serie para analizar el modelo por minuto dentro de su ventana de
+    entrenamiento valida: acierto y calibracion por minuto, evolucion de la
+    confianza, etc. `bet_monitor_log_v3` solo guarda una fila por partido y
+    modelo (la apuesta o el NO_BET definitivo), asi que no sirve para eso.
+    """
+    try:
+        with get_db_connection() as conn:
+            with conn:
+                conn.execute("""
+                    INSERT OR REPLACE INTO model_inference_v3 (
+                        match_id, game_minute, model_version, p_home, p_away, p_cal, margin,
+                        signal, pick, confidence, snapshot_minute, block_reason,
+                        features_json, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    match_id, game_minute, model_version, p_home, p_away, p_cal, margin,
+                    signal, pick, confidence, snapshot_minute, block_reason,
+                    json.dumps(features or {}, ensure_ascii=False),
+                    datetime.now().isoformat(),
+                ))
+    except Exception as exc:
+        log_error("DB", f"model_inference_v3: {exc}")
+
 
 def _save_eval_match_results_impl(conn: sqlite3.Connection, match_id: str, available: int, metrics: dict) -> None:
     columns = ["match_id", "available"]

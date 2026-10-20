@@ -130,3 +130,9 @@ tools/obscura-src
 
 # Artefactos de herramientas locales del agente
 .commandcode/
+
+# Salidas generadas por los scripts de auditoria de m27_v5_3 (regenerables:
+# los .py de tmp/m27_v5_3_audit/ son la fuente, estos JSON/TXT son el resultado)
+tmp/m27_v5_3_audit/*.json
+tmp/m27_v5_3_audit/*.txt
+tmp/m27_v5_3_audit/_*.log

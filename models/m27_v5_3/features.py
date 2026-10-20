@@ -24,6 +24,8 @@ from typing import Any
 
 import numpy as np
 
+from models.common.competition_stage import classify_stage
+
 MODEL_DIR = Path(__file__).resolve().parent / "model_outputs"
 STATE_PATH = MODEL_DIR / "v5_3_state.pkl"
 NAN = float("nan")
@@ -101,7 +103,24 @@ TOXIC_LEAGUE_PATTERNS = [
 # Equilibrio a la cuota que se usa como referencia operativa (1.40).
 BREAKEVEN_140 = 1 / 1.40
 _CALIBRATION_PATH = MODEL_DIR / "league_calibration.json"
-_MEASURED_TOXIC: set[str] | None = None
+_MEASURED_TOXIC: dict[str, tuple[float, list[float]]] | None = None
+
+# Categorias de FASE DE TORNEO que se descartan del entrenamiento y se
+# bloquean en inferencia. Decision del 2026-10-20 a partir de la premisa de
+# docs/COMPORTAMIENTO_LIGAS_Y_GUIA_ENTRENAMIENTO.md y del backtest por fase
+# (docs/ANALISIS_LIVE_M27_V5_3.md).
+#   - ELIMINATORIA y COPA NO se descartan: el backtest medido en el holdout C
+#     da 84.3 % y 82.8 % de acierto, por encima del 77.0 % de la temporada
+#     regular, asi que no son ruido para este objetivo (ganador de Q4).
+#   - AMISTOSOS y el bloque de formatos no estandar SI se descartan: el
+#     formato (ritmo, localia, numero de equipos) no es el de una liga.
+BLOCKED_STAGE_CATEGORIES = {
+    "AMISTOSOS": "torneo amistoso o invitacion (sin formato de liga)",
+    "SEGUNDA_FASE": "segunda fase o ronda de campeonato con grupos (formato distinto)",
+    "PROMOCION": "fase de promotion/relegation (formato de supervivencia)",
+    "PRELIMINAR": "fase preliminar o clasificatoria",
+    "PUESTO": "fase de colocacion (partidos por puesto, no por titulo)",
+}
 
 
 def is_toxic_league(name: str) -> bool:
@@ -110,7 +129,7 @@ def is_toxic_league(name: str) -> bool:
     return any(p in s for p in TOXIC_LEAGUE_PATTERNS)
 
 
-def measured_toxic_leagues() -> set[str]:
+def measured_toxic_leagues() -> dict[str, tuple[float, list[float]]]:
     """Ligas que el PROPIO modelo midio como toxicas.
 
     Criterio: el IC95% SUPERIOR de su WR en Q4 queda por debajo del equilibrio
@@ -118,11 +137,13 @@ def measured_toxic_leagues() -> set[str]:
     la liga llega al punto de equilibrio. Sale de `league_calibration.json`,
     que el pipeline regenera en cada entrenamiento, asi que la lista se
     mantiene sola con evidencia y no a mano.
+
+    Devuelve {liga: (wr, ic95)} para poder explicar el motivo del descarte.
     """
     global _MEASURED_TOXIC
     if _MEASURED_TOXIC is not None:
         return _MEASURED_TOXIC
-    out: set[str] = set()
+    out: dict[str, tuple[float, list[float]]] = {}
     try:
         if _CALIBRATION_PATH.exists():
             for row in json.loads(_CALIBRATION_PATH.read_text(encoding="utf-8")):
@@ -130,28 +151,67 @@ def measured_toxic_leagues() -> set[str]:
                 if len(ci) == 2 and float(ci[1]) < BREAKEVEN_140 * 100:
                     name = str(row.get("league") or "").strip().lower()
                     if name:
-                        out.add(name)
+                        out[name] = (float(row.get("wr") or 0.0), [float(ci[0]), float(ci[1])])
     except Exception:
-        out = set()
+        out = {}
     _MEASURED_TOXIC = out
     return out
 
 
+def _matches_measured(name: str) -> tuple[float, list[float]] | None:
+    s = str(name).strip().lower()
+    for toxic, stats in measured_toxic_leagues().items():
+        if s == toxic or s.startswith(toxic + ",") or s.startswith(toxic + " "):
+            return stats
+    return None
+
+
+def block_reason(name: str) -> str | None:
+    """MOTIVO por el que una liga se descarta, o None si no se descarta.
+
+    El modelo lo reporta en el log para que se sepa POR QUE se paso un
+    partido, no solo que se paso.
+
+    Orden de precedencia:
+      1. Lista negra de composicion (patrones literales).
+      2. Medicion propia del modelo (WR con IC95 por debajo del equilibrio).
+      3. Categoria de fase de torneo descartada por diseno.
+    """
+    s = str(name or "").strip()
+    if not s:
+        return None
+    if is_toxic_league(s):
+        return "descartada: liga en la lista negra de composicion"
+    med = _matches_measured(s)
+    if med:
+        wr, ci = med
+        return (f"descartada: liga medida como toxica por el modelo "
+                f"(WR {wr:.1f}%, IC95 [{ci[0]:.1f}, {ci[1]:.1f}] < equilibrio "
+                f"{BREAKEVEN_140 * 100:.1f}% a cuota 1.40)")
+    cat, motivo = classify_stage(s)
+    if cat in BLOCKED_STAGE_CATEGORIES:
+        return f"descartada: {motivo} (categoria {cat})"
+    return None
+
+
 def is_blocked_league(name: str) -> bool:
-    """Bloqueo en INFERENCIA: patron literal + medicion propia del modelo.
+    """Bloqueo en INFERENCIA: composicion + medicion propia + fase descartada.
 
     Es un superconjunto de `is_toxic_league` (nunca menos), de modo que
     bloquear en vivo no puede dejar pasar una liga que el train ya podo.
     """
-    s = str(name or "").strip().lower()
-    if not s:
-        return False
-    if is_toxic_league(s):
-        return True
-    for toxic in measured_toxic_leagues():
-        if s == toxic or s.startswith(toxic + ",") or s.startswith(toxic + " "):
-            return True
-    return False
+    return block_reason(name) is not None
+
+
+def is_excluded_stage(league: str) -> bool:
+    """True si la FASE de la liga esta en la lista de formatos descartados.
+
+    Es la MISMA regla que usa el bloqueo en inferencia, para que el conjunto
+    de entrenamiento y el de operacion no diverjan. La aplica
+    `build_dataset.py` al construir el dataset.
+    """
+    cat, _ = classify_stage(league)
+    return cat in BLOCKED_STAGE_CATEGORIES
 
 
 def mirror(X: np.ndarray) -> np.ndarray:

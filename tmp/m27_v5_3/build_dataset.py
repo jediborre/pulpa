@@ -30,7 +30,7 @@ sys.path.insert(0, str(ROOT))
 
 from models.m27_v5_3.features import (  # noqa: E402
     FEATURE_NAMES, SNAPSHOT_MAX, fallback_info, SNAPSHOT_MIN, STATE_PATH, PriorState, date_ord, extract_market,
-    is_toxic_league, score_at, snapshot_features,
+    is_excluded_stage, is_toxic_league, score_at, snapshot_features,
 )
 
 DB_PATH = ROOT / "matches.db"
@@ -124,10 +124,15 @@ def main() -> None:
 
     print("[5/5] Replay cronologico + extraccion de features...", flush=True)
     # Corte del holdout (18% final de partidos elegibles: 10m, sin empate en Q4, liga no toxica), igual que v5_1/v5_2.
+    # `is_excluded_stage` descarta ademas los formatos de torneo no estandar
+    # (amistosos, segunda fase, promotion, preliminares, colocacion): es la
+    # MISMA regla que aplica el bloqueo en inferencia, para que train y
+    # operacion no diverjan (decision 2026-10-20).
     eligible = [
         i for i, r in enumerate(rows)
         if None not in r[5:13] and r[3] and r[4] and int(r[11]) != int(r[12])
-        and (state.lc_map.get(r[2]) or {"q_dur": 10})["q_dur"] != 12 and not is_toxic_league(r[2])
+        and (state.lc_map.get(r[2]) or {"q_dur": 10})["q_dur"] != 12
+        and not is_toxic_league(r[2]) and not is_excluded_stage(r[2])
     ]
     cut_i = eligible[int(len(eligible) * 0.82)]
     state_test_start = None
