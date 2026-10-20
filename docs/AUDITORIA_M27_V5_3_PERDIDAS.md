@@ -1,5 +1,7 @@
 # 🔎 Auditoría de pérdidas en producción — `m27_v5_3`
 
+> ⚠️ **Vigencia:** este documento analiza el modelo **anterior** (entrenado el 2026-10-18, umbral operativo 0.72). Desde el **2026-10-20** el modelo se reentrenó con el filtro de formatos de torneo y opera en **0.75** dentro de la ventana [25.5, 30] y en **modo sombra** (registra pero no alerta). Las conclusiones de §1–§4 describen lo que pasaba con la configuración antigua; el estado actual y sus contrfactuales están en [`ANALISIS_LIVE_M27_V5_3.md`](./ANALISIS_LIVE_M27_V5_3.md) y los números del modelo nuevo en [`findings_m27_v5_3.md`](./findings_m27_v5_3.md).
+>
 > **Ámbito:** apuestas reales del modelo `m27_v5_3` registradas en `bet_monitor_log_v3` (18-19 oct 2026).
 > **Objetivo:** entender dónde pierde, descartar hipótesis con datos, medir el efecto de bajar `min_conf` y definir qué experimento hace falta para evaluar la señal "multi-momento".
 > **Reproducible con:** `tmp/m27_v5_3_audit/losses_analysis.py` y `tmp/m27_v5_3_audit/threshold_sweep.py`.
