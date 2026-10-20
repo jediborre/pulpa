@@ -716,8 +716,11 @@ def format_combined_bet_message(predictions: dict, home_team: str, away_team: st
             # entrenamiento, liga de 12 min). Si no hay, se muestra el umbral.
             reason = _display_reason(pred)
             if reason:
-                lines.append(f"{model_conf_str} [NO BET — {html.escape(reason, quote=False)}]"
-                             f" → {side_emoji} {clean_team}")
+                linea = f"{model_conf_str} [NO BET — {html.escape(reason, quote=False)}]"
+                # Si el modelo aun no ha podido inferir no hay pick ni equipo.
+                if picked_side and picked_side != "NONE":
+                    linea += f" → {side_emoji} {clean_team}"
+                lines.append(linea)
             else:
                 lines.append(f"{model_conf_str} [NO BET ({threshold_note})] → {side_emoji} {clean_team}")
 

@@ -964,18 +964,19 @@ def _draw_bet_panel(
 
         # 3) Flecha gruesa (color del lado, con sombra) + emoji + equipo
         arrow_color = COLOR_HOME if is_home else COLOR_AWAY
-        _draw_arrow(draw, x + 1, y + 20, 28, (6, 10, 14), 5)  # sombra
-        x += _draw_arrow(draw, x, y + 19, 28, arrow_color, 5) + 14
-
-        side_w = _draw_side_icon(draw, x, y + 5, is_home, size=26)
-        x += side_w + 10
+        if team:
+            _draw_arrow(draw, x + 1, y + 20, 28, (6, 10, 14), 5)  # sombra
+            x += _draw_arrow(draw, x, y + 19, 28, arrow_color, 5) + 14
+            side_w = _draw_side_icon(draw, x, y + 5, is_home, size=26)
+            x += side_w + 10
 
         remaining = max(60.0, (inner_x + max_w) - x - tag_w)
         team_font = _fit_font(draw, team, remaining, 28, bold=is_real_bet)
         # El nombre del equipo va coloreado por lado, igual que en la cabecera:
         # local en verde, visitante en azul. Los NO_BET quedan atenuados.
         team_color = (COLOR_HOME if is_home else COLOR_AWAY) if is_real_bet else COLOR_MUTED
-        draw.text((x, y + 1), team, font=team_font, fill=team_color)
+        if team:
+            draw.text((x, y + 1), team, font=team_font, fill=team_color)
 
         # 4) Línea 2: cuota + proyección/resultado, o confianza y "Sin ODDS"
         y2 = y + line1_h
