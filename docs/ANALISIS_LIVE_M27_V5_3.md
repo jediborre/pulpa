@@ -8,7 +8,7 @@
 
 ## 0. Conclusión en una línea
 
-**El modelo `m27_v5_3` no es peor que `m27_v5_2`: es mejor.** Lo que está mal es la **regla de disparo con la que se opera** (`min_conf 0.72` sin filtro de margen, disparando también más allá del minuto 30 donde el modelo nunca fue entrenado) y una **lista de ligas tóxicas que no coincide con ningún nombre real de SofaScore**.
+**El modelo `m27_v5_3` no es peor que `m27_v5_2`: es mejor.** Lo que está mal es la **regla de disparo con la que se opera** (`min_conf 0.72` sin filtro de margen, elegido maximizando beneficio a una cuota hipotética de 1.40) y una **lista de ligas tóxicas que no coincide con ningún nombre real de SofaScore**.
 
 | | m27_v5_2 | **m27_v5_3** | Lectura |
 |---|---|---|---|
@@ -91,16 +91,22 @@ Para las 18 apuestas de `v5_3` en ligas con calibración offline (`league_calibr
 
 ## 2. Defectos reales encontrados (independientes del rendimiento)
 
-### 2.1 Se infiere fuera del rango de entrenamiento (minutos 31-38)
+### 2.1 Se apuesta con el snapshot obsoleto (minutos 31-33)
 
-`m27_v5_3` se entrenó con snapshots en **t ∈ [25.5, 30.0]** (`features.py:87`, `model_config.json:snapshot_range`). Pero `predict.py:103` solo valida el **piso** (`MIN_VALID_MINUTE = 25.0`); **no hay techo**.
+`m27_v5_3` se entrenó con snapshots en **t ∈ [25.5, 30.0]** (`features.py:87`, `model_config.json:snapshot_range`) y **clampea internamente**: `ctx_from_payload` usa el **cierre de Q3 con t = 30** cuando el partido ya está en Q4. Verificado en los 336 logs de `v5_3`:
 
-| | |
-|---|---|
-| Inferencias con minuto > 30 | **60 de 682** (minutos 31, 32, 33, 34, 35, 38) |
-| De ellas, apuestas reales | 2 (minutos 31 y 32) → **0 aciertos** |
+| `inference_minute` (log) | `snapshot_minute_used` (modelo) | filas |
+|---|---|---|
+| 27 | 27.0 – 27.8 | 30 |
+| 28 – 29 | 28.0 – 30.0 | 13 |
+| 30 | 30.0 | 241 |
+| **31 – 38** | **30.0 (clampeado)** | **52** |
 
-La feature `minute` es la primera del vector: fuera de rango, el modelo extrapola. Además el monitor sigue evaluando hasta el minuto 38.
+> ⚠️ **Corrección a la primera versión de este informe:** aquí no hay extrapolación fuera de distribución — la feature `minute` vale 30.0 y el vector es idéntico al del ancla entrenada. El problema es otro: **la apuesta se coloca sobre un Q4 que ya empezó y cuyo parcial el modelo ignora**.
+
+El monitor permite apuestas ordinarias hasta el minuto **33** (`Q4_TOO_LATE_BET_MINUTE`, `constants.py:90`) y v5_3 disparó **2 apuestas en minutos 31 y 32, ambas perdidas**. Con n=2 no es evidencia estadística, pero el mecanismo es sólido: el modelo predice el ganador de Q4 con datos de Q3, cuando ya se han jugado 1-2 minutos del cuarto que decide la apuesta. Para `m27_v5_2` el problema es peor: su extractor (`extract_features_v5_2`) **no clampea** y sí extrapola con el minuto real.
+
+**Consecuencia práctica:** el plazo válido de `m27_v5_3` es el **minuto 30**, no el 33 global del monitor.
 
 ### 2.2 La lista de ligas tóxicas no coincide con ningún nombre real
 
@@ -134,28 +140,72 @@ El modelo se entrenó con ligas que su propia calibración declara tóxicas. La 
 
 ## 3. Recomendaciones
 
-### Prioridad 1 — cambiar la configuración (impacto medido en vivo, sin reentrenar)
+### R1 — El umbral no se puede fijar sin la cuota real del Q4 (esto va primero de todo)
 
-| Cambio | Dónde | Efecto live medido |
-|---|---|---|
-| `min_conf: 0.72 → 0.75` | `models/m27_v5_3/model_outputs/model_config.json` | n 40→27, WR 72.5 %→77.8 %, ROI@1.40 +1.50 %→**+8.89 %** |
-| Techo de minuto: `SNAPSHOT_MAX = 30.0` | `models/m27_v5_3/predict.py` (junto a `MIN_VALID_MINUTE`) | descarta 2 inferencias OOD, WR →**76.3 %**, ROI →**+6.84 %** |
+El pipeline elige `min_conf` **maximizando beneficio absoluto a cuota 1.40** en el bloque B (`train_m27_v5_3_pipeline.py:236`: `profit = w * 1.40 - n`). Esa función premia el volumen, no la calidad. La superficie real de beneficio (test C) muestra que el umbral óptimo **depende de la cuota**:
 
-> Nota: `model_outputs/` está en `.gitignore`. El cambio de `min_conf` hay que aplicarlo también al artefacto desplegado y reiniciar el monitor (regla 7 de AGENTS.md).
+| `min_conf` | apuestas | WR | benef. esp. @1.40 | benef. esp. @1.83 |
+|---|---|---|---|---|
+| 0.65 | 32,318 | 70.67 % | −343 ❌ | **9,478** ← óptimo a 1.83 |
+| 0.68 | 17,973 | 75.20 % | 949 | 6,761 |
+| 0.70 | 17,708 | 75.28 % | 955 | 6,687 |
+| **0.72 (actual)** | 13,277 | 77.68 % | **1,162** ← óptimo a 1.40 | 5,597 |
+| 0.75 | 10,588 | 79.18 % | 1,149 | 4,754 |
+| 0.80 | 4,589 | 84.79 % | 858 | 2,532 |
 
-### Prioridad 2 — corregir el bloqueo de ligas
+*(Cifras sobre todas las filas de C; el ancla t=30 da el mismo ranking.)*
 
-- Reemplazar los 6 patrones muertos por los **nombres exactos** de las 434 ligas reales (o, mejor, casar por `league_id`/prefijo estable en vez de por texto).
-- Añadir explícitamente las dos ligas que el propio modelo marcó `block_candidate` (`1. Division B`, `Sparkasse Prva Liga Zeni`).
-- Regla sugerida: bloquear cuando el **IC95% del WR offline de la liga** caiga por debajo del equilibrio de la cuota objetivo (71.4 % @1.40) — ya está calculado en `league_calibration.json`.
+Tres consecuencias:
 
-### Prioridad 3 — no tomar decisiones con 40 apuestas
+1. **A 1.40, 0.72 y 0.75 están empatados** (−1.1 % de diferencia esperada). Eligiendo 0.72 no se gana nada: se agrega un 20 % más de volumen con 1.5 pp menos de acierto. La elección del pipeline es, en la práctica, arbitraria dentro del ruido.
+2. **A 1.83 el óptimo se mueve a 0.65** (+69 % de beneficio esperado frente a 0.72). Si el mercado real paga ~1.83, el umbral actual está dejando dinero sobre la mesa; si paga ~1.40, está en el sitio correcto.
+3. **Por eso el ROI es teórico**: la cuota real del cuarto nunca se registró. `odds_live` **ya se está guardando** en `live_snapshots_v3`; falta un join con `bet_monitor_log_v3` para pasar de "beneficio a cuota hipotética" a **EV real** y fijar el umbral por EV en vez de por intuición.
 
-El backtest de `v5_3` (77.7 % WR) y el live (72.5 %) son compatibles. Con ~40 apuestas el IC95% es ±14 pp. **Se necesitan ≥ 200 apuestas resueltas por configuración** para poder discriminar (o usar un test secuencial). Mientras tanto, los cambios de la Prioridad 1 están justificados por el backtest, no por estos 40 casos.
+### R2 — Subir `min_conf` a 0.75 (barato, reversible, con evidencia)
 
-### Prioridad 4 — revisar el gap entre `league_calibration.json` y las ligas en vivo
+| | |
+|---|---|
+| **Dónde** | `models/m27_v5_3/model_outputs/model_config.json` → `min_conf` |
+| **Efecto live (contrafactual sobre los logs)** | n 40→27 · WR 72.5 %→**77.8 %** · ROI@1.40 +1.50 %→**+8.89 %** |
+| **Efecto backtest (C, ancla t=30)** | WR 77.76 %→**79.29 %** · ROI@1.40 +8.86 %→**+11.01 %** |
+| **Coste** | −32 % de volumen |
+| **Por qué no rompe nada** | a 1.40 el beneficio esperado de 0.72 y 0.75 es el mismo (−1.1 %) |
 
-22 de las 40 apuestas (55 %) son en ligas sin entrada en la calibración. El modelo opera con priors de liga genéricos (`fallback_info`) en más de la mitad de sus apuestas sin haber medido nunca su WR en Q4.
+> ⚠️ **El cambio no es durable si solo se edita el JSON.** `model_config.json` se regenera en cada reentrenamiento con `thr_star` (pipeline línea 445-447). Para que 0.75 sobreviva al próximo `train_m27_v5_3_pipeline.py` hay que tocar la **función objetivo** (línea 236): p. ej. maximizar beneficio con un techo de volumen, o exigir `WR ≥ 78 %` como restricción. Alternativa: dejar `thr_star` como está y aplicar un override de despliegue post-entrenamiento.
+
+### R3 — Que `m27_v5_3` deje de apostar después del minuto 30
+
+| | |
+|---|---|
+| **Dónde** | `monitor_v3/models/evaluator.py` (plazo por modelo) o `models/m27_v5_3/predict.py` validando el `snapshot_minute` **de entrada** (no `ctx["minute"]`, que ya viene clampeado a 30) |
+| **Por qué** | el modelo predice el ganador de Q4 con el cierre de Q3; a partir del minuto 31 ya se han jugado 1-3 minutos del cuarto que decide la apuesta |
+| **Efecto live (contrafactual)** | n 40→38 · WR 72.5 %→**76.3 %** · ROI@1.40 +1.50 %→**+6.84 %** |
+| **Deuda** | el monitor permite ordinarias hasta el 33 (`Q4_TOO_LATE_BET_MINUTE`); el plazo válido de este modelo es 30 |
+| **Extra** | `m27_v5_2` **no clampea** (`extract_features_v5_2` usa el minuto crudo) → también extrapola; merece el mismo tope |
+
+### R4 — Arreglar el bloqueo de ligas tóxicas
+
+- Reemplazar los **5 patrones muertos** (`cyprus division`, `georgia superli`, `kosovo superlig`, `albania super`, `armenia a-league`) por los nombres reales; lo ideal es casar por un id de liga estable en vez de por texto.
+- Añadir las **2 ligas `block_candidate`** del propio modelo: `1. Division B` (WR 42.1 %) y `Sparkasse Prva Liga Zeni` (WR 47.6 %).
+- Regla sugerida y ya disponible: bloquear cuando el **IC95% del WR offline de la liga** quede por debajo del equilibrio de la cuota objetivo (71.4 % @1.40) — está en `league_calibration.json`.
+- ⚠️ La lista es **compartida con la poda del entrenamiento** (`build_dataset.py:130`): arreglarla cambia el set elegible → lo ideal es reentrenar después. Bloquear en inferencia, mientras tanto, es estrictamente mejor que no bloquear.
+- Corregir la referencia en `AGENTS.md` §4.5: la lista **no** está en `model_config.json` (ahí solo está el booleano), está en `models/m27_v5_3/features.py:89-94`.
+
+### R5 — No notificar como apuesta operable hasta tener evidencia suficiente
+
+Con 40 apuestas resueltas y WR 72.5 % (IC95 ≈ 56-85 %) **no hay evidencia** de que el modelo tenga ventaja en vivo, y el propio documento de findings ya decía: *"comparar WR live contra el 77.8 % de backtest antes de operar con dinero"*. La comparación ya está hecha y es inconcluyente.
+
+Concretamente: un flag por modelo en `monitor_v3/notifications/telegram_bot.py` (la señal llega por `_is_real_bet_signal`) que permita que `m27_v5_3` **registre en `bet_monitor_log_v3` sin disparar la alerta de apuesta**, hasta acumular **≥ 200 apuestas resueltas** por configuración. Se necesita un contador de apuestas resueltas por modelo y versión de configuración.
+
+### R6 — Lo que NO hay que hacer
+
+- **No reentrenar el modelo.** No hay degradación live-vs-offline: el modelo rinde 13 aciertos donde su propia calibración esperaba 13.8, y en los snapshots compartidos **gana** a `v5_2` (Brier 0.1907 vs 0.1976). El problema es de configuración y de higiene, no de modelo.
+- **No cambiar `min_margin`.** Medido: a 0.72 el filtro de margen ≥ 1.8 **nunca llega a activarse** (40 apuestas idénticas con y sin él). El margen no es la restricción que aprieta; el umbral sí.
+- **No emitir el bloqueo por `has_ml`.** El modelo acierta lo mismo con y sin cuota (73 % vs 72 %), así que filtrar por presencia de mercado no aporta. El tema de la cuota es un **sesgo de selección** (apuesta más donde no hay mercado: 37.5 % vs 67.9 % de las inferencias), no una pérdida de datos — y conviene medirlo **offline en el bloque C** antes de tratarlo como problema.
+
+### R7 — Medir el gap de cobertura por liga
+
+22 de las 40 apuestas (55 %) son en ligas **sin entrada** en `league_calibration.json`: el modelo opera con priors de liga genéricos (`fallback_info`) en más de la mitad de sus apuestas sin haber medido nunca su WR en Q4. Con 434 ligas vistas en vivo y 74 calibradas, el modelo está cubriendo un territorio que no conoce.
 
 ---
 
@@ -168,7 +218,7 @@ El documento de findings es sólido y en lo medible **se sostiene**. Esta tabla 
 | 1 | v5_3 es superior a v5_2 (AUC 0.653 vs 0.638, Brier 0.231 vs 0.235) | ✅ **Confirmada y reforzada**: en los snapshots en vivo v5_3 también gana (Brier 0.1907 vs 0.1976, 34/45 vs 32/45) |
 | 2 | Umbral operativo 0.72 → WR 77.8 %, ROI@1.40 +8.9 % (tabla §1, ancla t=30) | ⚠️ **Referencia equivocada para el disparo real**: el monitor dispara al **primer tick** (min 27 en 30 de 40 apuestas), así que la referencia correcta es §4 `compare.log` (camino live min 27): **WR 81.4 %, ROI +13.9 %** en 236 apuestas. Contra esa referencia, el 72.5 % live queda a −8.9 pp (dentro del ruido con n=40) |
 | 3 | §4: "da igual cuándo caiga el tick" (primer disparo 77.1 % vs ancla 77.7 % vs aleatorio 77.5 %) | ⚠️ **Válido solo dentro de [25.5, 30]**: no se midió ningún tick > 30, que es donde el monitor sí disparó 2 veces (ambas perdidas) |
-| 4 | §4: "Antes de min 25 devuelve `unavailable`" | ⚠️ **Incompleto**: no hay techo. Se entrenó en [25.5, 30] y el monitor infirió 60 veces con minuto 31-38 |
+| 4 | §4: "Antes de min 25 devuelve `unavailable`" | ⚠️ **Incompleto, pero por otra razón**: el modelo **clampea** a t=30 (verificado en los 336 logs), así que no extrapolaba. Lo que faltaba es que la ventana de apuesta del monitor (hasta el min 33) **supera el rango válido del modelo (30)**: se colocaron 2 apuestas sobre un Q4 ya empezado, con datos de Q3 |
 | 5 | §2 mejora #16: "`block_toxic_leagues` en inferencia (PASS)" | ❌ **Inerte**: 5 de 15 patrones no casan con ninguna liga (ni del train ni live); 2 más solo casan con ligas históricas; y las 2 ligas `block_candidate` del propio modelo **estaban en el train** |
 | 6 | §3/§5: "36-40 % de partidos sin cuota" (el bloque "fuerza" cubre ese hueco) | ⚠️ **Sesgo de selección en vivo**: hay cuota en el 67.9 % de las inferencias pero solo en el **37.5 %** de las apuestas. No es pérdida de datos (0 de 40 partidos apostados tienen cuota ML en `match_odds`), es que **el modelo apuesta más donde no hay mercado** |
 | 7 | §5: "Cuota ML no existe en línea (0/40 en el sondeo, 404)" | ✅ **Confirmado**: los 40 partidos apostados no tienen cuota ML en la base. La consecuencia real (el modelo prefiere apostar los que no la tienen) no estaba en el documento |
@@ -180,9 +230,10 @@ El documento de findings es sólido y en lo medible **se sostiene**. Esta tabla 
 
 1. **Que el gap con v5_2 no es de modelo sino de regla** — y el contrafactual exacto (0.72 → 0.75: ROI@1.40 de +1.50 % a +8.89 %).
 2. **Que el modelo en vivo rinde igual que su backtest** (13.8 aciertos esperados vs 13 reales según la calibración de liga): no hay degradación live-vs-offline que depurar.
-3. **La inferencia fuera del rango de entrenamiento** como mecanismo de pérdida (2 apuestas OOD, 0 aciertos).
+3. **La apuesta posterior al minuto 30** como mecanismo de pérdida: el modelo clampea a t=30, así que a partir del minuto 31 está prediciendo el ganador de un Q4 **ya empezado** con datos de Q3 (2 apuestas, ambas perdidas).
 4. **La lista de ligas tóxicas como mecanismo train/live compartido** (y por tanto doblemente inerte: no podó ni bloqueó).
 5. **El sesgo de selección hacia partidos sin cuota de mercado.**
+6. **La superficie de beneficio por umbral y cuota**: a 1.40, 0.72 y 0.75 están empatados; a 1.83 el óptimo baja a 0.65 (+69 % de beneficio). El umbral actual es, en el fondo, una apuesta sobre la cuota real del Q4 — que nunca se ha registrado.
 
 ---
 
@@ -190,6 +241,8 @@ El documento de findings es sólido y en lo medible **se sostiene**. Esta tabla 
 
 ```powershell
 .venv\Scripts\python.exe tmp\m27_v5_3_audit\diagnose_v5_3_vs_v5_2.py   # gap, contrfactuales, ligas tóxicas
+.venv\Scripts\python.exe tmp\m27_v5_3_audit\profit_surface.py          # beneficio esperado por umbral y cuota
+.venv\Scripts\python.exe tmp\m27_v5_3_audit\check_minute_clamp.py      # ¿el modelo clampea el minuto? (sí, a 30)
 .venv\Scripts\python.exe tmp\m27_v5_3_audit\contrast_with_findings.py   # contraste contra findings_m27_v5_3.md
 .venv\Scripts\python.exe tmp\m27_v5_3_audit\confidence_parity.py        # confianza y discordancia en el mismo snapshot
 .venv\Scripts\python.exe tmp\m27_v5_3_audit\calibration_live.py         # Brier/LogLoss/calibración por banda
