@@ -178,6 +178,8 @@ Cobertura esperada de spread/total: ~8-18 % de los partidos 2024-26 (solo ligas 
 Umbral en producción: `model_config.json` → `min_conf = 0.72`, `min_margin = 0.0` (elegido en B). Ligas tóxicas → `PASS`. Ligas de 12 min → `unavailable`.
 
 > ℹ️ `m27_v5_3` quedó **primero** en `ACTIVE_MODELS` y, si emite `BET`, el monitor lo notificará como cualquier otro modelo. Para observarlo sin notificar, quitarlo de `ACTIVE_MODELS` o dejarlo registrando en `bet_monitor_log_v3` unas semanas (recomendado: comparar WR live contra el 77.8 % de backtest antes de operar con dinero).
+>
+> 📊 **Comparación live ya hecha (2026-10-18 → 19):** 40 apuestas, WR 72.5 % (IC95 ≈ 56-85 %) frente al 77.8 % de backtest → dentro del ruido, y frente a `m27_v5_2` (11 apuestas, 82 %) la diferencia **no es significativa** (Fisher p = 0.706). En los snapshots compartidos `v5_3` es **mejor** que `v5_2` (Brier 0.1907 vs 0.1976). El gap lo explica la **regla de disparo** (`min_conf 0.72` sin filtro de margen), las **inferencias con minuto > 30** (fuera del rango de entrenamiento) y la **lista de ligas tóxicas cuyos patrones no coinciden con los nombres reales**. Detalle y contrfactuales: [`ANALISIS_LIVE_M27_V5_3.md`](./ANALISIS_LIVE_M27_V5_3.md).
 
 ---
 
