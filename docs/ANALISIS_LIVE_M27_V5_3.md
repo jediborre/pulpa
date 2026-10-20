@@ -131,7 +131,45 @@ El modelo se entrenó con ligas que su propia calibración declara tóxicas. La 
 
 > 📌 La lista **no** está en `model_config.json` (como afirma AGENTS.md §4.5): `model_config.json` solo tiene el booleano `block_toxic_leagues: true`. Los patrones están hardcodeados en `models/m27_v5_3/features.py:89-94`. Quien quiera arreglarla debe editar ese archivo.
 
-### 2.3 Lo que el modelo **no** tiene (para contexto, no es la causa)
+### 2.4 La premisa de la lista negra estaba escrita… pero nunca se aplicó
+
+La premisa original está en [`docs/COMPORTAMIENTO_LIGAS_Y_GUIA_ENTRENAMIENTO.md`](./COMPORTAMIENTO_LIGAS_Y_GUIA_ENTRENAMIENTO.md) (semáforo de arquetipos) y la infraestructura existía en `leagues_classification` (3.643 filas con `is_youth`, `is_college`, `competition_type`, `is_playoffs`, `is_final`, `quarter_duration_minutes`). **El filtro nunca se conectó al entrenamiento**: `build_dataset.py:130` solo aplicaba `not is_toxic_league(liga)`, una lista de 16 patrones escritos a mano (5 de los cuales no casaban con ningún nombre real).
+
+| Regla del semáforo | Volumen en la base | **Lo que seguía dentro del train de v5_3** |
+|---|---|---|
+| 🔴 R1 Juveniles U16-U23 | 885 ligas / 7.820 part. | **851 ligas / 7.743 part.** |
+| 🔴 R2 College NCAA | 64 ligas / 5.704 part. | **53 ligas / 2.914 part.** |
+| 🔴 R3 Amistosos / torneos / pretemporada | 1.051 ligas / 16.672 part. | **1.011 ligas / 13.528 part.** |
+| 🟡 A3 Playoffs / finales / eliminatorias | 851 ligas / 11.864 part. | **811 ligas / 11.441 part.** |
+| 🟡 A1 NBA y ligas de 12 min | 44 ligas / 29.967 part. | 0 ✅ (ya implementado) |
+| 🟡 A2 Femenino adulto | 617 ligas / 36.666 part. | con feature `is_women` ✅ |
+
+**Tres bugs de la clasificación existente:**
+
+1. **`leagues_classification.stage_detail` clasifica por liga base, no por variante.** `NBA, Playoffs`, `Argentina Liga Nacional, Playoffs`, `Brazil NBB, Playoffs`, `Mexico LNBP, Playoffs` o `Korisliiga, Playoffs` (18k partidos de eliminatorias) quedan marcados como **"Regular Season"**. Por eso el filtro tiene que leer el texto de la fase, no el bucket precalculado.
+2. **"Championship Round" se reparte de forma inconsistente**: `NBL`, `NKL`, `Portugal Proliga`, `Korisliiga`, `Basketligaen` y `LNB` lo tratan como playoffs; `LNA`, `United League`, `Bulgaria NBL` y `Stoiximan GBL` como temporada regular. De 183 ligas con "championship", 13 quedan sin clasificar de forma coherente.
+3. **Las ligas de 12 min están bien marcadas** (44 ligas / 29.967 partidos: NBA, G League, China CBA, PBA×5, NBA Summer League, WCBA, CBA Club Cup, MCBL…). Verificado contra la API (`period_length` 600/720) en 7 candidatas: ninguna resultó ser de 12 min (TBL, Chinese Taipei P League, NBL1 y CIBACOPA son de 10 min con anotación alta). Solo `Chinese Taipei T1 League` y `Super 20, Playoffs` no respondieron (datos antiguos).
+
+**Solución implementada:** [`models/common/competition_stage.py`](../models/common/competition_stage.py) clasifica la fase con marcadores multilingües sobre el texto original (el, pt, it, fr, de, pl, cs, hr/sr, lt, ru, el, tr, hu, ro, bg, zh/ja/ko…) y devuelve la **categoría + el motivo legible**, que el modelo escribe en el `raw_json` de cada inferencia.
+
+### 2.5 Lo que la medición dice de la lista negra
+
+Sobre el bloque C (98.476 filas, artefactos desplegados, umbral 0.75) el modelo rinde **mejor** en las fases que la guía marcaba como ruido:
+
+| categoría | apuestas | WR | ROI@1.40 | sesgo |
+|---|---|---|---|---|
+| REGULAR | 1.555 | 77.0 % | +7.9 % | +0.031 |
+| **FORMATIVAS** (R1) | 596 | **84.9 %** | **+18.9 %** | −0.028 |
+| **ELIMINATORIA** (A3) | 191 | **84.3 %** | **+18.0 %** | −0.040 |
+| **COPA** (R3) | 128 | **82.8 %** | +15.9 % | −0.037 |
+| **SEGUNDA FASE** | 45 | **73.3 %** | +2.7 % | +0.051 |
+| PROMOCION | 20 | 85.0 % | +19.0 % | −0.064 |
+
+La premisa de la guía se apoyaba en el **ritmo y los puntos** (playoffs: 144 pts vs 158.6 de media), no en el acierto del ganador de Q4, que es el objetivo del modelo. La única categoría floja es *Championship Round* (73.3 %, ROI +2.7 %).
+
+> **Decisión aplicada (2026-10-20):** se descartan del train y se bloquean en inferencia **AMISTOSOS** y el bloque **segunda fase + promoción + preliminar + colocación**. **Se mantienen eliminatorias y copas** (rinden por encima de la temporada regular). Juveniles y NCAA quedan **pendientes de medición** por ablación.
+
+### 2.6 Lo que el modelo **no** tiene (para contexto, no es la causa)
 
 - **Cuota de mercado — es un efecto de selección, no una pérdida de datos:** `has_ml = True` en el **67.9 %** de las 336 inferencias en vivo, pero solo en el **37.5 %** de las 40 apuestas. La causa es que los 40 partidos apostados **no tienen ninguna cuota ML en `match_odds`** (0 de 40) → no es un fallo de extracción, es que el modelo **apuesta mucho más donde no tiene mercado**. La exactitud es idéntica en ambos subconjuntos (73 % con cuota vs 72 % sin), así que la confianza que produce sin datos de mercado **no aporta nada extra**: ese es el margen que el modelo se está dando a sí mismo.
 - **Empates de Q4:** desde el commit `9121cb6` cuentan como pérdida, igual para ambas versiones → la comparación es justa.
@@ -251,3 +289,21 @@ El documento de findings es sólido y en lo medible **se sostiene**. Esta tabla 
 ```
 
 Todos leen `matches.db` de la raíz y solo escriben en `tmp/`. Ningún script modifica la base de datos.
+
+---
+
+## 6. Estado de aplicación (2026-10-20)
+
+| # | Cambio | Dónde | Estado |
+|---|---|---|---|
+| R2 | `min_conf` 0.72 → **0.75** | `model_outputs/model_config.json` + `OPERATING_CONF` en el pipeline | ✅ aplicado y **durable** (el pipeline ya no puede volver a 0.72: exige WR ≥ 78 % en B) |
+| R3 | Ventana de inferencia **[25.5, 30]** | `models/m27_v5_3/predict.py` (valida el `snapshot_minute` de **entrada**, no el clampeado) y `models/m27_v5_2/predict.py` | ✅ aplicado y probado (`test_window_guards.py`) |
+| R4 | Bloqueo por **fase de torneo** con motivo | `models/common/competition_stage.py` + `models/m27_v5_3/features.py` (`block_reason`) | ✅ aplicado: se descartan del train y se bloquean en inferencia **amistosos, segunda fase, promoción, preliminar y colocación**; se **mantienen** eliminatorias y copas |
+| R4b | Bloqueo por **medición propia** (IC95 < equilibrio) | `league_calibration.json` → `measured_toxic_leagues()` | ✅ aplicado: `1. Division B` (WR 42.1 %) y `Sparkasse Prva Liga Zeni` (WR 47.6 %) |
+| R5 | **Modo sombra** para `m27_v5_3` | `monitor_v3/config/constants.py` (`SHADOW_MODELS`) + `monitor_v3/main.py` | ✅ aplicado: se registra pero **no alerta en Telegram** hasta reunir ≥ 200 apuestas resueltas |
+| R6 | **Serie de inferencia por minuto** | nueva tabla `model_inference_v3` + `monitor_v3/models/evaluator.py` | ✅ aplicado: una fila por modelo y minuto dentro de la ventana válida, con `p_cal`, margen, señal, motivo y el vector completo de features |
+| — | Juveniles y NCAA (R1/R2 de la lista negra) | — | ⏳ **pendiente de la ablación** (`phase_exclusion_ablation.py`) |
+| — | Reconstruir dataset + reentrenar con el filtro de fases | `build_dataset.py` + `train_m27_v5_3_pipeline.py` | ⏳ pendiente: el filtro ya está en el código, falta la reejecución |
+
+**Monitor reiniciado** tras los cambios (regla 7 de AGENTS.md): 2 procesos `python.exe` (daemon + bot), 0 ventanas `cmd`, arranque limpio sin errores.
+
