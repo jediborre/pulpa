@@ -319,7 +319,13 @@ async def evaluate_match_q4(
             or (bet_signal.startswith("BET") and "NO_BET" not in bet_signal)
         )
 
-        if is_operable_sig:
+        # MOTIVO por el que el modelo NO apuesta (si lo hay): liga o formato
+        # de torneo descartado. Con motivo no hay que seguir esperando a que
+        # "entre en zona verde": el modelo no va a apostar en este partido.
+        block_reason = (pred.raw_json or {}).get("block_reason")
+        if block_reason:
+            final_signal = "NO_BET_BLOCKED"
+        elif is_operable_sig:
             # Minuto <= límite ordinario: Apuesta ordinaria
             if minute_est <= too_late_bet_min:
                 final_signal = f"BET_{picked_side}"
@@ -369,6 +375,9 @@ async def evaluate_match_q4(
             "actual_away_score": away_score,
             "raw_payload": match_payload,
             "inference_json": pred.to_dict(),
+            # MOTIVO por el que el modelo NO apuesta (si lo hay): liga o formato
+            # descartado. Viaja hasta el mensaje de Telegram y la tarjeta.
+            "block_reason": (pred.raw_json or {}).get("block_reason"),
         }
 
     return {"ok": True, "predictions": predictions}

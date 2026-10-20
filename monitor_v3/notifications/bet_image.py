@@ -982,12 +982,23 @@ def _draw_bet_panel(
                 is_result,
             )
         else:
-            thr_pct = int(round(float(threshold) * 100))
-            detail_segments = [
-                ("text", "no operó (umbral ", COLOR_MUTED),
-                ("text", f"{thr_pct}", _value_color(thr_pct)),
-                ("text", "%)", COLOR_MUTED),
-            ]
+            # Motivo del descarte (liga/formato, ventana de entrenamiento,
+            # liga de 12 min). Si no hay, se muestra el umbral que no alcanzo.
+            reason = str(bet.get("reason") or "").strip()
+            if len(reason) > 62:
+                reason = reason[:59].rstrip() + "…"
+            if reason:
+                detail_segments = [
+                    ("text", "no operó: ", COLOR_MUTED),
+                    ("text", reason, COLOR_TIME),
+                ]
+            else:
+                thr_pct = int(round(float(threshold) * 100))
+                detail_segments = [
+                    ("text", "no operó (umbral ", COLOR_MUTED),
+                    ("text", f"{thr_pct}", _value_color(thr_pct)),
+                    ("text", "%)", COLOR_MUTED),
+                ]
 
         _draw_segments(draw, inner_x, y2 + 2, detail_segments, _font(22), cy=y2 + 14)
         y = y2 + line2_h + gap

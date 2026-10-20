@@ -2,7 +2,7 @@
 
 > **Reentrenado el 2026-10-20** (v2: filtro de formatos de torneo + umbral 0.75). Entrenado originalmente el 2026-10-18.
 > Código: [`models/m27_v5_3/`](../models/m27_v5_3) · Pipeline: [`tmp/m27_v5_3/`](../tmp/m27_v5_3) · Diagnóstico previo: [`findings_m27_2.md`](./findings_m27_2.md).
-> Análisis live y decisiones operativas: [`ANALISIS_LIVE_M27_V5_3.md`](./ANALISIS_LIVE_M27_V5_3.md).
+> Análisis live y decisiones operativas: [`ANALISIS_LIVE_M27_V5_3.md`](./ANALISIS_LIVE_M27_V5_3.md) · Conclusión ejecutiva: [`CONCLUSION_M27_V5_3.md`](./CONCLUSION_M27_V5_3.md).
 > Artefactos (ignorados por git, ver `.gitignore`): `models/m27_v5_3/model_outputs/` → pesos, `model_config.json`, `m27_v5_3_summary.json`, `league_calibration.json`, `feature_justification.md`, `m27_v5_3_diagnostic_dashboard.png`.
 
 ---

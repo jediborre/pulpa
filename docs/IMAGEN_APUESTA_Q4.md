@@ -93,9 +93,10 @@ BET     m27_v5_3 78%  ->  🏠 Deportivo Viedma              GANADA
                                 etiqueta de resultado solo en FT (§4.4)
 ```
 
-**Línea 2** (`Cuota …` / `no operó (umbral …%)`):
+**Línea 2** (`Cuota …` / `no operó (umbral …%)` / `no operó: <motivo>`):
 - Modelo que apostó: `Cuota <decimal> (<americano>) · $500 -> <total> (+<ganancia>)`; en FT refleja el resultado real: `$500 -> $0.00 (-$500.00)` si perdió, `$500 -> $500.00 ($0.00)` si push.
-- Modelo que no apostó: `no operó (umbral <X>%)`, con el **umbral real** del modelo.
+- Modelo que no apostó por el **umbral**: `no operó (umbral <X>%)`, con el **umbral real** del modelo.
+- Modelo que **no pudo operar** (liga o formato descartado, fuera de su ventana de entrenamiento, liga de 12 min): `no operó: <motivo>` en **naranja** `#FF9500`. El motivo lo produce `models/m27_v5_3/features.py::block_reason()` y llega desde `raw_json` → `predictions[model]["block_reason"]` → `bets[].reason`. Ejemplos: `torneo amistoso o invitacion (categoria AMISTOSOS)`, `liga medida como toxica por el modelo (WR 42.1 %, IC95 [23.1, 63.7] < equilibrio 71.4 % a cuota 1.40)`, `Fuera de la ventana de entrenamiento (min 32.0 > 30.0)`.
 
 ### 4.1 `BET` / `NO BET`
 - Apuesta operable (señal con `BET` y sin `NO_BET`) → **`BET` en verde** `#3FCB5C`.

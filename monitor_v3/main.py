@@ -549,7 +549,10 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                     h2h_available=h2h
                                 )
                                 q4_done[model] = True
-                                log_info("EVALUACION", f"[EVAL] NO_BET definitivo | Model: {model} | {match_display}", q4_orange=True)
+                                _why = pred.get("block_reason") or ""
+                                log_info("EVALUACION", f"[EVAL] NO_BET definitivo | Model: {model}"
+                                         + (f" | Motivo: {_why}" if _why else "")
+                                         + f" | {match_display}", q4_orange=True)
 
                         if operable_to_send:
                             for model, pred in operable_to_send.items():
@@ -587,10 +590,26 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                                      f"Modelos: {', '.join(shadow_hit)} | {match_display}",
                                          q4_orange=True)
 
-                            # Mostrar todas las predicciones del tick para consenso transparente
-                            display_preds = {m: preds[m] for m in preds
-                                             if preds[m].get("signal") not in ("UNAVAILABLE", None)
-                                             and m not in SHADOW_MODELS}
+                            # Mostrar todas las predicciones del tick para consenso transparente.
+                            # Un modelo que NO apuesta por un motivo concreto (liga o formato
+                            # descartado, fuera de su ventana de entrenamiento, liga de 12 min)
+                            # tambien se muestra: hay que poder ver POR QUE se paso.
+                            _INTERNAL_REASONS = ("monitoring_q3_window_for_green",
+                                                "awaiting_no_bet_confirmations", "no_data")
+
+                            def _visible_for_display(m: str) -> bool:
+                                if m in SHADOW_MODELS:
+                                    return False
+                                p = preds.get(m) or {}
+                                sig = p.get("signal")
+                                if sig in (None,):
+                                    return False
+                                if sig == "UNAVAILABLE":
+                                    reason = str(p.get("reason") or "")
+                                    return bool(reason) and reason not in _INTERNAL_REASONS
+                                return True
+
+                            display_preds = {m: preds[m] for m in preds if _visible_for_display(m)}
 
                             if len(display_preds) > 1:
                                 await send_combined_bet_alert(

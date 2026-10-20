@@ -442,7 +442,8 @@ async def edit_telegram_message(message_id: int, new_text: str) -> dict:
     return await asyncio.to_thread(_send_request, url, payload)
 
 
-def format_bet_message(model: str, picked_team: str, is_home: bool, signal: str, confidence: float | None = None) -> str:
+def format_bet_message(model: str, picked_team: str, is_home: bool, signal: str,
+                       confidence: float | None = None, reason: str | None = None) -> str:
     """
     Formatea el mensaje base de Telegram de acuerdo con las especificaciones.
     """
@@ -467,7 +468,10 @@ def format_bet_message(model: str, picked_team: str, is_home: bool, signal: str,
     elif "BET" in signal and "NO_BET" not in signal:
         prefix = "🟡" if is_low_conf else "🟢"
         return f"{prefix} APUESTA Q4 {model_str} → {side_emoji} {clean_team}"
-    elif "NO_BET" in signal:
+    elif "NO_BET" in signal or "NO_BET" in str(reason or ""):
+        if reason:
+            return (f"⚪️ NO BET {model_str} — {html.escape(str(reason), quote=False)}"
+                    f" → {side_emoji} {clean_team}")
         return f"⚪️ NO BET {model_str} → {side_emoji} {clean_team}"
     else:
         return f"⚪️ NO BET {model_str} → {side_emoji} {clean_team}"
@@ -534,13 +538,15 @@ async def send_bet_alert(
     q_away: int | None = None,
     league: str | None = None,
     scheduled_ts: int | None = None,
-    confidence: float | None = None
+    confidence: float | None = None,
+    reason: str | None = None
 ) -> dict:
     """
     Despacha una alerta de apuesta en vivo a todos los suscriptores.
     Retorna el primer resultado de la lista para compatibilidad con el caller.
     """
-    base_text = format_bet_message(model, picked_team, is_home, signal, confidence=confidence)
+    base_text = format_bet_message(model, picked_team, is_home, signal,
+                                   confidence=confidence, reason=reason)
     seq = _match_seq(match_id)
     text = _format_telegram_details(
         base_text, home_team, away_team, league, scheduled_ts, minute, q_key, q_home, q_away, seq=seq
@@ -560,6 +566,7 @@ async def send_bet_alert(
             "confidence": confidence,
             "decimal_odds": _decimal_odds_for_side(match_data, is_home),
             "inference_json": None,
+            "reason": reason,
         }
     ]
     results = await _send_bet_photo(
@@ -595,6 +602,29 @@ def model_display_sort_key(model_name: str) -> int:
     return 99
 
 
+def _display_reason(pred: dict) -> str | None:
+    """Motivo por el que un modelo NO apuesta, listo para mostrar.
+
+    Hay tres origenes posibles:
+      - `block_reason` del modelo: descarto por liga o formato de torneo.
+      - `reason` del evaluador: no pudo inferir (fuera de la ventana de
+        entrenamiento, liga de 12 min, sin datos).
+      - nada: simplemente no supero el umbral (lo muestra el umbral).
+    """
+    reason = str(pred.get("block_reason") or "").strip()
+    if not reason:
+        reason = str(pred.get("reason") or "").strip()
+    if not reason:
+        return None
+    # Motivos internos del monitor: no aportan nada al usuario.
+    if reason in ("monitoring_q3_window_for_green", "awaiting_no_bet_confirmations", "no_data"):
+        return None
+    reason = reason.replace("descartada: ", "")
+    if len(reason) > 90:
+        reason = reason[:87].rstrip() + "…"
+    return reason
+
+
 def format_combined_bet_message(predictions: dict, home_team: str, away_team: str) -> str:
     """
     Formatea el mensaje base de Telegram para señales múltiples combinadas.
@@ -620,6 +650,10 @@ def format_combined_bet_message(predictions: dict, home_team: str, away_team: st
         is_bet = ("BET" in sig and "NO_BET" not in sig) or ("BET" in raw_sig and "NO_BET" not in raw_sig)
 
         conf = pred.get("confidence")
+        # Un modelo que no pudo inferir (fuera de ventana, liga de 12 min) no
+        # tiene confianza que mostrar: se rotula solo con el motivo.
+        if sig == "UNAVAILABLE" and not is_bet:
+            conf = None
         if conf is not None:
             if conf > 1.0:
                 conf = conf / 100.0
@@ -644,8 +678,15 @@ def format_combined_bet_message(predictions: dict, home_team: str, away_team: st
         if is_bet:
             lines.append(f"{model_conf_str} → {side_emoji} {clean_team}")
         else:
-            lines.append(f"{model_conf_str} [NO BET ({threshold_note})] → {side_emoji} {clean_team}")
-        
+            # Motivo concreto del descarte (liga/formato, ventana de
+            # entrenamiento, liga de 12 min). Si no hay, se muestra el umbral.
+            reason = _display_reason(pred)
+            if reason:
+                lines.append(f"{model_conf_str} [NO BET — {html.escape(reason, quote=False)}] "
+                             f"→ {side_emoji} {clean_team}")
+            else:
+                lines.append(f"{model_conf_str} [NO BET ({threshold_note})] → {side_emoji} {clean_team}")
+
     return "\n".join(lines)
 
 
@@ -696,6 +737,7 @@ async def send_combined_bet_alert(
                 "probability": prob,
                 "decimal_odds": _decimal_odds_for_side(match_data, is_home),
                 "inference_json": pred.get("inference_json"),
+                "reason": _display_reason(pred),
             }
         )
 
