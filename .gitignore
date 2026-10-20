@@ -127,3 +127,6 @@ tools/obscura/**/*.dll
 tools/obscura/**/*.pdb
 tools/obscura/**/*.zip
 tools/obscura-src
+
+# Artefactos de herramientas locales del agente
+.commandcode/
