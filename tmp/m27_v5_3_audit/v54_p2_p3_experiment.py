@@ -47,7 +47,7 @@ from train_m27_v5_3_pipeline import (  # noqa: E402
 )
 
 W = {"xgb": 0.40, "hgb": 0.35, "lr": 0.25}
-QUANTILES = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)
+QUANTILES = (0.1, 0.3, 0.5, 0.7, 0.9)
 OUT = ROOT / "tmp" / "m27_v5_3_audit" / "v54_p2_p3_experiment.json"
 
 
@@ -95,7 +95,9 @@ def sigmo(z):
 
 
 def fit_quantile_models(Xtr, ytr, qtr, wtr):
-    """Modelos de cuantil del margen de Q4 (local - visitante), con espejo."""
+    """Modelos de cuantil del margen de Q4 (local - visitante), con espejo.
+
+    OJO: el objetivo es el MARGEN (qtr), no la etiqueta binaria."""
     Xa = np.vstack([Xtr, mirror(Xtr)])
     ya = np.concatenate([ytr, 1 - ytr])
     qa = np.concatenate([qtr, -qtr])
@@ -106,7 +108,7 @@ def fit_quantile_models(Xtr, ytr, qtr, wtr):
                                           learning_rate=0.06, max_leaf_nodes=31,
                                           min_samples_leaf=200, l2_regularization=40.0,
                                           random_state=42)
-        m.fit(Xa, ya, sample_weight=wa)
+        m.fit(Xa, qa, sample_weight=wa)
         models.append(m)
     return models
 
@@ -141,6 +143,11 @@ def prob_from_quantiles(models, X):
 
 
 def main() -> None:
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--only", default="all", help="V0 | V1 | V2 | V3 | V4 | all")
+    args = ap.parse_args()
+
     D = pickle.load(open(ROOT / "tmp" / "m27_v5_3" / "dataset_v5_3.pkl", "rb"))
     X, y, q4d, meta = D["X"], D["y"], D["q4_diff"], D["meta"]
     elig = D["eligible_ord"]
@@ -171,8 +178,14 @@ def main() -> None:
     print(f"   ({time.time() - t0:.0f}s)  AUC {roc_auc_score(yC, pC):.4f}")
 
     res = {}
+    res_path = ROOT / "tmp" / "m27_v5_3_audit" / "v54_p2_p3_partial.json"
+    if res_path.exists():
+        res = json.loads(res_path.read_text(encoding="utf-8"))
 
     def evaluate(name, pC_use, extra=None):
+        if name in res:
+            print(f"\n[{name}] ya calculado, se omite")
+            return res[name]["auc"]
         auc = roc_auc_score(yC, pC_use)
         brier = float(np.mean((pC_use - yC) ** 2))
         ll = float(-np.mean(yC * np.log(pC_use) + (1 - yC) * np.log(1 - pC_use)))
@@ -184,9 +197,11 @@ def main() -> None:
                   f"| u@1.83 {t['u183']:>6.0f}")
         res[name] = {"auc": round(auc, 4), "brier": round(brier, 4), "logloss": round(ll, 4),
                      "tiers": tiers(pC_use, yC), **(extra or {})}
+        res_path.write_text(json.dumps(res, indent=2, ensure_ascii=False), encoding="utf-8")
         return auc
 
-    evaluate("V0 actual", pC)
+    if args.only in ("all", "V0"):
+        evaluate("V0 actual", pC)
 
     # ------------------------------------------------------------------
     block("2) V1 (P3): REENTRENO CON FOCO EN LA BANDA DE DECISION")
@@ -196,60 +211,70 @@ def main() -> None:
     w_focus = w_all[rowA] * foco
     print(f"   peso medio del foco: {foco.mean():.3f} (1.0 = sin foco); "
           f"fracción de filas con peso > 0.5: {(foco > 0.5).mean() * 100:.1f} %")
-    t0 = time.time()
-    m_focus = fit_ensemble(X[rowA], y[rowA], q4d[rowA], w_focus, quick=False)
-    pB_f = p_sym(m_focus, X[rowB])
-    cal_f = fit_calibrator(pB_f, y[rowB])
-    pB_fc = np.clip(cal_f.predict(pB_f), 0.03, 0.97)[maskB]
-    pC_f = np.clip(cal_f.predict(p_sym(m_focus, X[idxC])), 0.03, 0.97)
-    print(f"   ({time.time() - t0:.0f}s)")
-    evaluate("V1 foco en la banda", pC_f)
+    if args.only in ("all", "V1"):
+        t0 = time.time()
+        m_focus = fit_ensemble(X[rowA], y[rowA], q4d[rowA], w_focus, quick=False)
+        pB_f = p_sym(m_focus, X[rowB])
+        cal_f = fit_calibrator(pB_f, y[rowB])
+        pB_fc = np.clip(cal_f.predict(pB_f), 0.03, 0.97)[maskB]
+        pC_f = np.clip(cal_f.predict(p_sym(m_focus, X[idxC])), 0.03, 0.97)
+        print(f"   ({time.time() - t0:.0f}s)")
+        evaluate("V1 foco en la banda", pC_f)
 
     # ------------------------------------------------------------------
     block("3) V2 (P2): DISTRIBUCION DEL MARGEN -> P(margen > 0)")
-    t0 = time.time()
-    qm = fit_quantile_models(X[rowA], y[rowA], q4d[rowA], w_all[rowA])
-    pB_q = prob_from_quantiles(qm, X[idxB])
-    pC_q = prob_from_quantiles(qm, X[idxC])
-    cal_q = PlattCalibrator().fit(pB_q, yB)
-    pB_qc = np.clip(cal_q.predict(pB_q), 0.03, 0.97)
-    pC_qc = np.clip(cal_q.predict(pC_q), 0.03, 0.97)
-    print(f"   ({time.time() - t0:.0f}s)")
-    evaluate("V2 distribucion del margen", pC_qc)
+    pC_qc = None
+    if args.only in ("all", "V2"):
+        t0 = time.time()
+        qm = fit_quantile_models(X[rowA], y[rowA], q4d[rowA], w_all[rowA])
+        pB_q = prob_from_quantiles(qm, X[idxB])
+        pC_q = prob_from_quantiles(qm, X[idxC])
+        cal_q = PlattCalibrator().fit(pB_q, yB)
+        pB_qc = np.clip(cal_q.predict(pB_q), 0.03, 0.97)
+        pC_qc = np.clip(cal_q.predict(pC_q), 0.03, 0.97)
+        print(f"   ({time.time() - t0:.0f}s)")
+        evaluate("V2 distribucion del margen", pC_qc)
 
     # ------------------------------------------------------------------
     block("4) V3 (P2+P3): DISTRIBUCION REENTRENADA CON FOCO")
-    t0 = time.time()
-    qm_f = fit_quantile_models(X[rowA], y[rowA], q4d[rowA], w_focus)
-    pB_qf = prob_from_quantiles(qm_f, X[idxB])
-    pC_qf = prob_from_quantiles(qm_f, X[idxC])
-    cal_qf = PlattCalibrator().fit(pB_qf, yB)
-    pC_qfc = np.clip(cal_qf.predict(pC_qf), 0.03, 0.97)
-    print(f"   ({time.time() - t0:.0f}s)")
-    evaluate("V3 distribucion + foco", pC_qfc)
+    if args.only in ("all", "V3"):
+        t0 = time.time()
+        qm_f = fit_quantile_models(X[rowA], y[rowA], q4d[rowA], w_focus)
+        pB_qf = prob_from_quantiles(qm_f, X[idxB])
+        pC_qf = prob_from_quantiles(qm_f, X[idxC])
+        cal_qf = PlattCalibrator().fit(pB_qf, yB)
+        pC_qfc = np.clip(cal_qf.predict(pC_qf), 0.03, 0.97)
+        print(f"   ({time.time() - t0:.0f}s)")
+        evaluate("V3 distribucion + foco", pC_qfc)
 
     # ------------------------------------------------------------------
     block("5) V4: MEZCLA del clasificador actual y la distribucion del margen")
-    best_w = None
-    for w in (0.2, 0.3, 0.4, 0.5, 0.6, 0.7):
-        mix = sigmo((1 - w) * logit(pC) + w * logit(pC_qc))
-        mix = np.clip(mix, 0.03, 0.97)
-        auc = roc_auc_score(yC, mix)
-        if best_w is None or auc > best_w[1]:
-            best_w = (w, auc, mix)
-    print(f"   mejor peso de la distribucion: {best_w[0]:.1f} (AUC {best_w[1]:.4f})")
-    evaluate("V4 mezcla clasificador+distribucion", best_w[2])
+    if pC_qc is None and "V2 distribucion del margen" in res:
+        # se recalcula desde el resultado guardado no es posible (hace falta pC_qc);
+        # en ese caso se omite la mezcla
+        print("   (omitida: hace falta recalcular la distribucion en esta misma corrida)")
+    else:
+        best_w = None
+        for w in (0.2, 0.3, 0.4, 0.5, 0.6, 0.7):
+            mix = sigmo((1 - w) * logit(pC) + w * logit(pC_qc))
+            mix = np.clip(mix, 0.03, 0.97)
+            auc = roc_auc_score(yC, mix)
+            if best_w is None or auc > best_w[1]:
+                best_w = (w, auc, mix)
+        print(f"   mejor peso de la distribucion: {best_w[0]:.1f} (AUC {best_w[1]:.4f})")
+        evaluate("V4 mezcla clasificador+distribucion", best_w[2])
 
     # ------------------------------------------------------------------
     block("6) ¿CUANTAS APUESTAS DIFIEREN ENTRE EL ACTUAL Y LA DISTRIBUCION?")
-    conf_c = np.maximum(pC, 1 - pC)
-    conf_q = np.maximum(pC_qc, 1 - pC_qc)
-    for t in (0.72, 0.75, 0.80):
-        sel_c = conf_c >= t
-        sel_q = conf_q >= t
-        print(f"   thr {t}: actual {int(sel_c.sum()):,} | distribucion {int(sel_q.sum()):,} | "
-              f"coinciden {int((sel_c == sel_q).sum()):,} | solo actual {int((sel_c & ~sel_q).sum()):,} | "
-              f"solo distribucion {int((~sel_c & sel_q).sum()):,}")
+    if pC_qc is not None:
+        conf_c = np.maximum(pC, 1 - pC)
+        conf_q = np.maximum(pC_qc, 1 - pC_qc)
+        for t in (0.72, 0.75, 0.80):
+            sel_c = conf_c >= t
+            sel_q = conf_q >= t
+            print(f"   thr {t}: actual {int(sel_c.sum()):,} | distribucion {int(sel_q.sum()):,} | "
+                  f"coinciden {int((sel_c == sel_q).sum()):,} | solo actual {int((sel_c & ~sel_q).sum()):,} | "
+                  f"solo distribucion {int((~sel_c & sel_q).sum()):,}")
 
     OUT.write_text(json.dumps(res, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"\nInforme: {OUT}")

@@ -159,6 +159,40 @@ Hoy `w = 1/partidos` y se entrena en todo el espacio, incluido el ~50 % de filas
 ### P4 · EV real (prospectivo)
 Dejar correr el monitor y medir con `ev_calculator.py`. Es lo que decide el umbral final (0.70 a 1.83, 0.72 a 1.40) y si la población con mercado se opera o no.
 
+### P2 · Arquitectura: distribución del margen — ❌ **RECHAZADA por la medición**
+
+Se entrenó un modelo de **distribución** del margen de Q4 (cuantil 0.1/0.3/0.5/0.7/0.9 con `HistGradientBoostingRegressor(loss="quantile")` y aumento espejo) y se derivó `P(margen > 0)` de la distribución:
+
+| variante | AUC | Brier | LogLoss | thr 0.75 · apuestas | WR | u@1.40 |
+|---|---|---|---|---|---|---|
+| V0 actual (clasificador) | **0.6537** | **0.2306** | **0.6524** | 2.728 | 81.2 % | **374** |
+| V2 distribución del margen | 0.6064 | 0.2395 | 0.6715 | 1.638 | 76.0 % | 105 |
+| V4 mezcla (peso 0.2) | 0.6534 | 0.2308 | 0.6527 | 2.505 | 81.0 % | 336 |
+
+La distribución con 5 cuantiles es un clasificador claramente peor (AUC −0.047) y la mezcla no aporta nada (AUC −0.0003, y en el umbral operativo el beneficio baja de 374 a 336 u). Con el margen de un solo punto (el regresor actual) el modelo ya extrae lo que hay; la distribución no lo mejora.
+
+### P3 · Fine-tuning con foco en la banda de decisión — ❌ **TRAMPA**
+
+Reentrenar con pesos `exp(−((|p_raw−0.75|/0.12)²))` (solo el 15 % de filas conserva peso > 0.5):
+
+| | AUC | Brier | thr 0.75 · apuestas | WR | u@1.40 |
+|---|---|---|---|---|---|
+| V0 actual | **0.6537** | **0.2306** | 2.728 | 81.2 % | **374** |
+| V1 foco en la banda | 0.6462 | 0.2415 | **237** | **92.0 %** | **68** |
+
+**El WR sube a 92 % pero el beneficio se desploma a 68 u (de 374)**: el modelo se especializa tanto que pierde el 91 % del volumen. Además el AUC y el Brier empeoran → no es solo una recalibración, el modelo se daña. Un WR alto con pocas apuestas **no** es una mejora si el umbral es lo que decide el tamaño de la cartera.
+
+### P5 · Más datos: el backfill de líneas ya terminó — 🔄 **en curso**
+
+El backfill de `match_odds` (modo `lines`) está **completo**: 17.176 partidos con `status='ok'`, 0 pendientes. Pero el dataset se construyó cuando el backfill iba por ~7.000:
+
+| feature | cobertura en el dataset actual | con el backfill completo |
+|---|---|---|
+| `mkt_margin_spread` | 3.7 % (7.062 filas) | **~9.0 %** (17.192 partidos) |
+| `total_line` | 3.6 % (6.914 filas) | **~9.0 %** (17.061 partidos) |
+
+Reconstruir el dataset y reentrenar es el único vía de **más señal** que queda después de que las features nuevas midieran neutras: el total y el handicap del mercado son la escala del partido, que es justo lo que determina el margen de Q4.
+
 ### Descartado (con evidencia)
 - F1 prior contextual por liga × estado → **−0.0164 AUC**.
 - F2 patrón de quarters → **−0.0002 AUC** (y los cuartos reales no predicen el Q4: −0.008).
