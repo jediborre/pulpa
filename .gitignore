@@ -87,6 +87,7 @@ catboost_info/
 match/training/v*/reports/
 tmp/probe_404_audit/cleanup_report_*.csv
 tmp/q4_bet_image/*.jpg
+tmp/q4_bet_image/*.png
 
 # ============================================================
 # Otros temporales
