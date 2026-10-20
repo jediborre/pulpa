@@ -20,11 +20,13 @@ warnings.filterwarnings("ignore", message="Skipping features without any observe
 from models.common.data_loader import get_db_connection, load_match
 from models.common.schema import PredictionResult
 from models.m27_v5_3.features import (
-    FEATURE_NAMES, IDX, MODEL_DIR, ctx_from_payload, get_state, is_toxic_league, mirror, snapshot_features,
+    FEATURE_NAMES, IDX, MODEL_DIR, SNAPSHOT_MAX, SNAPSHOT_MIN, ctx_from_payload, get_state,
+    is_blocked_league, mirror, snapshot_features,
 )
 
 MODEL_VERSION = "m27_v5_3"
-MIN_VALID_MINUTE = 25.0
+MIN_VALID_MINUTE = SNAPSHOT_MIN
+MAX_VALID_MINUTE = SNAPSHOT_MAX
 _MODELS: dict[str, Any] | None = None
 _DEFAULT_CFG = {
     "min_conf": 0.70, "min_margin": 0.0, "weights": {"xgb": 0.40, "hgb": 0.35, "lr": 0.25},
@@ -100,6 +102,19 @@ def predict(
             return PredictionResult.unavailable(MODEL_VERSION, target, "Datos insuficientes (cuartos Q1/Q2 o marcador)")
         if int(ctx["info"].get("q_dur", 10)) == 12:
             return PredictionResult.unavailable(MODEL_VERSION, target, "Ligas de cuartos de 12 min no soportadas por m27_v5_3")
+        # Ventana de entrenamiento: el modelo solo se entreno con snapshots en
+        # [25.5, 30.0]. `ctx["minute"]` viene CLAMPEADO a 30 cuando el partido
+        # ya esta en Q4, asi que el minuto real sin clampear es `minute_raw`:
+        # a partir del 31 el modelo prediria el ganador de un Q4 ya empezado
+        # usando solo el cierre de Q3 (y el monitor si permite apostar hasta
+        # el min 33). Se rechaza en vez de extrapolar.
+        minute_raw = float(ctx.get("minute_raw", ctx["minute"]))
+        if minute_raw > MAX_VALID_MINUTE + 1e-6:
+            return PredictionResult.unavailable(
+                MODEL_VERSION, target,
+                f"Fuera de la ventana de entrenamiento (min {minute_raw:.1f} > {MAX_VALID_MINUTE}); "
+                f"m27_v5_3 solo infiere en [{MIN_VALID_MINUTE}, {MAX_VALID_MINUTE}]"
+            )
         if float(ctx["minute"]) < MIN_VALID_MINUTE:
             return PredictionResult.unavailable(MODEL_VERSION, target, f"Muy temprano (min {ctx['minute']:.1f} < {MIN_VALID_MINUTE}); entrenado en min 25.5-30")
 
@@ -108,7 +123,7 @@ def predict(
         cfg = models["cfg"]
         p_cal, margin = res["p_cal"], res["margin"]
         league = ctx["league"]
-        toxic = bool(cfg.get("block_toxic_leagues", True)) and is_toxic_league(league)
+        toxic = bool(cfg.get("block_toxic_leagues", True)) and is_blocked_league(league)
 
         thr, mm = float(cfg["min_conf"]), float(cfg["min_margin"])
         default_pick = "HOME" if p_cal >= 0.5 else "AWAY"

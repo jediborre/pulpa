@@ -46,6 +46,18 @@ DATASET = ROOT / "tmp" / "m27_v5_3" / "dataset_v5_3.pkl"
 W = {"xgb": 0.40, "hgb": 0.35, "lr": 0.25}
 BE_140 = 1 / 1.40  # punto de equilibrio con cuota 1.40
 
+# Suelo de calidad para el umbral operativo: el acierto fuera de muestra debe
+# ser >= WR_MIN_OPERATING. Motivo: a cuota 1.40 los umbrales 0.72 y 0.75 estan
+# EMPATADOS en beneficio esperado (-1.1 %) y 0.72 mete un 20 % mas de
+# apuestas con 1.5 pp menos de acierto. Maximizar beneficio absoluto
+# (w*1.40 - n) premia el volumen y empuja al borde, donde la banda marginal
+# 0.72-0.75 rindio 62-64 % en vivo (por debajo del equilibrio de 71.4 %).
+WR_MIN_OPERATING = 0.78
+# Umbral de despliegue: decision explicita de operacion, no del pipeline.
+# Ver docs/ANALISIS_LIVE_M27_V5_3.md (R2). El pipeline imprime el umbral
+# auto-seleccionado para comparar, pero despliega este.
+OPERATING_CONF = 0.75
+
 FEATURE_DOCS: dict[str, tuple[str, str]] = {
     "minute": ("A estado", "Minuto real del snapshot (25.5-30). Hace al modelo consciente de cuanta informacion tiene; antes el 'm27' era en realidad m30."),
     "cur_score_diff": ("A estado", "Marcador local-visitante al minuto t. Base del estado; en v5_2 se entrenaba con Q1+Q2+Q3 completos y en vivo llegaba parcial."),
@@ -227,17 +239,46 @@ def main() -> None:
     print(f"    Anchor(t=30): AUC {mt_anchor['auc']:.4f} Brier {mt_anchor['brier']:.4f} | Intra(25.5-29.9): AUC {mt_intra['auc']:.4f} Brier {mt_intra['brier']:.4f}")
 
     # --------- 3. Umbral y margen elegidos en B (fuera de muestra) ---------
-    best = None
-    for thr in (0.64, 0.66, 0.68, 0.70, 0.72, 0.74, 0.76, 0.78, 0.80):
-        for mm in (0.0, 1.0, 1.8):
-            n, w = green(pBc, yB, thr, mB, mm)
-            if n < 200:
-                continue
-            profit = w * 1.40 - n
-            if best is None or profit > best[0]:
-                best = (profit, thr, mm, n, w / n)
-    _, thr_star, mm_star, nB, wrB = best
-    print(f"\n[3] Umbral operativo elegido en B: P>={thr_star} margen>={mm_star} (B: {nB} apuestas, WR {wrB*100:.1f}%)")
+    THR_GRID = (0.64, 0.66, 0.68, 0.70, 0.72, 0.74, 0.76, 0.78, 0.80)
+    MM_GRID = (0.0, 1.0, 1.8)
+
+    def _best_on_b(thrs, require_wr_floor: bool):
+        best = None
+        for thr in thrs:
+            for mm in MM_GRID:
+                n, w = green(pBc, yB, thr, mB, mm)
+                if n < 200:
+                    continue
+                if require_wr_floor and (w / n) < WR_MIN_OPERATING:
+                    continue
+                profit = w * 1.40 - n
+                if best is None or profit > best[0]:
+                    best = (profit, thr, mm, n, w / n)
+        return best
+
+    best_raw = _best_on_b(THR_GRID, require_wr_floor=False)
+    best_q = _best_on_b(THR_GRID, require_wr_floor=True)
+    if best_q is not None:
+        _, thr_auto, mm_auto, nB_auto, wrB_auto = best_q
+        sel = "con suelo de calidad (WR >= %.0f%%)" % (WR_MIN_OPERATING * 100)
+    else:
+        _, thr_auto, mm_auto, nB_auto, wrB_auto = best_raw
+        sel = "sin suelo (ningun umbral alcanza el WR minimo)"
+    print(f"\n[3] Umbral auto-seleccionado en B: P>={thr_auto} margen>={mm_auto} "
+          f"(B: {nB_auto} apuestas, WR {wrB_auto * 100:.1f}%) — {sel}")
+    print(f"    Umbral de DEPLOY: P>={OPERATING_CONF} (decision explicita, OPERATING_CONF)")
+
+    thr_star = OPERATING_CONF
+    mm_star, nB, wrB, profitB = None, 0, 0.0, None
+    for mm in MM_GRID:
+        n, w = green(pBc, yB, thr_star, mB, mm)
+        if n < 200:
+            continue
+        profit = w * 1.40 - n
+        if profitB is None or profit > profitB:
+            profitB, mm_star, nB, wrB = profit, mm, n, w / n
+    print(f"    Margen de DEPLOY: margen>={mm_star} (B: {nB} apuestas, WR {wrB * 100:.1f}%, "
+          f"beneficio@1.40 {profitB:,.0f} u)")
 
     tiers_all = tier_table(pC, yC, mC)
     tiers_anchor = tier_table(pC[aC], yC[aC], mC[aC])
@@ -452,7 +493,9 @@ def main() -> None:
         "brier_train": round(mt_tr["brier"], 4), "brier_test": round(mt_te["brier"], 4), "logloss_test": round(mt_te["logloss"], 4), "acc_test": round(mt_te["acc"], 4),
         "auc_anchor_t30": round(mt_anchor["auc"], 4), "auc_intra": round(mt_intra["auc"], 4),
         "mae_q4_margin": round(float(mean_absolute_error(q4d[rowC], mC)), 3),
-        "operating": {"thr": thr_star, "min_margin": mm_star, "bets": n_g, "wr": round(wr_g, 2), "roi_140": round(roi(w_g, n_g, 1.40), 2), "roi_183": round(roi(w_g, n_g, 1.83), 2)},
+        "operating": {"thr": thr_star, "min_margin": mm_star, "bets": n_g, "wr": round(wr_g, 2), "roi_140": round(roi(w_g, n_g, 1.40), 2), "roi_183": round(roi(w_g, n_g, 1.83), 2),
+                      "chosen": f"OPERATING_CONF={OPERATING_CONF} (decision explicita)", "auto_selected": {"thr": thr_auto, "min_margin": mm_auto, "bets": nB_auto, "wr": round(wrB_auto * 100, 2)},
+                      "wr_floor": WR_MIN_OPERATING},
         "tiers_all_rows": tiers_all, "tiers_anchor": tiers_anchor, "tiers_intra": tiers_intra,
         "resilience_by_minute": res_min, "firing_policy": policy, "walk_forward_cuts": wf, "calibration_matrix": cal, "ablation_by_group": grp_abl,
         "ablation_base_auc": base_auc,

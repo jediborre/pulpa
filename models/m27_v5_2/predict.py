@@ -13,7 +13,9 @@ import numpy as np
 
 from models.common.data_loader import get_db_connection, load_match
 from models.common.schema import PredictionResult
-from models.m27_v5_2.features import FEATURE_NAMES_27, MODEL_DIR, extract_features_v5_2
+from models.m27_v5_2.features import (
+    FEATURE_NAMES_27, MODEL_DIR, extract_features_v5_2, resolve_archetype_v5_2,
+)
 
 _MODELS_CACHE: dict[str, Any] | None = None
 _CALIBRATION_CACHE: dict[str, Any] | None = None
@@ -92,6 +94,20 @@ def predict(
             )
 
         snap = snapshot_minute if snapshot_minute is not None else 27.0
+        # Ventana de entrenamiento: v5_2 se entreno con el marcador de Q3
+        # cerrado (min 30 en ligas de 10 min, 36 en las de 12). `score_upto`
+        # acumula los puntos hasta el minuto pedido, asi que mas alla del
+        # cierre de Q3 el vector MEZCLA puntos de Q4 con los de Q1-Q3 y deja
+        # de ser el vector entrenado. Se rechaza en vez de mezclar.
+        _, q_dur_v52, _, _ = resolve_archetype_v5_2(match_data)
+        max_valid_minute = 36.0 if int(q_dur_v52) == 12 else 30.0
+        if float(snap) > max_valid_minute + 1e-6:
+            return PredictionResult.unavailable(
+                model_version="m27_v5_2",
+                target=target,
+                reason=f"Fuera de la ventana de entrenamiento (min {float(snap):.1f} > {max_valid_minute}); "
+                       f"v5_2 solo infiere con el marcador de Q3 cerrado",
+            )
         x_vec = extract_features_v5_2(match_data, target_minute=snap)
         X = x_vec.reshape(1, -1)
 

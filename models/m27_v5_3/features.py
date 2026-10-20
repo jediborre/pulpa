@@ -13,6 +13,7 @@ Alcance: baloncesto de cuartos de 10 min (FIBA hombres/mujeres). 12m (NBA/CBA/PB
 
 from __future__ import annotations
 
+import json
 import math
 import pickle
 import sqlite3
@@ -86,17 +87,71 @@ _HOME_FLAG = IDX["is_home_view"]
 
 SNAPSHOT_MIN, SNAPSHOT_MAX = 25.5, 30.0
 
+# Patrones literales de ligas toxicas. Solo se listan los que CASAN con nombres
+# reales de SofaScore: los que no coinciden con ninguna liga de `matches` no
+# podan nada del train ni bloquean nada en live (falsa sensacion de cobertura).
+# La lista se audito contra las 3.761 ligas del universo de entrenamiento y
+# las 434 vistas en vivo (ver docs/ANALISIS_LIVE_M27_V5_3.md).
 TOXIC_LEAGUE_PATTERNS = [
     "korean basketball league", "kbl", "lmb, apertura", "tipos sbl",
-    "albania super", "georgia superli", "kosovo superlig", "armenia a-league",
-    "cyprus division", "korisliiga, women", "betsafe-lkl", "nlb", "1st dbbl",
+    "korisliiga, women", "betsafe-lkl", "nlb", "1st dbbl",
     "serie a2, women, group b", "serie b, group b", "israeli basketball super league",
 ]
 
+# Equilibrio a la cuota que se usa como referencia operativa (1.40).
+BREAKEVEN_140 = 1 / 1.40
+_CALIBRATION_PATH = MODEL_DIR / "league_calibration.json"
+_MEASURED_TOXIC: set[str] | None = None
+
 
 def is_toxic_league(name: str) -> bool:
+    """Bloqueo por patron literal. Es la regla que se usa al PODAR el train."""
     s = str(name or "").lower()
     return any(p in s for p in TOXIC_LEAGUE_PATTERNS)
+
+
+def measured_toxic_leagues() -> set[str]:
+    """Ligas que el PROPIO modelo midio como toxicas.
+
+    Criterio: el IC95% SUPERIOR de su WR en Q4 queda por debajo del equilibrio
+    a cuota 1.40 (71.4 %). Es decir, ni en el extremo optimista del intervalo
+    la liga llega al punto de equilibrio. Sale de `league_calibration.json`,
+    que el pipeline regenera en cada entrenamiento, asi que la lista se
+    mantiene sola con evidencia y no a mano.
+    """
+    global _MEASURED_TOXIC
+    if _MEASURED_TOXIC is not None:
+        return _MEASURED_TOXIC
+    out: set[str] = set()
+    try:
+        if _CALIBRATION_PATH.exists():
+            for row in json.loads(_CALIBRATION_PATH.read_text(encoding="utf-8")):
+                ci = row.get("wr_ci95") or []
+                if len(ci) == 2 and float(ci[1]) < BREAKEVEN_140 * 100:
+                    name = str(row.get("league") or "").strip().lower()
+                    if name:
+                        out.add(name)
+    except Exception:
+        out = set()
+    _MEASURED_TOXIC = out
+    return out
+
+
+def is_blocked_league(name: str) -> bool:
+    """Bloqueo en INFERENCIA: patron literal + medicion propia del modelo.
+
+    Es un superconjunto de `is_toxic_league` (nunca menos), de modo que
+    bloquear en vivo no puede dejar pasar una liga que el train ya podo.
+    """
+    s = str(name or "").strip().lower()
+    if not s:
+        return False
+    if is_toxic_league(s):
+        return True
+    for toxic in measured_toxic_leagues():
+        if s == toxic or s.startswith(toxic + ",") or s.startswith(toxic + " "):
+            return True
+    return False
 
 
 def mirror(X: np.ndarray) -> np.ndarray:
@@ -563,7 +618,8 @@ def ctx_from_payload(match_data: dict[str, Any], snapshot_minute: float | None, 
     ml_h, ml_a, sp, tl = extract_market(match_data.get("odds"))
     return {
         "ht": ht, "at": at, "league": league, "dord": date_ord(m.get("date")),
-        "minute": t_eff, "q1": q1, "q2": q2, "cur": cur, "ev": ev, "gp": gp,
+        "minute": t_eff, "minute_raw": float(minute),
+        "q1": q1, "q2": q2, "cur": cur, "ev": ev, "gp": gp,
         "ml": None if math.isnan(ml_h) else (ml_h, ml_a), "spread_line": sp, "total_line": tl, "info": info,
     }
 
