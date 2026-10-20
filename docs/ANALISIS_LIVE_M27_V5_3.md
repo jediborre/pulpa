@@ -169,7 +169,24 @@ La premisa de la guía se apoyaba en el **ritmo y los puntos** (playoffs: 144 pt
 
 > **Decisión aplicada (2026-10-20):** se descartan del train y se bloquean en inferencia **AMISTOSOS** y el bloque **segunda fase + promoción + preliminar + colocación**. **Se mantienen eliminatorias y copas** (rinden por encima de la temporada regular). Juveniles y NCAA quedan **pendientes de medición** por ablación.
 
-### 2.6 Lo que el modelo **no** tiene (para contexto, no es la causa)
+### 2.6 Ablación: qué pasa si se excluyen esas fases del entrenamiento
+
+Cuatro variantes reentrenadas desde el dataset ya construido (mismo split, misma semilla) y evaluadas **siempre sobre el mismo bloque C** (98.476 filas, 0.6530 AUC de base — reproduce exactamente el modelo desplegado). Umbral de lectura: **0.75**, el nuevo punto operativo.
+
+| variante | filas train | AUC (C completo) | apuestas @0.75 | WR | ROI @1.40 | ROI @1.83 |
+|---|---|---|---|---|---|---|
+| **V0** real (lo de hoy) | 204.703 | 0.6530 | 10.588 | 79.18 % | +10.86 % | +44.91 % |
+| **V1** sin amistosos | 201.862 | 0.6530 | 6.260 | **82.43 %** | **+15.40 %** | +50.84 % |
+| **V2** = decisión tomada (V1 + 2ªFase+PROMO+PRELIM+PUESTO) | 191.636 | 0.6524 | 6.762 | **81.74 %** | **+14.43 %** | +49.58 % |
+| **V3** = V2 + sin juveniles + sin NCAA | 188.795 | 0.6523 | 6.435 | 81.86 % | +14.61 % | +49.81 % |
+
+**Lecturas:**
+
+1. **La decisión tomada se confirma**: excluir amistosos + segunda fase + promoción + preliminar + colocación sube el acierto **+2.56 pp** y el ROI@1.40 **+3.57 pp** con un AUC prácticamente intacto (−0.0006).
+2. **Juveniles y NCAA NO aportan nada**: V3 ≈ V2 en todas las métricas (+0.12 pp WR, +0.18 pp ROI). Peor aún, en el subconjunto que V3 conserva el **AUC baja −0.0054**: el modelo estaba extrayendo señal útil de esos partidos. **No se excluyen** (la premisa de la guía no se sostiene para este objetivo).
+3. ⚠️ **El número de apuestas es muy sensible a la calibración**: quitar el 1.4 % de filas de entrenamiento mueve el conteo de 10.588 a 6.260 apuestas al mismo umbral. La calibración isotónica tiene tramos planos, así que un desplazamiento pequeño mueve muchas filas de un lado al otro del umbral. Consecuencia práctica: el umbral hay que elegirlo **junto** con la calibración, no de forma aislada.
+
+### 2.7 Lo que el modelo **no** tiene (para contexto, no es la causa)
 
 - **Cuota de mercado — es un efecto de selección, no una pérdida de datos:** `has_ml = True` en el **67.9 %** de las 336 inferencias en vivo, pero solo en el **37.5 %** de las 40 apuestas. La causa es que los 40 partidos apostados **no tienen ninguna cuota ML en `match_odds`** (0 de 40) → no es un fallo de extracción, es que el modelo **apuesta mucho más donde no tiene mercado**. La exactitud es idéntica en ambos subconjuntos (73 % con cuota vs 72 % sin), así que la confianza que produce sin datos de mercado **no aporta nada extra**: ese es el margen que el modelo se está dando a sí mismo.
 - **Empates de Q4:** desde el commit `9121cb6` cuentan como pérdida, igual para ambas versiones → la comparación es justa.
@@ -302,8 +319,8 @@ Todos leen `matches.db` de la raíz y solo escriben en `tmp/`. Ningún script mo
 | R4b | Bloqueo por **medición propia** (IC95 < equilibrio) | `league_calibration.json` → `measured_toxic_leagues()` | ✅ aplicado: `1. Division B` (WR 42.1 %) y `Sparkasse Prva Liga Zeni` (WR 47.6 %) |
 | R5 | **Modo sombra** para `m27_v5_3` | `monitor_v3/config/constants.py` (`SHADOW_MODELS`) + `monitor_v3/main.py` | ✅ aplicado: se registra pero **no alerta en Telegram** hasta reunir ≥ 200 apuestas resueltas |
 | R6 | **Serie de inferencia por minuto** | nueva tabla `model_inference_v3` + `monitor_v3/models/evaluator.py` | ✅ aplicado: una fila por modelo y minuto dentro de la ventana válida, con `p_cal`, margen, señal, motivo y el vector completo de features |
-| — | Juveniles y NCAA (R1/R2 de la lista negra) | — | ⏳ **pendiente de la ablación** (`phase_exclusion_ablation.py`) |
-| — | Reconstruir dataset + reentrenar con el filtro de fases | `build_dataset.py` + `train_m27_v5_3_pipeline.py` | ⏳ pendiente: el filtro ya está en el código, falta la reejecución |
+| — | Juveniles y NCAA (R1/R2 de la lista negra) | — | ✅ **medido**: la ablación dice que **no** aporta nada (V3 ≈ V2) y que el AUC en el subconjunto conservado baja −0.0054 → **no se excluyen** |
+| — | Reconstruir dataset + reentrenar con el filtro de fases | `build_dataset.py` + `train_m27_v5_3_pipeline.py` | 🔄 en ejecución (respaldo en `tmp/m27_v5_3/backup_pre_fase_filter/`) |
 
 **Monitor reiniciado** tras los cambios (regla 7 de AGENTS.md): 2 procesos `python.exe` (daemon + bot), 0 ventanas `cmd`, arranque limpio sin errores.
 
