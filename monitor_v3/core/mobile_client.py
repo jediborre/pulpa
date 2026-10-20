@@ -68,6 +68,15 @@ def _frac_dec(frac) -> float | None:
     return round(int(m.group(1)) / int(m.group(2)) + 1.0, 3)
 
 
+# MarketPeriod de SofaScore -> clave interna para los mercados por periodo.
+# "4th quarter" es el mercado del GANADOR DE Q4, que es el que apostamos.
+_PERIOD_KEYS = {
+    "1st quarter": "q1", "2nd quarter": "q2", "3rd quarter": "q3", "4th quarter": "q4",
+    "1st period": "p1", "2nd period": "p2", "3rd period": "p3", "4th period": "p4",
+    "1st half": "h1", "2nd half": "h2",
+}
+
+
 def summarize_live_odds(odds_json: dict | None) -> dict:
     """
     Resume los mercados IN-PLAY (isLive=True) de event/{id}/odds/1/all:
@@ -79,6 +88,10 @@ def summarize_live_odds(odds_json: dict | None) -> dict:
     out: dict = {}
     spreads: list[tuple[float, float, float]] = []
     totals: list[tuple[float, float, float]] = []
+    # Mercado Home/Away POR PERIODO (Q4, Q3...): es el mercado que realmente
+    # apostamos (ganador del cuarto), asi que sin el no hay forma de calcular
+    # el EV real de la apuesta. Se guardan como q4_ml_home / q4_ml_away.
+    period_ml: dict[str, tuple[float, float]] = {}
     for m in (odds_json or {}).get("markets") or []:
         if not m.get("isLive") or m.get("suspended"):
             continue
@@ -91,8 +104,15 @@ def summarize_live_odds(odds_json: dict | None) -> dict:
             continue
         if grp == "Home/Away" and per == "Match":
             out["ml_home"], out["ml_away"] = p0, p1
+        elif grp == "Home/Away" and per:
+            key = _PERIOD_KEYS.get(str(per).strip().lower())
+            if key:
+                period_ml[key] = (p0, p1)
         elif grp == "Point spread":
-            sm = re.match(r"\(([+-]?\d+(?:\.\d+)?)\)", str(ch[0].get("name", "")))
+            # El nombre de la opcion es tipo "Home (-3.5)": hay que BUSCAR el
+            # parentesis, no anclar al inicio (con re.match nunca casaba y la
+            # linea de handicap nunca se capturaba).
+            sm = re.search(r"\(([+-]?\d+(?:\.\d+)?)\)", str(ch[0].get("name", "")))
             if sm:
                 spreads.append((float(sm.group(1)), p0, p1))
         elif grp == "Over/Under":
@@ -100,6 +120,8 @@ def summarize_live_odds(odds_json: dict | None) -> dict:
                 totals.append((float(m.get("choiceGroup")), p0, p1))
             except (TypeError, ValueError):
                 continue
+    for key, (a, b) in period_ml.items():
+        out[f"{key}_ml_home"], out[f"{key}_ml_away"] = a, b
     for key, ladder in (("spread", spreads), ("total", totals)):
         if ladder:
             line, a, b = min(ladder, key=lambda r: abs(1.0 / r[1] - 1.0 / r[2]))
