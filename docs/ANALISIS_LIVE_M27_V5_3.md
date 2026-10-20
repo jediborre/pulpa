@@ -320,7 +320,27 @@ Todos leen `matches.db` de la raíz y solo escriben en `tmp/`. Ningún script mo
 | R5 | **Modo sombra** para `m27_v5_3` | `monitor_v3/config/constants.py` (`SHADOW_MODELS`) + `monitor_v3/main.py` | ✅ aplicado: se registra pero **no alerta en Telegram** hasta reunir ≥ 200 apuestas resueltas |
 | R6 | **Serie de inferencia por minuto** | nueva tabla `model_inference_v3` + `monitor_v3/models/evaluator.py` | ✅ aplicado: una fila por modelo y minuto dentro de la ventana válida, con `p_cal`, margen, señal, motivo y el vector completo de features |
 | — | Juveniles y NCAA (R1/R2 de la lista negra) | — | ✅ **medido**: la ablación dice que **no** aporta nada (V3 ≈ V2) y que el AUC en el subconjunto conservado baja −0.0054 → **no se excluyen** |
-| — | Reconstruir dataset + reentrenar con el filtro de fases | `build_dataset.py` + `train_m27_v5_3_pipeline.py` | 🔄 en ejecución (respaldo en `tmp/m27_v5_3/backup_pre_fase_filter/`) |
+| — | Reconstruir dataset + reentrenar con el filtro de fases | `build_dataset.py` + `train_m27_v5_3_pipeline.py` | ✅ **hecho** (2026-10-20 00:18). Respaldo en `tmp/m27_v5_3/backup_pre_fase_filter/` |
+
+### Modelo reentrenado con el filtro de fases (2026-10-20)
+
+| | antes (2026-10-18) | **ahora (2026-10-20)** | Δ |
+|---|---|---|---|
+| Partidos elegibles | 197.111 | **184.173** | −12.938 (formatos fuera) |
+| AUC test (C) | 0.6530 | **0.6550** | **+0.0020** |
+| Brier / LogLoss | 0.2308 / 0.6529 | **0.2304 / 0.6522** | mejor |
+| Acc test | 61.10 % | **61.21 %** | +0.11 pp |
+| WR @0.75 (ancla) | 79.18 % | **82.04 %** | **+2.86 pp** |
+| ROI @1.40 @0.75 | +10.86 % | **+14.86 %** | **+4.00 pp** |
+| Walk-forward (3 cortes) | WR 74.9 / 75.9 / 77.3 % | **75.0 / 81.5 / 80.3 %** | +0.1 / **+5.6** / **+3.0** pp |
+| Sesgo de calibración (0.7, 0.8] | +2.4 % | **+0.3 %** | casi plano |
+| Ligas bloqueadas por medición | 2 | **0** | la calibración nueva no tiene ninguna liga bajo el equilibrio |
+
+Composición del set de entrenamiento tras el filtro: **REGULAR 163.475 · ELIMINATORIA 16.618 · COPA 9.982** filas. Cero filas de amistosos, 2ª fase, promoción, preliminar y colocación.
+
+⚠️ **Meseta de la isotónica**: con el modelo nuevo, los umbrales 0.75 y 0.80 eligen prácticamente el mismo conjunto de apuestas (2.172 vs 2.171, mismo WR). Por eso subir de 0.72 a 0.75 no costó volumen y subió el acierto 4 pp.
+
+**Auditoría de paridad** re-ejecutada con los artefactos nuevos: **PARIDAD OK** (features de estado y mercado con diff 0.0; los priors difieren solo por obsolescencia del estado, corr 0.92-0.99).
 
 **Monitor reiniciado** tras los cambios (regla 7 de AGENTS.md): 2 procesos `python.exe` (daemon + bot), 0 ventanas `cmd`, arranque limpio sin errores.
 

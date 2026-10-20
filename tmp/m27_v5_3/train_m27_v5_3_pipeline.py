@@ -484,7 +484,8 @@ def main() -> None:
         pickle.dump(models[key], open(MODEL_DIR / fname, "wb"))
     pickle.dump(iso, open(MODEL_DIR / "calibrator.pkl", "wb"))
     cfg = {"min_conf": float(thr_star), "min_margin": float(mm_star), "weights": W, "p_clip": [0.03, 0.97], "block_toxic_leagues": True,
-           "snapshot_range": [25.5, 30.0], "features": FEATURE_NAMES, "chosen_on": "B (fuera de muestra)"}
+           "snapshot_range": [25.5, 30.0], "features": FEATURE_NAMES,
+           "chosen_on": f"OPERATING_CONF={OPERATING_CONF} (decision explicita; auto-seleccion en B con suelo WR>={WR_MIN_OPERATING:.0%})"}
     (MODEL_DIR / "model_config.json").write_text(json.dumps(cfg, indent=2), encoding="utf-8")
     summary = {
         "model_version": "m27_v5_3", "created_at": time.strftime("%Y-%m-%d %H:%M:%S"), "features_count": len(FEATURE_NAMES), "features_list": FEATURE_NAMES,

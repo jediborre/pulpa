@@ -1,6 +1,8 @@
 # 🔬 m27_v5_3 — qué arregla, por qué cada feature, datos que faltan y cómo se mide
 
-> Entrenado el 2026-10-18. Código: [`models/m27_v5_3/`](../models/m27_v5_3) · Pipeline: [`tmp/m27_v5_3/`](../tmp/m27_v5_3) · Diagnóstico previo: [`findings_m27_2.md`](./findings_m27_2.md).
+> **Reentrenado el 2026-10-20** (v2: filtro de formatos de torneo + umbral 0.75). Entrenado originalmente el 2026-10-18.
+> Código: [`models/m27_v5_3/`](../models/m27_v5_3) · Pipeline: [`tmp/m27_v5_3/`](../tmp/m27_v5_3) · Diagnóstico previo: [`findings_m27_2.md`](./findings_m27_2.md).
+> Análisis live y decisiones operativas: [`ANALISIS_LIVE_M27_V5_3.md`](./ANALISIS_LIVE_M27_V5_3.md).
 > Artefactos (ignorados por git, ver `.gitignore`): `models/m27_v5_3/model_outputs/` → pesos, `model_config.json`, `m27_v5_3_summary.json`, `league_calibration.json`, `feature_justification.md`, `m27_v5_3_diagnostic_dashboard.png`.
 
 ---
@@ -16,30 +18,32 @@
 | Cuotas | ML (a veces in-play) | ML **solo pre-partido** + spread/total con línea (cuando existe) |
 | Simetría local/visitante | no | **espejo** (aumentación + promedio) |
 | Calibración | isotónica in-sample | isotónica **fuera de muestra** (bloque B), simétrica, techo 0.95 |
-| Umbral | P ≥ 0.68 elegido sobre test | elegido en **B**, test C intacto |
+| Formatos de torneo | todos en el train | **fuera**: amistosos, 2ª fase, promoción, preliminar, colocación |
+| Umbral | P ≥ 0.68 elegido sobre test | **P ≥ 0.75** (decisión explícita, `OPERATING_CONF`) |
 
-Resultados sobre el holdout C (último 18 % de 197,111 partidos elegibles, desde 2025-11-10; **98,476 filas / 35,480 partidos ancla**):
+Resultados sobre el holdout C (último 18 % de **184.173 partidos elegibles** — tras el filtro de formatos; **91.842 filas / 33.152 partidos ancla**):
 
-| Métrica | v5_2 (reportado) | **v5_3** |
+| Métrica | v5_2 (reportado) | **v5_3 (2026-10-20)** |
 |---|---|---|
-| AUC train / calib (B) / **test** | 0.6368 / – / 0.6376 | 0.6454 / 0.6540 / **0.6530** |
-| Brecha train−test | −0.0007 | −0.0076 (sin sobreajuste) |
-| Brier / LogLoss / Acc (test) | 0.2350 / 0.6623 / 59.6 % | **0.2308 / 0.6529 / 61.1 %** |
-| MAE margen Q4 | – | 6.20 pts |
+| AUC train / calib (B) / **test** | 0.6368 / – / 0.6376 | 0.6460 / 0.6499 / **0.6550** |
+| Brecha train−test | −0.0007 | −0.0091 (sin sobreajuste) |
+| Brier / LogLoss / Acc (test) | 0.2350 / 0.6623 / 59.6 % | **0.2304 / 0.6522 / 61.2 %** |
+| MAE margen Q4 | – | 6.23 pts |
 
 Tabla de umbrales en C, **solo ancla (t=30, un partido = una fila)**, comparable con v5_2:
 
-| P ≥ | Apuestas | % partidos | WR (IC95) | ROI @1.40 | ROI @1.83 |
-|---|---|---|---|---|---|
-| 0.65 | 11,126 | 31.4 % | 70.9 % (70.1–71.8) | −0.7 % | +29.8 % |
-| **0.68** | 6,156 | 17.4 % | 75.5 % (74.4–76.5) | +5.6 % | +38.1 % |
-| 0.72 *(operativo, elegido en B)* | 4,563 | 12.9 % | 77.8 % (76.5–78.9) | +8.9 % | +42.3 % |
-| 0.75 | 3,627 | 10.2 % | 79.3 % (77.9–80.6) | +11.0 % | +45.1 % |
-| 0.80 | 1,586 | 4.5 % | 84.9 % (83.1–86.6) | +18.9 % | +55.4 % |
+| P ≥ | Apuestas | WR (IC95) | ROI @1.40 | ROI @1.83 |
+|---|---|---|---|---|
+| 0.65 | 10,978 | 70.7 % (69.9–71.6) | −1.0 % | +29.5 % |
+| 0.68 | 6,068 | 75.2 % (74.0–76.2) | +5.2 % | +37.5 % |
+| 0.70 | 5,477 | 76.3 % (75.1–77.4) | +6.7 % | +39.5 % |
+| 0.72 | 4,228 | 77.9 % (76.7–79.2) | +9.1 % | +42.6 % |
+| **0.75** *(operativo)* | **2,172** | **82.0 % (80.4–83.6)** | **+14.9 %** | **+50.1 %** |
+| 0.80 | 2,171 | 82.0 % (80.4–83.6) | +14.9 % | +50.1 % |
 
-v5_2 a P ≥ 0.68: 5,555 apuestas, WR 73.4 %, ROI@1.40 +2.7 %. La isotónica deja mesetas (0.68 ≈ 0.70), por eso los escalones no son lineales.
-
-> ⚠️ Honestidad: el equilibrio a cuota 1.40 es 71.4 % de WR. A P ≥ 0.65 el ROI es negativo; el borde real solo aparece desde ~0.68. La cuota real de Q4 no se registra aún (ver §5), así que el ROI es teórico.
+> ⚠️ **La meseta 0.75 ≈ 0.80 es real**: la isotónica tiene un tramo plano, así que ambos umbrales_eligen prácticamente el mismo conjunto de apuestas. Por eso subir de 0.72 a 0.75 no cuesta volumen en la práctica y sube el acierto 4 pp.
+>
+> ⚠️ Honestidad: el equilibrio a cuota 1.40 es 71.4 % de WR. A P ≥ 0.65 el ROI es negativo. La cuota real de Q4 no se registra aún (ver §5), así que el ROI es teórico.
 
 ---
 
@@ -89,27 +93,27 @@ Descartadas con evidencia (ver `findings_m27_2.md`): faltas/timeouts/pérdidas/t
 
 ## 4. Resiliencia al minuto (el punto débil de m27_v3)
 
-Holdout C, partidos con eventos (umbral operativo 0.72):
+Holdout C, partidos con eventos (umbral operativo 0.75):
 
 | Minuto del snapshot | Filas | AUC | Apuestas | WR |
 |---|---|---|---|---|
-| 25.5–26.5 | 14,390 | 0.6559 | 14.0 % | 78.8 % |
-| 26.5–27.5 | 14,252 | 0.6510 | 13.8 % | 77.6 % |
-| 27.5–28.5 | 14,338 | 0.6540 | 14.0 % | 76.8 % |
-| 28.5–29.5 | 14,412 | 0.6490 | 13.6 % | 77.1 % |
-| 29.5–30 | 41,084 | 0.6538 | 13.0 % | 77.9 % |
+| 25.5–26.5 | 13,422 | 0.6606 | 962 | 83.9 % |
+| 26.5–27.5 | 13,319 | 0.6545 | 954 | 81.0 % |
+| 27.5–28.5 | 13,366 | 0.6563 | 973 | 81.3 % |
+| 28.5–29.5 | 13,365 | 0.6500 | 909 | 82.2 % |
+| 29.5–30 | 38,370 | 0.6547 | 2,548 | 82.1 % |
 
-AUC entre 0.649 y 0.656: **no se desploma por el minuto**. Política de disparo (partidos con eventos): primer disparo 77.1 % WR (+7.9 % ROI@1.40), solo cierre de Q3 77.7 % (+8.8 %), tick aleatorio 77.5 % → da igual cuándo caiga el tick. Robustez probada (`audit_feature_parity.py`): sin eventos, sin gráfica, sin odds, equipo sin historial, Q1/Q2 ausentes (se derivan de eventos), ya en Q4, reloj en 27.4, liga 12m (no soportada), liga tóxica (PASS). Antes de min 25 devuelve `unavailable`.
+AUC entre 0.650 y 0.661: **no se desploma por el minuto**. Política de disparo (partidos con eventos, umbral 0.75): primer disparo 81.9 % WR (+14.6 % ROI@1.40), solo cierre de Q3 82.1 % (+14.9 %), tick aleatorio 82.3 % (+15.2 %) → da igual cuándo caiga el tick. Robustez probada (`audit_feature_parity.py`): sin eventos, sin gráfica, sin odds, equipo sin historial, Q1/Q2 ausentes (se derivan de eventos), ya en Q4, reloj en 27.4, liga 12m (no soportada), liga tóxica (PASS). **Fuera de [25.5, 30] devuelve `unavailable`**: antes de 25.5 por poco y **después de 30** (no solo antes de 25), porque más allá del cierre de Q3 el modelo predice el ganador de un Q4 ya empezado con datos de Q3.
 
-Walk-forward (train ≤ año anterior, umbral 0.72):
+Walk-forward (train ≤ año anterior, umbral 0.75):
 
 | Corte | AUC | Apuestas | WR | ROI@1.40 |
 |---|---|---|---|---|
-| Train ≤ 2022 → Test 2023 | 0.6288 | 1,157 | 74.9 % | **+4.9 %** (v5_2: −2.8 %) |
-| Train ≤ 2023 → Test 2024 | 0.6370 | 7,090 | 75.9 % | +6.3 % |
-| Train ≤ 2024 → Test 2025-26 | 0.6484 | 22,942 | 77.3 % | +8.2 % |
+| Train ≤ 2022 → Test 2023 | 0.6267 | 895 | 75.0 % | **+5.0 %** (v5_2: −2.8 %) |
+| Train ≤ 2023 → Test 2024 | 0.6365 | 2,056 | 81.5 % | **+14.1 %** |
+| Train ≤ 2024 → Test 2025-26 | 0.6481 | 13,186 | 80.3 % | **+12.4 %** |
 
-Calibración (C): sesgo ≤ ±2.4 % entre 0.1–0.9; leve sobreestimación en (0.7,0.8] (+2.4 %) y subestimación en las colas (0–0.1: −6.3 %, filas con N pequeño).
+Calibración (C): sesgo ≤ ±3.4 %; (0.7,0.8] ahora casi plano (**+0.3 %**, antes +2.4 %); sobreestimación en (0.9,1.0] (+3.4 %) y subestimación en la cola baja (0–0.1: −5.4 %, N pequeño).
 
 ### Comparativo por el camino LIVE (2,500 partidos del holdout, `compare_v5_2_vs_v5_3_live_path.py`)
 
@@ -170,27 +174,43 @@ Cobertura esperada de spread/total: ~8-18 % de los partidos 2024-26 (solo ligas 
 1. ✅ Métricas completas (AUC train/calib/test, Brier, LogLoss, Acc, gap) — `m27_v5_3_summary.json`.
 2. ✅ Gráficas: curvas de aprendizaje, calibración, importancia, walk-forward, resiliencia por minuto, ROI vs umbral — `m27_v5_3_diagnostic_dashboard.png`.
 3. ✅ Walk-forward 3 cortes.
-4. ✅ Matriz por liga (anchor, IC Wilson, sesgo, bandera de bloqueo) y ROI a 1.40 / 1.83 — `league_calibration.json`.
-5. ✅ Integración: `models/registry.py` (`m27_v5_3`), `monitor_v3/config/constants.py` (`ACTIVE_MODELS`, primero), `evaluator.py` (precarga, ventana Q3 y refresco de priors). `leagues.yaml` no cambia (la poda de tóxicas vive en `model_config.json`).
+4. ✅ Matriz por liga (anchor, IC Wilson, sesgo, bandera de bloqueo) y ROI a 1.40 / 1.83 — `league_calibration.json`. Con el filtro de formatos aplicado, **ninguna liga** queda por debajo del equilibrio con la evidencia actual (0 bloqueadas por medición).
+5. ✅ Integración: `models/registry.py` (`m27_v5_3`), `monitor_v3/config/constants.py` (`ACTIVE_MODELS`, primero), `evaluator.py` (precarga, ventana Q3, refresco de priors y **captura de inferencia por minuto**). La poda de formatos vive en `models/common/competition_stage.py` + `models/m27_v5_3/features.py` (`BLOCKED_STAGE_CATEGORIES`), **no** en `model_config.json`.
 6. ✅ Paridad offline vs live: `audit_feature_parity.py` → PARIDAD OK.
 7. ✅ Comparativo y siguientes pasos (§1, §4, §7).
 
-Umbral en producción: `model_config.json` → `min_conf = 0.72`, `min_margin = 0.0` (elegido en B). Ligas tóxicas → `PASS`. Ligas de 12 min → `unavailable`.
+**Configuración en producción (2026-10-20):**
 
-> ℹ️ `m27_v5_3` quedó **primero** en `ACTIVE_MODELS` y, si emite `BET`, el monitor lo notificará como cualquier otro modelo. Para observarlo sin notificar, quitarlo de `ACTIVE_MODELS` o dejarlo registrando en `bet_monitor_log_v3` unas semanas (recomendado: comparar WR live contra el 77.8 % de backtest antes de operar con dinero).
+| Parámetro | Valor | Dónde |
+|---|---|---|
+| `min_conf` | **0.75** (`OPERATING_CONF`, decisión explícita; el pipeline exige WR ≥ 78 % en B) | `model_outputs/model_config.json` |
+| `min_margin` | 0.0 | ídem |
+| Ventana de inferencia | **[25.5, 30.0]** — fuera, `unavailable` | `models/m27_v5_3/predict.py` |
+| Formatos bloqueados | amistosos, 2ª fase, promoción, preliminar, colocación (con **motivo** en el log) | `models/common/competition_stage.py` |
+| Ligas de 12 min | `unavailable` (NBA, G League, CBA, PBA…) | `features.py` |
+| Modo sombra | `m27_v5_3` se registra pero **no alerta** en Telegram | `constants.SHADOW_MODELS` |
+| Serie por minuto | `model_inference_v3`: una fila por modelo y minuto dentro de la ventana | `evaluator.py` |
+
+> ℹ️ `m27_v5_3` está **primero** en `ACTIVE_MODELS` pero en **modo sombra** (`SHADOW_MODELS`): sus apuestas se registran en `bet_monitor_log_v3` y en `model_inference_v3`, pero no disparan alerta. Motivo: 40 apuestas resueltas con WR 72.5 % (IC95 56-85 %) no demuestran ventaja en vivo. Se reactiva quitándolo de `SHADOW_MODELS` cuando haya ≥ 200 apuestas resueltas.
 >
-> 📊 **Comparación live ya hecha (2026-10-18 → 19):** 40 apuestas, WR 72.5 % (IC95 ≈ 56-85 %) frente al 77.8 % de backtest → dentro del ruido, y frente a `m27_v5_2` (11 apuestas, 82 %) la diferencia **no es significativa** (Fisher p = 0.706). En los snapshots compartidos `v5_3` es **mejor** que `v5_2` (Brier 0.1907 vs 0.1976). El gap lo explica la **regla de disparo** (`min_conf 0.72` sin filtro de margen), las **inferencias con minuto > 30** (fuera del rango de entrenamiento) y la **lista de ligas tóxicas cuyos patrones no coinciden con los nombres reales**. Detalle y contrfactuales: [`ANALISIS_LIVE_M27_V5_3.md`](./ANALISIS_LIVE_M27_V5_3.md).
+> 📊 **Comparación live ya hecha (2026-10-18 → 19, modelo anterior):** 40 apuestas, WR 72.5 % frente al 77.8 % de backtest → dentro del ruido, y frente a `m27_v5_2` (11 apuestas, 82 %) la diferencia **no es significativa** (Fisher p = 0.706). En los snapshots compartidos `v5_3` era **mejor** que `v5_2` (Brier 0.1907 vs 0.1976). El gap lo explicaba la **regla de disparo** (`min_conf 0.72` sin filtro de margen), las **inferencias con minuto > 30** y la **lista de ligas tóxicas cuyos patrones no coincidían con los nombres reales**. Todo corregido; detalle y contrfactuales: [`ANALISIS_LIVE_M27_V5_3.md`](./ANALISIS_LIVE_M27_V5_3.md).
 
 ---
 
 ## 7. Siguientes pasos
 
-1. **Terminar el backfill de líneas** y reentrenar (§5). Medir ΔAUC de `mkt_margin_spread`/`total_line` en las ligas con mercado.
-2. **Registrar la cuota Q4/in-play** (ya se guarda `odds_live`) y calcular EV real; mover el umbral de P a EV.
-3. **4-8 semanas de `live_snapshots_v3`** → residuo sobre m27_v5_3 con fatiga/faltas/+- de jugadores y cuota in-play (meta ΔAUC ≥ +0.005 fuera de muestra).
-4. Backfill de `graph_points` (39 % faltante, solo si la ablación de `gp_*` lo justifica; hoy ΔAUC +0.0005).
-5. Extender a 12m (NBA/CBA/PBA) con su propio modelo (roadmap `m34_*`); `m27_v5_3` los rechaza explícitamente.
-6. Revisar mensualmente `league_calibration.json` para actualizar los bloqueos con evidencia (IC95 del WR < 71.4 %).
+1. **Registrar la cuota Q4/in-play y calcular EV real; mover el umbral de P a EV.** Es lo único que falta para dejar de decidir a ciegas: la isotónica tiene una meseta (0.75 ≈ 0.80) y el óptimo de beneficio se mueve de 0.72 a 0.65 según la cuota sea 1.40 o 1.83. `odds_live` ya se guarda en `live_snapshots_v3`; falta el join con `bet_monitor_log_v3`.
+2. **Terminar el backfill de líneas** y reentrenar (§5). Medir ΔAUC de `mkt_margin_spread`/`total_line` en las ligas con mercado.
+3. **4-8 semanas de `model_inference_v3`** → calibración y acierto **por minuto** dentro de la ventana válida, y residuo con fatiga/faltas/+− de jugadores y cuota in-play (meta ΔAUC ≥ +0.005 fuera de muestra). Es la serie que faltaba para analizar el modelo por minuto (hoy `bet_monitor_log_v3` guarda una sola fila por partido y modelo).
+4. **Volver a auditar la lista negra con la evidencia nueva**: con el filtro de formatos aplicado, la calibración actual deja **0 ligas** por debajo del equilibrio; el bloqueo por medición queda vacío y se repoblará solo cuando haya evidencia.
+5. Backfill de `graph_points` (39 % faltante, solo si la ablación de `gp_*` lo justifica; hoy ΔAUC +0.0005).
+6. Extender a 12m (NBA/CBA/PBA) con su propio modelo (roadmap `m34_*`); `m27_v5_3` los rechaza explícitamente.
+7. Revisar mensualmente `league_calibration.json` para actualizar los bloqueos con evidencia (IC95 del WR < 71.4 %).
+
+---
+
+> 🔎 **Auditoría en producción:** dónde pierde realmente el modelo, barrido de `min_conf` y guards → [`AUDITORIA_M27_V5_3_PERDIDAS.md`](./AUDITORIA_M27_V5_3_PERDIDAS.md).
+> 📉 **Análisis live completo (v5_2 vs v5_3, lista negra, ablation por fase):** [`ANALISIS_LIVE_M27_V5_3.md`](./ANALISIS_LIVE_M27_V5_3.md).
 
 ---
 
