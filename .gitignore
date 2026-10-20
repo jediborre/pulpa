@@ -136,3 +136,6 @@ tools/obscura-src
 tmp/m27_v5_3_audit/*.json
 tmp/m27_v5_3_audit/*.txt
 tmp/m27_v5_3_audit/_*.log
+
+# Respaldo local de artefactos del modelo (regenerable, no versionar)
+tmp/m27_v5_3/backup_*/
