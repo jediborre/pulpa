@@ -182,16 +182,28 @@ Reentrenar con pesos `exp(−((|p_raw−0.75|/0.12)²))` (solo el 15 % de filas 
 
 **El WR sube a 92 % pero el beneficio se desploma a 68 u (de 374)**: el modelo se especializa tanto que pierde el 91 % del volumen. Además el AUC y el Brier empeoran → no es solo una recalibración, el modelo se daña. Un WR alto con pocas apuestas **no** es una mejora si el umbral es lo que decide el tamaño de la cartera.
 
-### P5 · Más datos: el backfill de líneas ya terminó — 🔄 **en curso**
+### P5 · Más datos: las líneas del mercado — ❌ **RECHAZADA por la medición**
 
-El backfill de `match_odds` (modo `lines`) está **completo**: 17.176 partidos con `status='ok'`, 0 pendientes. Pero el dataset se construyó cuando el backfill iba por ~7.000:
+El backfill de `match_odds` (modo `lines`) está **completo**: 17.176 partidos con `status='ok'`, 0 pendientes. El dataset se reconstruyó con él, pero la cobertura quedó **muy sesgada por bloque**:
 
-| feature | cobertura en el dataset actual | con el backfill completo |
+| bloque | filas | con línea de spread |
 |---|---|---|
-| `mkt_margin_spread` | 3.7 % (7.062 filas) | **~9.0 %** (17.192 partidos) |
-| `total_line` | 3.6 % (6.914 filas) | **~9.0 %** (17.061 partidos) |
+| A (train) | 190.132 | **3.7 %** |
+| B (calib) | 57.322 | 14.1 % |
+| C (test) | 91.858 | 13.3 % |
 
-Reconstruir el dataset y reentrenar es el único vía de **más señal** que queda después de que las features nuevas midieran neutras: el total y el handicap del mercado son la escala del partido, que es justo lo que determina el margen de Q4.
+El backfill cubrió sobre todo 2024-2026 (bloque de test). Aun así, medir la línea **no aporta**:
+
+| en la población con línea (bloque C, n=12.235) | AUC |
+|---|---|
+| línea de handicap por sí sola → resultado del Q4 | 0.5950 |
+| mercado (`mkt_p_home`) | 0.6070 |
+| **modelo** | **0.6266** |
+| modelo + línea (80/20) | 0.6256 |
+
+Y la población **no** se comporta distinto: con línea WR 78.8 % (222 apuestas) vs 80.8 % sin línea (7.737 apuestas) — la diferencia no es significativa y el modelo ya es mejor en las filas con línea (0.6266) que en las que no tienen (0.6594 con n=79.623, el modelo manda igual).
+
+**Descartado**: descargar 126.000 partidos de 2015-2023 para las líneas (≈35 h de peticiones a 1 req/s) no tiene retorno medible. El modelo ya extrae más del estado del partido que de la línea del mercado.
 
 ### Descartado (con evidencia)
 - F1 prior contextual por liga × estado → **−0.0164 AUC**.
@@ -236,4 +248,25 @@ La migración de `quarter_scores` a `quarter_scores_v2` (la tabla canónica) rev
 2. No liquidar si la suma de los cuartos no cuadra con el marcador final **y no hay prórroga** (el primer guard confundía los partidos AET con un Q4 parcial y los dejaba pendientes para siempre).
 
 Bonus de la migración: `quarter_scores_v2` pasó de 2.916 a **250.143 partidos** con el dato definitivo de fin de partido, y el pipeline de entrenamiento ya lee esa tabla (mismos 184.173 elegibles, 0 diferencias).
+
+---
+
+## 7. Estado de v5_4 tras la ronda de medición (2026-10-20)
+
+| item | veredicto | evidencia |
+|---|---|---|
+| P0 · recalibración condicional | ❌ rechazado | AUC plana, WR a 0.75 cae 1.6 pp |
+| P0' · calibración continua (Platt) | ✅ **aplicada** | 7.838 confianzas (antes 135), LogLoss 0.6518, 7.987 apuestas @0.75 con WR 80.8 % |
+| P1 · política por población | ⏸ pendiente | la decide el EV real (P4) |
+| P2 · distribución del margen | ❌ rechazado | AUC 0.6064 vs 0.6537; la mezcla no aporta |
+| P3 · foco en la banda de decisión | ❌ rechazado | WR 92 % pero 68 u de 374; AUC y Brier empeoran |
+| P4 · EV real (prospectivo) | 🔄 en marcha | `live_snapshots_v3` captura `q4_ml_home/away`; `ev_calculator.py` listo |
+| P5 · líneas del mercado | ❌ rechazado | la línea sola da AUC 0.595 < modelo 0.627; sumarla no mejora |
+| F1 prior contextual | ❌ rechazado | −0.0164 AUC |
+| F2 patrón de quarters | ❌ rechazado | −0.0002 AUC |
+| F3 ventaja extrema | ❌ rechazado | −0.0002 AUC |
+
+**Conclusión de la ronda:** el modelo está **saturado con las features actuales**. Las tres vías que se propusieron para v5_4 —arquitectura nueva, fine-tuning y más datos— se midieron y se rechazaron; la única que queda por encima del agua es la que no es de modelado: **el EV y el precio** (P1/P4). Con el modelo actual, el AUC 0.6552 y WR@0.75 80.7 %, la decisión que falta es *cuánta,* no *cómo predecir.*
+
+**Reentrenamiento final (2026-10-20 14:11)** con el dataset reconstruido (backfill de líneas completo + `quarter_scores_v2` canónica): AUC test 0.6552, Brier 0.2303, LogLoss 0.6518, 7.959 apuestas @0.75 con WR 80.73 % y ROI@1.40 +13.02 %. Umbral operativo conservado en **0.75** (la regla `OPERATING_CONF` del pipeline impidió que volviera a 0.72). Paridad offline/live: **OK**.
 
