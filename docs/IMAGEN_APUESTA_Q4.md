@@ -129,8 +129,10 @@ Emoji en **color real** con `seguiemj.ttf` (`embedded_color=True`): 🏠 local, 
 | Apostó y perdió | `PERDIDA` | rojo |
 | **No apostó** y su pick habría ganado | `HUBIERA GANADO` | verde |
 | **No apostó** y su pick habría perdido | `HUBIERA PERDIDO` | rojo |
-| Push | `PUSH` | gris |
+| Push (solo datos antiguos) | `PUSH` | gris |
 | Otro | `PENDIENTE` | gris |
+
+**Regla de liquidación:** la apuesta se gana solo si el equipo elegido gana el **cuarto objetivo**. Si el cuarto termina **empatado** se cuenta como **PERDIDA** (`loss`), no como push anulado; por eso el KPI `PUSH` de `/status` quedará en 0.
 
 El resultado hipotético se calcula con el **parcial del cuarto objetivo** (Q4 por defecto), que es el mercado real de la apuesta: `reconcile_pending_results()` liquida comparando `quarter_scores_v2.q4_home` vs `q4_away`, **no** el marcador final del partido. Por eso un modelo que pickeó al local puede mostrar `HUBIERA PERDIDO` aunque el local haya ganado el partido, si perdió el Q4. Se omite la hipótesis si el cuarto está empatado o no hay datos del cuarto. La **barra de acento** del panel resume el conjunto: verde si todo ganó, roja si todo perdió, cian si está mezclado.
 

@@ -528,14 +528,16 @@ def reconcile_pending_results() -> None:
                     q4a = qs["q4_away"]
                     
                     if q4h == q4a:
-                        real_winner = "push"
+                        # Criterio de negocio: un cuarto EMPATADO no gana la apuesta,
+                        # así que se contabiliza como PERDIDA (no como push anulado).
+                        real_winner = "tie"
                     elif q4h > q4a:
                         real_winner = "home"
                     else:
                         real_winner = "away"
                         
-                    if real_winner == "push":
-                        outcome = "push"
+                    if real_winner == "tie":
+                        outcome = "loss"
                     elif picked_side.lower() == real_winner:
                         outcome = "win"
                     else:

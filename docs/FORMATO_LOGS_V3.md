@@ -357,4 +357,4 @@ log_info("EVALUACION", f"[EVAL] NO_BET definitivo | Model: {model} | {match_disp
 - Tags recomendados: los de §6. Si añades uno nuevo, actualiza este documento.
 - No usar `print()` para eventos de producción: no queda en el archivo diario ni se colorea.
 
-- **Liquidaci?n sin pendientes**: `reconcile_pending_results()` liquida comparando el **parcial de Q4**. Si un partido no publica cuartos, un barrido cada 2 h reintenta su FT (`PENDING_SWEEP_*`) y, tras 24 h sin datos, marca la apuesta como `void` (anulada): deja de contar en apuestas y acierto, pero queda auditada. As? nunca quedan `pending` permanentes. El resumen diario ejecuta un barrido final antes de enviarse.
+- **Liquidaci?n sin pendientes**: `reconcile_pending_results()` liquida comparando el **parcial de Q4** (si el cuarto empata, la apuesta cuenta como **PERDIDA**). Si un partido no publica cuartos, un barrido cada 2 h reintenta su FT (`PENDING_SWEEP_*`) y, tras 24 h sin datos, marca la apuesta como `void` (anulada): deja de contar en apuestas y acierto, pero queda auditada. As? nunca quedan `pending` permanentes. El resumen diario ejecuta un barrido final antes de enviarse.
