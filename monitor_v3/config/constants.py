@@ -75,15 +75,22 @@ TOKEN_ROTATION_POOL_SIZE = 5        # Cantidad objetivo de tokens concurrentes
 TOKEN_MAX_FAILURES = 3              # Fallos consecutivos antes de revocar y regenerar token
 TOKEN_REFRESH_MINUTES = 60 * 24 * 7 # Chequeo preventivo semanal (tokens duran ~6 meses)
 
-# Modelos Activos para Inferencia (M27 V5.3 al frente + M27 V5.2 Champion + v6_2 + m27_v3)
-ACTIVE_MODELS = ["m27_v5_3", "m27_v5_2", "v6_2", "m27_v3"]
+# Modelos Activos para Inferencia.
+# 2026-10-20: se retiran v6_2 y m27_v3. Motivos medidos:
+#   - v6_2 aposto con 28 % de confianza (min 27 del match 17230818) y su WR
+#     en vivo es de los mas bajos: su umbral efectivo (0.28) no discrimina.
+#   - m27_v3 no expone p_cal (no se puede auditar ni calibrar).
+#   - Al haber menos modelos, la alerta muestra menos filas y cada una se lee
+#     mejor en la imagen.
+ACTIVE_MODELS = ["m27_v5_3", "m27_v5_2"]
 
 # Modelos en MODO SOMBRA: se evaluan y se registran en bet_monitor_log_v3 y en
 # model_inference_v3, pero NO disparan la alerta de apuesta en Telegram.
-# Motivo: m27_v5_3 acumula 40 apuestas resueltas con WR 72.5 % (IC95 56-85 %),
-# compatible con su backtest (77.7 %) pero SIN evidencia de ventaja en vivo.
-# Ver docs/ANALISIS_LIVE_M27_V5_3.md (R5). Quitar de la lista para reactivarlo.
-SHADOW_MODELS = ["m27_v5_3"]
+# 2026-10-20: m27_v5_3 SALE del modo sombra. El usuario lo sigue de cerca y
+# pide que aparezca en las alertas (y primero). Nota: sigue sin evidencia
+# suficiente en vivo (40 apuestas, WR 72.5 %, IC95 56-85 %); reactivarlo
+# cuando se acumulen ~200 apuestas resueltas.
+SHADOW_MODELS: list[str] = []
 
 # Ventana de inferencia VALIDA por modelo (minutos de juego). Fuera de ella el
 # modelo no fue entrenado: su salida no es comparable con el entrenamiento y no

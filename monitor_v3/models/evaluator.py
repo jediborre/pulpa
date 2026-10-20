@@ -346,9 +346,19 @@ async def evaluate_match_q4(
             # es al cierre de Q3, m30/m36) aún no han disparado apuesta, seguimos monitoreando hasta el
             # cierre del Q3 por si el partido entra en zona verde.
             if (model_version in ("m27_v5_3",) or not any_bet_in_tick) and not in_q4_now:
+                # Se registra el pick y la confianza para que la alerta y la
+                # tarjeta puedan mostrar POR QUE ese modelo no aparece con
+                # apuesta (antes quedaba invisible y la tarjeta de resultado
+                # si lo mostraba -> inconsistencia).
                 predictions[model_version] = {
                     "signal": "UNAVAILABLE",
-                    "reason": "monitoring_q3_window_for_green",
+                    "reason": "pendiente_zona_verde",
+                    "pick": picked_side,
+                    "confidence": confidence,
+                    "p_home_win": p_home,
+                    "p_away_win": p_away,
+                    "inference_minute": minute_est,
+                    "block_reason": None,
                 }
                 continue
 

@@ -193,8 +193,10 @@ Marcador en vivo (`colorize_scores()`): **ganador en verde**, **perdedor en rojo
 ### 7.5 Evaluación (`EVALUACION [EVAL]`)
 
 ```text
-[INFO] [EVALUACION] Q4 🟠 [EVAL] NO_BET definitivo | Model: m27_v3 | <match_display>
+[INFO] [EVALUACION] Q4 🟠 [EVAL] NO_BET definitivo | Model: m27_v5_3 | Motivo: descartada: torneo amistoso o invitacion (categoria AMISTOSOS) | <match_display>
 ```
+
+- El campo `Motivo:` aparece solo cuando el modelo fue **descartado** (liga o formato de torneo, ventana de entrenamiento, liga de 12 min). Si simplemente no alcanzó el umbral, no hay motivo: lo muestra el umbral.
 
 - Una **señal operable** no tiene línea de consola propia: su rastro es la fila insertada en `bet_monitor_log_v3`, el marcado `BET_SENT` de `bet_monitor_schedule_v3` y el `[BROADCAST]` que emite `[TELEGRAM]` al despachar la alerta.
 
@@ -277,7 +279,19 @@ Cada liquidación individual se registra en la capa de datos:
 | `⚪️` | NO BET o apuesta tardía. |
 | `🟡⚪️` | Tardía **y** de baja confianza. |
 
-Ejemplo de línea por modelo: `🟢 APUESTA Q4 [m27_v3 72%] → 🏠 CD Universitario Concepcion`
+Ejemplo de línea por modelo: `🟢 APUESTA Q4 [m27_v5_3 78%] → 🏠 CD Universitario Concepcion`
+
+Desde el 2026-10-20 **todos** los modelos del panel aparecen en la alerta, no solo los que apostaron, y cada uno con su motivo:
+
+```text
+🟢 APUESTA Q4
+m27_v5_3 67% [PENDIENTE — aun puede apostar hasta el cierre de Q3] → 🏠 Falco KC-Szombathely
+m27_v5_2 59% [NO BET (<75%)] → 🏠 Falco KC-Szombathely
+```
+
+- `PENDIENTE`: el modelo todavía puede apostar (vigila la zona verde hasta el cierre de Q3).
+- `NO BET (<X%>)`: no superó el umbral `<X>` (el umbral real del modelo).
+- `NO BET — <motivo>`: fue descartado; el motivo explica por qué.
 
 ### 9.3 Resultados y confirmaciones FT
 

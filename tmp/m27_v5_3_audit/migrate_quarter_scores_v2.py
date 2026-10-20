@@ -42,7 +42,8 @@ SELECT q.match_id,
   MAX(CASE WHEN q.quarter='Q1' THEN q.home END) q1_home, MAX(CASE WHEN q.quarter='Q1' THEN q.away END) q1_away,
   MAX(CASE WHEN q.quarter='Q2' THEN q.home END) q2_home, MAX(CASE WHEN q.quarter='Q2' THEN q.away END) q2_away,
   MAX(CASE WHEN q.quarter='Q3' THEN q.home END) q3_home, MAX(CASE WHEN q.quarter='Q3' THEN q.away END) q3_away,
-  MAX(CASE WHEN q.quarter='Q4' THEN q.home END) q4_home, MAX(CASE WHEN q.quarter='Q4' THEN q.away END) q4_away
+  MAX(CASE WHEN q.quarter='Q4' THEN q.home END) q4_home, MAX(CASE WHEN q.quarter='Q4' THEN q.away END) q4_away,
+  MAX(CASE WHEN q.quarter='OT1' THEN q.home END) ot_home, MAX(CASE WHEN q.quarter='OT1' THEN q.away END) ot_away
 FROM quarter_scores q GROUP BY q.match_id
 """
 
@@ -127,14 +128,15 @@ def main() -> None:
               (match_id, q1_home, q1_away, q2_home, q2_away, q3_home, q3_away,
                q4_home, q4_away, ot_home, ot_away)
             SELECT match_id, q1_home, q1_away, q2_home, q2_away, q3_home, q3_away,
-                   q4_home, q4_away, NULL, NULL
+                   q4_home, q4_away, ot_home, ot_away
             FROM _pivot
             WHERE q4_home IS NOT NULL AND q4_away IS NOT NULL
             ON CONFLICT(match_id) DO UPDATE SET
               q1_home=excluded.q1_home, q1_away=excluded.q1_away,
               q2_home=excluded.q2_home, q2_away=excluded.q2_away,
               q3_home=excluded.q3_home, q3_away=excluded.q3_away,
-              q4_home=excluded.q4_home, q4_away=excluded.q4_away
+              q4_home=excluded.q4_home, q4_away=excluded.q4_away,
+              ot_home=excluded.ot_home, ot_away=excluded.ot_away
         """)
         print(f"  pivot migrado en {time.time() - t0:.1f}s")
 

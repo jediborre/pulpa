@@ -934,11 +934,17 @@ def _draw_bet_panel(
         # Etiqueta de resultado (solo en las confirmaciones FT)
         tag_text, tag_color = _result_tag(bet.get("result")) if is_result else ("", COLOR_MUTED)
 
-        # 1) Palabra BET (verde) / NO BET (rojo)
+        # 1) Palabra BET (verde) / NO BET (rojo) / PENDIENTE (ambar)
         x = inner_x
         bet_font = _font(28, True)
-        bet_label = "BET" if is_real_bet else "NO BET"
-        draw.text((x, y + 1), bet_label, font=bet_font, fill=SS_BET if is_real_bet else SS_NO_BET)
+        is_pending = str(bet.get("reason") or "").startswith("aun puede apostar")
+        if is_real_bet:
+            bet_label, bet_color = "BET", SS_BET
+        elif is_pending:
+            bet_label, bet_color = "PENDIENTE", COLOR_TIME
+        else:
+            bet_label, bet_color = "NO BET", SS_NO_BET
+        draw.text((x, y + 1), bet_label, font=bet_font, fill=bet_color)
         x += _text_len(draw, bet_label, bet_font) + 18
 
         # 2) Modelo + porcentaje coloreado por semáforo
@@ -983,13 +989,14 @@ def _draw_bet_panel(
             )
         else:
             # Motivo del descarte (liga/formato, ventana de entrenamiento,
-            # liga de 12 min). Si no hay, se muestra el umbral que no alcanzo.
+            # liga de 12 min) o "todavia puede apostar". Si no hay motivo,
+            # se muestra el umbral que no alcanzo.
             reason = str(bet.get("reason") or "").strip()
             if len(reason) > 62:
                 reason = reason[:59].rstrip() + "…"
             if reason:
                 detail_segments = [
-                    ("text", "no operó: ", COLOR_MUTED),
+                    ("text", "no operó: " if not is_pending else "", COLOR_MUTED),
                     ("text", reason, COLOR_TIME),
                 ]
             else:

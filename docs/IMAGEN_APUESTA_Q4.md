@@ -98,6 +98,10 @@ BET     m27_v5_3 78%  ->  🏠 Deportivo Viedma              GANADA
 - Modelo que no apostó por el **umbral**: `no operó (umbral <X>%)`, con el **umbral real** del modelo.
 - Modelo que **no pudo operar** (liga o formato descartado, fuera de su ventana de entrenamiento, liga de 12 min): `no operó: <motivo>` en **naranja** `#FF9500`. El motivo lo produce `models/m27_v5_3/features.py::block_reason()` y llega desde `raw_json` → `predictions[model]["block_reason"]` → `bets[].reason`. Ejemplos: `torneo amistoso o invitacion (categoria AMISTOSOS)`, `liga medida como toxica por el modelo (WR 42.1 %, IC95 [23.1, 63.7] < equilibrio 71.4 % a cuota 1.40)`, `Fuera de la ventana de entrenamiento (min 32.0 > 30.0)`.
 
+**Línea 1 — etiqueta de estado** (además de `BET` verde y `NO BET` rojo):
+- `PENDIENTE` en **naranja**: el modelo todavía puede apostar (vigila la zona verde hasta el cierre de Q3). Aparece en la alerta de apuesta cuando otro modelo ya ha apostado y este aún no ha confirmado su NO_BET. Antes ese modelo desaparecía de la alerta y solo aparecía en la tarjeta de resultado: inconsistencia corregida el 2026-10-20.
+- Todos los modelos del panel se listan **siempre**, ordeneados por `model_display_sort_key` (`m27_v5_3` primero).
+
 ### 4.1 `BET` / `NO BET`
 - Apuesta operable (señal con `BET` y sin `NO_BET`) → **`BET` en verde** `#3FCB5C`.
 - No operable → **`NO BET` en rojo** `#FF4D57`.

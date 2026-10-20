@@ -28,7 +28,7 @@ import yaml
 
 from monitor_v3.database.connection import get_db_connection
 from monitor_v3.config.constants import LEAGUES_CONFIG_PATH
-from monitor_v3.utils.logger import log_info, log_error
+from monitor_v3.utils.logger import log_info, log_error, log_warning
 
 def init_tables() -> None:
     """
@@ -599,16 +599,21 @@ def reconcile_pending_results() -> None:
                         "ot_home,ot_away FROM quarter_scores_v2 WHERE match_id = ?",
                         (match_id,)).fetchone()
                     m_row = conn.execute(
-                        "SELECT home_score, away_score, status_type FROM matches WHERE match_id = ?",
-                        (match_id,)).fetchone()
+                        "SELECT home_score, away_score, status_type, status_description "
+                        "FROM matches WHERE match_id = ?", (match_id,)).fetchone()
                     if full and m_row and m_row["home_score"] is not None:
                         partes = [full["q1_home"], full["q1_away"], full["q2_home"],
                                   full["q2_away"], full["q3_home"], full["q3_away"],
                                   qs["q4_home"], qs["q4_away"]]
+                        # Un partido con PRORROGACION (AET) tiene puntos que no
+                        # estan en los 4 cuartos: no es un Q4 parcial.
+                        st = f"{m_row['status_description'] or ''} {m_row['status_type'] or ''}".upper()
+                        es_prorroga = ("AET" in st or "EXTRA TIME" in st
+                                       or "OVERTIME" in st or "AFTER ET" in st)
                         if all(p is not None for p in partes):
                             suma = sum(partes)
                             final = int(m_row["home_score"]) + int(m_row["away_score"])
-                            if final - suma > 0 and full["ot_home"] is None:
+                            if final - suma > 0 and full["ot_home"] is None and not es_prorroga:
                                 log_warning("DATABASE", f"Q4 parcial en {match_id}: suma de cuartos "
                                                        f"{suma} != marcador final {final} | "
                                                        f"apuesta {model_ver} queda pendiente")

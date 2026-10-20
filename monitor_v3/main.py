@@ -603,11 +603,11 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                          q4_orange=True)
 
                             # Mostrar todas las predicciones del tick para consenso transparente.
-                            # Un modelo que NO apuesta por un motivo concreto (liga o formato
-                            # descartado, fuera de su ventana de entrenamiento, liga de 12 min)
-                            # tambien se muestra: hay que poder ver POR QUE se paso.
-                            _INTERNAL_REASONS = ("monitoring_q3_window_for_green",
-                                                "awaiting_no_bet_confirmations", "no_data")
+                            # Un modelo que NO apuesta tambien se muestra, con el motivo:
+                            #   - descartado por liga/formato  -> motivo del descarte
+                            #   - todavia vigilando la zona verde -> PENDIENTE
+                            #   - no confirmo su NO_BET todavia -> no se muestra
+                            _INTERNAL_REASONS = ("awaiting_no_bet_confirmations", "no_data")
 
                             def _visible_for_display(m: str) -> bool:
                                 if m in SHADOW_MODELS:

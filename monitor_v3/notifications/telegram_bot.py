@@ -608,7 +608,8 @@ def _display_reason(pred: dict) -> str | None:
     Hay tres origenes posibles:
       - `block_reason` del modelo: descarto por liga o formato de torneo.
       - `reason` del evaluador: no pudo inferir (fuera de la ventana de
-        entrenamiento, liga de 12 min, sin datos).
+        entrenamiento, liga de 12 min, sin datos) o sigue VIGILANDO la zona
+        verde (todavia puede apostar).
       - nada: simplemente no supero el umbral (lo muestra el umbral).
     """
     reason = str(pred.get("block_reason") or "").strip()
@@ -617,7 +618,35 @@ def _display_reason(pred: dict) -> str | None:
     if not reason:
         return None
     # Motivos internos del monitor: no aportan nada al usuario.
-    if reason in ("monitoring_q3_window_for_green", "awaiting_no_bet_confirmations", "no_data"):
+    if reason in ("awaiting_no_bet_confirmations", "no_data"):
+        return None
+    if reason == "pendiente_zona_verde":
+        return "aun puede apostar: vigila la zona verde hasta el cierre de Q3"
+    if reason == "monitoring_q3_window_for_green":
+        return "aun puede apostar: vigila la zona verde hasta el cierre de Q3"
+    reason = reason.replace("descartada: ", "")
+    if len(reason) > 90:
+        reason = reason[:87].rstrip() + "…"
+    return reason
+
+
+def _is_pending(pred: dict) -> bool:
+    """True si el modelo todavia puede apostar (vigilando la zona verde)."""
+    if str(pred.get("signal") or "") == "UNAVAILABLE":
+        return str(pred.get("reason") or "") in ("pendiente_zona_verde",
+                                                "monitoring_q3_window_for_green")
+    return False
+
+
+def _log_block_reason(log: dict) -> str | None:
+    """Motivo de descarte guardado en el log del partido (raw_json.block_reason)."""
+    inf = log.get("inference_json")
+    try:
+        raw = (json.loads(inf) if isinstance(inf, str) else (inf or {})).get("raw_json") or {}
+    except Exception:
+        raw = {}
+    reason = str(raw.get("block_reason") or "").strip()
+    if not reason:
         return None
     reason = reason.replace("descartada: ", "")
     if len(reason) > 90:
@@ -677,13 +706,18 @@ def format_combined_bet_message(predictions: dict, home_team: str, away_team: st
 
         if is_bet:
             lines.append(f"{model_conf_str} → {side_emoji} {clean_team}")
+        elif _is_pending(pred):
+            # El modelo todavia puede apostar: se muestra como PENDIENTE con
+            # su confianza, para que se vea por que no hay apuesta suya.
+            lines.append(f"{model_conf_str} [PENDIENTE — aun puede apostar hasta el cierre de Q3]"
+                         f" → {side_emoji} {clean_team}")
         else:
             # Motivo concreto del descarte (liga/formato, ventana de
             # entrenamiento, liga de 12 min). Si no hay, se muestra el umbral.
             reason = _display_reason(pred)
             if reason:
-                lines.append(f"{model_conf_str} [NO BET — {html.escape(reason, quote=False)}] "
-                             f"→ {side_emoji} {clean_team}")
+                lines.append(f"{model_conf_str} [NO BET — {html.escape(reason, quote=False)}]"
+                             f" → {side_emoji} {clean_team}")
             else:
                 lines.append(f"{model_conf_str} [NO BET ({threshold_note})] → {side_emoji} {clean_team}")
 
@@ -913,6 +947,7 @@ async def send_combined_final_confirmation(
                 "result": result,
                 "decimal_odds": _decimal_odds_for_side(match_data, is_home),
                 "inference_json": _inference_json(log),
+                "reason": _log_block_reason(log),
             }
         )
     results = await _send_bet_photo(
