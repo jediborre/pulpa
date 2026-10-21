@@ -1335,6 +1335,32 @@ def _daily_summary_data() -> dict | None:
     }
 
 
+def _live_threshold_curve_data(modelo: str = "m27_v5_3") -> dict | None:
+    """
+    Curva de WR vivo por umbral, calculada sobre la serie POR MINUTO
+    (model_inference_v3) unida al resultado real del Q4.
+
+    Es la capa de analisis: no son apuestas, son todas las predicciones del
+    modelo dentro de su ventana valida. Sirve para decidir el umbral con
+    muestra suficiente (a 0.75 el modelo solo dispara ~6 veces al dia).
+    """
+    from monitor_v3.models.live_threshold_curve import (
+        compute_curve, fetch_live_predictions,
+    )
+    try:
+        with sqlite3.connect(Path(get_real_db_path())) as conn:
+            conn.row_factory = sqlite3.Row
+            preds = fetch_live_predictions(conn, modelo)
+    except Exception as e:
+        log_error("TELEGRAM", f"[DB] Error en la curva de umbral: {e}")
+        return None
+    if not preds:
+        return None
+    data = compute_curve(preds)
+    data["model"] = modelo
+    return data
+
+
 def _render_daily_summary_text(data: dict) -> str:
     """Texto del resumen diario a partir de `_daily_summary_data()`."""
     total = data["total"]
@@ -1353,6 +1379,15 @@ def _render_daily_summary_text(data: dict) -> str:
         r = s["win"] + s["loss"]
         a = f"{int(round(s['win'] * 100 / r))}%" if r else "—"
         lines.append(f"  {model}: BET {s['bets']} | ✅ {s['win']}  ❌ {s['loss']}  ⏳ {s['pending']} | {a}")
+
+    # Curva de WR vivo por umbral (capa de analisis: todas las predicciones
+    # por minuto, no solo las apuestas). Es lo que permite decidir el umbral
+    # con muestra suficiente: a 0.75 el modelo solo dispara ~6 veces al dia.
+    curva = _live_threshold_curve_data()
+    if curva:
+        from monitor_v3.models.live_threshold_curve import render_curve_text
+        lines.append("")
+        lines.append(render_curve_text(curva))
     return "\n".join(lines)
 
 

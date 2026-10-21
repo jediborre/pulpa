@@ -192,3 +192,39 @@ partido completo: sirve de ilustración, no como precio.
 5. **Pedir la cuota real** que se consigue en la apuesta de Q4: con eso se
    cierra el EV y el umbral se decide con números, no con supuestos.
 
+---
+
+## 15. Decisiones tomadas (2026-10-20, 21:30)
+
+| decisión | motivo |
+|---|---|
+| **La apuesta sigue en 0.75** | la cuota real es **~1.40** → el equilibrio está en **71.4 %** de acierto y el WR vivo actual (68.9 %) está por debajo. Bajar el umbral de apuesta a 1.40 destruiría el beneficio. |
+| **Umbral de ANÁLISIS en 0.65-0.70** | a 0.75 el modelo dispara 6 veces/día (un mes para 200 bets). Con la serie por minuto se calcula la curva de WR viva en **cualquier** umbral: a 0.65 son ~21 predicciones/día → el veredicto llega en días. |
+| **La curva entra en el resumen diario de Telegram** | así el seguimiento del WR por umbral llega solo, sin pedirlo. |
+
+### Implementación
+
+| pieza | archivo | qué hace |
+|---|---|---|
+| cálculo de la curva | `monitor_v3/models/live_threshold_curve.py` | une `model_inference_v3` con `quarter_scores_v2` y calcula n, WR, IC95, unidades y equilibrio por umbral |
+| herramienta | `tools/live_threshold_curve.py` | CLI: `--model`, `--json`, `--odds`; contrasta contra la referencia del backtest |
+| resumen diario | `monitor_v3/notifications/telegram_bot.py` | añade la sección "Curva de WR vivo" al mensaje de las 23:55 |
+
+### Curva viva a 2026-10-20 (88 partidos evaluados, m27_v5_3)
+
+| umbral | n | WR | IC95 | u@1.40 | u@1.83 | WR backtest | gap |
+|---|---|---|---|---|---|---|---|
+| 0.65 | 21 | 71.4 % | [50, 86] | 0 | +6 | 71.6 % | −0.2 pp |
+| 0.68 | 11 | 63.6 % | [35, 85] | −1 | +2 | 74.3 % | −10.6 pp |
+| 0.70 | 9 | 55.6 % | [27, 81] | −2 | 0 | 76.0 % | −20.4 pp |
+| 0.72 | 7 | 42.9 % | [16, 75] | −3 | −2 | 78.0 % | −35.1 pp |
+| 0.75 | 7 | 42.9 % | [16, 75] | −3 | −2 | 80.8 % | −37.9 pp |
+| 0.80 | 4 | 50.0 % | [15, 85] | −1 | 0 | 86.2 % | −36.2 pp |
+
+Los intervalos son enorme (n=7 a 0.75) → **todavía no hay veredicto**. Lo que sí
+dice la tabla: con la cuota de 1.40 el **único tramo que roza el equilibrio es
+0.65** (71.4 % exacto, n=21), y todo lo de 0.68 para arriba está por debajo del
+punto de equilibrio **en vivo**. Ese es el escenario que hay que vigilar: si a las
+~100 predicciones de 0.70-0.75 el WR sigue < 71.4 %, el modelo no tiene edge
+rentable a 1.40 y habría que revisar el umbral o el modelo, no esperar más.
+
