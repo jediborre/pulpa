@@ -1,5 +1,7 @@
 # 🧪 v5_4 — qué se midió, qué se cayó y qué queda
 
+> 📌 **El estudio preparatorio completo está en [`docs/ESTUDIO_PREPARATORIO_V5_4.md`](ESTUDIO_PREPARATORIO_V5_4.md)**: qué falló en v5_3 con su evidencia (46 apuestas vivas, WR 68.9 %, −12 pp vs backtest), las capas de filtrado que se perdieron del monitor v1 (y por qué **no** sirven trasplantadas a v5_3), el **despacho por condición** con su único detector validado (racha activa: +4.4 pp de WR) y la decisión sobre la dependencia del mercado (el edge **no** viene de las cuotas). Este documento es el índice de los experimentos.
+
 > Fecha: 2026-10-20 · Base: holdout C (98.476 filas / 35.480 partidos ancla), artefactos desplegados de `m27_v5_3`, el mismo split y la misma calibración que producción.
 > Reproducible: `tmp/m27_v5_3_audit/v54_*.py`.
 
