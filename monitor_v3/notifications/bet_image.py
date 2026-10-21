@@ -933,6 +933,11 @@ def _draw_bet_panel(
 
         # Etiqueta de resultado (solo en las confirmaciones FT)
         tag_text, tag_color = _result_tag(bet.get("result")) if is_result else ("", COLOR_MUTED)
+        # En la tarjeta de RESULTADO, un NO BET es una NO APUESTA: ni la
+        # etiqueta, ni la confianza, ni el "hubiera ganado/perdido" van en
+        # rojo, o la tarjeta se lee como una racha de derrotas del modelo.
+        if is_result and not _is_real_bet(bet):
+            tag_color = COLOR_MUTED
 
         # 1) Palabra BET (verde) / NO BET (rojo) / PENDIENTE (ambar)
         x = inner_x
@@ -942,6 +947,8 @@ def _draw_bet_panel(
             bet_label, bet_color = "BET", SS_BET
         elif is_pending:
             bet_label, bet_color = "PENDIENTE", COLOR_TIME
+        elif is_result:
+            bet_label, bet_color = "NO BET", COLOR_MUTED
         else:
             bet_label, bet_color = "NO BET", SS_NO_BET
         draw.text((x, y + 1), bet_label, font=bet_font, fill=bet_color)
@@ -953,7 +960,8 @@ def _draw_bet_panel(
         x += _text_len(draw, model, model_font) + 10
         if conf is not None:
             conf_text = f"{conf}%"
-            draw.text((x, y), conf_text, font=model_font, fill=conf_color)
+            conf_draw_color = conf_color if (not is_result or is_real_bet) else COLOR_MUTED
+            draw.text((x, y), conf_text, font=model_font, fill=conf_draw_color)
             x += _text_len(draw, conf_text, model_font) + 16
 
         tag_w = 0.0

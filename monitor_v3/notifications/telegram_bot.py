@@ -869,9 +869,11 @@ def format_combined_final_message(logs: list, home_team: str, away_team: str) ->
                 clean_team = html.escape(str(picked_team_name), quote=False)
                 threshold_note = f"&lt;{_threshold_pct(model, log)}%"
                 
-                lines.append(f"🔴 {model} {conf_pct}% [NO BET ({threshold_note})] → {side_emoji} {clean_team}")
+                # NO BET es una NO APUESTA, no una derrota: el marcador va
+                # neutro (⚪️) para que la tarjeta no se lea como un fallo.
+                lines.append(f"⚪️ {model} {conf_pct}% [NO BET ({threshold_note})] → {side_emoji} {clean_team}")
             else:
-                lines.append(f"🔴 {model} NO BET")
+                lines.append(f"⚪️ {model} NO BET")
         else:
             conf = log.get("confidence")
             if conf is not None:
