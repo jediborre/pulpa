@@ -210,14 +210,64 @@ costo medido de ~1.3 pp de AUC y **cero** en WR.
 | fuente | qué tiene | ¿sirve para detectores? |
 |---|---|---|
 | `match_events` / `play_by_play` (histórico) | **solo eventos de anotación**: cuarto, tiempo, jugador, puntos, marcador | ✅ runs, ventanas, densidad, ritmo |
-| `live_snapshots_v3.players_json` (vivo) | por jugador: titular, minutos, puntos, **faltas**, plus-minus, rating | ✅ detectores de faltas/rotación **pero sin histórico** |
-| `live_snapshots_v3.team_stats_json` (vivo) | stats de equipo por partido (tiros libres, tiros de 2, …) | idem: falta backfill histórico |
+| `live_snapshots_v3.players_json` (vivo) | por jugador: titular, minutos, puntos, **faltas**, plus-minus, rating | ⚠️ en vivo sí, pero **sin histórico** |
+| `live_snapshots_v3.team_stats_json` (vivo) | stats de equipo por partido (tiros libres, tiros de 2, …) | ⚠️ el monitor solo captura el agregado `ALL` |
 
 **Consecuencia clave:** cualquier detector nuevo que no sea de anotación
 (faltas, tiempos muertos, sustituciones) **exige un backfill histórico** para
 poder entrenarse. Con ~1 req/s y 250.000 partidos, un backfill de `player_stats`
 son ~70 h. **Antes de proponer un detector de faltas, hay que medir si
 `match_events` + `graph_points` no bastan** (ya dan ritmo, presión y rachas).
+
+### 5.3 SÍ: hay forma de descargar las faltas, y es barato si se acota a las ligas rentables
+
+**El endpoint es `GET /event/{id}/statistics`** → **1 request por partido**
+(no 20), y trae las stats de equipo **por cuarto**:
+
+```
+periodos: ['1Q', '2Q', '3Q', '4Q', 'ALL']
+3Q  Fouls 10-6 | Free throws 5-8 | Turnovers 4-5 | Time spent in lead 0-720
+```
+
+(verificado en vivo sobre el partido 16814806, con el parser canónico
+`match/scraper.py::_parse_team_statistics`, que usa `homeValue`/`awayValue`).
+
+**Lo que esto abre como detector** (todo disponible en vivo, sin pedir nada más):
+- **faltas de Q3** (y su diferencia): la presión antes del cuarto → tiros libres
+- **tiros libres de Q3**: el ataque al vidrio / el juego en la zona
+- **pérdidas de Q3**
+- **"time spent in lead" de Q3**: quién controló el cuarto → **el proxy de momentum
+  más limpio que existe, y es independiente del mercado**
+
+**Coste de un backfill selectivo** (la pregunta):
+
+| universo | partidos | horas a 1 req/s | a 2 req/s |
+|---|---|---|---|
+| todo el dataset elegible | 184.206 | 51 h | 26 h |
+| **las 13 ligas por encima del equilibrio** (WR ≥ 71.4 % con ≥ 30 bets) | **8.706** | **2.4 h** | **1.2 h** |
+| las 13 ligas, solo los partidos con bets históricos | 3.581 | 1.0 h | 0.5 h |
+
+Ritmo medido: **1.6 req/s sin 403** (el límite seguro documentado es 1 req/s).
+
+**Cobertura medida** (muestra de 24 partidos de las ligas rentables, 2023-2025):
+- **92 %** devuelven las estadísticas de equipo **con faltas**
+- el desglose **por cuarto** está en una **minoría** (los partidos grandes: NBA,
+  G League, NCAA; las ligas pequeñas traen solo el agregado `ALL`)
+
+> ⚠️ El agregado `ALL` **solo se conoce al final del partido** → sirve para
+> etiquetas y análisis, **no** como feature en vivo. Para feature en vivo hace
+> falta el desglose por cuarto, que el monitor actual **no captura** (solo
+> guarda `period == "ALL"`): habría que ampliar `_record_live_snapshot` a
+> guardar los periodos.
+
+**Plan de trabajo si se decide hacerlo** (1 día, no más):
+1. Script de backfill con cola priorizada: primero las ligas rentables, luego
+   (si interesa) el resto.
+2. Nueva tabla `team_stats_v3` (match_id, period, group, stat, home, away).
+3. Ampliar la captura viva a los periodos 1Q-3Q.
+4. **Antes de entrenar nada**: medir en el backtest si Q3-faltas / Q3-tiros
+   libres / Q3-time-in-lead tienen señal sobre el Q4 (con y sin mercado).
+   Si no la tienen, el backfill no se justifica.
 
 ---
 
