@@ -173,6 +173,36 @@ def init_tables() -> None:
                 );
             """)
 
+            # 8. team_stats_v3: estadisticas de EQUIPO por cuarto (faltas, tiros
+            # libres, perdidas, tiempo en ventaja...). Es lo que permite
+            # detectar en vivo la presion antes del Q4 sin depender del
+            # mercado. La selección es la canonica de
+            # models/common/team_stats.py, la MISMA que captura el monitor en
+            # vivo -> paridad entre entrenamiento e inferencia.
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS team_stats_v3 (
+                    match_id TEXT NOT NULL,
+                    period TEXT NOT NULL,
+                    stat_name TEXT NOT NULL,
+                    home_value REAL,
+                    away_value REAL,
+                    created_at TEXT,
+                    PRIMARY KEY (match_id, period, stat_name)
+                );
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_team_stats_period_v3 "
+                         "ON team_stats_v3 (period, stat_name);")
+
+            # 9. Estado del backfill de team_stats_v3 (para poder reanudarlo).
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS team_stats_backfill_state (
+                    match_id TEXT PRIMARY KEY,
+                    status TEXT,
+                    n_rows INTEGER,
+                    checked_at TEXT
+                );
+            """)
+
     # Numeración diaria (1..N por fecha) para las filas que aún no la tengan.
     # Se ejecuta fuera de la transacción anterior para no bloquear la conexión.
     backfill_daily_seq()

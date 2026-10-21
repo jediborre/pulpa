@@ -254,20 +254,49 @@ Ritmo medido: **1.6 req/s sin 403** (el límite seguro documentado es 1 req/s).
 - el desglose **por cuarto** está en una **minoría** (los partidos grandes: NBA,
   G League, NCAA; las ligas pequeñas traen solo el agregado `ALL`)
 
-> ⚠️ El agregado `ALL` **solo se conoce al final del partido** → sirve para
-> etiquetas y análisis, **no** como feature en vivo. Para feature en vivo hace
-> falta el desglose por cuarto, que el monitor actual **no captura** (solo
-> guarda `period == "ALL"`): habría que ampliar `_record_live_snapshot` a
-> guardar los periodos.
+### 5.4 Lo que se midió de verdad (y cambia el plan)
 
-**Plan de trabajo si se decide hacerlo** (1 día, no más):
-1. Script de backfill con cola priorizada: primero las ligas rentables, luego
-   (si interesa) el resto.
-2. Nueva tabla `team_stats_v3` (match_id, period, group, stat, home, away).
-3. Ampliar la captura viva a los periodos 1Q-3Q.
-4. **Antes de entrenar nada**: medir en el backtest si Q3-faltas / Q3-tiros
-   libres / Q3-time-in-lead tienen señal sobre el Q4 (con y sin mercado).
-   Si no la tienen, el backfill no se justifica.
+| evento | histórico (10 min) | histórico (NBA/G League/WNBA/NCAA) | en vivo |
+|---|---|---|---|
+| puntos y tiros libres **por cuarto** | ✅ 100 % con valor | ✅ | ✅ |
+| **faltas por cuarto** | ❌ **0 %** (el feed `incidents` no las trae: vienen a 0-0) | ✅ | ✅ |
+| tiempos muertos / pérdidas por cuarto | ❌ 0 % | ✅ | ✅ |
+| agregado `ALL` (faltas, tiros libres, tiempo en ventaja, mayor ventaja, cambios de ventaja) | ✅ 92 % | ✅ | ✅ (parcial hasta el momento) |
+
+**El feed `incidents` en histórico solo trae la anotación**: el reconstructor por
+cuarto (`match/scraper.py::_parse_period_stats`) sí genera las filas de faltas,
+pero con **valor 0-0** en las ligas de 10 minutos. En las ligas grandes
+(`/statistics` con 1Q-4Q) sí hay faltas por cuarto.
+
+**Consecuencia directa:** una feature de **faltas por cuarto** no se puede
+entrenar con historia en las ligas donde opera `m27_v5_3` (10 min). Quedaría como
+señal **solo en vivo**, a partir de ahora. Lo que **sí** tiene paridad completa
+(entrenamiento ↔ vivo) es el **perfil de anotación por cuarto** (puntos y tiros
+libres), que además ya está parcialmente en el modelo (PBP, ritmo, presión).
+
+> El agregado `ALL` en vivo es **acumulado hasta ese momento**, así que
+> Q1+Q2+Q3 histórico == ALL parcial en vivo: esa es la vía de paridad para el
+> agregado.
+
+**Lo que sí se deja montado** (todo ya funcionando):
+- `models/common/team_stats.py`: selección canónica compartida (la misma en
+  vivo y en el backfill → paridad por construcción).
+- `team_stats_v3` + `team_stats_backfill_state`: tablas nuevas.
+- Captura viva ampliada: `live_snapshots_v3.team_stats_json` ahora guarda **Q1-Q4
+  + ALL** (antes solo el agregado `ALL`).
+- `tools/backfill_team_stats.py`: proceso independiente, reanudable, a 2 req/s
+  (medido 1.24-1.6 req/s sin 403), con las mismas dos fuentes que el monitor
+  (`incidents` + `statistics`).
+
+**Lo que decide el estudio de v5_4** (en orden):
+1. ¿El perfil de anotación por cuarto (tiros libres sobre todo) añade algo sobre
+   el Q4? → tiene paridad, se puede medir ya en el backtest.
+2. Las faltas: primero se acumulan en vivo (la captura ya está) y se validan
+   sobre la muestra viva, no sobre historia.
+3. El agregado `ALL` (el "carácter del partido": muchas faltas, muchos tiempos
+   muertos, muchas cambios de ventaja) como **filtro** de la población: ¿los
+   partidos turbulentos son distintos para el Q4? Es un filtro, no una feature,
+   y por lo tanto funciona con el agregado.
 
 ---
 

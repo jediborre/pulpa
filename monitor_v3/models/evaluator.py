@@ -134,22 +134,30 @@ def _merge_pregame_odds(match_id: str, payload: dict, watcher_state: "GameWatche
 
 
 def _record_live_snapshot(match_id: str, minute: float, payload: dict) -> None:
-    """Guarda telemetria compacta del minuto (jugadores/faltas/+- y cuotas in-play) en live_snapshots_v3."""
+    """Guarda telemetria compacta del minuto (jugadores/faltas/+-, cuotas in-play
+    y estadisticas de equipo POR CUARTO) en live_snapshots_v3.
+
+    Las stats por cuarto (1Q-3Q) son las que permiten detectar en vivo la
+    presion antes del Q4 (faltas, tiros libres, tiempo en ventaja) sin
+    depender del mercado. Se guardan con la MISMA seleccion canonica que el
+    backfill historico (models/common/team_stats.py) para que la feature en
+    vivo y la de entrenamiento sean identicas.
+    """
     from monitor_v3.database.repository import save_live_snapshot
+    from models.common.team_stats import compact_team_stats
 
     starters = {
-        (l.get("team"), str(l.get("player_id"))): int(l.get("is_starter") or 0)
-        for l in (payload.get("lineups") or []) if isinstance(l, dict)
+        (p.get("team"), str(p.get("player_id"))): int(p.get("is_starter") or 0)
+        for p in (payload.get("lineups") or []) if isinstance(p, dict)
     }
     players = [
         [p.get("team"), str(p.get("player_id")), starters.get((p.get("team"), str(p.get("player_id"))), 0),
          p.get("minutes_played"), p.get("points"), p.get("fouls"), p.get("plus_minus"), p.get("sofascore_rating")]
         for p in (payload.get("player_stats") or []) if isinstance(p, dict)
     ]
-    team_stats = [
-        [s.get("stat_key"), s.get("home_value"), s.get("away_value")]
-        for s in (payload.get("team_statistics") or []) if isinstance(s, dict) and s.get("period") == "ALL"
-    ]
+    team_stats = compact_team_stats(
+        list(payload.get("team_statistics") or []) + list(payload.get("period_stats") or [])
+    )
     score = payload.get("score") or {}
     m_info = payload.get("match") or {}
     save_live_snapshot(
