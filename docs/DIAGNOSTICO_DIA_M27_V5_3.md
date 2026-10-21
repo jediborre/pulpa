@@ -97,3 +97,98 @@ no una derrota: la tarjeta se leía como una racha de derrotas.
    en la cola y habría que capar la confianza (o subir el umbral solo ahí).
 4. Medir el WR por **subtorneo** (Eurocup/Group B y parecidos) y aplicar el filtro
    de P1.
+
+---
+
+# Segunda vuelta: el mapa de fugas del WR (2026-10-20, 21:00)
+
+El usuario tenía razón en el fondo: **el WR es la métrica**, y la calibración es
+otra cosa. Aquí está la cuenta completa.
+
+## 9. El número honesto
+
+| | n | WR | esperado (backtest) | gap | z |
+|---|---|---|---|---|---|
+| bets de `m27_v5_3` a 0.75+ (vivos, 3 días) | 46 | **68.9 %** | 80.7 % | **−12 pp** | ≈ **2.0** (p≈0.03) |
+
+Con n=46 son ~2 desviaciones: **no es concluyente, pero tampoco es "está bien"**.
+Es una bandera amarilla real.
+
+## 10. Mapa de fugas: dónde se pierde el acierto
+
+| banda de confianza | n | WR esperado | WR real | gap |
+|---|---|---|---|---|
+| 0.75-0.80 | 30 | 77.3 % | 70.0 % | −7.3 pp |
+| 0.80-0.85 | 12 | 83.3 % | **58.3 %** | **−25.0 pp** |
+| 0.85+ | 4 | 90.8 % | 75.0 % | −15.8 pp |
+
+El hueco se concentra en la banda alta. Con n=12, z≈−2.0 → suggestive.
+
+## 11. Se descartaron todas las causas "debug"
+
+| causa | veredicto |
+|---|---|
+| liquidación | ❌ las 5 de hoy cuadran con el Q4 real de `quarter_scores_v2` |
+| features (marcador) | ❌ vivo vs BD: diferencia media **−0.01**, solo el 8 % difiere ≥3 puntos |
+| predicción | ❌ el backtest sobre los **mismos 37 partidos** da **70.3 %** y el vivo **70.3 %** |
+| features de mercado | ❌ la ruta viva usa las cuotas **pre-partido**, igual que el entrenamiento (`_parse_odds` con `isLive=False`) |
+| minuto | ❌ acierto y calibración planos de 27 a 30 |
+| efecto basura | ❌ en partidos decididos el modelo es **mejor** (83.4 %) |
+| mezcla de ligas | ❌ el backtest en las 33 ligas vivas da 78.1 % (no 69 %) |
+| cobertura de liga/equipo | ❌ en el backtest las ligas desconocidas son las **mejores** (82.3 %); exigir historial **baja** el WR (80.7 % → 78.4 %) |
+
+Y la comprobación global: el acierto vivo de **todas** las predicciones es
+**59.5 %** con una confianza media de **60.6 %** → el modelo está calibrado
+globalmente. El mal día está en la submuestra 0.75+ (n=6 hoy).
+
+## 12. El problema de fondo: 6 apuestas/día
+
+La superficie de beneficio **viva** (se calcula desde la serie por minuto, sin
+esperar a que se acumulen apuestas):
+
+| umbral | bets/día | WR backtest | WR vivo (hoy) | u@1.40 backtest | u@1.83 backtest |
+|---|---|---|---|---|---|
+| 0.65 | 20 | 71.6 % | 65.0 % | +20 u | +967 u |
+| 0.70 | 8 | 76.0 % | 50.0 % | +349 u | +2.158 u |
+| 0.72 | 6 | 78.0 % | 33.3 % | +386 u | +1.795 u |
+| 0.75 | **6** | 80.8 % | 33.3 % | +356 u | +1.327 u |
+| 0.80 | 3 | 86.2 % | 33.3 % | +268 u | +760 u |
+
+A 0.75 el modelo dispara **6 veces al día**: llegar a 200 apuestas resueltas (el
+punto de decisión pre-registrado) lleva **un mes**. A 0.65 serían 20/día → diez
+días. El muestreo vivo actual no puede decidir nada.
+
+## 13. La regla que decide el umbral: el precio
+
+Punto de equilibrio por unidad: `WR_equilibrio = 1 − 1/cuota`
+
+| cuota | WR de equilibrio | WR a 0.75 en vivo (46 bets) |
+|---|---|---|
+| 1.40 | **71.4 %** | 68.9 % → por debajo del equilibrio |
+| 1.83 | **54.6 %** | 68.9 % → 14 pp de margen |
+
+Con la cuota que de verdad se consiga, el umbral cambia:
+- **a 1.40**: 0.75 es el único umbral con WR esperado suficiente; bajar el umbral
+  destruye el beneficio. Y el WR vivo actual (68.9 %) está **por debajo** del
+  equilibrio → no se debe bajar sin más.
+- **a 1.83**: 0.70-0.72 es óptimo (1.795-2.158 u en el backtest) y da el doble de
+  muestra viva. Con un WR vivo de 68.9 % el margen sigue siendo enorme.
+
+**Y aquí está el punto ciego**: la cuota del mercado de Q4 **no existe en
+SofaScore** (ver `docs/ANALISIS_POR_MINUTO.md`), así que no se puede medir el EV
+ni calibrar el umbral por precio. La "cuota" de la tarjeta es el ML in-play del
+partido completo: sirve de ilustración, no como precio.
+
+## 14. Recomendación
+
+1. **No tocar el modelo.** El camino vivo es fiel; lo que falla es la muestra
+   (6 bets/día) y el precio desconocido.
+2. **Bajar el umbral de ANÁLISIS a 0.65-0.70** (no el de apuesta): la serie por
+   minuto ya permite calcular la curva de WR viva en cualquier umbral. Así el
+   veredicto llega en 10 días en vez de un mes.
+3. **Dejar la apuesta en 0.75** hasta que la curva viva lo contradiga.
+4. **Pre-registrar el test de la banda alta**: si a las ~100 bets de 0.80-0.85 el
+   WR sigue < 75 %, capar la confianza (o exigir margen mayor en esa banda).
+5. **Pedir la cuota real** que se consigue en la apuesta de Q4: con eso se
+   cierra el EV y el umbral se decide con números, no con supuestos.
+
