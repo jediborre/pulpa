@@ -43,6 +43,8 @@ if /i "%~1"=="reinstall" goto REINSTALL_APP_CLI
 if /i "%~1"=="reinstall_app" goto REINSTALL_APP_CLI
 if /i "%~1"=="smart_backfill" goto RUN_SMART_BACKFILL_CLI
 if /i "%~1"=="backfill_smart" goto RUN_SMART_BACKFILL_CLI
+if /i "%~1"=="backfill_team_stats" goto RUN_BACKFILL_TEAM_STATS_CLI
+if /i "%~1"=="team_stats" goto RUN_BACKFILL_TEAM_STATS_CLI
 
 :: ── Verificar .venv ───────────────────────────────
 if not exist ".venv\Scripts\activate.bat" (
@@ -93,6 +95,7 @@ echo   20) Backfill masivo H2H (SofaScore - priorizado por ligas)
 echo   21) Rellenar datos de detalle faltantes (lineups, stats, odds, pbp, team_strength)
 echo   22) Backfill solo team_strength (fortaleza de equipos)
 echo   23) Comparar scraper tradicional vs obscura
+echo   40) Backfill team stats por cuarto (faltas, tiros libres, tiempo en ventaja)
 echo.
 echo  [4] SMART BACKFILL HISTORICO (2015-2026)
 echo   24) Submenu Smart Backfill (Modo interactivo y fases guiadas)
@@ -159,6 +162,8 @@ if /i "%OPT%"=="backfill_details" goto BACKFILL_DETAILS
 if "%OPT%"=="22" goto BACKFILL_TEAM_STRENGTH
 if /i "%OPT%"=="backfill_team_strength" goto BACKFILL_TEAM_STRENGTH
 if "%OPT%"=="23" goto COMPARE_SCRAPER
+if "%OPT%"=="40" goto BACKFILL_TEAM_STATS
+if /i "%OPT%"=="backfill_team_stats" goto BACKFILL_TEAM_STATS
 
 :: [4] Smart Backfill historico
 if "%OPT%"=="24" goto MENU_SMART_BACKFILL
@@ -523,6 +528,43 @@ if "%BFDLIM%"=="" (
 )
 goto MENU
 
+:BACKFILL_TEAM_STATS
+cls
+echo.
+echo ========================================================
+echo  Backfill de team stats por cuarto (team_stats_v3)
+echo ========================================================
+echo.
+echo  Descarga /event/{id}/incidents y /event/{id}/statistics y
+echo  guarda las estadisticas de equipo POR CUARTO (puntos, tiros
+echo  libres, faltas, tiempos muertos, perdidas) en team_stats_v3.
+echo.
+echo  Es lo que permite detectar en vivo la presion antes del Q4
+echo  sin depender del mercado. Mismas fuentes que usa el monitor
+echo  en vivo -> paridad entrenamiento/inferencia.
+echo.
+echo  Alcance por defecto: solo las ligas que el modelo considera
+echo  rentables (WR >= equilibrio a 1.40 con muestra minima).
+echo.
+set "BTS_SCOPE_ARG="
+set /p BTS_SCOPE="  Alcance [1=ligas rentables (defecto), 2=todas las ligas]: "
+if "%BTS_SCOPE%"=="2" set "BTS_SCOPE_ARG=--all"
+set /p BTS_RATE="  Ritmo en requests/s [Enter=2]: "
+if "%BTS_RATE%"=="" set "BTS_RATE=2"
+set /p BTS_FROM="  Fecha de inicio (YYYY-MM-DD) [Enter=2019-01-01]: "
+if "%BTS_FROM%"=="" set "BTS_FROM=2019-01-01"
+set /p BTS_LIM="  Limite de partidos (Enter = todos): "
+echo.
+call .venv\Scripts\activate
+if "%BTS_LIM%"=="" (
+    start "Pulpa - Backfill team stats" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python tools\backfill_team_stats.py %BTS_SCOPE_ARG% --rate %BTS_RATE% --from %BTS_FROM%"
+) else (
+    start "Pulpa - Backfill team stats" cmd /k "cd /d %~dp0 && call .venv\Scripts\activate && python tools\backfill_team_stats.py %BTS_SCOPE_ARG% --rate %BTS_RATE% --from %BTS_FROM% --limit %BTS_LIM%"
+)
+echo [i] Corriendo en su propia ventana. Es reanudable: si lo cortas,
+echo     repite la opcion y continua donde se quedo.
+goto MENU
+
 :COMPARE_SCRAPER
 cls
 echo [+] Comparando scraper tradicional vs obscura...
@@ -842,6 +884,7 @@ echo   obscura_start / start   Inicia el servicio Obscura en puerto 9222
 echo   obscura_stop / stop     Detiene el servicio Obscura
 echo   obscura_status / status Verifica estado de Obscura
 echo   obscura_install         Instala o actualiza Obscura v0.1.5
+echo   backfill_team_stats     Backfill de stats de equipo por cuarto (team_stats_v3)
 echo.
 echo Sin argumentos abre el Centro de Control interactivo.
 echo ==================================================================
@@ -1206,8 +1249,12 @@ goto MENU_SMART_BACKFILL
 
 :RUN_SMART_BACKFILL_CLI
 call .venv\Scripts\activate
-shift
-python tools\smart_historical_backfill.py %*
+python tools\smart_historical_backfill.py %2 %3 %4 %5 %6 %7 %8 %9
+exit /b %ERRORLEVEL%
+
+:RUN_BACKFILL_TEAM_STATS_CLI
+call .venv\Scripts\activate
+python tools\backfill_team_stats.py %2 %3 %4 %5 %6 %7 %8 %9
 exit /b %ERRORLEVEL%
 
 :: ─────────────────────────────────────────────────

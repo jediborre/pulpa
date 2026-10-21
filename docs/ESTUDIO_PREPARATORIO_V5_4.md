@@ -287,6 +287,12 @@ libres), que además ya está parcialmente en el modelo (PBP, ritmo, presión).
 - `tools/backfill_team_stats.py`: proceso independiente, reanudable, a 2 req/s
   (medido 1.24-1.6 req/s sin 403), con las mismas dos fuentes que el monitor
   (`incidents` + `statistics`).
+- Opción **40** del `menu.bat` (bloque de ingesta) + alias de CLI
+  `menu.bat backfill_team_stats`.
+
+**Estado del backfill (2026-10-21): COMPLETO** — 7.358 partidos de las 15 ligas
+rentables, **292.487 filas**, con desglose **Q1-Q4 en 5.800+ partidos** (250
+partidos sin estadísticas en el API: `status='empty'`).
 
 **Lo que decide el estudio de v5_4** (en orden):
 1. ¿El perfil de anotación por cuarto (tiros libres sobre todo) añade algo sobre

@@ -85,9 +85,9 @@ async def main() -> None:
     conn = get_db_connection()
     ligas = [] if args.all else ligas_rentables(args.min_bets)
     objs = partidos_objetivo(conn, ligas, args.desde, args.all)
-    ya = {r[0] for r in conn.execute("SELECT match_id FROM team_stats_backfill_state "
-                                     "WHERE status IN ('ok','empty')")}
-    pendientes = [(m, l) for m, l in objs if m not in ya]
+    ya = {str(r[0]) for r in conn.execute("SELECT match_id FROM team_stats_backfill_state "
+                                          "WHERE status IN ('ok','empty')")}
+    pendientes = [(m, l) for m, l in objs if str(m) not in ya]
     if args.limit:
         pendientes = pendientes[:args.limit]
 
