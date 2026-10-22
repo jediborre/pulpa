@@ -922,6 +922,19 @@ async def signals_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await _show_date_picker(update.effective_message)
 
 
+def _compute_live_summary() -> dict:
+    """Abre la conexion Y calcula el resumen en el MISMO hilo.
+
+    Una conexion sqlite3 creada en un hilo no puede usarse en otro
+    (ProgrammingError), asi que la apertura va dentro de la funcion que
+    despacha el trabajo.
+    """
+    from monitor_v3.models.live_summary import compute_live_summary
+    with sqlite3.connect(str(_db_path())) as conn:
+        conn.row_factory = sqlite3.Row
+        return compute_live_summary(conn, "m27_v5_3")
+
+
 async def resumen_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Botón/comando de resumen: el estado del modelo en vivo (WR por día,
     bandas de confianza, serie por minuto y curva de umbral)."""
@@ -932,10 +945,8 @@ async def resumen_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         description="/resumen (aviso)",
     )
     try:
-        from monitor_v3.models.live_summary import compute_live_summary, render_live_summary_text
-        with sqlite3.connect(str(_db_path())) as conn:
-            conn.row_factory = sqlite3.Row
-            data = await asyncio.to_thread(compute_live_summary, conn, "m27_v5_3")
+        from monitor_v3.models.live_summary import render_live_summary_text
+        data = await asyncio.to_thread(_compute_live_summary)
         text = render_live_summary_text(data)
         if msg:
             await _send_with_retry(msg.delete, description="/resumen (borrar aviso)")
@@ -944,7 +955,7 @@ async def resumen_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         log_error("TELEGRAM", f"[BOT_V3] Error en /resumen: {type(exc).__name__}: {exc}")
         await _send_with_retry(
             lambda: update.effective_message.reply_text(
-                f"❌ No pude calcular el resumen: {type(exc).__name__}"),
+                f"❌ No pude calcular el resumen: {type(exc).__name__}: {exc}"),
             description="/resumen (error)",
         )
 

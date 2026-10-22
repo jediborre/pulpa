@@ -36,10 +36,24 @@ def _wilson(wins: int, n: int) -> tuple[float, float]:
     return (max(0.0, c - h), min(1.0, c + h))
 
 
+def _categoria_bloqueada(liga: str | None) -> str | None:
+    """Categoria de fase del torneo, o None si no se bloquea."""
+    try:
+        from models.common.competition_stage import classify_stage
+        from models.m27_v5_3.features import BLOCKED_STAGE_CATEGORIES
+        cat, _ = classify_stage(liga or "")
+    except Exception:  # noqa: BLE001
+        return None
+    return cat if cat in BLOCKED_STAGE_CATEGORIES else None
+
+
 def compute_live_summary(conn: sqlite3.Connection,
                          model_version: str = "m27_v5_3") -> dict[str, Any]:
     """Todos los numeros del resumen en vivo del modelo."""
     out: dict[str, Any] = {"model": model_version}
+
+    liga_de = {str(r["match_id"]): r["league"] for r in
+               conn.execute("SELECT match_id, league FROM matches WHERE league IS NOT NULL")}
 
     # ── 1. Apuestas reales por dia y acumulado ──
     por_dia = []
@@ -70,6 +84,26 @@ def compute_live_summary(conn: sqlite3.Connection,
         "u140": w_tot * 1.40 - n_tot, "u183": w_tot * 1.83 - n_tot,
         "z": ((w_tot / n_tot) - EXPECTED_WR_075)
              / math.sqrt(EXPECTED_WR_075 * (1 - EXPECTED_WR_075) / n_tot) if n_tot else 0.0,
+    }
+
+    # ── 1b. El mismo registro con las reglas de fase ACTUALES (lo que el
+    #        modelo ya no apuesta: formatos de supervivencia) ──
+    n_vig = w_vig = n_bloq = w_bloq = 0
+    for r in conn.execute("""
+        SELECT match_id, result FROM bet_monitor_log_v3
+        WHERE model_version=? AND signal_type LIKE 'BET%'
+          AND result IN ('win','loss')""", (model_version,)):
+        bloq = _categoria_bloqueada(liga_de.get(str(r["match_id"]))) is not None
+        if bloq:
+            n_bloq += 1
+            w_bloq += r["result"] == "win"
+        else:
+            n_vig += 1
+            w_vig += r["result"] == "win"
+    out["reglas_actuales"] = {
+        "n": n_vig, "w": w_vig, "wr": (w_vig / n_vig) if n_vig else 0.0,
+        "u140": w_vig * 1.40 - n_vig, "u183": w_vig * 1.83 - n_vig,
+        "n_bloqueadas": n_bloq, "w_bloqueadas": w_bloq,
     }
 
     # ── 2. Por banda de confianza ──
@@ -139,8 +173,6 @@ def compute_live_summary(conn: sqlite3.Connection,
     out["partidos_evaluados"] = len(mejor)
 
     # ── 5. Por liga (solo las que tienen muestra) ──
-    liga_de = {str(r["match_id"]): r["league"] for r in
-               conn.execute("SELECT match_id, league FROM matches WHERE league IS NOT NULL")}
     por_liga: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     for r in conn.execute("""
         SELECT match_id, result FROM bet_monitor_log_v3
@@ -174,6 +206,12 @@ def render_live_summary_text(data: dict[str, Any]) -> str:
     L.append(f"  u@1.40: {acc['u140']:+.0f} | u@1.83: {acc['u183']:+.0f} | "
              f"esperado por el backtest: 80.7% (z = {acc['z']:+.2f})")
     L.append(f"  equilibrio a 1.40: <b>{BREAKEVEN_140 * 100:.1f}%</b> · a 1.83: 54.6%")
+
+    ra = data.get("reglas_actuales")
+    if ra and ra["n"]:
+        L.append(f"  con las reglas de fase actuales (fuera {ra['n_bloqueadas']} bets de formatos "
+                 f"de supervivencia): {ra['w']}/{ra['n']} = <b>{ra['wr'] * 100:.1f}%</b> | "
+                 f"u@1.40 {ra['u140']:+.0f} | u@1.83 {ra['u183']:+.0f}")
     L.append("")
 
     if data["bandas"]:
