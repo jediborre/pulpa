@@ -74,6 +74,8 @@ from monitor_v3.notifications.telegram_bot import (
     send_final_confirmation,
     send_stats_message,
     send_daily_summary,
+    select_notifiable_logs,
+    select_notifiable_predictions,
 )
 from monitor_v3.scrapers.schedule_scraper import fetch_schedule_matches_for_date
 from monitor_v3.scrapers.live_scraper import (
@@ -221,23 +223,29 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
                 deduped_logs[log["model_version"]] = log
             logs = list(deduped_logs.values())
 
-            # Los modelos en MODO SOMBRA no se muestran en la tarjeta de
-            # resultado (el usuario solo quiere ver m27_v5_3), pero siguen
+            # Los modelos en MODO SOMBRA no se muestran NUNCA en la tarjeta de
+            # resultado (el usuario solo quiere ver m27_v5_3). Siguen
             # registrados en bet_monitor_log_v3 y model_inference_v3 para
-            # poder medirlos en vivo.
-            visible_logs = [log for log in logs
-                            if log["model_version"] not in SHADOW_MODELS]
-            if visible_logs:
-                logs = visible_logs
-            
+            # poder medirlos en vivo, pero no generan mensaje. No hay
+            # fallback: si el unico log es de un modelo en sombra no se envia
+            # nada (antes se colaba m27_v5_2 con su 56 %).
+            #
+            # SOLO se notifica una apuesta REAL (BET por encima del umbral del
+            # modelo). Un NO_BET o un pendiente no generan tarjeta de
+            # resultado: son ruido para el usuario, aunque internamente se
+            # sigan registrando. Ojo: "BET" in "NO_BET" == True, por eso se usa
+            # _is_real_bet_signal y no una comprobacion de subcadena.
+            logs = select_notifiable_logs(logs)
+            if not logs:
+                log_info("DESCARGA", f"[FT] Sin apuesta con umbral valido (sin tarjeta de resultado) | "
+                                     f"{home} vs {away}", q4_orange=True)
+
             # Comprobar antigüedad
             is_too_old = False
             if scheduled_ts and (time.time() - scheduled_ts > 21600):
                 is_too_old = True
-            
-            has_operable_bet = any("BET" in (log.get("signal_type") or "") for log in logs)
-            
-            if has_operable_bet and not is_too_old:
+
+            if logs and not is_too_old:
                 if len(logs) > 1:
                     log0 = logs[0]
                     target_quarter = log0["target_quarter"] or 4
@@ -603,13 +611,21 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                             # Modelos en MODO SOMBRA: su apuesta se REGISTRA (bet_monitor_log_v3
                             # y model_inference_v3) pero NO dispara alerta de Telegram hasta
                             # reunir evidencia suficiente (ver constants.SHADOW_MODELS).
-                            notify_models = {m: p for m, p in operable_to_send.items()
-                                             if m not in SHADOW_MODELS}
+                            # notify_models = apuestas con UMBRAL VALIDO de modelos visibles.
+                            notify_models = select_notifiable_predictions(operable_to_send)
                             shadow_hit = [m for m in operable_to_send if m in SHADOW_MODELS]
                             if shadow_hit:
                                 log_info("EVALUACION", f"[EVAL] MODO SOMBRA (registrado, sin alerta) | "
                                                      f"Modelos: {', '.join(shadow_hit)} | {match_display}",
                                          q4_orange=True)
+
+                            # UMBRAL VALIDO: solo se alerta si un modelo VISIBLE
+                            # (m27_v5_3) tiene apuesta real. Si el unico que
+                            # aposto es un modelo en sombra, el log queda en BD
+                            # pero no se manda nada a Telegram.
+                            if not notify_models:
+                                log_info("EVALUACION", f"[EVAL] Sin apuesta con umbral valido "
+                                                     f"(sin alerta) | {match_display}", q4_orange=True)
 
                             # Mostrar todas las predicciones del tick para consenso transparente.
                             # Un modelo que NO apuesta tambien se muestra, con el motivo:
@@ -634,8 +650,9 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
 
                             # Con un solo modelo visible se usa la misma tarjeta
                             # combinada (misma fila, mismo motivo), solo sin las
-                            # filas de los modelos en modo sombra.
-                            if display_preds:
+                            # filas de los modelos en modo sombra. Nunca se envia
+                            # una tarjeta sin apuesta real de un modelo visible.
+                            if display_preds and notify_models:
                                 await send_combined_bet_alert(
                                     predictions=display_preds,
                                     match_id=match_id,
@@ -670,7 +687,9 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
                                     confidence=pred0.get("confidence")
                                 )
 
-                            update_schedule_q4(match_id, signal="BET_SENT", model=",".join(notify_models.keys() or operable_to_send.keys()))
+                            if notify_models:
+                                update_schedule_q4(match_id, signal="BET_SENT",
+                                                   model=",".join(notify_models.keys()))
 
                         # Si todos los modelos evaluaron, podemos dormir hasta el final del juego
                         if all(q4_done.values()):

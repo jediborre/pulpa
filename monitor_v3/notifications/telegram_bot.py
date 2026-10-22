@@ -275,6 +275,37 @@ def _is_real_bet_signal(signal: str | None) -> bool:
     return "BET" in value and "NO_BET" not in value
 
 
+def select_notifiable_logs(logs: list[dict] | None) -> list[dict]:
+    """
+    Logs que SI deben generar mensaje automatico en Telegram.
+
+    Politica (pedido del usuario, 2026-10-22): solo las apuestas con UMBRAL
+    VALIDO de modelos visibles. Es decir:
+      - los modelos en MODO SOMBRA (SHADOW_MODELS) nunca se muestran;
+      - un NO_BET / pendiente / bloqueado NO genera tarjeta de resultado.
+    El resto sigue registrado en bet_monitor_log_v3 y model_inference_v3 para
+    poder medirlo internamente.
+    """
+    result = []
+    for log in logs or []:
+        if log.get("model_version") in SHADOW_MODELS:
+            continue
+        if not _is_real_bet_signal(log.get("signal_type")):
+            continue
+        result.append(log)
+    return result
+
+
+def select_notifiable_predictions(predictions: dict | None) -> dict:
+    """Subconjunto de predicciones del tick con apuesta real de un modelo visible."""
+    return {
+        model: pred
+        for model, pred in (predictions or {}).items()
+        if model not in SHADOW_MODELS and _is_real_bet_signal(pred.get("signal"))
+    }
+
+
+
 def _threshold_pct(model: str, payload: dict | None) -> int:
     """Umbral REAL de confianza del modelo, en porcentaje (para los textos)."""
     from monitor_v3.notifications.bet_image import _model_threshold
@@ -544,7 +575,12 @@ async def send_bet_alert(
     """
     Despacha una alerta de apuesta en vivo a todos los suscriptores.
     Retorna el primer resultado de la lista para compatibilidad con el caller.
+
+    Politica (2026-10-22): solo se envia si la senal es una apuesta REAL de un
+    modelo visible; un NO_BET de un modelo en sombra no genera alerta.
     """
+    if model in SHADOW_MODELS or not _is_real_bet_signal(signal):
+        return {"ok": True, "skipped": True, "match_url": None}
     base_text = format_bet_message(model, picked_team, is_home, signal,
                                    confidence=confidence, reason=reason)
     seq = _match_seq(match_id)
@@ -742,7 +778,14 @@ async def send_combined_bet_alert(
 ) -> dict:
     """
     Despacha una alerta de apuesta combinada en vivo a todos los suscriptores.
+
+    Solo se envia si queda al menos una apuesta REAL de un modelo visible: si
+    todos los modelos del tick estan en NO_BET/pendientes o en MODO SOMBRA no
+    se manda nada a Telegram. Las filas informativas de los demas modelos
+    visibles (pendiente / motivo) se conservan cuando SI hay apuesta.
     """
+    if not select_notifiable_predictions(predictions):
+        return {"ok": True, "skipped": True, "match_url": None}
     base_text = format_combined_bet_message(predictions, home_team, away_team)
     seq = _match_seq(match_id)
     text = _format_telegram_details(
@@ -913,7 +956,14 @@ async def send_combined_final_confirmation(
 ) -> dict:
     """
     Consolida la verificación final del partido para múltiples modelos en un solo mensaje.
+
+    Politica (2026-10-22): solo se envia si queda al menos una apuesta REAL de
+    un modelo visible (umbral valido); los NO_BET y los modelos en MODO SOMBRA
+    no generan tarjeta de resultado.
     """
+    logs = select_notifiable_logs(logs)
+    if not logs:
+        return {"ok": True, "skipped": True, "match_url": None}
     base_text = format_combined_final_message(logs, home_team, away_team)
     seq = _match_seq(match_id)
     text = _format_telegram_details(
@@ -993,7 +1043,12 @@ async def send_final_confirmation(
     Consolida la verificación final del partido, homologando el formato
     con el de las apuestas combinadas (sin prefijar ✅/❌ al título general,
     sino colocándolo al inicio de la línea de cada modelo, y sin MIN).
+
+    Politica (2026-10-22): solo se envia para una apuesta REAL (umbral valido)
+    de un modelo visible; un NO_BET o un modelo en MODO SOMBRA no notifica.
     """
+    if model in SHADOW_MODELS or not _is_real_bet_signal(signal):
+        return {"ok": True, "skipped": True, "match_url": None}
     is_low_conf = False
     if confidence is not None:
         conf_val = confidence / 100.0 if confidence > 1.0 else confidence

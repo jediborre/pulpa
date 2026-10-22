@@ -281,7 +281,7 @@ Cada liquidación individual se registra en la capa de datos:
 
 Ejemplo de línea por modelo: `🟢 APUESTA Q4 [m27_v5_3 78%] → 🏠 CD Universitario Concepcion`
 
-Desde el 2026-10-20 **todos** los modelos del panel aparecen en la alerta, no solo los que apostaron, y cada uno con su motivo:
+Desde el 2026-10-20 **todos** los modelos VISIBLES del panel aparecen en la alerta, no solo los que apostaron, y cada uno con su motivo:
 
 ```text
 🟢 APUESTA Q4
@@ -293,11 +293,14 @@ m27_v5_2 59% [NO BET (<75%)] → 🏠 Falco KC-Szombathely
 - `NO BET (<X%>)`: no superó el umbral `<X>` (el umbral real del modelo).
 - `NO BET — <motivo>`: fue descartado; el motivo explica por qué.
 
+> 🔕 **Política de umbral válido (2026-10-22):** la alerta **solo se envía si al menos un modelo VISIBLE tiene apuesta real** (`BET` por encima de su umbral). Si el único que apostó es un modelo en **modo sombra** (`SHADOW_MODELS`, hoy `m27_v5_2`), el log queda registrado en `bet_monitor_log_v3` / `model_inference_v3` pero **no se manda nada a Telegram**. Cuando sí hay apuesta real, las filas informativas del resto de modelos visibles se mantienen.
+
 ### 9.3 Resultados y confirmaciones FT
 
 - Título: `🟢 RESULTADO Q4` / `⚪️ RESULTADO TARDIO Q4` (mismo criterio de prefijos que las alertas).
 - Por modelo: `✅` ganada, `❌` perdida.
 - Agregados: `✅ win`, `❌ loss`, `➖ push`, `⏳ pendiente`.
+- 🔕 **Solo apuestas con umbral válido (2026-10-22):** la tarjeta de resultado se envía únicamente si hay un `BET` real de un modelo visible. Los `NO_BET`, los pendientes y los modelos en modo sombra **no generan mensaje** (antes un `NO_BET` de `m27_v5_2` al 56 % se colaba como `❌ RESULTADO Q4` porque `"BET" in "NO_BET"` era `True` y había fallback al modelo sombra). El filtro vive en `select_notifiable_logs()` / `select_notifiable_predictions()` de `telegram_bot.py`, aplicado también como red de seguridad dentro de los propios senders.
 
 ### 9.4 Reportes y bot interactivo
 
