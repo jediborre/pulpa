@@ -310,6 +310,7 @@ m27_v5_2 59% [NO BET (<75%)] → 🏠 Falco KC-Szombathely
 - Los avisos de apuesta y de resultado FT se envían además como **imagen** (tarjeta y, en FT, tarjeta + gráfica de momentum): ver [`IMAGEN_APUESTA_Q4.md`](IMAGEN_APUESTA_Q4.md). Si la imagen falla, el aviso cae a texto plano.
 - Cada partido lleva un **`#N`** secuencial dentro del día (columna `daily_seq`, reinicia en 1 cada fecha) para facilitar el seguimiento en el chat y en el listado `🎯 Apuestas`.
 - `/status` responde con **imagen de dos secciones (`HOY` y `MES`)** más el texto equivalente; el resumen diario de las 23:55 usa el mismo motor con el desglose por categoría.
+- `/status` (texto e imagen) y el resumen del día de `/signals` solo cuentan los modelos de `STATUS_MODELS` (`m27_v5_3`): los retirados (`m27_v4`, `m27_v3`, `v6_2`) y los de modo sombra no aparecen ni suman en los totales (2026-10-22). Sus logs siguen en `bet_monitor_log_v3` para auditoría.
 
 ---
 

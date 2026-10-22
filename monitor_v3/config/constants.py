@@ -96,6 +96,15 @@ ACTIVE_MODELS = ["m27_v5_3", "m27_v5_2"]
 # (comparativa v5_2 vs v5_3 del estudio de v5_4), pero no se muestra.
 SHADOW_MODELS: list[str] = ["m27_v5_2"]
 
+# Modelos que se muestran en los resumenes publicos de Telegram (/status HOY y
+# MES, y el resumen del dia de /signals). 2026-10-22: el usuario pide quitar
+# los modelos retirados (m27_v4, m27_v3, v6_2) del bloque MES; sus 700+
+# apuestas historicas dominaban el total y ensuciaban el acierto. Se muestran
+# solo las del modelo vigente, y los totales (Apuestas / ganadas / perdidas /
+# acierto) cuentan exclusivamente esos modelos. Los logs de los retirados y de
+# los modelos en sombra siguen en bet_monitor_log_v3 para auditoria interna.
+STATUS_MODELS: list[str] = ["m27_v5_3"]
+
 # Ventana de inferencia VALIDA por modelo (minutos de juego). Fuera de ella el
 # modelo no fue entrenado: su salida no es comparable con el entrenamiento y no
 # se archiva en model_inference_v3. m27_v5_3 se entreno en t in [25.5, 30.0].

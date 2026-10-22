@@ -43,7 +43,7 @@ from telegram.request import HTTPXRequest
 
 from monitor_v3.config.constants import (
     TELEGRAM_BOT_TOKEN,
-    ACTIVE_MODELS,
+    STATUS_MODELS,
     UTC_OFFSET_HOURS,
 )
 from monitor_v3.database.connection import get_real_db_path
@@ -247,7 +247,7 @@ def _day_stats_image(stats: dict, date_str: str) -> bytes | None:
         from monitor_v3.notifications.stats_image import build_stats_image
         from monitor_v3.notifications.stats_image import _section_from_stats
 
-        section = _section_from_stats(date_str, stats, ACTIVE_MODELS)
+        section = _section_from_stats(date_str, stats, STATUS_MODELS)
         return build_stats_image(
             title="Apuestas del día",
             sections=[section],
@@ -652,6 +652,10 @@ def fetch_v3_stats(created_date: str | None = None, created_month: str | None = 
     - `created_date`: 'YYYY-MM-DD' → solo ese día.
     - `created_month`: 'YYYY-MM' → solo ese mes.
     - Sin filtros: histórico completo.
+
+    Solo cuenta `STATUS_MODELS` (hoy m27_v5_3): los modelos retirados (m27_v4,
+    m27_v3, v6_2) y los de modo sombra quedan fuera de las filas Y de los
+    totales, para que el /status no mezcle 700+ apuestas históricas viejas.
     """
     db = _db_path()
     stats = {
@@ -661,13 +665,19 @@ def fetch_v3_stats(created_date: str | None = None, created_month: str | None = 
     if not db.exists():
         return stats
     query = "SELECT model_version, signal_type, confidence, result FROM bet_monitor_log_v3"
+    where: list[str] = []
     params: list[str] = []
     if created_date:
-        query += " WHERE date(created_at) = ?"
+        where.append("date(created_at) = ?")
         params.append(created_date)
     elif created_month:
-        query += " WHERE strftime('%Y-%m', created_at) = ?"
+        where.append("strftime('%Y-%m', created_at) = ?")
         params.append(created_month)
+    if STATUS_MODELS:
+        where.append("model_version IN (" + ",".join("?" * len(STATUS_MODELS)) + ")")
+        params.extend(STATUS_MODELS)
+    if where:
+        query += " WHERE " + " AND ".join(where)
 
     with sqlite3.connect(str(db)) as conn:
         conn.row_factory = sqlite3.Row
@@ -761,7 +771,7 @@ def build_signals_text() -> str:
 def _range_block(title: str, stats: dict, emoji: str = "") -> list[str]:
     """Bloque de texto con las cifras de un rango (hoy/mes)."""
     t = stats.get("total") or {}
-    models = list((stats.get("per_model") or {}).keys()) or list(ACTIVE_MODELS)
+    models = list((stats.get("per_model") or {}).keys()) or list(STATUS_MODELS)
     resolved = int(t.get("win") or 0) + int(t.get("loss") or 0)
     acc = f"{int(round(int(t.get('win') or 0) * 100 / resolved))}%" if resolved else "—"
 
@@ -1017,7 +1027,7 @@ def _status_image(day_stats: dict, month_stats: dict) -> bytes | None:
         return status_image(
             day_stats,
             month_stats,
-            ACTIVE_MODELS,
+            STATUS_MODELS,
             subtitle=subtitle,
             footer="Bet Monitor V3 · datos de bet_monitor_log_v3",
         )
