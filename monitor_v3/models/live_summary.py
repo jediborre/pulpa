@@ -14,7 +14,8 @@ from __future__ import annotations
 
 import math
 import sqlite3
-from collections import defaultdict
+from collections import Counter, defaultdict
+import json
 from pathlib import Path
 from typing import Any
 
@@ -185,6 +186,49 @@ def compute_live_summary(conn: sqlite3.Connection,
         ({"liga": k, "n": v[0], "w": v[1], "wr": v[1] / v[0] if v[0] else 0.0}
          for k, v in por_liga.items() if v[0] >= 2),
         key=lambda d: -d["n"])
+    # ── 6. Descartes: por que NO se apostó ──
+    motivos: Counter = Counter()
+    cercania: Counter = Counter()
+    por_liga_desc: Counter = Counter()
+    n_desc = n_bet = 0
+    for r in conn.execute("""
+        SELECT match_id, signal_type, confidence, inference_json
+        FROM bet_monitor_log_v3 WHERE model_version=?""", (model_version,)):
+        sig = r["signal_type"] or ""
+        es_bet = "BET" in sig and "NO_BET" not in sig
+        if es_bet:
+            n_bet += 1
+            continue
+        n_desc += 1
+        por_liga_desc[liga_de.get(str(r["match_id"])) or "?"] += 1
+        try:
+            inf = json.loads(r["inference_json"]) if r["inference_json"] else {}
+        except Exception:  # noqa: BLE001
+            inf = {}
+        raw = inf.get("raw_json") or {}
+        bloqueado = raw.get("block_reason")
+        razon = inf.get("reason")
+        conf = r["confidence"] or 0.0
+        if bloqueado:
+            motivos["descartado por liga/formato"] += 1
+            motivos[f"   · {str(bloqueado)[:60]}"] += 1
+        elif razon:
+            motivos["no disponible"] += 1
+            motivos[f"   · {str(razon)[:60]}"] += 1
+        else:
+            motivos["no alcanzó el umbral"] += 1
+            if conf >= 0.70:
+                cercania["0.70-0.75 (casi)"] += 1
+            elif conf >= 0.60:
+                cercania["0.60-0.70"] += 1
+            else:
+                cercania["<0.60"] += 1
+    out["descartes"] = {
+        "n": n_desc, "n_bet": n_bet,
+        "motivos": dict(motivos), "cercania": dict(cercania),
+        "por_liga": por_liga_desc.most_common(8),
+    }
+
     return out
 
 
@@ -240,4 +284,21 @@ def render_live_summary_text(data: dict[str, Any]) -> str:
         L.append("<b>Ligas con muestra</b>")
         for l in data["por_liga"][:8]:
             L.append(f"  {l['liga'][:36]}: {l['n']} | WR {l['wr'] * 100:.0f}%")
+
+    d = data.get("descartes")
+    if d and d["n"]:
+        L.append("")
+        L.append(f"<b>Descartes</b>: {d['n']} de {d['n'] + d['n_bet']} partidos vistos "
+                 f"({d['n_bet'] * 100 / max(d['n'] + d['n_bet'], 1):.1f} % apostó)")
+        mot = d["motivos"]
+        for clave in ("no alcanzó el umbral", "descartado por liga/formato", "no disponible"):
+            if mot.get(clave):
+                L.append(f"  · {clave}: <b>{mot[clave]}</b>")
+        for k, v in d["cercania"].items():
+            L.append(f"    (de los que no llegaron al umbral: {v} en {k})")
+        L.append("  más descartados por liga:")
+        for liga, n in d["por_liga"][:5]:
+            L.append(f"    {liga[:38]}: {n}")
+        L.append("  <i>las ligas de 12 min y los formatos bloqueados ni siquiera "
+                 "llegan al modelo</i>")
     return "\n".join(L)
