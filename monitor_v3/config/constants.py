@@ -85,12 +85,16 @@ TOKEN_REFRESH_MINUTES = 60 * 24 * 7 # Chequeo preventivo semanal (tokens duran ~
 ACTIVE_MODELS = ["m27_v5_3", "m27_v5_2"]
 
 # Modelos en MODO SOMBRA: se evaluan y se registran en bet_monitor_log_v3 y en
-# model_inference_v3, pero NO disparan la alerta de apuesta en Telegram.
+# model_inference_v3, pero NO aparecen en Telegram (ni en la alerta de
+# apuesta, ni en la tarjeta de resultado, ni en el resumen diario).
 # 2026-10-20: m27_v5_3 SALE del modo sombra. El usuario lo sigue de cerca y
 # pide que aparezca en las alertas (y primero). Nota: sigue sin evidencia
 # suficiente en vivo (40 apuestas, WR 72.5 %, IC95 56-85 %); reactivarlo
 # cuando se acumulen ~200 apuestas resueltas.
-SHADOW_MODELS: list[str] = []
+# 2026-10-21: m27_v5_2 PASA a modo sombra a peticion del usuario ("solo las
+# de v5_3"). Sigue evaluandose y registrandose para poder medirlo en vivo
+# (comparativa v5_2 vs v5_3 del estudio de v5_4), pero no se muestra.
+SHADOW_MODELS: list[str] = ["m27_v5_2"]
 
 # Ventana de inferencia VALIDA por modelo (minutos de juego). Fuera de ella el
 # modelo no fue entrenado: su salida no es comparable con el entrenamiento y no

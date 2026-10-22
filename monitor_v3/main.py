@@ -220,6 +220,15 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
             for log in logs:
                 deduped_logs[log["model_version"]] = log
             logs = list(deduped_logs.values())
+
+            # Los modelos en MODO SOMBRA no se muestran en la tarjeta de
+            # resultado (el usuario solo quiere ver m27_v5_3), pero siguen
+            # registrados en bet_monitor_log_v3 y model_inference_v3 para
+            # poder medirlos en vivo.
+            visible_logs = [log for log in logs
+                            if log["model_version"] not in SHADOW_MODELS]
+            if visible_logs:
+                logs = visible_logs
             
             # Comprobar antigüedad
             is_too_old = False
@@ -623,7 +632,10 @@ async def _watch_match(match_id: str, match_row: dict, stop_event: asyncio.Event
 
                             display_preds = {m: preds[m] for m in preds if _visible_for_display(m)}
 
-                            if len(display_preds) > 1:
+                            # Con un solo modelo visible se usa la misma tarjeta
+                            # combinada (misma fila, mismo motivo), solo sin las
+                            # filas de los modelos en modo sombra.
+                            if display_preds:
                                 await send_combined_bet_alert(
                                     predictions=display_preds,
                                     match_id=match_id,

@@ -33,7 +33,7 @@ import asyncio
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
-from monitor_v3.config.constants import TELEGRAM_BOT_TOKEN, UTC_OFFSET_HOURS
+from monitor_v3.config.constants import SHADOW_MODELS, TELEGRAM_BOT_TOKEN, UTC_OFFSET_HOURS
 from monitor_v3.database.connection import get_real_db_path
 from monitor_v3.utils.logger import log_info, log_warning, log_error, COLOR_GREEN, COLOR_RESET
 
@@ -1280,6 +1280,10 @@ def _daily_summary_data() -> dict | None:
 
     for r in rows:
         model = r["model_version"] or "?"
+        if model in SHADOW_MODELS:
+            # Modelos en modo sombra: se evaluan y registran, pero no se
+            # muestran en el resumen (el usuario quiere ver solo v5_3).
+            continue
         m = per_model.setdefault(model, {"bets": 0, "win": 0, "loss": 0, "pending": 0})
         sig = r["signal_type"] or ""
         if "NO_BET" in sig or "BET" not in sig:
@@ -1376,6 +1380,8 @@ def _render_daily_summary_text(data: dict) -> str:
     lines.append("")
     lines.append("<b>Por modelo</b>")
     for model, s in data["per_model"].items():
+        if model in SHADOW_MODELS:
+            continue
         r = s["win"] + s["loss"]
         a = f"{int(round(s['win'] * 100 / r))}%" if r else "—"
         lines.append(f"  {model}: BET {s['bets']} | ✅ {s['win']}  ❌ {s['loss']}  ⏳ {s['pending']} | {a}")
