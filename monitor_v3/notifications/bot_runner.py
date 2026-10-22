@@ -51,6 +51,7 @@ from monitor_v3.utils.logger import log_info, log_warning, log_error
 # Textos de los botones persistentes (debajo del input de Telegram)
 SIGNALS_BUTTON_TEXT = "🎯 Apuestas"
 STATUS_BUTTON_TEXT = "📊 Status"
+RESUMEN_BUTTON_TEXT = "📈 Resumen"
 
 # ─────────────────────────────────────────────────────────────────────
 # Timeouts y resiliencia de red
@@ -831,7 +832,7 @@ def build_status_text(day_stats: dict | None = None, month_stats: dict | None = 
 
 def _reply_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
-        [[SIGNALS_BUTTON_TEXT, STATUS_BUTTON_TEXT]],
+        [[SIGNALS_BUTTON_TEXT, STATUS_BUTTON_TEXT], [RESUMEN_BUTTON_TEXT]],
         resize_keyboard=True,
         is_persistent=True,
     )
@@ -876,7 +877,9 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "🤖 <b>Bot Monitor V3</b>\n\n"
         "Consulta el estado del monitor:\n"
         f"• {SIGNALS_BUTTON_TEXT} — elige un día y luego un partido (imagen de detalle)\n"
-        f"• {STATUS_BUTTON_TEXT} — estadísticas de hoy y del mes"
+        f"• {STATUS_BUTTON_TEXT} — estadísticas de hoy y del mes\n"
+        f"• {RESUMEN_BUTTON_TEXT} — resumen del modelo en vivo (WR por día, bandas, "
+        "curva de umbral)"
     )
     await _send_with_retry(
         lambda: update.effective_message.reply_text(
@@ -917,6 +920,33 @@ async def signals_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if msg:
         await _send_with_retry(msg.delete, description="/signals (borrar aviso)")
     await _show_date_picker(update.effective_message)
+
+
+async def resumen_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Botón/comando de resumen: el estado del modelo en vivo (WR por día,
+    bandas de confianza, serie por minuto y curva de umbral)."""
+    if not _is_allowed(update):
+        return
+    msg = await _send_with_retry(
+        lambda: update.effective_message.reply_text("⏳ Calculando el resumen..."),
+        description="/resumen (aviso)",
+    )
+    try:
+        from monitor_v3.models.live_summary import compute_live_summary, render_live_summary_text
+        with sqlite3.connect(str(_db_path())) as conn:
+            conn.row_factory = sqlite3.Row
+            data = await asyncio.to_thread(compute_live_summary, conn, "m27_v5_3")
+        text = render_live_summary_text(data)
+        if msg:
+            await _send_with_retry(msg.delete, description="/resumen (borrar aviso)")
+        await _reply_long(update.effective_message, text)
+    except Exception as exc:  # noqa: BLE001
+        log_error("TELEGRAM", f"[BOT_V3] Error en /resumen: {type(exc).__name__}: {exc}")
+        await _send_with_retry(
+            lambda: update.effective_message.reply_text(
+                f"❌ No pude calcular el resumen: {type(exc).__name__}"),
+            description="/resumen (error)",
+        )
 
 
 async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -993,6 +1023,8 @@ async def _handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await signals_cmd(update, context)
     elif raw.lower() == STATUS_BUTTON_TEXT.lower():
         await status_cmd(update, context)
+    elif raw.lower() == RESUMEN_BUTTON_TEXT.lower():
+        await resumen_cmd(update, context)
 
 
 async def _on_handler_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1044,6 +1076,7 @@ def main() -> None:
     app.add_handler(CommandHandler("start", start_cmd))
     app.add_handler(CommandHandler("signals", signals_cmd))
     app.add_handler(CommandHandler("status", status_cmd))
+    app.add_handler(CommandHandler("resumen", resumen_cmd))
     app.add_handler(CallbackQueryHandler(on_callback))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, _handle_text))
     app.add_error_handler(_on_handler_error)
