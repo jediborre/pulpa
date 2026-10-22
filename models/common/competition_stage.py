@@ -72,6 +72,10 @@ ELIMINATORIA_MARKERS = [
     # otros idiomas / variantes
     "klasman maçları", "półfinały", "finał", "fɪnal", "финал",
     "octavos", "quartas", "play offs", "playoffs women", "superfinals",
+    # "final"/"finals" sueltos: la final de un torneo. OJO: una final de
+    # PROMOCION (p.ej. rumano "turneu final de promovare") la captura antes
+    # la categoria PROMOCION, que se comprueba antes que esta.
+    "final", "finals",
 ]
 
 COPA_MARKERS = [
@@ -90,6 +94,10 @@ SEGUNDA_FASE_MARKERS = [
     "fase 2", "intergroup", "inter group", "inter-group", "group stage",
     "fase de grupos", "championship", "ronda de campeonato", "2. krug",
     "main round group",
+    # pl: "runda zasadnicza" = la ronda decisiva (campeonato/promocion) con
+    # grupo; es el equivalente de "championship round" en ingles.
+    "runda zasadnicza", "runda zasadnicza", "runda de championship",
+    "runda mistrzowska", "runda pierwsza",
 ]
 
 # Promotion / relegation / playout: formato de supervivencia, no eliminatoria.
@@ -100,6 +108,15 @@ PROMOCION_MARKERS = [
     "promotion round", "relegation round", "rel./prom", "rel/prom",
     "liga de acesso", "playout group", "zone de maintien", "torneo de promoción",
     "turnir za promociju", "përshkallë", "lūg", "izjas", "playout a",
+    # ro: turneu/faza de promovare (final de promociune)
+    "final de promovare", "turneu final de promovare", "faza de promovare",
+    "faza de retrogradare", "seria de promovare",
+    # de: Auf-/Absteiger (auf-/absteigerrunde)
+    "aufsteiger", "absteiger", "aufsteigerrunde", "absteigerrunde",
+    # es: fase de ascenso / de descenso
+    "fase de ascenso", "fase de descenso", "ronda de ascenso", "ronda de descenso",
+    # pl: runda awansu / spadkowa
+    "runda awansu", "runda spadkowa", "play-off awansu",
 ]
 
 # Eliminatorias de puesto (3-8, 9-12): no compiten por el titulo.
@@ -180,11 +197,14 @@ def classify_stage(league: str, stage: str = "") -> tuple[str, str]:
     txt_base = _norm(base)
     txt_full = _norm(league)
 
+    # PROMOCION va ANTES que ELIMINATORIA: una "final de promovare" (rumano),
+    # una "final de ascenso" o una "runda de descenso" llevan la palabra
+    # "final" pero son un formato de supervivencia, no una eliminatoria.
     for cat, markers, motivo in (
+        ("PROMOCION", PROMOCION_MARKERS, "fase de promotion/relegation (formato de supervivencia)"),
         ("ELIMINATORIA", ELIMINATORIA_MARKERS, "fase eliminatoria (fases de eliminatorias y finales)"),
         ("COPA", COPA_MARKERS, "torneo de copa"),
         ("SEGUNDA_FASE", SEGUNDA_FASE_MARKERS, "segunda fase / ronda de campeonato con grupos"),
-        ("PROMOCION", PROMOCION_MARKERS, "fase de promotion/relegation (formato de supervivencia)"),
         ("PUESTO", PUESTO_MARKERS, "fase de colocacion (partidos por puesto, no por titulo)"),
         ("PRELIMINAR", PRELIMINAR_MARKERS, "fase preliminar / clasificatoria"),
         ("AMISTOSOS", AMISTOSOS_MARKERS, "torneo amistoso / invitacion"),
@@ -192,10 +212,10 @@ def classify_stage(league: str, stage: str = "") -> tuple[str, str]:
         if _has(txt_fase, markers):
             return cat, motivo
     for cat, markers, motivo in (
+        ("PROMOCION", PROMOCION_MARKERS, "fase de promotion/relegation (formato de supervivencia)"),
         ("ELIMINATORIA", ELIMINATORIA_MARKERS, "fase eliminatoria (fases de eliminatorias y finales)"),
         ("COPA", COPA_MARKERS, "torneo de copa"),
         ("SEGUNDA_FASE", SEGUNDA_FASE_MARKERS, "segunda fase / ronda de campeonato con grupos"),
-        ("PROMOCION", PROMOCION_MARKERS, "fase de promotion/relegation (formato de supervivencia)"),
         ("PUESTO", PUESTO_MARKERS, "fase de colocacion (partidos por puesto, no por titulo)"),
         ("PRELIMINAR", PRELIMINAR_MARKERS, "fase preliminar / clasificatoria"),
         ("AMISTOSOS", AMISTOSOS_MARKERS, "torneo amistoso / invitacion"),

@@ -80,6 +80,13 @@ sigue < 75 %, el Platt está sobreconfiado en la cola.
 (162 bets, 77.8 % WR) y en vivo es 2/5. Con 5 apuestas no es prueba, pero es
 la primera liga que hay que vigilar en el filtro por población (P1).
 
+> 🔎 **Resuelto el 2026-10-21:** el problema no era la liga sino la **fase**.
+> "Runda Zasadnicza" (la ronda decisiva polaca de promoción) y los
+> "Relegation/Promotion Playoffs" los clasificaba como *temporada regular* /
+> *eliminatoria* cuando son **formatos de supervivencia**. Con el clasificador
+> arreglado esas poblaciones quedan **bloqueadas**, y en vivo son el peor
+> tramo: **6 bets, 3 ganadas (50 %)**.
+
 ## 6. Comparativa con `m27_v5_2` (ya en modo sombra)
 
 En los **17 partidos** donde ambos apostaron:
@@ -88,10 +95,27 @@ En los **17 partidos** donde ambos apostaron:
 - `m27_v5_2`: **14/17 (82.4 %)**
 - **Eligieron el mismo lado en 17/17.**
 
-> `v5_2` y `v5_3` hacen **las mismas decisiones**: `v5_3` es `v5_2` reentrenado
-> con el filtro de fase y calibración Platt. Solo difieren en el umbral
-> efectivo. Dejar `v5_2` en modo sombra no pierde ninguna apuesta; solo
-> duplica la inferencia (≈27 ms por tick).
+> ⚠️ **Esto NO significa que sean el mismo modelo.** `v5_3` es un modelo
+> **nuevo**: 42 features con un sistema de priors propio (`PriorState` as-of),
+> frente a las 27 de `v5_2` (lineups, `rubber_band_gap`, `white_flag_risk_zone`,
+> `d_roster_drift_adv`…), y corrige **16 inconsistencias** de `v5_2`
+> (`recent_2m_run_diff` y `d_strat_q4_net` siempre a 0 en vivo, el H2H que
+> llegaba como lista, el ELO "final" con look-ahead, las cuotas in-play
+> colándose en el prior de mercado, la isotónica in-sample, el sesgo
+> local/visitante sin controlar, el snapshot 27 entrenado con el marcador del
+> min 30, etc. — ver `docs/findings_m27_v5_3.md` §2).
+>
+> Backtest: `v5_2` AUC 0.6376 / Brier 0.2350 / LogLoss 0.6623 frente a
+> `v5_3` **AUC 0.6552 / Brier 0.2303 / LogLoss 0.6518**, con **+30-65 % de
+> volumen** al mismo umbral.
+>
+> Coinciden en 17/17 porque **los dos eligen al favorito** (el que va ganando
+> al Q3 suele ganar el Q4): dos modelos con la misma información convergen al
+> mismo lado, no porque compartan features.
+
+`m27_v5_2` en modo sombra sí aporta algo: es el **control** del cambio de
+calibración (Platt + umbral 0.75) y del filtro de fases. Cuesta ~27 ms por
+tick.
 
 ## 7. Veredicto
 
