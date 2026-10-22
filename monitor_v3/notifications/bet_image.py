@@ -933,13 +933,12 @@ def _draw_bet_panel(
 
         # Etiqueta de resultado (solo en las confirmaciones FT)
         tag_text, tag_color = _result_tag(bet.get("result")) if is_result else ("", COLOR_MUTED)
-        # En la tarjeta de RESULTADO, un NO BET es una NO APUESTA: ni la
-        # etiqueta, ni la confianza, ni el "hubiera ganado/perdido" van en
-        # rojo, o la tarjeta se lee como una racha de derrotas del modelo.
-        if is_result and not _is_real_bet(bet):
-            tag_color = COLOR_MUTED
+        # La etiqueta conserva su color propio: GANADA / HUBIERA GANADO en
+        # verde, PERDIDA / HUBIERA PERDIDO en rojo. Lo que marca que la fila
+        # NO fue una apuesta es la palabra "NO BET" (gris), no el color del
+        # resultado hipotetico.
 
-        # 1) Palabra BET (verde) / NO BET (rojo) / PENDIENTE (ambar)
+        # 1) Palabra BET (verde) / NO BET (gris en resultado) / PENDIENTE (ambar)
         x = inner_x
         bet_font = _font(28, True)
         is_pending = str(bet.get("reason") or "").startswith("aun puede apostar")
@@ -960,8 +959,7 @@ def _draw_bet_panel(
         x += _text_len(draw, model, model_font) + 10
         if conf is not None:
             conf_text = f"{conf}%"
-            conf_draw_color = conf_color if (not is_result or is_real_bet) else COLOR_MUTED
-            draw.text((x, y), conf_text, font=model_font, fill=conf_draw_color)
+            draw.text((x, y), conf_text, font=model_font, fill=conf_color)
             x += _text_len(draw, conf_text, model_font) + 16
 
         tag_w = 0.0
@@ -980,9 +978,10 @@ def _draw_bet_panel(
 
         remaining = max(60.0, (inner_x + max_w) - x - tag_w)
         team_font = _fit_font(draw, team, remaining, 28, bold=is_real_bet)
-        # El nombre del equipo va coloreado por lado, igual que en la cabecera:
-        # local en verde, visitante en azul. Los NO_BET quedan atenuados.
-        team_color = (COLOR_HOME if is_home else COLOR_AWAY) if is_real_bet else COLOR_MUTED
+        # El nombre del equipo va coloreado por lado SIEMPRE, igual que en la
+        # cabecera: local en verde, visitante en azul. Solo el grosor de la
+        # fuente distingue una apuesta real de una fila NO BET.
+        team_color = COLOR_HOME if is_home else COLOR_AWAY
         if team:
             draw.text((x, y + 1), team, font=team_font, fill=team_color)
 
