@@ -169,17 +169,14 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
             if gp_total == 0:
                 # Sin gráfica no se guarda el histórico, pero SÍ los marcadores
                 # por cuarto: son imprescindibles para liquidar las apuestas Q4.
+                # POLÍTICA (2026-10-22): la tarjeta de resultado SIEMPRE lleva la
+                # gráfica de momentum. Si la API no entrega `graph_points` no se
+                # notifica nada a Telegram (el resultado queda liquidado en BD).
                 quarters_no_graph = (data.get("score") or {}).get("quarters", {})
                 if quarters_no_graph:
                     save_quarter_scores(match_id, quarters_no_graph)
                     reconcile_pending_results()
-                    # La tarjeta de resultado NO depende de la gráfica: si hay
-                    # una apuesta con umbral válido se notifica igual (sale sin
-                    # chart). Bug 2026-10-22: Vasto Verde Blumenau 17330673
-                    # ganó y nunca llegó el aviso porque este branch retornaba
-                    # antes de enviar nada.
-                    await _notify_final_result(match_id, data, home, away, quarters_no_graph)
-                log_info("DESCARGA", f"[FT] Descartado (sin gráfica) | {home} vs {away}")
+                log_info("DESCARGA", f"[FT] Descartado (sin gráfica, sin tarjeta de resultado) | {home} vs {away}")
                 update_schedule_status(match_id, status="done", skip_reason="no_graph")
                 return
             log_warning("DESCARGA", f"[FT] Cierre con gráfica corta (gp={gp_total}) | {home} vs {away}")
@@ -223,9 +220,10 @@ async def _notify_final_result(
     Envía la tarjeta de RESULTADO Q4 si el partido tiene alguna apuesta REAL
     (umbral válido) de un modelo visible.
 
-    Se usa tanto en el cierre normal (con gráfica) como en el cierre sin
-    gráfica (`skip_reason="no_graph"`): la ausencia de `graph_points` solo
-    elimina la gráfica de momentum, no el resultado de la apuesta.
+    Se invoca en el cierre normal. Los cierres sin gráfica NO llaman a esta
+    función: la tarjeta de resultado siempre lleva la curva de momentum
+    (política 2026-10-22), así que si la API no entrega `graph_points` se
+    liquida en BD y no se manda nada a Telegram.
     """
     q4_ft_data = quarters.get("Q4") or {}
     q4_ft_home = q4_ft_data.get("home")
