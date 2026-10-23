@@ -301,6 +301,7 @@ m27_v5_2 59% [NO BET (<75%)] → 🏠 Falco KC-Szombathely
 - Por modelo: `✅` ganada, `❌` perdida.
 - Agregados: `✅ win`, `❌ loss`, `➖ push`, `⏳ pendiente`.
 - 🔕 **Solo apuestas con umbral válido (2026-10-22):** la tarjeta de resultado se envía únicamente si hay un `BET` real de un modelo visible. Los `NO_BET`, los pendientes y los modelos en modo sombra **no generan mensaje** (antes un `NO_BET` de `m27_v5_2` al 56 % se colaba como `❌ RESULTADO Q4` porque `"BET" in "NO_BET"` era `True` y había fallback al modelo sombra). El filtro vive en `select_notifiable_logs()` / `select_notifiable_predictions()` de `telegram_bot.py`, aplicado también como red de seguridad dentro de los propios senders.
+- 📉 **Cierres sin gráfica (`skip_reason="no_graph"`):** cuando el payload FT no trae `graph_points` se guardan igual los marcadores por cuarto y **sí se envía** la tarjeta de resultado (sale sin la gráfica de momentum). Antes el `return` temprano se comía el aviso: 6 partidos con apuesta real de `m27_v5_3` quedaron sin ✅/❌ (caso reportado `17330673` Vasto Verde Blumenau, 2026-10-22). El reenvío manual está en `tmp/q4_result_noise/resend_missing_result.py`.
 
 ### 9.4 Reportes y bot interactivo
 

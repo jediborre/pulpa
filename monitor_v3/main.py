@@ -173,6 +173,12 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
                 if quarters_no_graph:
                     save_quarter_scores(match_id, quarters_no_graph)
                     reconcile_pending_results()
+                    # La tarjeta de resultado NO depende de la gráfica: si hay
+                    # una apuesta con umbral válido se notifica igual (sale sin
+                    # chart). Bug 2026-10-22: Vasto Verde Blumenau 17330673
+                    # ganó y nunca llegó el aviso porque este branch retornaba
+                    # antes de enviar nada.
+                    await _notify_final_result(match_id, data, home, away, quarters_no_graph)
                 log_info("DESCARGA", f"[FT] Descartado (sin gráfica) | {home} vs {away}")
                 update_schedule_status(match_id, status="done", skip_reason="no_graph")
                 return
@@ -197,109 +203,127 @@ async def _final_fetch_and_save(match_id: str, home: str, away: str) -> None:
         reconcile_pending_results()
         
         # 4. Notificaciones finales de Telegram
-        q4_ft_data = quarters.get("Q4") or {}
-        q4_ft_home = q4_ft_data.get("home")
-        q4_ft_away = q4_ft_data.get("away")
-        
-        with get_db_connection() as conn:
-            sched_row = conn.execute(
-                "SELECT league, scheduled_utc_ts FROM bet_monitor_schedule_v3 WHERE match_id = ?",
-                (match_id,)
-            ).fetchone()
-            league = sched_row["league"] if sched_row else None
-            scheduled_ts = sched_row["scheduled_utc_ts"] if sched_row else None
+        await _notify_final_result(match_id, data, home, away, quarters)
 
-            cursor = conn.execute("""
-                SELECT id, model_version, picked_side, signal_type, result,
-                       inference_minute, confidence, actual_home_score, actual_away_score, target_quarter, inference_json
-                FROM bet_monitor_log_v3
-                WHERE match_id = ?
-            """, (match_id,))
-            logs = [dict(r) for r in cursor.fetchall()]
-            
-            # Deduplicar por modelo
-            deduped_logs = {}
-            for log in logs:
-                deduped_logs[log["model_version"]] = log
-            logs = list(deduped_logs.values())
-
-            # Los modelos en MODO SOMBRA no se muestran NUNCA en la tarjeta de
-            # resultado (el usuario solo quiere ver m27_v5_3). Siguen
-            # registrados en bet_monitor_log_v3 y model_inference_v3 para
-            # poder medirlos en vivo, pero no generan mensaje. No hay
-            # fallback: si el unico log es de un modelo en sombra no se envia
-            # nada (antes se colaba m27_v5_2 con su 56 %).
-            #
-            # SOLO se notifica una apuesta REAL (BET por encima del umbral del
-            # modelo). Un NO_BET o un pendiente no generan tarjeta de
-            # resultado: son ruido para el usuario, aunque internamente se
-            # sigan registrando. Ojo: "BET" in "NO_BET" == True, por eso se usa
-            # _is_real_bet_signal y no una comprobacion de subcadena.
-            logs = select_notifiable_logs(logs)
-            if not logs:
-                log_info("DESCARGA", f"[FT] Sin apuesta con umbral valido (sin tarjeta de resultado) | "
-                                     f"{home} vs {away}", q4_orange=True)
-
-            # Comprobar antigüedad
-            is_too_old = False
-            if scheduled_ts and (time.time() - scheduled_ts > 21600):
-                is_too_old = True
-
-            if logs and not is_too_old:
-                if len(logs) > 1:
-                    log0 = logs[0]
-                    target_quarter = log0["target_quarter"] or 4
-                    q_key = f"Q{target_quarter}"
-                    ft_q_data = quarters.get(q_key) or {}
-                    ft_q_home = ft_q_data.get("home") if ft_q_data else q4_ft_home
-                    ft_q_away = ft_q_data.get("away") if ft_q_data else q4_ft_away
-                    
-                    await send_combined_final_confirmation(
-                        logs=logs,
-                        match_id=match_id,
-                        match_data=data,
-                        home_team=home,
-                        away_team=away,
-                        minute=log0["inference_minute"],
-                        q_key=q_key,
-                        q_home=ft_q_home,
-                        q_away=ft_q_away,
-                        league=league,
-                        scheduled_ts=scheduled_ts
-                    )
-                elif len(logs) == 1:
-                    log = logs[0]
-                    picked_side = log["picked_side"]
-                    target_quarter = log["target_quarter"] or 4
-                    q_key = f"Q{target_quarter}"
-                    ft_q_data = quarters.get(q_key) or {}
-                    ft_q_home = ft_q_data.get("home") if ft_q_data else log["actual_home_score"]
-                    ft_q_away = ft_q_data.get("away") if ft_q_data else log["actual_away_score"]
-                    
-                    await send_final_confirmation(
-                        model=log["model_version"],
-                        picked_team=home if picked_side == "HOME" else away,
-                        is_home=(picked_side == "HOME"),
-                        signal=log["signal_type"],
-                        outcome=log["result"],
-                        match_id=match_id,
-                        match_data=data,
-                        home_team=home,
-                        away_team=away,
-                        minute=log["inference_minute"],
-                        q_key=q_key,
-                        q_home=ft_q_home,
-                        q_away=ft_q_away,
-                        league=league,
-                        scheduled_ts=scheduled_ts,
-                        confidence=log["confidence"]
-                    )
-                    
         update_schedule_status(match_id, status="done")
         log_info("DESCARGA", f"[FT] Final y liquidación de apuestas persistidos | {home} vs {away} (gp={gp_total})")
     except Exception as e:
         log_error("DESCARGA", f"[FT] Error procesando final {match_id}: {e}")
         update_schedule_status(match_id, status="done", skip_reason="final_fetch_failed")
+
+
+async def _notify_final_result(
+    match_id: str,
+    data: dict,
+    home: str,
+    away: str,
+    quarters: dict,
+) -> None:
+    """
+    Envía la tarjeta de RESULTADO Q4 si el partido tiene alguna apuesta REAL
+    (umbral válido) de un modelo visible.
+
+    Se usa tanto en el cierre normal (con gráfica) como en el cierre sin
+    gráfica (`skip_reason="no_graph"`): la ausencia de `graph_points` solo
+    elimina la gráfica de momentum, no el resultado de la apuesta.
+    """
+    q4_ft_data = quarters.get("Q4") or {}
+    q4_ft_home = q4_ft_data.get("home")
+    q4_ft_away = q4_ft_data.get("away")
+
+    with get_db_connection() as conn:
+        sched_row = conn.execute(
+            "SELECT league, scheduled_utc_ts FROM bet_monitor_schedule_v3 WHERE match_id = ?",
+            (match_id,)
+        ).fetchone()
+        league = sched_row["league"] if sched_row else None
+        scheduled_ts = sched_row["scheduled_utc_ts"] if sched_row else None
+
+        cursor = conn.execute("""
+            SELECT id, model_version, picked_side, signal_type, result,
+                   inference_minute, confidence, actual_home_score, actual_away_score, target_quarter, inference_json
+            FROM bet_monitor_log_v3
+            WHERE match_id = ?
+        """, (match_id,))
+        logs = [dict(r) for r in cursor.fetchall()]
+
+        # Deduplicar por modelo
+        deduped_logs = {}
+        for log in logs:
+            deduped_logs[log["model_version"]] = log
+        logs = list(deduped_logs.values())
+
+        # Los modelos en MODO SOMBRA no se muestran NUNCA en la tarjeta de
+        # resultado (el usuario solo quiere ver m27_v5_3). Siguen
+        # registrados en bet_monitor_log_v3 y model_inference_v3 para
+        # poder medirlos en vivo, pero no generan mensaje. No hay
+        # fallback: si el unico log es de un modelo en sombra no se envia
+        # nada (antes se colaba m27_v5_2 con su 56 %).
+        #
+        # SOLO se notifica una apuesta REAL (BET por encima del umbral del
+        # modelo). Un NO_BET o un pendiente no generan tarjeta de
+        # resultado: son ruido para el usuario, aunque internamente se
+        # sigan registrando. Ojo: "BET" in "NO_BET" == True, por eso se usa
+        # _is_real_bet_signal y no una comprobacion de subcadena.
+        logs = select_notifiable_logs(logs)
+        if not logs:
+            log_info("DESCARGA", f"[FT] Sin apuesta con umbral valido (sin tarjeta de resultado) | "
+                                 f"{home} vs {away}", q4_orange=True)
+
+        # Comprobar antigüedad
+        is_too_old = False
+        if scheduled_ts and (time.time() - scheduled_ts > 21600):
+            is_too_old = True
+
+        if logs and not is_too_old:
+            if len(logs) > 1:
+                log0 = logs[0]
+                target_quarter = log0["target_quarter"] or 4
+                q_key = f"Q{target_quarter}"
+                ft_q_data = quarters.get(q_key) or {}
+                ft_q_home = ft_q_data.get("home") if ft_q_data else q4_ft_home
+                ft_q_away = ft_q_data.get("away") if ft_q_data else q4_ft_away
+
+                await send_combined_final_confirmation(
+                    logs=logs,
+                    match_id=match_id,
+                    match_data=data,
+                    home_team=home,
+                    away_team=away,
+                    minute=log0["inference_minute"],
+                    q_key=q_key,
+                    q_home=ft_q_home,
+                    q_away=ft_q_away,
+                    league=league,
+                    scheduled_ts=scheduled_ts
+                )
+            elif len(logs) == 1:
+                log = logs[0]
+                picked_side = log["picked_side"]
+                target_quarter = log["target_quarter"] or 4
+                q_key = f"Q{target_quarter}"
+                ft_q_data = quarters.get(q_key) or {}
+                ft_q_home = ft_q_data.get("home") if ft_q_data else log["actual_home_score"]
+                ft_q_away = ft_q_data.get("away") if ft_q_data else log["actual_away_score"]
+
+                await send_final_confirmation(
+                    model=log["model_version"],
+                    picked_team=home if picked_side == "HOME" else away,
+                    is_home=(picked_side == "HOME"),
+                    signal=log["signal_type"],
+                    outcome=log["result"],
+                    match_id=match_id,
+                    match_data=data,
+                    home_team=home,
+                    away_team=away,
+                    minute=log["inference_minute"],
+                    q_key=q_key,
+                    q_home=ft_q_home,
+                    q_away=ft_q_away,
+                    league=league,
+                    scheduled_ts=scheduled_ts,
+                    confidence=log["confidence"]
+                )
 
 async def _capture_pregame_odds(match_id: str) -> None:
     """Guarda cuotas/lineas pre-partido (ML, spread, total) justo antes del salto inicial; en vivo la API las reemplaza
