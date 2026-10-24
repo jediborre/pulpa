@@ -135,8 +135,43 @@ for l in poor_sorted:
     lines.append(f"| {l['league']} | {l['matches_train']:,} | {t75['bets']:,} | {t75['wr']:.1f} % | {t75['roi_140']:+.2f} % | {t75['roi_183']:+.2f} % |")
 lines.append("")
 
+# --- Cargar stats en vivo ---
+try:
+    LIVE = json.load(open(ROOT / "tmp" / "m27_v5_3_audit" / "live_league_stats.json", encoding="utf-8"))
+except Exception:
+    LIVE = None
+
+# --- Resultados en vivo (monitoreo) ---
+if LIVE:
+    ov = LIVE["overall"]
+    lines.append("## 6. Resultados en vivo del monitoreo (realidad, no backtest)\n")
+    lines.append("> Estos son los **partidos reales** que el modelo vio en producción a través de `monitor_v3`. "
+                 "A diferencia del holdout C (backtest sobre datos históricos), aquí el modelo opera sobre partidos "
+                 "nuevos, con datos capturados en vivo. **Muestra muy pequeña**: solo %d apuestas liquidadas, "
+                 "por lo que el IC95 es ancho y no permite conclusiones firmes. Pero sirve para contrastar "
+                 "la euforia del backtest con la realidad.\n" % ov["settled"])
+    lines.append(f"- **Apuestas totales registradas:** {ov['bets']} ({ov['wins']} ganadas, {ov['losses']} perdidas, {ov['pending']} pendientes).")
+    lines.append(f"- **Acierto en vivo (sobre liquidadas):** {ov['wr']} % (backtest @0.75: 81.7 %).")
+    lines.append(f"- **Confianza promedio en vivo:** {ov['avg_conf']} %.\n")
+    lines.append("### 6.1 Por liga — backtest vs vivo\n")
+    lines.append("| Liga | Backtest @0.75 (WR) | Vivo: apuestas | Vivo: ganadas | Vivo: perdidas | Vivo: WR |")
+    lines.append("|---|---|---:|---:|---:|---:|")
+    # join with backtest per league
+    bt = {l["league"]: l for l in leagues}
+    for lv in LIVE["leagues"]:
+        b = bt.get(lv["league"])
+        bt_wr = (f"{next((t for t in b['tiers'] if t['thr']==0.75),{}).get('wr',0):.1f} %" if (b and next((t for t in b['tiers'] if t['thr']==0.75),{}).get('wr') is not None) else "—")
+        lines.append(f"| {lv['league']} | {bt_wr} | {lv['bets']} | {lv['wins']} | {lv['losses']} | {lv['wr'] if lv['wr'] is not None else '—'} % |")
+    lines.append("")
+    lines.append("**Lectura honesta:** con 93 apuestas liquidadas el IC95 del acierto es de ±~10 pp, así que "
+                 "el 76.6 % vivo y el 81.7 % de backtest son **indistinguibles estadísticamente**. "
+                 "Lo que sí se ve es que varias ligas con WR de backtest > 85 % (NCAA Women, BNXT, Saudi, etc.) "
+                 "no han aparecido aún en vivo o han rendido por debajo, lo que confirma que **no hay que confiar "
+                 "en muestras pequeñas**. El modelo sigue en modo sombra y no alerta hasta tener ≥ 200 apuestas "
+                 "liquidadas.\n")
+
 # --- Conclusiones ---
-lines.append("## 6. Conclusiones\n")
+lines.append("## 7. Conclusiones\n")
 lines.append("1. **El modelo mantiene el acierto por encima del equilibrio en la gran mayoría de ligas** a umbral 0.75: "
              f"{n_leagues - len(weak)} de {n_leagues} ligas no son candidatas a bloqueo (IC95 superior ≥ 71.4 %).")
 lines.append(f"2. **{len(weak)} ligas** tienen el límite superior de su IC95 por debajo del equilibrio a 0.75 → candidatas a bloqueo por medición. "
@@ -153,12 +188,13 @@ lines.append("7. La lista de bloqueo por medición queda **vacía en producción
              "ya descartó los formatos tóxicos (amistosos, 2ª fase, promoción, preliminar, colocación). "
              "La lista se repoblará sola cuando acumule evidencia.\n")
 
-lines.append("## 7. Notas metodológicas\n")
+lines.append("## 8. Notas metodológicas\n")
 lines.append("- Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis.py` (re-entrena el ensamble, calibra con Platt simétrico, evalúa en C).")
 lines.append("- `matches_holdout` = anclas (t=30) en el bloque C por liga; `matches_train` = anclas en el bloque A.")
 lines.append("- `green()` aplica además el guard de margen (margin ≥ 0 para apuestas al local), igual que el pipeline.")
 lines.append("- IC95 = Wilson. Bloqueo candidato si el límite superior del IC95 del WR < 71.4 % (equilibrio a cuota 1.40).")
-lines.append("- Ligas con < 30 anclas en C se omiten por falta de muestra.\n")
+lines.append("- Ligas con < 30 anclas en C se omiten por falta de muestra.")
+lines.append("- Resultados en vivo: `tmp/m27_v5_3_audit/live_league_stats.py` sobre `bet_monitor_log_v3` (apuestas liquidadas del monitoreo).\n")
 
 out = ROOT / "docs" / "ANALISIS_LIGAS_M27_V5_3.md"
 out.write_text("\n".join(lines), encoding="utf-8")

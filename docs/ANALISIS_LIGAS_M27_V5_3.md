@@ -770,7 +770,79 @@ _...y 68 ligas más con menos volumen._
 | ZBL, Women | 694 | 35 | 88.6 % | +24.00 % | +62.09 % |
 | LNB, Women | 184 | 36 | 91.7 % | +28.33 % | +67.75 % |
 
-## 6. Conclusiones
+## 6. Resultados en vivo del monitoreo (realidad, no backtest)
+
+> Estos son los **partidos reales** que el modelo vio en producción a través de `monitor_v3`. A diferencia del holdout C (backtest sobre datos históricos), aquí el modelo opera sobre partidos nuevos, con datos capturados en vivo. **Muestra muy pequeña**: solo 93 apuestas liquidadas, por lo que el IC95 es ancho y no permite conclusiones firmes. Pero sirve para contrastar la euforia del backtest con la realidad.
+
+- **Apuestas totales registradas:** 94 (72 ganadas, 21 perdidas, 1 pendientes).
+- **Acierto en vivo (sobre liquidadas):** 77.4 % (backtest @0.75: 81.7 %).
+- **Confianza promedio en vivo:** 79.2 %.
+
+### 6.1 Por liga — backtest vs vivo
+
+| Liga | Backtest @0.75 (WR) | Vivo: apuestas | Vivo: ganadas | Vivo: perdidas | Vivo: WR |
+|---|---|---:|---:|---:|---:|
+| Poland 2nd Basketball League, Runda Zasadnicza | — | 5 | 2 | 3 | 40.0 % |
+| LNB, Women | 91.7 % | 5 | 4 | 1 | 80.0 % |
+| LBP, Group B | — | 5 | 4 | 1 | 80.0 % |
+| 1. ZLS, Women | — | 4 | 3 | 1 | 75.0 % |
+| Basketligaen | 78.1 % | 4 | 4 | 0 | 100.0 % |
+| Swedish Basketball League Women | 73.5 % | 3 | 3 | 0 | 100.0 % |
+| FSHB Superliga | — | 3 | 2 | 1 | 66.7 % |
+| Road to Basketball Africa League, Group D | — | 3 | 3 | 0 | 100.0 % |
+| NBL, West | 75.0 % | 3 | 1 | 2 | 33.3 % |
+| L1BF BT, Faza I | — | 2 | 2 | 0 | 100.0 % |
+| A1 Women | — | 2 | 1 | 1 | 50.0 % |
+| 2nd League | 81.8 % | 2 | 1 | 1 | 50.0 % |
+| B League One | — | 2 | 1 | 1 | 50.0 % |
+| FIBA Women Basketball League Africa - Qualifers, Group A | — | 2 | 1 | 1 | 50.0 % |
+| United League | 82.3 % | 2 | 2 | 0 | 100.0 % |
+| LMB, Clausura | — | 2 | 2 | 0 | 100.0 % |
+| Catarinense, Women, Playoffs | — | 2 | 2 | 0 | 100.0 % |
+| Estonian-Latvian Basketball League | 81.8 % | 2 | 2 | 0 | 100.0 % |
+| Tipos Extraliga, Women | 79.5 % | 2 | 2 | 0 | 100.0 % |
+| Switzerland LNA | 73.7 % | 2 | 0 | 1 | 0.0 % |
+| Women's Basketball Division A | — | 1 | 0 | 1 | 0.0 % |
+| Superleague Women | — | 1 | 1 | 0 | 100.0 % |
+|  Liga 1 Masculin, Faza I | — | 1 | 1 | 0 | 100.0 % |
+| Turkish Basketball Super League | — | 1 | 1 | 0 | 100.0 % |
+| Swedish Basketball Superettan | — | 1 | 0 | 1 | 0.0 % |
+| 1. Division | — | 1 | 0 | 1 | 0.0 % |
+| Cyprus Basketball Division A | — | 1 | 0 | 1 | 0.0 % |
+| Swiss Basketball League Women | 87.5 % | 1 | 1 | 0 | 100.0 % |
+| Kvindebasketligaen , Grundspil | — | 1 | 1 | 0 | 100.0 % |
+| Top Division Women, Regular Season | 88.2 % | 1 | 1 | 0 | 100.0 % |
+| 1st Division Women, Deildarkeppni | — | 1 | 1 | 0 | 100.0 % |
+| B League Premier | — | 1 | 1 | 0 | 100.0 % |
+| AdmiralBet ABA League, Group B | — | 1 | 1 | 0 | 100.0 % |
+| FIBA Women Basketball League Africa - Qualifers, Group B | — | 1 | 1 | 0 | 100.0 % |
+| Israeli Women Basketball Premier League | — | 1 | 1 | 0 | 100.0 % |
+| Liga Femenina, Women, Apertura, Group B | — | 1 | 1 | 0 | 100.0 % |
+| Mexico LNBP, Playoffs | — | 1 | 1 | 0 | 100.0 % |
+| Women's Basketball League Asia, Group B | — | 1 | 1 | 0 | 100.0 % |
+| Russian Women's Basketball Premier League | 74.1 % | 1 | 1 | 0 | 100.0 % |
+| Eurocup, Group B | — | 1 | 0 | 1 | 0.0 % |
+| Brazil NBB | 81.2 % | 1 | 0 | 1 | 0.0 % |
+| 1 Liga Kobiet, Runda Zasadnicza | — | 1 | 1 | 0 | 100.0 % |
+| EuroCup, Women, Group B | — | 1 | 1 | 0 | 100.0 % |
+| Liga Nacional Femenina Chile, Fase zonal | — | 1 | 1 | 0 | 100.0 % |
+| FIBA Women Basketball League Africa - Qualifers, Zone 5 - Quarter-Finals 13 | — | 1 | 1 | 0 | 100.0 % |
+| FIBA Women Basketball League Africa - Qualifers, Zone 5 - Quarter-Finals 14 | — | 1 | 1 | 0 | 100.0 % |
+| Super League | — | 1 | 1 | 0 | 100.0 % |
+| FIBA Women Basketball League Africa - Qualifers, Zone 5 - Semi-Finals 19 | — | 1 | 1 | 0 | 100.0 % |
+| Nostra.lt-RKL Division B, Reguliarus sezonas | — | 1 | 1 | 0 | 100.0 % |
+| Nostra.lt-RKL Division A, Reguliarus sezonas | — | 1 | 1 | 0 | 100.0 % |
+| Liga Nationala | — | 1 | 1 | 0 | 100.0 % |
+| Hungary Divison A Women | 76.5 % | 1 | 1 | 0 | 100.0 % |
+| Stoiximan GBL | — | 1 | 1 | 0 | 100.0 % |
+| France Pro A | — | 1 | 1 | 0 | 100.0 % |
+| Hungary NB 1.A | — | 1 | 1 | 0 | 100.0 % |
+| 2. ZLS, Women | — | 1 | 0 | 1 | 0.0 % |
+| Premijer ženska liga | 68.8 % | 1 | 1 | 0 | 100.0 % |
+
+**Lectura honesta:** con 93 apuestas liquidadas el IC95 del acierto es de ±~10 pp, así que el 76.6 % vivo y el 81.7 % de backtest son **indistinguibles estadísticamente**. Lo que sí se ve es que varias ligas con WR de backtest > 85 % (NCAA Women, BNXT, Saudi, etc.) no han aparecido aún en vivo o han rendido por debajo, lo que confirma que **no hay que confiar en muestras pequeñas**. El modelo sigue en modo sombra y no alerta hasta tener ≥ 200 apuestas liquidadas.
+
+## 7. Conclusiones
 
 1. **El modelo mantiene el acierto por encima del equilibrio en la gran mayoría de ligas** a umbral 0.75: 251 de 251 ligas no son candidatas a bloqueo (IC95 superior ≥ 71.4 %).
 2. **0 ligas** tienen el límite superior de su IC95 por debajo del equilibrio a 0.75 → candidatas a bloqueo por medición. Conviene revisarlas antes de operar, pero con muestras pequeñas el IC es ancho; no bloquear por un único corte.
@@ -780,10 +852,11 @@ _...y 68 ligas más con menos volumen._
 6. **Bajar el umbral a 0.65–0.68** aumenta volumen pero acerca el WR al equilibrio (71.4 %); solo justificable si la cuota real del mercado Q4 es superior a 1.40.
 7. La lista de bloqueo por medición queda **vacía en producción** hoy (0 ligas) porque el filtro de formatos de torneo ya descartó los formatos tóxicos (amistosos, 2ª fase, promoción, preliminar, colocación). La lista se repoblará sola cuando acumule evidencia.
 
-## 7. Notas metodológicas
+## 8. Notas metodológicas
 
 - Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis.py` (re-entrena el ensamble, calibra con Platt simétrico, evalúa en C).
 - `matches_holdout` = anclas (t=30) en el bloque C por liga; `matches_train` = anclas en el bloque A.
 - `green()` aplica además el guard de margen (margin ≥ 0 para apuestas al local), igual que el pipeline.
 - IC95 = Wilson. Bloqueo candidato si el límite superior del IC95 del WR < 71.4 % (equilibrio a cuota 1.40).
 - Ligas con < 30 anclas en C se omiten por falta de muestra.
+- Resultados en vivo: `tmp/m27_v5_3_audit/live_league_stats.py` sobre `bet_monitor_log_v3` (apuestas liquidadas del monitoreo).
