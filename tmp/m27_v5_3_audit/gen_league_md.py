@@ -185,6 +185,10 @@ if LIVE:
                  "no han aparecido aún en vivo o han rendido por debajo, lo que confirma que **no hay que confiar "
                  "en muestras pequeñas**. El modelo sigue en modo sombra y no alerta hasta tener ≥ 200 apuestas "
                  "liquidadas.\n")
+    lines.append("> Nota: cuando la columna `Backtest @0.75` muestra `—` y `Entrenado = 0`, la liga no tuvo "
+                 "ningún partido con ese **nombre exacto** en el holdout/entrenamiento (arranque en frío o variante "
+                 "de nombre, p. ej. `Runda Zasadnicza` = temporada regular en polaco). En esos casos solo hay "
+                 "datos en vivo, que es la única evidencia disponible.\n")
 
 # --- Conclusiones ---
 lines.append("## 7. Conclusiones\n")
