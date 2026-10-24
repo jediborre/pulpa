@@ -861,7 +861,7 @@ _...y 68 ligas más con menos volumen._
 
 **Ligas claramente mal clasificadas (stage_detail = Regular Season pero bloqueadas):** `Poland 2nd Basketball League, Runda Zasadnicza`, `1 Liga Kobiet, Runda Zasadnicza`, `National Basketball Championship, Women`, `Women's Super League Basketball, Championship`, `NBA G League Tip-Off Tournament` (stage_detail Regular Season). `Liga Argentina, Group Stage` y `Women's Super League Basketball, Championship` tienen stage_detail distinto y requieren revisión manual.
 
-**Acción sugerida:** corregir `models/common/competition_stage.py` para reconocer `Runda Zasadnicza` (y equivalentes) como temporada regular, y re-entrenar / re-auditar.
+**Corrección aplicada:** se eliminó `'runda zasadnicza'` de `SEGUNDA_FASE_MARKERS` en `models/common/competition_stage.py` (era un error: "Runda Zasadnicza" = temporada regular, no segunda fase). Ligas desbloqueadas: `Poland 2nd Basketball League, Runda Zasadnicza` (852) y `1 Liga Kobiet, Runda Zasadnicza` (270). Los casos `championship` y `group stage` (National Basketball Championship, Women; Women's Super League Basketball, Championship; Liga Argentina, Group Stage; etc.) quedan bloqueados a la espera de revisión manual, porque el marcador es ambiguo (puede ser torneo real o temporada regular).
 
 ## 8. Conclusiones
 

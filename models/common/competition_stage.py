@@ -94,10 +94,9 @@ SEGUNDA_FASE_MARKERS = [
     "fase 2", "intergroup", "inter group", "inter-group", "group stage",
     "fase de grupos", "championship", "ronda de campeonato", "2. krug",
     "main round group",
-    # pl: "runda zasadnicza" = la ronda decisiva (campeonato/promocion) con
-    # grupo; es el equivalente de "championship round" en ingles.
-    "runda zasadnicza", "runda zasadnicza", "runda de championship",
-    "runda mistrzowska", "runda pierwsza",
+    # pl: "runda zasadnicza" = temporada regular (ronda basica), NO segunda
+    # fase. "runda mistrzowska" si es la ronda de campeonato (segunda fase).
+    "runda de championship", "runda mistrzowska", "runda pierwsza",
 ]
 
 # Promotion / relegation / playout: formato de supervivencia, no eliminatoria.
