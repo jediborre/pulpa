@@ -153,15 +153,29 @@ if LIVE:
     lines.append(f"- **Apuestas totales registradas:** {ov['bets']} ({ov['wins']} ganadas, {ov['losses']} perdidas, {ov['pending']} pendientes).")
     lines.append(f"- **Acierto en vivo (sobre liquidadas):** {ov['wr']} % (backtest @0.75: 81.7 %).")
     lines.append(f"- **Confianza promedio en vivo:** {ov['avg_conf']} %.\n")
-    lines.append("### 6.1 Por liga — backtest vs vivo\n")
-    lines.append("| Liga | Backtest @0.75 (WR) | Vivo: apuestas | Vivo: ganadas | Vivo: perdidas | Vivo: WR |")
-    lines.append("|---|---|---:|---:|---:|---:|")
-    # join with backtest per league
+    lines.append("### 6.1 Por liga — backtest vs vivo (con recomendación)\n")
+    lines.append("| Liga | Entrenado (A) | Backtest @0.75 (WR) | Vivo: apuestas | Vivo: ganadas | Vivo: perdidas | Vivo: WR | Recomendación |")
+    lines.append("|---|---:|---:|---:|---:|---:|---:|---|")
     bt = {l["league"]: l for l in leagues}
     for lv in LIVE["leagues"]:
         b = bt.get(lv["league"])
-        bt_wr = (f"{next((t for t in b['tiers'] if t['thr']==0.75),{}).get('wr',0):.1f} %" if (b and next((t for t in b['tiers'] if t['thr']==0.75),{}).get('wr') is not None) else "—")
-        lines.append(f"| {lv['league']} | {bt_wr} | {lv['bets']} | {lv['wins']} | {lv['losses']} | {lv['wr'] if lv['wr'] is not None else '—'} % |")
+        trained = b["matches_train"] if b else 0
+        bt_tier = (next((t for t in b["tiers"] if t["thr"] == 0.75), {}) if b else {})
+        bt_wr = (f"{bt_tier['wr']:.1f} %" if bt_tier.get("wr") is not None else "—")
+        bt_wr_val = bt_tier.get("wr")
+        settled = lv["settled"]
+        live_wr = lv["wr"]
+        # recomendacion
+        rec = "✅ ok"
+        if settled >= 5 and live_wr is not None and live_wr < 60:
+            rec = "⚠️ bloquear"
+        elif settled < 8:
+            rec = "👀 vigilar (muestra pequeña)"
+        elif bt_wr_val is not None and bt_wr_val < 71.4:
+            rec = "⚠️ bloquear (backtest)"
+        elif live_wr is not None and live_wr < 71.4 and settled >= 8:
+            rec = "⚠️ vigilar (WR bajo)"
+        lines.append(f"| {lv['league']} | {trained:,} | {bt_wr} | {lv['bets']} | {lv['wins']} | {lv['losses']} | {live_wr if live_wr is not None else '—'} % | {rec} |")
     lines.append("")
     lines.append("**Lectura honesta:** con 93 apuestas liquidadas el IC95 del acierto es de ±~10 pp, así que "
                  "el 76.6 % vivo y el 81.7 % de backtest son **indistinguibles estadísticamente**. "
