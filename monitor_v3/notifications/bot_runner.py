@@ -30,7 +30,7 @@ from telegram import (
     ReplyKeyboardMarkup,
     Update,
 )
-from telegram.error import NetworkError, RetryAfter, TelegramError, TimedOut
+from telegram.error import BadRequest, NetworkError, RetryAfter, TelegramError, TimedOut
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -108,6 +108,12 @@ async def _send_with_retry(send, *, description: str, attempts: int = SEND_MAX_A
     for attempt in range(1, attempts + 1):
         try:
             return await send()
+        except BadRequest as exc:
+            # Error de formato/contenido (p. ej. HTML inválido): reintentar no
+            # lo arregla. En PTB 21 BadRequest hereda de NetworkError, así que
+            # este `except` debe ir ANTES del de red.
+            last_exc = exc
+            break
         except RetryAfter as exc:
             delay = float(exc.retry_after) + 0.5
             log_warning(
@@ -129,7 +135,7 @@ async def _send_with_retry(send, *, description: str, attempts: int = SEND_MAX_A
 
     log_error(
         "TELEGRAM",
-        f"[BOT_V3] No se pudo completar {description} tras {attempts} intentos: {last_exc}",
+        f"[BOT_V3] No se pudo completar {description} tras {attempt} intento(s): {last_exc}",
     )
     return None
 
@@ -900,7 +906,12 @@ async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def _reply_long(message, text: str) -> None:
-    """Envía un texto largo troceado respetando el límite de Telegram (~4096)."""
+    """Envía un texto largo troceado respetando el límite de Telegram (~4096).
+
+    Si Telegram rechaza el HTML (`can't parse entities`) se reenvía ese trozo en
+    texto plano: antes el resumen se quedaba sin enviar porque el aviso
+    "⏳ Calculando…" se borraba y el mensaje final fallaba en silencio.
+    """
     MAX = 3800
     chunks: list[str] = []
     remaining = text
@@ -913,10 +924,18 @@ async def _reply_long(message, text: str) -> None:
         chunks.append(chunk)
         remaining = remaining[len(chunk):].lstrip("\n")
     for idx, c in enumerate(chunks, start=1):
-        await _send_with_retry(
+        description = f"mensaje largo ({idx}/{len(chunks)})"
+        sent = await _send_with_retry(
             lambda c=c: message.reply_text(c, parse_mode="HTML"),
-            description=f"mensaje largo ({idx}/{len(chunks)})",
+            description=description,
         )
+        if sent is None:
+            plain = html.unescape(re.sub(r"<[^>]+>", "", c))
+            log_warning("TELEGRAM", f"[BOT_V3] {description} en texto plano (HTML rechazado)")
+            await _send_with_retry(
+                lambda p=plain: message.reply_text(p),
+                description=f"{description} plano",
+            )
 
 
 async def signals_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -12,12 +12,18 @@
 
 from __future__ import annotations
 
+import html
 import math
 import sqlite3
 from collections import Counter, defaultdict
 import json
 from pathlib import Path
 from typing import Any
+
+
+def _esc(value: Any) -> str:
+    """Escapa texto dinámico para el parse_mode HTML de Telegram."""
+    return html.escape(str(value), quote=False)
 
 # Equilibrio por cuota: WR_equilibrio = 1 / cuota
 ODDS_REF = (1.40, 1.83)
@@ -286,7 +292,7 @@ def render_live_summary_text(data: dict[str, Any]) -> str:
     if data["por_liga"]:
         L.append("<b>Ligas con muestra</b>")
         for l in data["por_liga"][:8]:
-            L.append(f"  {l['liga'][:36]}: {l['n']} | WR {l['wr'] * 100:.0f}%")
+            L.append(f"  {_esc(l['liga'][:36])}: {l['n']} | WR {l['wr'] * 100:.0f}%")
 
     d = data.get("descartes")
     if d and d["n"]:
@@ -298,10 +304,10 @@ def render_live_summary_text(data: dict[str, Any]) -> str:
             if mot.get(clave):
                 L.append(f"  · {clave}: <b>{mot[clave]}</b>")
         for k, v in d["cercania"].items():
-            L.append(f"    (de los que no llegaron al umbral: {v} en {k})")
+            L.append(f"    (de los que no llegaron al umbral: {v} en {_esc(k)})")
         L.append("  más descartados por liga:")
         for liga, n in d["por_liga"][:5]:
-            L.append(f"    {liga[:38]}: {n}")
+            L.append(f"    {_esc(liga[:38])}: {n}")
         L.append("  <i>las ligas de 12 min y los formatos bloqueados ni siquiera "
                  "llegan al modelo</i>")
     return "\n".join(L)
