@@ -210,6 +210,36 @@ lines.append("- IC95 = Wilson. Bloqueo candidato si el límite superior del IC95
 lines.append("- Ligas con < 30 anclas en C se omiten por falta de muestra.")
 lines.append("- Resultados en vivo: `tmp/m27_v5_3_audit/live_league_stats.py` sobre `bet_monitor_log_v3` (apuestas liquidadas del monitoreo).\n")
 
+def align_tables(text: str) -> str:
+    out_lines = []
+    i = 0
+    lines = text.split("\n")
+    while i < len(lines):
+        # detect table block
+        if lines[i].strip().startswith("|"):
+            block = []
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                block.append(lines[i])
+                i += 1
+            # parse cells
+            rows = []
+            for b in block:
+                cells = [c.strip() for c in b.strip().strip("|").split("|")]
+                rows.append(cells)
+            ncols = max(len(r) for r in rows)
+            for r in rows:
+                while len(r) < ncols:
+                    r.append("")
+            widths = [max(len(r[c]) for r in rows) for c in range(ncols)]
+            for r in rows:
+                padded = " | ".join(c.ljust(w) for c, w in zip(r, widths))
+                out_lines.append("| " + padded + " |")
+        else:
+            out_lines.append(lines[i])
+            i += 1
+    return "\n".join(out_lines)
+
+text = align_tables("\n".join(lines))
 out = ROOT / "docs" / "ANALISIS_LIGAS_M27_V5_3.md"
-out.write_text("\n".join(lines), encoding="utf-8")
+out.write_text(text, encoding="utf-8")
 print(f"Escrito: {out} ({out.stat().st_size} bytes)")
