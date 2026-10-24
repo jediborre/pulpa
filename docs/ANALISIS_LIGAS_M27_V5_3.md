@@ -863,7 +863,73 @@ _...y 68 ligas más con menos volumen._
 
 **Corrección aplicada:** se eliminó `'runda zasadnicza'` de `SEGUNDA_FASE_MARKERS` en `models/common/competition_stage.py` (era un error: "Runda Zasadnicza" = temporada regular, no segunda fase). Ligas desbloqueadas: `Poland 2nd Basketball League, Runda Zasadnicza` (852) y `1 Liga Kobiet, Runda Zasadnicza` (270). Los casos `championship` y `group stage` (National Basketball Championship, Women; Women's Super League Basketball, Championship; Liga Argentina, Group Stage; etc.) quedan bloqueados a la espera de revisión manual, porque el marcador es ambiguo (puede ser torneo real o temporada regular).
 
-## 8. Conclusiones
+## 8. Clon `m27_v5_3_1` — prueba contra los partidos en vivo de `m27_v5_3`
+
+> Se clonó el modelo `m27_v5_3` a `m27_v5_3_1` aplicando la corrección del clasificador (Runda Zasadnicza como temporada regular). **Ligas añadidas al entrenamiento:** `Poland 2nd Basketball League, Runda Zasadnicza` (852 partidos) y `1 Liga Kobiet, Runda Zasadnicza` (270 partidos). Los 94 partidos en vivo de `m27_v5_3` **no se incluyeron en el entrenamiento** (caen en el bloque C por ser los más recientes) y se usaron como holdout de prueba.
+
+- **Entrenamiento:** 85 de los 94 partidos en vivo tuvieron ancla (t=30) evaluable.
+- **m27_v5_3 (original):** 85 apuestas, 67 ganadas, 18 perdidas → WR 78.8 %.
+- **m27_v5_3_1 (clon):** 59 apuestas, 47 ganadas, 12 perdidas → WR 79.7 %.
+
+| Liga                                                                        | m27_v5_3 (orig) | m27_v5_3_1 (clon) | Vivo: apuestas | Vivo: ganadas | Vivo: perdidas |
+| ---                                                                         | ---             | ---               | ---:           | ---:          | ---:           |
+| Liga 1 Masculin, Faza I                                                     | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| 1 Liga Kobiet, Runda Zasadnicza                                             | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| 1. Division                                                                 | 0 % (0/1)       | — (0/0)           | 1              | 0             | 0              |
+| 1. ZLS, Women                                                               | 75 % (3/4)      | 75 % (3/4)        | 4              | 3             | 1              |
+| 1st Division Women, Deildarkeppni                                           | 100 % (1/1)     | — (0/0)           | 1              | 0             | 0              |
+| 2. ZLS, Women                                                               | 0 % (0/1)       | 0 % (0/1)         | 1              | 0             | 1              |
+| 2nd League                                                                  | 50 % (1/2)      | 0 % (0/1)         | 2              | 0             | 1              |
+| A1 Women                                                                    | 50 % (1/2)      | 0 % (0/1)         | 2              | 0             | 1              |
+| AdmiralBet ABA League, Group B                                              | 100 % (1/1)     | — (0/0)           | 1              | 0             | 0              |
+| B League One                                                                | 50 % (1/2)      | 0 % (0/1)         | 2              | 0             | 1              |
+| B League Premier                                                            | 100 % (1/1)     | — (0/0)           | 1              | 0             | 0              |
+| Basketligaen                                                                | 100 % (4/4)     | 100 % (1/1)       | 4              | 1             | 0              |
+| Brazil NBB                                                                  | 0 % (0/1)       | 0 % (0/1)         | 1              | 0             | 1              |
+| Catarinense, Women, Playoffs                                                | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| Cyprus Basketball Division A                                                | 0 % (0/1)       | — (0/0)           | 1              | 0             | 0              |
+| Estonian-Latvian Basketball League                                          | 100 % (2/2)     | 100 % (2/2)       | 2              | 2             | 0              |
+| EuroCup, Women, Group B                                                     | 100 % (1/1)     | — (0/0)           | 1              | 0             | 0              |
+| Eurocup, Group B                                                            | 0 % (0/1)       | 0 % (0/1)         | 1              | 0             | 1              |
+| FIBA Women Basketball League Africa - Qualifers, Group A                    | 50 % (1/2)      | 0 % (0/1)         | 2              | 0             | 1              |
+| FIBA Women Basketball League Africa - Qualifers, Group B                    | 100 % (1/1)     | — (0/0)           | 1              | 0             | 0              |
+| FIBA Women Basketball League Africa - Qualifers, Zone 5 - Quarter-Finals 13 | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| FIBA Women Basketball League Africa - Qualifers, Zone 5 - Quarter-Finals 14 | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| FIBA Women Basketball League Africa - Qualifers, Zone 5 - Semi-Finals 19    | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| FSHB Superliga                                                              | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| France Pro A                                                                | 100 % (1/1)     | — (0/0)           | 1              | 0             | 0              |
+| Hungary Divison A Women                                                     | 100 % (1/1)     | — (0/0)           | 1              | 0             | 0              |
+| Hungary NB 1.A                                                              | 100 % (1/1)     | — (0/0)           | 1              | 0             | 0              |
+| Israeli Women Basketball Premier League                                     | 100 % (1/1)     | — (0/0)           | 1              | 0             | 0              |
+| Kvindebasketligaen , Grundspil                                              | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| L1BF BT, Faza I                                                             | 100 % (2/2)     | 100 % (2/2)       | 2              | 2             | 0              |
+| LBP, Group B                                                                | 80 % (4/5)      | 80 % (4/5)        | 5              | 4             | 1              |
+| LMB, Clausura                                                               | 100 % (2/2)     | 100 % (1/1)       | 2              | 1             | 0              |
+| LNB, Women                                                                  | 80 % (4/5)      | 100 % (4/4)       | 5              | 4             | 0              |
+| Liga Nacional Femenina Chile, Fase zonal                                    | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| Liga Nationala                                                              | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| Mexico LNBP, Playoffs                                                       | 100 % (1/1)     | — (0/0)           | 1              | 0             | 0              |
+| NBL, West                                                                   | 33 % (1/3)      | 33 % (1/3)        | 3              | 1             | 2              |
+| Nostra.lt-RKL Division A, Reguliarus sezonas                                | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| Nostra.lt-RKL Division B, Reguliarus sezonas                                | 100 % (1/1)     | — (0/0)           | 1              | 0             | 0              |
+| Poland 2nd Basketball League, Runda Zasadnicza                              | 50 % (2/4)      | 100 % (2/2)       | 4              | 2             | 0              |
+| Premijer ženska liga                                                        | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| Road to Basketball Africa League, Group D                                   | 100 % (3/3)     | 100 % (3/3)       | 3              | 3             | 0              |
+| Russian Women's Basketball Premier League                                   | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| Stoiximan GBL                                                               | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| Super League                                                                | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| Swedish Basketball League Women                                             | 100 % (3/3)     | 100 % (2/2)       | 3              | 2             | 0              |
+| Swedish Basketball Superettan                                               | 0 % (0/1)       | — (0/0)           | 1              | 0             | 0              |
+| Switzerland LNA                                                             | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| Tipos Extraliga, Women                                                      | 100 % (2/2)     | 100 % (2/2)       | 2              | 2             | 0              |
+| Top Division Women, Regular Season                                          | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| Turkish Basketball Super League                                             | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |
+| United League                                                               | 100 % (2/2)     | 100 % (2/2)       | 2              | 2             | 0              |
+| Women's Basketball Division A                                               | 0 % (0/1)       | 0 % (0/1)         | 1              | 0             | 1              |
+
+**Lectura:** el clon es **más conservador** (59 vs 85 apuestas) con un acierto ligeramente superior (79.7 % vs 78.8 %), pero la diferencia es pequeña y la muestra es diminuta (94 partidos). La inclusión de las 2 ligas polacas no cambia materialmente el resultado en vivo; el modelo sigue en modo sombra. **No se justifica un cambio de modelo con esta evidencia.**
+
+## 9. Conclusiones
 
 1. **El modelo mantiene el acierto por encima del equilibrio en la gran mayoría de ligas** a umbral 0.75: 251 de 251 ligas no son candidatas a bloqueo (IC95 superior ≥ 71.4 %).
 2. **0 ligas** tienen el límite superior de su IC95 por debajo del equilibrio a 0.75 → candidatas a bloqueo por medición. Conviene revisarlas antes de operar, pero con muestras pequeñas el IC es ancho; no bloquear por un único corte.
@@ -873,7 +939,7 @@ _...y 68 ligas más con menos volumen._
 6. **Bajar el umbral a 0.65–0.68** aumenta volumen pero acerca el WR al equilibrio (71.4 %); solo justificable si la cuota real del mercado Q4 es superior a 1.40.
 7. La lista de bloqueo por medición queda **vacía en producción** hoy (0 ligas) porque el filtro de formatos de torneo ya descartó los formatos tóxicos (amistosos, 2ª fase, promoción, preliminar, colocación). La lista se repoblará sola cuando acumule evidencia.
 
-## 9. Notas metodológicas
+## 10. Notas metodológicas
 
 - Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis.py` (re-entrena el ensamble, calibra con Platt simétrico, evalúa en C).
 - `matches_holdout` = anclas (t=30) en el bloque C por liga; `matches_train` = anclas en el bloque A.

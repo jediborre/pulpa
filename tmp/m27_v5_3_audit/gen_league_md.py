@@ -225,8 +225,54 @@ if MIS:
                  "bloqueados a la espera de revisión manual, porque el marcador es ambiguo (puede ser torneo "
                  "real o temporada regular).\n")
 
+# --- Clon m27_v5_3_1 (prueba contra partidos en vivo) ---
+try:
+    EVAL = json.load(open(ROOT / "tmp" / "m27_v5_3_audit" / "eval_live_clone.json", encoding="utf-8"))
+except Exception:
+    EVAL = None
+if EVAL:
+    s = EVAL["summary"]
+    lines.append("## 8. Clon `m27_v5_3_1` — prueba contra los partidos en vivo de `m27_v5_3`\n")
+    lines.append("> Se clonó el modelo `m27_v5_3` a `m27_v5_3_1` aplicando la corrección del clasificador "
+                 "(Runda Zasadnicza como temporada regular). **Ligas añadidas al entrenamiento:** "
+                 "`Poland 2nd Basketball League, Runda Zasadnicza` (852 partidos) y "
+                 "`1 Liga Kobiet, Runda Zasadnicza` (270 partidos). "
+                 "Los 94 partidos en vivo de `m27_v5_3` **no se incluyeron en el entrenamiento** "
+                 "(caen en el bloque C por ser los más recientes) y se usaron como holdout de prueba.\n")
+    lines.append(f"- **Entrenamiento:** {s['n_evaluated']} de los 94 partidos en vivo tuvieron ancla (t=30) evaluable.")
+    lines.append(f"- **m27_v5_3 (original):** {s['orig_bets']} apuestas, {s['orig_wins']} ganadas, {s['orig_losses']} perdidas → WR {s['orig_wins']/ (s['orig_wins']+s['orig_losses'])*100:.1f} %.")
+    lines.append(f"- **m27_v5_3_1 (clon):** {s['new_bets']} apuestas, {s['new_wins']} ganadas, {s['new_losses']} perdidas → WR {s['new_wins']/s['new_bets']*100:.1f} %.\n")
+    lines.append("| Liga | m27_v5_3 (orig) | m27_v5_3_1 (clon) | Vivo: apuestas | Vivo: ganadas | Vivo: perdidas |")
+    lines.append("|---|---|---|---:|---:|---:|")
+    # aggregate per league from EVAL rows
+    from collections import defaultdict
+    agg = defaultdict(lambda: {"orig_bets": 0, "orig_wins": 0, "new_bets": 0, "new_wins": 0, "new_losses": 0, "live_bets": 0, "live_wins": 0, "live_losses": 0})
+    for r in EVAL["rows"]:
+        a = agg[r["league"]]
+        a["live_bets"] += 1
+        if r["orig_result"] == "win":
+            a["orig_bets"] += 1; a["orig_wins"] += 1
+        elif r["orig_result"] == "loss":
+            a["orig_bets"] += 1
+        if r["new_bet"]:
+            a["new_bets"] += 1
+            if r["new_won"]:
+                a["new_wins"] += 1
+            else:
+                a["new_losses"] += 1
+    for lg in sorted(agg):
+        a = agg[lg]
+        orig_wr = (f"{a['orig_wins']/a['orig_bets']*100:.0f} %" if a["orig_bets"] else "—")
+        new_wr = (f"{a['new_wins']/a['new_bets']*100:.0f} %" if a["new_bets"] else "—")
+        lines.append(f"| {lg} | {orig_wr} ({a['orig_wins']}/{a['orig_bets']}) | {new_wr} ({a['new_wins']}/{a['new_bets']}) | {a['live_bets']} | {a['new_wins']} | {a['new_losses']} |")
+    lines.append("")
+    lines.append("**Lectura:** el clon es **más conservador** (59 vs 85 apuestas) con un acierto ligeramente "
+                 "superior (79.7 % vs 78.8 %), pero la diferencia es pequeña y la muestra es diminuta (94 partidos). "
+                 "La inclusión de las 2 ligas polacas no cambia materialmente el resultado en vivo; el modelo sigue "
+                 "en modo sombra. **No se justifica un cambio de modelo con esta evidencia.**\n")
+
 # --- Conclusiones ---
-lines.append("## 8. Conclusiones\n")
+lines.append("## 9. Conclusiones\n")
 lines.append("1. **El modelo mantiene el acierto por encima del equilibrio en la gran mayoría de ligas** a umbral 0.75: "
              f"{n_leagues - len(weak)} de {n_leagues} ligas no son candidatas a bloqueo (IC95 superior ≥ 71.4 %).")
 lines.append(f"2. **{len(weak)} ligas** tienen el límite superior de su IC95 por debajo del equilibrio a 0.75 → candidatas a bloqueo por medición. "
@@ -243,7 +289,7 @@ lines.append("7. La lista de bloqueo por medición queda **vacía en producción
              "ya descartó los formatos tóxicos (amistosos, 2ª fase, promoción, preliminar, colocación). "
              "La lista se repoblará sola cuando acumule evidencia.\n")
 
-lines.append("## 9. Notas metodológicas\n")
+lines.append("## 10. Notas metodológicas\n")
 lines.append("- Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis.py` (re-entrena el ensamble, calibra con Platt simétrico, evalúa en C).")
 lines.append("- `matches_holdout` = anclas (t=30) en el bloque C por liga; `matches_train` = anclas en el bloque A.")
 lines.append("- `green()` aplica además el guard de margen (margin ≥ 0 para apuestas al local), igual que el pipeline.")
