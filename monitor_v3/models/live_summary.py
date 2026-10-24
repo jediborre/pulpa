@@ -123,11 +123,14 @@ def compute_live_summary(conn: sqlite3.Connection,
     out["bandas"] = bandas
 
     # ── 3. Serie por minuto ──
+    # OJO: `match_id` es TEXT en ambas tablas. Un `CAST(q.match_id AS INTEGER)`
+    # invalida el índice de quarter_scores_v2 y fuerza un escaneo de 250k filas
+    # (~110 s de /resumen). El join directo usa el índice y tarda milisegundos.
     filas = conn.execute("""
         SELECT i.match_id, i.game_minute, i.pick, i.confidence,
                q.q4_home, q.q4_away
         FROM model_inference_v3 i JOIN quarter_scores_v2 q
-          ON CAST(q.match_id AS INTEGER)=i.match_id
+          ON q.match_id = i.match_id
         WHERE i.model_version=? AND q.q4_home IS NOT NULL
         ORDER BY i.match_id, i.game_minute""", (model_version,)).fetchall()
     por_min: dict[float, list[tuple[int, float]]] = defaultdict(list)

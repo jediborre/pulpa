@@ -61,7 +61,7 @@ def fetch_live_predictions(conn, model_version: str, max_minute: float = 30.0) -
                i.signal, i.block_reason,
                q.q4_home, q.q4_away
         FROM model_inference_v3 i
-        JOIN quarter_scores_v2 q ON CAST(q.match_id AS INTEGER) = i.match_id
+        JOIN quarter_scores_v2 q ON q.match_id = i.match_id
         WHERE i.model_version = ?
           AND i.game_minute <= ?
           AND q.q4_home IS NOT NULL AND q.q4_away IS NOT NULL
