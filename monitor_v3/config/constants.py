@@ -129,6 +129,15 @@ Q4_WAITING_MAX_TICKS = 8            # Ticks máximos esperando sync de cuartos p
 Q4_STALE_MAX_TICKS = 15             # Ticks máximos sin crecimiento en gráfica ni marcador
 NO_BET_CONFIRM_TICKS = 1            # Confirmaciones consecutivas para asentar NO_BET
 
+# Ventana de reintentos de la cola de notificaciones pendientes.
+# Si Telegram devuelve 502 / timeouts (caídas del 2026-10-23: 18:16-19:00) el
+# aviso NO se pierde: se reintenta hasta TELEGRAM_PENDING_MAX_AGE_SECS.
+TELEGRAM_RETRY_ATTEMPTS = 3         # intentos inmediatos por envío
+TELEGRAM_RETRY_BACKOFF_SECS = (2, 5, 10)   # espera entre intentos inmediatos
+TELEGRAM_PENDING_RETRY_SECS = 60    # cada cuánto se revisa la cola pendiente
+TELEGRAM_PENDING_MAX_AGE_SECS = 1800  # 30 min: tras eso se descarta con log
+TELEGRAM_PENDING_MAX_ITEMS = 50     # tope de seguridad de la cola en memoria
+
 # --- Sondeos Prestart (Modo Sonda) ---
 PRESTART_PROBE_MIN_SECS = 60        # Intervalo mínimo de sondeo para partidos no iniciados
 PRESTART_PROBE_MAX_SECS = 300       # Intervalo máximo de sondeo (Cap del Backoff)

@@ -308,6 +308,7 @@ m27_v5_2 59% [NO BET (<75%)] → 🏠 Falco KC-Szombathely
 - Formato de mensajes: `parse_mode="HTML"`; mensajes largos se trocean a **3 800 caracteres** respetando saltos de línea.
 - Bot interactivo (`bot_runner.py`): teclado persistente `🎯 Apuestas` / `📊 Status` y comandos `/start`, `/signals`, `/status`.
 - Los envíos salientes se reintentan hasta 3 veces con backoff (1 s → 2 s → 4 s) ante `NetworkError`/`TimedOut`, y respetan `RetryAfter`.
+- 🛟 **Cola de avisos pendientes (2026-10-23):** si Telegram responde `502/503/504` o hay timeouts (caída del 2026-10-23, 18:16-19:00), el aviso no se pierde: se guarda en una cola en memoria y se reintenta cada 60 s hasta 30 min (`TELEGRAM_PENDING_*` en `constants.py`). El camino en vivo hace **un solo intento** para no bloquear al watcher; los reintentos corren en la tarea de fondo. Errores no transitorios (p. ej. HTML inválido) no se encolan.
 - Los avisos de apuesta y de resultado FT se envían además como **imagen** (tarjeta y, en FT, tarjeta + gráfica de momentum): ver [`IMAGEN_APUESTA_Q4.md`](IMAGEN_APUESTA_Q4.md). Si la imagen falla, el aviso cae a texto plano.
 - Cada partido lleva un **`#N`** secuencial dentro del día (columna `daily_seq`, reinicia en 1 cada fecha) para facilitar el seguimiento en el chat y en el listado `🎯 Apuestas`.
 - `/status` responde con **imagen de dos secciones (`HOY` y `MES`)** más el texto equivalente; el resumen diario de las 23:55 usa el mismo motor con el desglose por categoría.

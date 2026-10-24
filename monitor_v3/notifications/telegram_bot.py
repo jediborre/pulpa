@@ -24,6 +24,7 @@
 
 import json
 import re
+import time
 import unicodedata
 import sqlite3
 import urllib.request
@@ -33,7 +34,16 @@ import asyncio
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 
-from monitor_v3.config.constants import SHADOW_MODELS, TELEGRAM_BOT_TOKEN, UTC_OFFSET_HOURS
+from monitor_v3.config.constants import (
+    SHADOW_MODELS,
+    TELEGRAM_BOT_TOKEN,
+    TELEGRAM_PENDING_MAX_AGE_SECS,
+    TELEGRAM_PENDING_MAX_ITEMS,
+    TELEGRAM_PENDING_RETRY_SECS,
+    TELEGRAM_RETRY_ATTEMPTS,
+    TELEGRAM_RETRY_BACKOFF_SECS,
+    UTC_OFFSET_HOURS,
+)
 from monitor_v3.database.connection import get_real_db_path
 from monitor_v3.utils.logger import log_info, log_warning, log_error, COLOR_GREEN, COLOR_RESET
 
@@ -110,8 +120,157 @@ def _send_request(url: str, payload: dict) -> dict:
         return {"ok": False, "description": str(e)}
 
 
-async def _send_to_chat(chat_id: int, text: str, match_url: str | None = None) -> dict:
-    """Envía un mensaje a un chat_id específico."""
+# ─────────────────────────────────────────────────────────────────────
+# Reintentos y cola de avisos pendientes
+# ─────────────────────────────────────────────────────────────────────
+# Caída de Telegram del 2026-10-23 (18:16-19:00, HTTP 502 Bad Gateway): el
+# monitor siguió evaluando y liquidando, pero los avisos se perdían porque los
+# broadcasts no reintentaban. Ahora todo fallo transitorio se reintenta y, si
+# persiste, queda en una cola en memoria que se vacía cada 60 s durante 30 min.
+_TRANSIENT_MARKERS = (
+    "502", "503", "504", "bad gateway", "timed out", "timeout",
+    "connection", "reset", "unreachable", "temporarily",
+)
+
+_PENDING: list[dict] = []
+_PENDING_TASK: asyncio.Task | None = None
+
+
+def _is_transient(description: str | None) -> bool:
+    """True si el fallo es de red/servidor y por tanto merece reintento."""
+    d = str(description or "").lower()
+    return any(marker in d for marker in _TRANSIENT_MARKERS)
+
+
+def _retry_delay(attempt: int) -> float:
+    """Backoff entre intentos inmediatos (2 s, 5 s, 10 s...)."""
+    try:
+        return float(TELEGRAM_RETRY_BACKOFF_SECS[min(attempt, len(TELEGRAM_RETRY_BACKOFF_SECS) - 1)])
+    except Exception:
+        return 5.0
+
+
+def pending_notifications_count() -> int:
+    """Avisos en cola esperando que Telegram vuelva a responder."""
+    return len(_PENDING)
+
+
+def _enqueue_pending(
+    *,
+    kind: str,
+    chat_ids: list[int],
+    label: str,
+    text: str = "",
+    photo: bytes | None = None,
+    caption: str = "",
+    match_url: str | None = None,
+) -> None:
+    """Guarda un aviso que no se pudo entregar para reintentarlo en segundo plano."""
+    if not chat_ids:
+        return
+    if len(_PENDING) >= TELEGRAM_PENDING_MAX_ITEMS:
+        old = _PENDING.pop(0)
+        log_error("TELEGRAM", f"[RETRY] Cola llena: se descarta el aviso más antiguo | {old.get('label')}")
+    _PENDING.append(
+        {
+            "kind": kind,
+            "chat_ids": list(chat_ids),
+            "text": text,
+            "photo": photo,
+            "caption": caption,
+            "match_url": match_url,
+            "label": label,
+            "attempts": 0,
+            "ts": time.time(),
+        }
+    )
+    log_warning("TELEGRAM", f"[RETRY] Aviso en cola (Telegram no responde) | {label}")
+    _ensure_pending_worker()
+
+
+def _ensure_pending_worker() -> None:
+    """Arranca (una vez) la tarea que vacía la cola de pendientes."""
+    global _PENDING_TASK
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return
+    if _PENDING_TASK is None or _PENDING_TASK.done():
+        _PENDING_TASK = loop.create_task(_pending_worker())
+
+
+async def _send_photo_with_retry(
+    chat_id: int, photo: bytes, caption: str, match_url: str | None, attempts: int = 1
+) -> dict:
+    """Envía una foto; `attempts>1` se usa solo desde la cola (segundo plano)."""
+    res: dict = {}
+    total = max(1, int(attempts))
+    for attempt in range(total):
+        res = await asyncio.to_thread(_send_photo_request, chat_id, photo, caption, match_url)
+        if res.get("ok") or not _is_transient(res.get("description")):
+            break
+        if attempt + 1 < total:
+            await asyncio.sleep(_retry_delay(attempt))
+    return res
+
+
+async def _flush_pending_once() -> None:
+    """Procesa una pasada de la cola: reintenta cada aviso pendiente."""
+    if not _PENDING:
+        return
+    now = time.time()
+    for item in list(_PENDING):
+        if now - item["ts"] > TELEGRAM_PENDING_MAX_AGE_SECS:
+            _PENDING.remove(item)
+            log_error("TELEGRAM", f"[RETRY] Descartado tras "
+                                  f"{int(now - item['ts'])}s sin conexión | {item['label']}")
+            continue
+        remaining: list[int] = []
+        for cid in item["chat_ids"]:
+            if item["kind"] == "photo":
+                res = await _send_photo_with_retry(
+                    cid, item["photo"], item["caption"], item["match_url"],
+                    attempts=TELEGRAM_RETRY_ATTEMPTS,
+                )
+            else:
+                res = await _send_to_chat(
+                    cid, item["text"], match_url=item["match_url"],
+                    attempts=TELEGRAM_RETRY_ATTEMPTS,
+                )
+            if not res.get("ok"):
+                remaining.append(cid)
+        item["chat_ids"] = remaining
+        item["attempts"] += 1
+        if remaining:
+            log_warning("TELEGRAM", f"[RETRY] Sigue pendiente ({item['attempts']} reintento/s) | "
+                                    f"{item['label']}")
+        else:
+            _PENDING.remove(item)
+            log_info("TELEGRAM", f"[RETRY] Aviso entregado tras {item['attempts']} reintento/s | "
+                                 f"{item['label']}")
+
+
+async def _pending_worker() -> None:
+    """Reintenta cada 60 s los avisos en cola hasta entregarlos o caducar."""
+    while True:
+        try:
+            await asyncio.sleep(TELEGRAM_PENDING_RETRY_SECS)
+            await _flush_pending_once()
+        except asyncio.CancelledError:
+            return
+        except Exception as e:  # noqa: BLE001
+            log_error("TELEGRAM", f"[RETRY] Error en la cola de pendientes: {e}")
+
+
+async def _send_to_chat(
+    chat_id: int, text: str, match_url: str | None = None, attempts: int = 1
+) -> dict:
+    """
+    Envía un mensaje a un chat_id específico.
+
+    `attempts=1` en el camino en vivo (no bloquea al watcher); la cola de
+    pendientes reintenta con más intentos y backoff cuando Telegram vuelve.
+    """
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": chat_id,
@@ -129,7 +288,14 @@ async def _send_to_chat(chat_id: int, text: str, match_url: str | None = None) -
                 ]
             ]
         }
-    res = await asyncio.to_thread(_send_request, url, payload)
+    res: dict = {}
+    total = max(1, int(attempts))
+    for attempt in range(total):
+        res = await asyncio.to_thread(_send_request, url, payload)
+        if res.get("ok") or not _is_transient(res.get("description")):
+            break
+        if attempt + 1 < total:
+            await asyncio.sleep(_retry_delay(attempt))
     if not res.get("ok"):
         log_error("TELEGRAM", f"[ERROR] chat_id={chat_id}: {res.get('description', '?')}")
     return res
@@ -180,11 +346,23 @@ async def broadcast_message(text: str, signal_type_filter: str = "all", match_ur
     log_info("TELEGRAM", f"{COLOR_GREEN}[BROADCAST]{COLOR_RESET} Enviando {chats_str}{url_line}")
 
     results = []
+    failed: list[int] = []
     for chat_id in active_chat_ids:
         res = await _send_to_chat(chat_id, text, match_url=match_url)
         if not res.get("ok"):
             log_error("TELEGRAM", f"[FAIL] chat_id={chat_id} | {res.get('description', '?')}")
+            if _is_transient(res.get("description")):
+                failed.append(chat_id)
         results.append(res)
+
+    if failed:
+        _enqueue_pending(
+            kind="text",
+            chat_ids=failed,
+            label=(text.splitlines()[0] if text else "mensaje")[:70],
+            text=text,
+            match_url=match_url,
+        )
 
     return results
 
@@ -251,11 +429,25 @@ async def broadcast_photo(
     )
 
     results = []
+    failed: list[int] = []
     for chat_id in active_chat_ids:
-        res = await asyncio.to_thread(_send_photo_request, chat_id, photo, caption, match_url)
+        res = await _send_photo_with_retry(chat_id, photo, caption, match_url)
         if not res.get("ok"):
             log_error("TELEGRAM", f"[FAIL] chat_id={chat_id} (imagen) | {res.get('description', '?')}")
+            if _is_transient(res.get("description")):
+                failed.append(chat_id)
         results.append(res)
+
+    if failed:
+        _enqueue_pending(
+            kind="photo",
+            chat_ids=failed,
+            label=(caption.splitlines()[0] if caption else "imagen")[:70],
+            photo=photo,
+            caption=caption,
+            match_url=match_url,
+        )
+
     return results
 
 
@@ -425,6 +617,10 @@ async def _send_bet_photo(
     # Si TODOS los envíos fallaron, se degrada a texto plano desde el caller.
     if results and any(r.get("ok") for r in results):
         return results
+    # Fallo transitorio (502/timeout): el aviso ya quedó en la cola de
+    # reintentos; no se degrada a texto para no duplicarlo cuando se entregue.
+    if results and all(_is_transient(r.get("description")) for r in results):
+        return [{"ok": True, "queued": True}]
     return None
 
 
