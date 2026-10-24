@@ -842,7 +842,7 @@ _...y 68 ligas más con menos volumen._
 
 **Lectura honesta:** con 93 apuestas liquidadas el IC95 del acierto es de ±~10 pp, así que el 76.6 % vivo y el 81.7 % de backtest son **indistinguibles estadísticamente**. Lo que sí se ve es que varias ligas con WR de backtest > 85 % (NCAA Women, BNXT, Saudi, etc.) no han aparecido aún en vivo o han rendido por debajo, lo que confirma que **no hay que confiar en muestras pequeñas**. El modelo sigue en modo sombra y no alerta hasta tener ≥ 200 apuestas liquidadas.
 
-> Nota: cuando la columna `Backtest @0.75` muestra `—` y `Entrenado = 0`, la liga no tuvo ningún partido con ese **nombre exacto** en el holdout/entrenamiento (arranque en frío o variante de nombre, p. ej. `Runda Zasadnicza` = temporada regular en polaco). En esos casos solo hay datos en vivo, que es la única evidencia disponible.
+> Nota: cuando la columna `Backtest @0.75` muestra `—` y `Entrenado = 0`, la liga no tuvo ningún partido con ese **nombre exacto** en el holdout/entrenamiento. Causas posibles: (a) arranque en frío (liga nueva), o (b) la liga se filtró en el entrenamiento porque `classify_stage` la catalogó como fase descartada (p. ej. `Runda Zasadnicza` = temporada regular en polaco, pero el clasificador la marca como `SEGUNDA_FASE`). En esos casos la DB sí tiene histórico (ej. `Poland 2nd Basketball League, Runda Zasadnicza` = 1072 partidos), pero el modelo nunca la vio; solo hay datos en vivo, que es la única evidencia disponible.
 
 ## 7. Conclusiones
 

@@ -186,9 +186,12 @@ if LIVE:
                  "en muestras pequeñas**. El modelo sigue en modo sombra y no alerta hasta tener ≥ 200 apuestas "
                  "liquidadas.\n")
     lines.append("> Nota: cuando la columna `Backtest @0.75` muestra `—` y `Entrenado = 0`, la liga no tuvo "
-                 "ningún partido con ese **nombre exacto** en el holdout/entrenamiento (arranque en frío o variante "
-                 "de nombre, p. ej. `Runda Zasadnicza` = temporada regular en polaco). En esos casos solo hay "
-                 "datos en vivo, que es la única evidencia disponible.\n")
+                 "ningún partido con ese **nombre exacto** en el holdout/entrenamiento. Causas posibles: "
+                 "(a) arranque en frío (liga nueva), o (b) la liga se filtró en el entrenamiento porque "
+                 "`classify_stage` la catalogó como fase descartada (p. ej. `Runda Zasadnicza` = temporada "
+                 "regular en polaco, pero el clasificador la marca como `SEGUNDA_FASE`). En esos casos la DB "
+                 "sí tiene histórico (ej. `Poland 2nd Basketball League, Runda Zasadnicza` = 1072 partidos), "
+                 "pero el modelo nunca la vio; solo hay datos en vivo, que es la única evidencia disponible.\n")
 
 # --- Conclusiones ---
 lines.append("## 7. Conclusiones\n")
