@@ -193,8 +193,34 @@ if LIVE:
                  "sí tiene histórico (ej. `Poland 2nd Basketball League, Runda Zasadnicza` = 1072 partidos), "
                  "pero el modelo nunca la vio; solo hay datos en vivo, que es la única evidencia disponible.\n")
 
+# --- Bug del clasificador de fases ---
+try:
+    MIS = json.load(open(ROOT / "tmp" / "m27_v5_3_audit" / "misclassified_big.txt", encoding="utf-8"))
+except Exception:
+    MIS = []
+if MIS:
+    lines.append("## 7. Bug conocido del clasificador de fases (`classify_stage`)\n")
+    lines.append("> Varios nombres de liga se catalogan como fase descartada (`SEGUNDA_FASE`, `AMISTOSOS`, `PRELIMINAR`, "
+                 "`PROMOCION`) aunque su `stage_detail` sea `Regular Season`. Consecuencia: el modelo **no las entrena "
+                 "ni las opera** (Entrenado = 0, Backtest = `—`), aunque la DB sí tenga histórico. "
+                 "Ejemplo claro: `Poland 2nd Basketball League, Runda Zasadnicza` (1072 partidos, cobertura 100 %) "
+                 "se marca como `SEGUNDA_FASE` porque el clasificador asocia \"Runda\" con segunda fase.\n")
+    lines.append("| Liga | Partidos (DB) | stage | stage_detail | Clasificado como |")
+    lines.append("|---|---:|---|---|---|")
+    for m in MIS:
+        lines.append(f"| {m['league']} | {m['match_count']:,} | {m['stage']} | {m['stage_detail']} | {m['classified_as']} |")
+    lines.append("")
+    lines.append("**Ligas claramente mal clasificadas (stage_detail = Regular Season pero bloqueadas):** "
+                 "`Poland 2nd Basketball League, Runda Zasadnicza`, `1 Liga Kobiet, Runda Zasadnicza`, "
+                 "`National Basketball Championship, Women`, `Women's Super League Basketball, Championship`, "
+                 "`NBA G League Tip-Off Tournament` (stage_detail Regular Season). "
+                 "`Liga Argentina, Group Stage` y `Women's Super League Basketball, Championship` tienen "
+                 "stage_detail distinto y requieren revisión manual.\n")
+    lines.append("**Acción sugerida:** corregir `models/common/competition_stage.py` para reconocer "
+                 "`Runda Zasadnicza` (y equivalentes) como temporada regular, y re-entrenar / re-auditar.\n")
+
 # --- Conclusiones ---
-lines.append("## 7. Conclusiones\n")
+lines.append("## 8. Conclusiones\n")
 lines.append("1. **El modelo mantiene el acierto por encima del equilibrio en la gran mayoría de ligas** a umbral 0.75: "
              f"{n_leagues - len(weak)} de {n_leagues} ligas no son candidatas a bloqueo (IC95 superior ≥ 71.4 %).")
 lines.append(f"2. **{len(weak)} ligas** tienen el límite superior de su IC95 por debajo del equilibrio a 0.75 → candidatas a bloqueo por medición. "
@@ -211,7 +237,7 @@ lines.append("7. La lista de bloqueo por medición queda **vacía en producción
              "ya descartó los formatos tóxicos (amistosos, 2ª fase, promoción, preliminar, colocación). "
              "La lista se repoblará sola cuando acumule evidencia.\n")
 
-lines.append("## 8. Notas metodológicas\n")
+lines.append("## 9. Notas metodológicas\n")
 lines.append("- Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis.py` (re-entrena el ensamble, calibra con Platt simétrico, evalúa en C).")
 lines.append("- `matches_holdout` = anclas (t=30) en el bloque C por liga; `matches_train` = anclas en el bloque A.")
 lines.append("- `green()` aplica además el guard de margen (margin ≥ 0 para apuestas al local), igual que el pipeline.")
