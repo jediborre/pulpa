@@ -157,7 +157,9 @@ if LIVE:
     lines.append("| Liga | Entrenado (A) | Backtest @0.75 (WR) | Vivo: apuestas | Vivo: ganadas | Vivo: perdidas | Vivo: WR | Recomendación |")
     lines.append("|---|---:|---:|---:|---:|---:|---:|---|")
     bt = {l["league"]: l for l in leagues}
-    for lv in LIVE["leagues"]:
+    # ordenar por partidos entrenados (desc), luego por apuestas vivas (desc)
+    live_sorted = sorted(LIVE["leagues"], key=lambda lv: (bt.get(lv["league"], {}).get("matches_train", 0), lv["bets"]), reverse=True)
+    for lv in live_sorted:
         b = bt.get(lv["league"])
         trained = b["matches_train"] if b else 0
         bt_tier = (next((t for t in b["tiers"] if t["thr"] == 0.75), {}) if b else {})
