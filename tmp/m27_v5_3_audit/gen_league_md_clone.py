@@ -56,19 +56,22 @@ lines.append("")
 
 # tabla resumen por liga
 lines.append("## 3. Tabla resumen por liga (ordenada por WR descendente a 0.75)\n")
-lines.append("| Liga | Entrenado (A) | Holdout (C) | Apuestas @0.75 | WR @0.75 | IC95 | ROI @1.40 | ROI @1.83 | Bloqueo |")
-lines.append("|---|---:|---:|---:|---:|---|---:|---:|---|")
+lines.append("| Liga | Entrenado (A) | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 | IC95 | ROI @1.40 | ROI @1.83 | Bloqueo |")
+lines.append("|---|---:|---:|---:|---:|---:|---:|---|---:|---:|---|")
 for l in leagues:
     t75 = next((t for t in l["tiers"] if t["thr"] == 0.75), None)
     bets = t75.get("bets") if t75 else 0
-    wr = f"{t75['wr']:.1f} %" if (t75 and t75.get("wr") is not None) else "—"
+    wrv = t75.get("wr") if t75 else None
+    wins = round(wrv * bets / 100) if (wrv is not None and bets) else 0
+    losses = bets - wins if bets else 0
+    wr = f"{wrv:.1f} %" if (wrv is not None) else "—"
     ci = (f"{t75['wr_ci95'][0]}–{t75['wr_ci95'][1]}" if (t75 and t75.get("wr_ci95")) else "—")
     roi140 = (f"{t75['roi_140']:+.2f} %" if (t75 and t75.get("roi_140") is not None) else "—")
     roi183 = (f"{t75['roi_183']:+.2f} %" if (t75 and t75.get("roi_183") is not None) else "—")
     t75blk = "⚠️" if (t75 and t75.get("roi_140") is not None and t75["roi_140"] < 0) else ""
     if l["matches_train"] == 0:
         t75blk = (t75blk + " 🆕").strip()
-    lines.append(f"| {l['league']} | {l['matches_train']:,} | {l['matches_holdout']:,} | {bets:,} | {wr} | {ci} | {roi140} | {roi183} | {t75blk} |")
+    lines.append(f"| {l['league']} | {l['matches_train']:,} | {l['matches_holdout']:,} | {bets:,} | {wins:,} | {losses:,} | {wr} | {ci} | {roi140} | {roi183} | {t75blk} |")
 lines.append("")
 
 # detalle top 30
