@@ -57,7 +57,7 @@ BE_140 = 1 / 1.40  # punto de equilibrio con cuota 1.40
 # 0.72-0.75 rindio 62-64 % en vivo (por debajo del equilibrio de 71.4 %).
 WR_MIN_OPERATING = 0.78
 # Umbral de despliegue: decision explicita de operacion, no del pipeline.
-# Ver docs/ANALISIS_LIVE_M27_V5_3.md (R2). El pipeline imprime el umbral
+# Ver docs/modelos/ANALISIS_LIVE_M27_V5_3.md (R2). El pipeline imprime el umbral
 # auto-seleccionado para comparar, pero despliega este.
 OPERATING_CONF = 0.75
 

@@ -2,7 +2,7 @@
 tools/backfill_odds_lines.py
 Backfill ESPECIFICO de cuotas pre-partido para m27_v5_3 (sin re-descargar el detalle completo de los partidos).
 
-Que arregla (ver docs/findings_m27_v5_3.md):
+Que arregla (ver docs/modelos/findings_m27_v5_3.md):
   * match_odds no guardaba la LINEA de handicap ni la linea del total (solo el precio ~1.83) -> el prior de mercado
     mas informativo (spread/total) era inutilizable. Este script descarga event/{id}/odds/1/all y guarda
     line / home_initial / away_initial solo con mercados PRE-PARTIDO (isLive=False).

@@ -1,7 +1,7 @@
 # =====================================================================
 # RESUMEN EN VIVO DEL MODELO (para el bot de Telegram)
 # ---------------------------------------------------------------------
-# Same numbers as the report in docs/RESUMEN_LIVE_M27_V5_3.md, computed
+# Same numbers as the report in docs/modelos/RESUMEN_LIVE_M27_V5_3.md, computed
 # from the DB on demand:
 #   - apuestas reales por dia y acumulado (con IC95 y unidades)
 #   - por banda de confianza

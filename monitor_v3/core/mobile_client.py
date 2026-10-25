@@ -160,7 +160,7 @@ class MobileClient:
     Usa la huella TLS/HTTP2 de OkHttp Android (`tls_client`) + el User-Agent
     firmado de la app (MD5 con ventana de 100s) para pasar el WAF de Fastly.
     Conserva el pool rotativo de JWTs, control de concurrencia y reintentos.
-    Ver docs/REVERSE_ENGINEERING_SOFASCORE.md.
+    Ver docs/scraping/REVERSE_ENGINEERING_SOFASCORE.md.
     """
     def __init__(self, token_pool: TokenPool | None = None):
         self.token_pool = token_pool or get_token_pool()

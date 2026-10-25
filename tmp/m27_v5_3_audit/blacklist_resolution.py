@@ -2,7 +2,7 @@
 # LISTA NEGRA DE LA GUIA DE ARQUETIPOS -> LIGAS CONCRETAS
 # ---------------------------------------------------------------------
 # FUENTE DE LA PREMISA:
-#   docs/COMPORTAMIENTO_LIGAS_Y_GUIA_ENTRENAMIENTO.md (semáforo de ligas):
+#   docs/ligas/COMPORTAMIENTO_LIGAS_Y_GUIA_ENTRENAMIENTO.md (semáforo de ligas):
 #     🔴 R1  Juveniles / Canteras U16-U23      -> "BLACKLIST OBLIGATORIA"
 #     🔴 R2  College NCAA                      -> "EXCLUIR DEL DATASET GENERAL"
 #     🔴 R3  Regionales / Amistosos / Pretemporada

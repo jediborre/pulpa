@@ -1,4 +1,4 @@
-"""Script para actualizar modelos.md y docs/modelos.md con las métricas del modelo limpio podado."""
+"""Script para actualizar modelos.md y docs/modelos/modelos.md con las métricas del modelo limpio podado."""
 
 with open("modelos.md", "r", encoding="utf-8") as f:
     content = f.read()
@@ -45,8 +45,8 @@ if pos_start != -1 and pos_end != -1:
     content = content[:pos_start] + new_block + content[pos_end:]
     with open("modelos.md", "w", encoding="utf-8") as f:
         f.write(content)
-    with open("docs/modelos.md", "w", encoding="utf-8") as f:
+    with open("docs/modelos/modelos.md", "w", encoding="utf-8") as f:
         f.write(content)
-    print("modelos.md y docs/modelos.md actualizados con éxito!")
+    print("modelos.md y docs/modelos/modelos.md actualizados con éxito!")
 else:
     print("Error buscando posiciones:", pos_start, pos_end)

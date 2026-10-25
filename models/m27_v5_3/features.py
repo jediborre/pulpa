@@ -1,7 +1,7 @@
 """
 Extractor UNICO de features de m27_v5_3 (entrenamiento, evaluacion offline y monitor_v3 en vivo).
 
-Diseño (ver docs/findings_m27_v5_3.md):
+Diseño (ver docs/modelos/findings_m27_v5_3.md):
   * Una sola funcion `snapshot_features(ctx, state)` produce el vector; el entrenamiento arma `ctx` desde la BD y el
     monitor lo arma desde el payload de SofaScore con `ctx_from_payload`. Cero formulas duplicadas => cero skew.
   * Resiliente al minuto: el vector depende del minuto real `t` (25.5..30). Se entrena con snapshots en todo ese rango.
@@ -93,7 +93,7 @@ SNAPSHOT_MIN, SNAPSHOT_MAX = 25.5, 30.0
 # reales de SofaScore: los que no coinciden con ninguna liga de `matches` no
 # podan nada del train ni bloquean nada en live (falsa sensacion de cobertura).
 # La lista se audito contra las 3.761 ligas del universo de entrenamiento y
-# las 434 vistas en vivo (ver docs/ANALISIS_LIVE_M27_V5_3.md).
+# las 434 vistas en vivo (ver docs/modelos/ANALISIS_LIVE_M27_V5_3.md).
 TOXIC_LEAGUE_PATTERNS = [
     "korean basketball league", "kbl", "lmb, apertura", "tipos sbl",
     "korisliiga, women", "betsafe-lkl", "nlb", "1st dbbl",
@@ -107,8 +107,8 @@ _MEASURED_TOXIC: dict[str, tuple[float, list[float]]] | None = None
 
 # Categorias de FASE DE TORNEO que se descartan del entrenamiento y se
 # bloquean en inferencia. Decision del 2026-10-20 a partir de la premisa de
-# docs/COMPORTAMIENTO_LIGAS_Y_GUIA_ENTRENAMIENTO.md y del backtest por fase
-# (docs/ANALISIS_LIVE_M27_V5_3.md).
+# docs/ligas/COMPORTAMIENTO_LIGAS_Y_GUIA_ENTRENAMIENTO.md y del backtest por fase
+# (docs/modelos/ANALISIS_LIVE_M27_V5_3.md).
 #   - ELIMINATORIA y COPA NO se descartan: el backtest medido en el holdout C
 #     da 84.3 % y 82.8 % de acierto, por encima del 77.0 % de la temporada
 #     regular, asi que no son ruido para este objetivo (ganador de Q4).

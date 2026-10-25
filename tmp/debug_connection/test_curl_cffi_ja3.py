@@ -16,7 +16,7 @@ if hasattr(sys.stdout, "reconfigure"):
 from curl_cffi import requests as cffi
 
 ROOT = Path(__file__).resolve().parents[2]
-# JA3 OkHttp Android (ver docs/REVERSE_ENGINEERING_SOFASCORE.md). Incluye SNI (ext 0).
+# JA3 OkHttp Android (ver docs/scraping/REVERSE_ENGINEERING_SOFASCORE.md). Incluye SNI (ext 0).
 JA3 = "771,4865-4866-4867-49195-49196-52393-49199-49200-52392-49171-49172-156-157-47-53,0-23-65281-10-11-35-16-5-13-51-45-43-21,29-23-24,0"
 
 PKG = "com.sofascore.results"

@@ -314,7 +314,7 @@ Ambos modelos activos se evalúan con el **snapshot del minuto 27**:
 
 El minuto usado para disparar la evaluación proviene del **reloj fiable del API**
 (`event.time.played // 60`), no de una inferencia de PBP/gráfica. Ver
-`docs/REVERSE_ENGINEERING_SOFASCORE.md` §2.5.
+`docs/scraping/REVERSE_ENGINEERING_SOFASCORE.md` §2.5.
 
 ### Clasificación y Gestión de Señales de Entrada/Salida
 Las respuestas analíticas se supeditan a una regla de guardias temporales basada en el minuto de juego exacto verificado en SofaScore dentro de la ventana de Q4 (Minuto 27 a 38 máximo):

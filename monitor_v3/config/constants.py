@@ -43,7 +43,7 @@ TOKENS_CONFIG_PATH = str(Path(__file__).resolve().parent / "tokens.json")
 
 # --- Configuración del Motor Móvil y Red ---
 # El WAF de Fastly ya no se evade con proxy sino con huella TLS OkHttp Android +
-# User-Agent firmado (ver docs/REVERSE_ENGINEERING_SOFASCORE.md). Por defecto se
+# User-Agent firmado (ver docs/scraping/REVERSE_ENGINEERING_SOFASCORE.md). Por defecto se
 # conecta DIRECTO (sin proxy). Solo se usa un proxy si el .env define uno explícito
 # y distinto del smartproxy (que está muerto/407).
 _env_proxy = os.getenv("SOFASCORE_PROXY_URL", "").strip()

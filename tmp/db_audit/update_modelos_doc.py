@@ -1,7 +1,7 @@
 """
 Ubicación original: tmp/db_audit/update_modelos_doc.py
 Propósito / Qué hace:
-Actualiza `modelos.md` y `docs/modelos.md` mapeando de forma exhaustiva los scripts de entrenamiento,
+Actualiza `modelos.md` y `docs/modelos/modelos.md` mapeando de forma exhaustiva los scripts de entrenamiento,
 evaluación y ROI para cada una de las versiones de modelos (V1 a V17, m27_v1 a m27_v3, m30_v1)
 y agregando a m27_v3 en la tabla comparativa rápida final.
 """

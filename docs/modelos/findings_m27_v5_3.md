@@ -1,8 +1,8 @@
 # 🔬 m27_v5_3 — qué arregla, por qué cada feature, datos que faltan y cómo se mide
 
 > **Reentrenado el 2026-10-20** (v2: filtro de formatos de torneo + umbral 0.75 + calibración continua Platt). Entrenado originalmente el 2026-10-18.
-> Código: [`models/m27_v5_3/`](../models/m27_v5_3) · Pipeline: [`tmp/m27_v5_3/`](../tmp/m27_v5_3) · Diagnóstico previo: [`findings_m27_2.md`](./findings_m27_2.md).
-> Análisis live y decisiones operativas: [`ANALISIS_LIVE_M27_V5_3.md`](./ANALISIS_LIVE_M27_V5_3.md) · Conclusión ejecutiva: [`CONCLUSION_M27_V5_3.md`](./CONCLUSION_M27_V5_3.md) · Plan v5_4: [`PLAN_V5_4.md`](./PLAN_V5_4.md).
+> Código: [`models/m27_v5_3/`](../models/m27_v5_3) · Pipeline: [`tmp/m27_v5_3/`](../tmp/m27_v5_3) · Diagnóstico previo: [`findings_m27_2.md`](findings/findings_m27_2.md).
+> Análisis live y decisiones operativas: [`ANALISIS_LIVE_M27_V5_3.md`](modelos/ANALISIS_LIVE_M27_V5_3.md) · Conclusión ejecutiva: [`CONCLUSION_M27_V5_3.md`](modelos/CONCLUSION_M27_V5_3.md) · Plan v5_4: [`PLAN_V5_4.md`](./PLAN_V5_4.md).
 > Artefactos (ignorados por git, ver `.gitignore`): `models/m27_v5_3/model_outputs/` → pesos, `model_config.json`, `m27_v5_3_summary.json`, `league_calibration.json`, `feature_justification.md`, `m27_v5_3_diagnostic_dashboard.png`.
 
 ---
@@ -193,7 +193,7 @@ Cobertura esperada de spread/total: ~8-18 % de los partidos 2024-26 (solo ligas 
 
 > ℹ️ `m27_v5_3` está **primero** en `ACTIVE_MODELS` pero en **modo sombra** (`SHADOW_MODELS`): sus apuestas se registran en `bet_monitor_log_v3` y en `model_inference_v3`, pero no disparan alerta. Motivo: 40 apuestas resueltas con WR 72.5 % (IC95 56-85 %) no demuestran ventaja en vivo. Se reactiva quitándolo de `SHADOW_MODELS` cuando haya ≥ 200 apuestas resueltas.
 >
-> 📊 **Comparación live ya hecha (2026-10-18 → 19, modelo anterior):** 40 apuestas, WR 72.5 % frente al 77.8 % de backtest → dentro del ruido, y frente a `m27_v5_2` (11 apuestas, 82 %) la diferencia **no es significativa** (Fisher p = 0.706). En los snapshots compartidos `v5_3` era **mejor** que `v5_2` (Brier 0.1907 vs 0.1976). El gap lo explicaba la **regla de disparo** (`min_conf 0.72` sin filtro de margen), las **inferencias con minuto > 30** y la **lista de ligas tóxicas cuyos patrones no coincidían con los nombres reales**. Todo corregido; detalle y contrfactuales: [`ANALISIS_LIVE_M27_V5_3.md`](./ANALISIS_LIVE_M27_V5_3.md).
+> 📊 **Comparación live ya hecha (2026-10-18 → 19, modelo anterior):** 40 apuestas, WR 72.5 % frente al 77.8 % de backtest → dentro del ruido, y frente a `m27_v5_2` (11 apuestas, 82 %) la diferencia **no es significativa** (Fisher p = 0.706). En los snapshots compartidos `v5_3` era **mejor** que `v5_2` (Brier 0.1907 vs 0.1976). El gap lo explicaba la **regla de disparo** (`min_conf 0.72` sin filtro de margen), las **inferencias con minuto > 30** y la **lista de ligas tóxicas cuyos patrones no coincidían con los nombres reales**. Todo corregido; detalle y contrfactuales: [`ANALISIS_LIVE_M27_V5_3.md`](modelos/ANALISIS_LIVE_M27_V5_3.md).
 
 ---
 
@@ -209,9 +209,9 @@ Cobertura esperada de spread/total: ~8-18 % de los partidos 2024-26 (solo ligas 
 
 ---
 
-> 🔎 **Auditoría en producción:** dónde pierde realmente el modelo, barrido de `min_conf` y guards → [`AUDITORIA_M27_V5_3_PERDIDAS.md`](./AUDITORIA_M27_V5_3_PERDIDAS.md).
-> 📉 **Análisis live completo (v5_2 vs v5_3, lista negra, ablation por fase):** [`ANALISIS_LIVE_M27_V5_3.md`](./ANALISIS_LIVE_M27_V5_3.md).
+> 🔎 **Auditoría en producción:** dónde pierde realmente el modelo, barrido de `min_conf` y guards → [`AUDITORIA_M27_V5_3_PERDIDAS.md`](modelos/AUDITORIA_M27_V5_3_PERDIDAS.md).
+> 📉 **Análisis live completo (v5_2 vs v5_3, lista negra, ablation por fase):** [`ANALISIS_LIVE_M27_V5_3.md`](modelos/ANALISIS_LIVE_M27_V5_3.md).
 
 ---
 
-> ?? **Auditor?a en producci?n:** d?nde pierde realmente el modelo, barrido de `min_conf` y guards ? [`AUDITORIA_M27_V5_3_PERDIDAS.md`](./AUDITORIA_M27_V5_3_PERDIDAS.md).
+> ?? **Auditor?a en producci?n:** d?nde pierde realmente el modelo, barrido de `min_conf` y guards ? [`AUDITORIA_M27_V5_3_PERDIDAS.md`](modelos/AUDITORIA_M27_V5_3_PERDIDAS.md).

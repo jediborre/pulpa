@@ -672,7 +672,7 @@ models/
 ## m27_v4 — Canonical Triad Multi-Head & Multi-Snapshot Champion (Cero Overfitting) ⭐
 
 > **Paquete de producción:** [`models/m27_v4/`](file:///C:/Users/App/Desktop/pulpa/models/m27_v4/predict.py) (`features.py`, `predict.py`, `train.py`, `model_outputs/`)  
-> **Bitácora de iteraciones, corrección de fugas y anti-overfitting:** [`docs/FINDINGS_M27_V4_ITERACIONES.md`](file:///C:/Users/App/Desktop/pulpa/docs/FINDINGS_M27_V4_ITERACIONES.md)
+> **Bitácora de iteraciones, corrección de fugas y anti-overfitting:** [`docs/modelos/FINDINGS_M27_V4_ITERACIONES.md`](file:///C:/Users/App/Desktop/pulpa/docs/modelos/FINDINGS_M27_V4_ITERACIONES.md)
 
 | Campo | Valor |
 |-------|-------|
@@ -1405,7 +1405,7 @@ La NBA cuenta con un volumen masivo (más de 3,000 partidos en el corte), pero a
 | **Algoritmo** | `0.40·XGBoost + 0.35·HistGB + 0.25·LR (imputada)` con **aumentación espejo local↔visitante** + regresor de margen Q4 + **calibrador isotónico fuera de muestra** (techo 0.95) |
 | **Script entrenamiento** | `tmp/m27_v5_3/build_dataset.py` + `tmp/m27_v5_3/train_m27_v5_3_pipeline.py` (extractor único `models/m27_v5_3/features.py`) |
 | **Dataset** | 197,111 partidos elegibles (10m, no tóxicos, sin empate Q4); 383,985 filas (ancla t=30 + 2 snapshots intra-Q3 en 88 k partidos con eventos). Split cronológico A 70 % / B 12 % (calibrador y umbral) / C 18 % (test, desde 2025-11-10) |
-| **Features (42)** | Estado a minuto t (18), fuerza pre-partido as-of (11), mercado pre-partido (7: ML, spread, total), liga (5), orientación (1). Ver `docs/findings_m27_v5_3.md` y `models/m27_v5_3/model_outputs/feature_justification.md` |
+| **Features (42)** | Estado a minuto t (18), fuerza pre-partido as-of (11), mercado pre-partido (7: ML, spread, total), liga (5), orientación (1). Ver `docs/modelos/findings_m27_v5_3.md` y `models/m27_v5_3/model_outputs/feature_justification.md` |
 | **ROC AUC** | Train 0.6454 · Calib (B) 0.6540 · **Test 0.6530** · gap −0.0076 |
 | **Brier / LogLoss / Acc** | **0.2308** / 0.6529 / 61.1 % |
 | **Rendimiento (ancla, test)** | P≥0.68: 6,156 apuestas, WR 75.5 %, ROI@1.40 +5.6 % · **P≥0.72 (operativo): 4,563, WR 77.8 %, ROI@1.40 +8.9 %, @1.83 +42.3 %** · P≥0.80: 1,586, WR 84.9 % |

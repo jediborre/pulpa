@@ -140,6 +140,6 @@ filtros_v1 = ROOT / "monitor_v1" / "FILTROS_LIGAS.md"
 if filtros_v1.exists() and not filtros_docs.exists():
     header = "> **Ubicación original:** match/FILTROS_LIGAS.md\n\n---\n\n"
     filtros_docs.write_text(header + filtros_v1.read_text(encoding="utf-8"), encoding="utf-8")
-    print("Copiado FILTROS_LIGAS.md a docs/FILTROS_LIGAS.md con encabezado")
+    print("Copiado FILTROS_LIGAS.md a docs/ligas/FILTROS_LIGAS.md con encabezado")
 
 print("Migracion de monitores completada exitosamente.")
