@@ -799,20 +799,39 @@ A 0.75: **164 apuestas, WR 79.88 %, ROI@1.40 +11.83 %** (en vivo: 4 partidos, v5
 > Nota: el original gana más en absoluto con momio 1.40 ($880 vs $680) porque colocó más apuestas, aunque el clon tiene mayor ROI. Con momio 1.83 la ventaja del volumen se amplifica.
 
 
-## 8. Simulación con criterio de Kelly (fraccional 1/4, tope 25 % del bankroll)
+## 8. Barrido de umbrales sobre las apuestas en vivo (m27_v5_3 vs clon)
 
-> Apuesta proporcional al edge: f = (p·(o-1) - (1-p))/(o-1), usando 1/4 Kelly y tope del 25 % del bankroll por apuesta. Bankroll inicial $1,000.
+> Simula qué habría pasado si se hubiera operado con distintos umbrales de confianza sobre los mismos partidos en vivo. Para el clon se aplica también el guard de margen (margin ≥ 0).
 
-| Momio | Modelo              | Apuestas | Bankroll final | Ganancia     |
-| ---   | ---                 | ---:     | ---:           | ---:         |
-| 1.40  | m27_v5_3 (original) | 85       | $2,379.83      | $+1,379.83   |
-| 1.40  | m27_v5_3_1 (clon)   | 59       | $2,330.83      | $+1,330.83   |
-| 1.83  | m27_v5_3 (original) | 85       | $118,877.92    | $+117,877.92 |
-| 1.83  | m27_v5_3_1 (clon)   | 59       | $41,412.80     | $+40,412.80  |
+### Momio 1.40
 
-> **Advertencia:** Kelly (incluso 1/4) compone sobre 85 apuestas con un edge del ~44 % a momio 1.83, lo que produce un crecimiento explosivo e **irrealista** en la práctica (el edge real es menor y variable). En operación real usar 1/10 Kelly o stake fijo. Los números son teóricos.
+| Umbral | Original: apuestas | Original: WR | Original: ROI | Clon: apuestas | Clon: WR | Clon: ROI |
+| ---    | ---:               | ---:         | ---:          | ---:           | ---:     | ---:      |
+| 0.60   | 85                 | 78.8 %       | +10.35 %      | 85             | 55.3 %   | -22.59 %  |
+| 0.62   | 85                 | 78.8 %       | +10.35 %      | 85             | 55.3 %   | -22.59 %  |
+| 0.65   | 85                 | 78.8 %       | +10.35 %      | 85             | 55.3 %   | -22.59 %  |
+| 0.68   | 85                 | 78.8 %       | +10.35 %      | 85             | 55.3 %   | -22.59 %  |
+| 0.70   | 85                 | 78.8 %       | +10.35 %      | 85             | 55.3 %   | -22.59 %  |
+| 0.72   | 85                 | 78.8 %       | +10.35 %      | 78             | 60.3 %   | -15.64 %  |
+| 0.75   | 73                 | 82.2 %       | +15.07 %      | 59             | 79.7 %   | +11.53 %  |
+| 0.78   | 36                 | 80.6 %       | +12.78 %      | 37             | 83.8 %   | +17.30 %  |
+| 0.80   | 26                 | 84.6 %       | +18.46 %      | 26             | 88.5 %   | +23.85 %  |
+| 0.85   | 12                 | 91.7 %       | +28.33 %      | 10             | 100.0 %  | +40.00 %  |
 
-**Lectura:** con Kelly fraccional el clon, al tener mayor confianza media en sus apuestas y mayor ROI, puede generar mayor crecimiento compuesto. La ventaja se amplifica con momio 1.83.
+### Momio 1.83
+
+| Umbral | Original: apuestas | Original: WR | Original: ROI | Clon: apuestas | Clon: WR | Clon: ROI |
+| ---    | ---:               | ---:         | ---:          | ---:           | ---:     | ---:      |
+| 0.60   | 85                 | 78.8 %       | +44.25 %      | 85             | 55.3 %   | +1.19 %   |
+| 0.62   | 85                 | 78.8 %       | +44.25 %      | 85             | 55.3 %   | +1.19 %   |
+| 0.65   | 85                 | 78.8 %       | +44.25 %      | 85             | 55.3 %   | +1.19 %   |
+| 0.68   | 85                 | 78.8 %       | +44.25 %      | 85             | 55.3 %   | +1.19 %   |
+| 0.70   | 85                 | 78.8 %       | +44.25 %      | 85             | 55.3 %   | +1.19 %   |
+| 0.72   | 85                 | 78.8 %       | +44.25 %      | 78             | 60.3 %   | +10.27 %  |
+| 0.75   | 73                 | 82.2 %       | +50.41 %      | 59             | 79.7 %   | +45.78 %  |
+| 0.78   | 36                 | 80.6 %       | +47.42 %      | 37             | 83.8 %   | +53.32 %  |
+| 0.80   | 26                 | 84.6 %       | +54.85 %      | 26             | 88.5 %   | +61.88 %  |
+| 0.85   | 12                 | 91.7 %       | +67.75 %      | 10             | 100.0 %  | +83.00 %  |
 
 **Lectura:** el clon es más conservador (59 vs 85 apuestas) con acierto ligeramente superior (79.7 % vs 78.8 %). Diferencia pequeña, muestra diminuta. No se justifica cambio de modelo solo con esta evidencia.
 

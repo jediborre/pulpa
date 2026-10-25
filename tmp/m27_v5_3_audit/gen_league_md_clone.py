@@ -209,61 +209,44 @@ lines.append("")
 lines.append("> Nota: el original gana más en absoluto con momio 1.40 ($880 vs $680) porque colocó más apuestas, "
              "aunque el clon tiene mayor ROI. Con momio 1.83 la ventaja del volumen se amplifica.\n")
 lines.append("")
-# --- Simulacion Kelly ---
-import sqlite3 as _sq
-_conn = _sq.connect(str(ROOT / "matches.db"))
-_conn.row_factory = _sq.Row
-_dates = {r["match_id"]: r["created_at"] for r in _conn.execute(
-    "SELECT match_id, created_at FROM bet_monitor_log_v3 WHERE model_version='m27_v5_3' AND signal_type LIKE 'BET%'")}
-_conn.close()
+# --- Barrido de umbrales sobre las apuestas en vivo ---
+THRS_SWEEP = (0.60, 0.62, 0.65, 0.68, 0.70, 0.72, 0.75, 0.78, 0.80, 0.85)
+def sweep(use_clone, odds):
+    res = {}
+    for thr in THRS_SWEEP:
+        b = w = l = 0
+        for r in EVAL["rows"]:
+            if use_clone:
+                new_bet = (r["new_p"] >= thr and r["new_margin"] >= 0) or (r["new_p"] <= 1-thr and r["new_margin"] <= 0)
+            else:
+                new_bet = r["orig_conf"] >= thr
+            if not new_bet:
+                continue
+            b += 1
+            won = (r["new_won"] if use_clone else (r["orig_result"] == "win"))
+            if won:
+                w += 1
+            else:
+                l += 1
+        profit = (w * (odds - 1) - l)
+        roi = (profit / b * 100) if b else 0
+        res[thr] = (b, w, l, (w/b*100 if b else 0), roi, profit)
+    return res
 
-def kelly_sim(odds, use_clone, frac=0.25, cap=0.25):
-    b = odds - 1.0
-    bank = 1000.0
-    n = 0
-    stopped = False
-    ordered = sorted(EVAL["rows"], key=lambda r: _dates.get(r["match_id"], ""))
-    for r in ordered:
-        is_bet = (r["new_bet"] if use_clone else True)
-        if not is_bet:
-            continue
-        if use_clone:
-            p = max(r["new_p"], 1 - r["new_p"])
-        else:
-            p = r["orig_conf"]
-        # kelly fraction
-        f = (p * b - (1 - p)) / b if b > 0 else 0
-        if f <= 0:
-            continue
-        f = min(f * frac, cap)
-        stake = f * bank
-        if stake < 1 or bank < stake:
-            stopped = True
-            break
-        bank -= stake
-        won = (r["new_won"] if use_clone else (r["orig_result"] == "win"))
-        if won:
-            bank += stake * odds
-        n += 1
-    return bank, n, stopped
-
-lines.append("## 8. Simulación con criterio de Kelly (fraccional 1/4, tope 25 % del bankroll)\n")
-lines.append("> Apuesta proporcional al edge: f = (p·(o-1) - (1-p))/(o-1), usando 1/4 Kelly y tope del 25 % "
-             "del bankroll por apuesta. Bankroll inicial $1,000.\n")
-lines.append("| Momio | Modelo | Apuestas | Bankroll final | Ganancia |")
-lines.append("|---|---|---:|---:|---:|")
+lines.append("## 8. Barrido de umbrales sobre las apuestas en vivo (m27_v5_3 vs clon)\n")
+lines.append("> Simula qué habría pasado si se hubiera operado con distintos umbrales de confianza sobre los mismos "
+             "partidos en vivo. Para el clon se aplica también el guard de margen (margin ≥ 0).\n")
 for odds in (1.40, 1.83):
-    for use_clone, label in ((False, "m27_v5_3 (original)"), (True, "m27_v5_3_1 (clon)")):
-        bank, n, stopped = kelly_sim(odds, use_clone)
-        gain = bank - 1000
-        note = " (se detuvo)" if stopped else ""
-        lines.append(f"| {odds:.2f} | {label} | {n}{note} | ${bank:,.2f} | ${gain:+,.2f} |")
-lines.append("")
-lines.append("> **Advertencia:** Kelly (incluso 1/4) compone sobre 85 apuestas con un edge del ~44 % a momio 1.83, "
-             "lo que produce un crecimiento explosivo e **irrealista** en la práctica (el edge real es menor y "
-             "variable). En operación real usar 1/10 Kelly o stake fijo. Los números son teóricos.\n")
-lines.append("**Lectura:** con Kelly fraccional el clon, al tener mayor confianza media en sus apuestas y mayor ROI, "
-             "puede generar mayor crecimiento compuesto. La ventaja se amplifica con momio 1.83.\n")
+    lines.append(f"### Momio {odds:.2f}\n")
+    so = sweep(False, odds)
+    sc = sweep(True, odds)
+    lines.append("| Umbral | Original: apuestas | Original: WR | Original: ROI | Clon: apuestas | Clon: WR | Clon: ROI |")
+    lines.append("|---|---:|---:|---:|---:|---:|---:|")
+    for thr in THRS_SWEEP:
+        bo, wo, lo, wro, roio, po = so[thr]
+        bc, wc, lc, wrc, roic, pc = sc[thr]
+        lines.append(f"| {thr:.2f} | {bo} | {wro:.1f} % | {roio:+.2f} % | {bc} | {wrc:.1f} % | {roic:+.2f} % |")
+    lines.append("")
 
 lines.append("**Lectura:** el clon es más conservador (59 vs 85 apuestas) con acierto ligeramente superior "
              "(79.7 % vs 78.8 %). Diferencia pequeña, muestra diminuta. No se justifica cambio de modelo solo "
