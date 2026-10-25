@@ -158,13 +158,26 @@ lines.append("## 7. Prueba contra los partidos en vivo de `m27_v5_3`\n")
 lines.append(f"- **m27_v5_3 (original):** {s['orig_bets']} apuestas, {s['orig_wins']} ganadas, {s['orig_losses']} perdidas → WR {s['orig_wins']/(s['orig_wins']+s['orig_losses'])*100:.1f} %.")
 lines.append(f"- **m27_v5_3_1 (clon):** {s['new_bets']} apuestas, {s['new_wins']} ganadas, {s['new_losses']} perdidas → WR {s['new_wins']/s['new_bets']*100:.1f} %.\n")
 lines.append("### 7.1 Resumen por liga — apuestas en vivo (original vs clon)\n")
-lines.append("| Liga | En vivo (partidos) | v5_3: apuestas | v5_3: ganadas | v5_3: perdidas | v5_3: WR | v5_3_1: apuestas | v5_3_1: ganadas | v5_3_1: perdidas | v5_3_1: WR |")
-lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+lines.append("| Liga | En vivo (partidos) | v5_3: apuestas | v5_3: ganadas | v5_3: perdidas | v5_3: WR | v5_3_1: apuestas | v5_3_1: ganadas | v5_3_1: perdidas | v5_3_1: WR | Dif. WR |")
+lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+tot_live = tot_o_bets = tot_o_wins = tot_o_losses = tot_n_bets = tot_n_wins = tot_n_losses = 0
 for lg in sorted(agg, key=lambda x: (agg[x]["new_bets"], agg[x]["orig_bets"]), reverse=True):
     a = agg[lg]
-    orig_wr = (f"{a['orig_wins']/a['orig_bets']*100:.0f} %" if a["orig_bets"] else "—")
-    new_wr = (f"{a['new_wins']/a['new_bets']*100:.0f} %" if a["new_bets"] else "—")
-    lines.append(f"| {lg} | {a['live']} | {a['orig_bets']} | {a['orig_wins']} | {a['orig_losses']} | {orig_wr} | {a['new_bets']} | {a['new_wins']} | {a['new_losses']} | {new_wr} |")
+    orig_wr_v = (a['orig_wins']/a['orig_bets']*100) if a["orig_bets"] else None
+    new_wr_v = (a['new_wins']/a['new_bets']*100) if a["new_bets"] else None
+    orig_wr = (f"{orig_wr_v:.0f} %" if orig_wr_v is not None else "—")
+    new_wr = (f"{new_wr_v:.0f} %" if new_wr_v is not None else "—")
+    if orig_wr_v is not None and new_wr_v is not None:
+        diff = "🟢" if new_wr_v > orig_wr_v else ("🔴" if new_wr_v < orig_wr_v else "⚪")
+    else:
+        diff = "—"
+    lines.append(f"| {lg} | {a['live']} | {a['orig_bets']} | {a['orig_wins']} | {a['orig_losses']} | {orig_wr} | {a['new_bets']} | {a['new_wins']} | {a['new_losses']} | {new_wr} | {diff} |")
+    tot_live += a["live"]; tot_o_bets += a["orig_bets"]; tot_o_wins += a["orig_wins"]; tot_o_losses += a["orig_losses"]
+    tot_n_bets += a["new_bets"]; tot_n_wins += a["new_wins"]; tot_n_losses += a["new_losses"]
+tot_o_wr = (tot_o_wins/tot_o_bets*100) if tot_o_bets else 0
+tot_n_wr = (tot_n_wins/tot_n_bets*100) if tot_n_bets else 0
+tot_diff = "🟢" if tot_n_wr > tot_o_wr else ("🔴" if tot_n_wr < tot_o_wr else "⚪")
+lines.append(f"| **TOTAL** | **{tot_live}** | **{tot_o_bets}** | **{tot_o_wins}** | **{tot_o_losses}** | **{tot_o_wr:.0f} %** | **{tot_n_bets}** | **{tot_n_wins}** | **{tot_n_losses}** | **{tot_n_wr:.0f} %** | **{tot_diff}** |")
 lines.append("")
 lines.append("**Lectura:** el clon es más conservador (59 vs 85 apuestas) con acierto ligeramente superior "
              "(79.7 % vs 78.8 %). Diferencia pequeña, muestra diminuta. No se justifica cambio de modelo solo "
