@@ -82,7 +82,7 @@ TOKEN_REFRESH_MINUTES = 60 * 24 * 7 # Chequeo preventivo semanal (tokens duran ~
 #   - m27_v3 no expone p_cal (no se puede auditar ni calibrar).
 #   - Al haber menos modelos, la alerta muestra menos filas y cada una se lee
 #     mejor en la imagen.
-ACTIVE_MODELS = ["m27_v5_3", "m27_v5_3_3", "m27_v5_2"]
+ACTIVE_MODELS = ["m27_v5_3", "m27_v5_3_5", "m27_v5_2"]
 
 # Modelos en MODO SOMBRA: se evaluan y se registran en bet_monitor_log_v3 y en
 # model_inference_v3, pero NO aparecen en Telegram (ni en la alerta de
@@ -103,14 +103,14 @@ SHADOW_MODELS: list[str] = ["m27_v5_2"]
 # solo las del modelo vigente, y los totales (Apuestas / ganadas / perdidas /
 # acierto) cuentan exclusivamente esos modelos. Los logs de los retirados y de
 # los modelos en sombra siguen en bet_monitor_log_v3 para auditoria interna.
-STATUS_MODELS: list[str] = ["m27_v5_3", "m27_v5_3_3"]
+STATUS_MODELS: list[str] = ["m27_v5_3", "m27_v5_3_5"]
 
 # Ventana de inferencia VALIDA por modelo (minutos de juego). Fuera de ella el
 # modelo no fue entrenado: su salida no es comparable con el entrenamiento y no
 # se archiva en model_inference_v3. m27_v5_3 se entreno en t in [25.5, 30.0].
 MODEL_VALID_WINDOW = {
     "m27_v5_3": (25.5, 30.0),
-    "m27_v5_3_3": (25.5, 30.0),
+    "m27_v5_3_5": (25.5, 30.0),
 }
 DEFAULT_VALID_WINDOW = (25.0, 33.0)
 

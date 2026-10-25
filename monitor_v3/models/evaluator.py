@@ -70,8 +70,8 @@ def load_models_to_cache() -> None:
     except Exception:
         pass
     try:
-        from models.m27_v5_3_3.predict import _load_production_models as load_v5_3_3
-        load_v5_3_3()
+        from models.m27_v5_3_5.predict import _load_production_models as load_v5_3_5
+        load_v5_3_5()
     except Exception:
         pass
     try:

@@ -29,6 +29,13 @@ REGISTERED_MODELS: dict[str, dict[str, Any]] = {
         "description": "v5_3 con normalizacion de nombres de liga por clean_name (agrupa variantes) y backfill "
                        "historico de NCAA Women's Division I (19,541 partidos). AUC 0.6541, live WR 85.0 %.",
     },
+    "m27_v5_3_5": {
+        "name": "M27 V5.3.5 (Backfill masivo: +NCAA, Prva Liga, 1. liga, LBP, NBL1, etc.)",
+        "targets": ["q4"],
+        "status": "candidate",
+        "description": "v5_3_4 + backfill historico de 16 ligas cold-start (NCAA MM, Prva Liga, NBL1, LBP, etc.). "
+                       "AUC 0.6543, WR @0.75 82.92 %, live WR 83.3 %, 209,888 partidos elegibles.",
+    },
     "m27_v5_2": {
         "name": "M27 V5.2 Champion (Lean 27 Features + Odds & Table WP + Toxic Leagues Pruned)",
         "targets": ["q4"],
@@ -131,6 +138,16 @@ def predict(
         elif v in ("m27_v5_3_3", "m27_v5.3.3", "v5_3_3", "v5.3.3"):
             from models.m27_v5_3_3.predict import predict as m27_v5_3_3_predict
             return m27_v5_3_3_predict(
+                match_id=match_id,
+                target=target,
+                match_data=match_data,
+                conn=conn,
+                snapshot_minute=snapshot_minute,
+            )
+
+        elif v in ("m27_v5_3_5", "m27_v5.3.5", "v5_3_5", "v5.3.5"):
+            from models.m27_v5_3_5.predict import predict as m27_v5_3_5_predict
+            return m27_v5_3_5_predict(
                 match_id=match_id,
                 target=target,
                 match_data=match_data,
