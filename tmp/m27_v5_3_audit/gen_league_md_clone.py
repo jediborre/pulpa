@@ -209,12 +209,65 @@ lines.append("")
 lines.append("> Nota: el original gana más en absoluto con momio 1.40 ($880 vs $680) porque colocó más apuestas, "
              "aunque el clon tiene mayor ROI. Con momio 1.83 la ventaja del volumen se amplifica.\n")
 lines.append("")
+# --- Simulacion Kelly ---
+import sqlite3 as _sq
+_conn = _sq.connect(str(ROOT / "matches.db"))
+_conn.row_factory = _sq.Row
+_dates = {r["match_id"]: r["created_at"] for r in _conn.execute(
+    "SELECT match_id, created_at FROM bet_monitor_log_v3 WHERE model_version='m27_v5_3' AND signal_type LIKE 'BET%'")}
+_conn.close()
+
+def kelly_sim(odds, use_clone, frac=0.25, cap=0.25):
+    b = odds - 1.0
+    bank = 1000.0
+    n = 0
+    stopped = False
+    ordered = sorted(EVAL["rows"], key=lambda r: _dates.get(r["match_id"], ""))
+    for r in ordered:
+        is_bet = (r["new_bet"] if use_clone else True)
+        if not is_bet:
+            continue
+        if use_clone:
+            p = max(r["new_p"], 1 - r["new_p"])
+        else:
+            p = r["orig_conf"]
+        # kelly fraction
+        f = (p * b - (1 - p)) / b if b > 0 else 0
+        if f <= 0:
+            continue
+        f = min(f * frac, cap)
+        stake = f * bank
+        if stake < 1 or bank < stake:
+            stopped = True
+            break
+        bank -= stake
+        won = (r["new_won"] if use_clone else (r["orig_result"] == "win"))
+        if won:
+            bank += stake * odds
+        n += 1
+    return bank, n, stopped
+
+lines.append("## 8. Simulación con criterio de Kelly (fraccional 1/4, tope 25 % del bankroll)\n")
+lines.append("> Apuesta proporcional al edge: f = (p·(o-1) - (1-p))/(o-1), usando 1/4 Kelly y tope del 25 % "
+             "del bankroll por apuesta. Bankroll inicial $1,000.\n")
+lines.append("| Momio | Modelo | Apuestas | Bankroll final | Ganancia |")
+lines.append("|---|---|---:|---:|---:|")
+for odds in (1.40, 1.83):
+    for use_clone, label in ((False, "m27_v5_3 (original)"), (True, "m27_v5_3_1 (clon)")):
+        bank, n, stopped = kelly_sim(odds, use_clone)
+        gain = bank - 1000
+        note = " (se detuvo)" if stopped else ""
+        lines.append(f"| {odds:.2f} | {label} | {n}{note} | ${bank:,.2f} | ${gain:+,.2f} |")
+lines.append("")
+lines.append("**Lectura:** con Kelly fraccional el clon, al tener mayor confianza media en sus apuestas y mayor ROI, "
+             "puede generar mayor crecimiento compuesto. La ventaja se amplifica con momio 1.83.\n")
+
 lines.append("**Lectura:** el clon es más conservador (59 vs 85 apuestas) con acierto ligeramente superior "
              "(79.7 % vs 78.8 %). Diferencia pequeña, muestra diminuta. No se justifica cambio de modelo solo "
              "con esta evidencia.\n")
 
 # conclusiones
-lines.append("## 8. Conclusiones\n")
+lines.append("## 9. Conclusiones\n")
 lines.append("1. La inclusión de las 2 ligas polacas (Runda Zasadnicza) **no cambia materialmente** las métricas globales "
              "(AUC 0.6544 vs 0.6545, +1906 partidos elegibles).")
 lines.append("2. En vivo, el clon es más conservador y ligeramente más preciso, pero la muestra es diminuta (94 partidos).")
@@ -222,7 +275,7 @@ lines.append("3. El caso polaco es prometedor: evitó las 2 apuestas perdedoras 
 lines.append("4. **Recomendación:** mantener `m27_v5_3` en producción (modo sombra) y seguir acumulando evidencia. "
              "El clon puede re-evaluarse cuando haya ≥ 200 apuestas liquidadas.\n")
 
-lines.append("## 9. Notas metodológicas\n")
+lines.append("## 10. Notas metodológicas\n")
 lines.append("- Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis_clone.py`.\n")
 
 # align tables

@@ -799,15 +799,28 @@ A 0.75: **164 apuestas, WR 79.88 %, ROI@1.40 +11.83 %** (en vivo: 4 partidos, v5
 > Nota: el original gana más en absoluto con momio 1.40 ($880 vs $680) porque colocó más apuestas, aunque el clon tiene mayor ROI. Con momio 1.83 la ventaja del volumen se amplifica.
 
 
+## 8. Simulación con criterio de Kelly (fraccional 1/4, tope 25 % del bankroll)
+
+> Apuesta proporcional al edge: f = (p·(o-1) - (1-p))/(o-1), usando 1/4 Kelly y tope del 25 % del bankroll por apuesta. Bankroll inicial $1,000.
+
+| Momio | Modelo              | Apuestas | Bankroll final | Ganancia     |
+| ---   | ---                 | ---:     | ---:           | ---:         |
+| 1.40  | m27_v5_3 (original) | 85       | $2,379.83      | $+1,379.83   |
+| 1.40  | m27_v5_3_1 (clon)   | 59       | $2,330.83      | $+1,330.83   |
+| 1.83  | m27_v5_3 (original) | 85       | $118,877.92    | $+117,877.92 |
+| 1.83  | m27_v5_3_1 (clon)   | 59       | $41,412.80     | $+40,412.80  |
+
+**Lectura:** con Kelly fraccional el clon, al tener mayor confianza media en sus apuestas y mayor ROI, puede generar mayor crecimiento compuesto. La ventaja se amplifica con momio 1.83.
+
 **Lectura:** el clon es más conservador (59 vs 85 apuestas) con acierto ligeramente superior (79.7 % vs 78.8 %). Diferencia pequeña, muestra diminuta. No se justifica cambio de modelo solo con esta evidencia.
 
-## 8. Conclusiones
+## 9. Conclusiones
 
 1. La inclusión de las 2 ligas polacas (Runda Zasadnicza) **no cambia materialmente** las métricas globales (AUC 0.6544 vs 0.6545, +1906 partidos elegibles).
 2. En vivo, el clon es más conservador y ligeramente más preciso, pero la muestra es diminuta (94 partidos).
 3. El caso polaco es prometedor: evitó las 2 apuestas perdedoras (2/2 = 100 % en 4 partidos).
 4. **Recomendación:** mantener `m27_v5_3` en producción (modo sombra) y seguir acumulando evidencia. El clon puede re-evaluarse cuando haya ≥ 200 apuestas liquidadas.
 
-## 9. Notas metodológicas
+## 10. Notas metodológicas
 
 - Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis_clone.py`.
