@@ -235,12 +235,12 @@ def sweep(use_clone, odds):
 
 lines.append("## 8. Barrido de umbrales sobre las apuestas en vivo (m27_v5_3 vs clon)\n")
 lines.append("> Simula qué habría pasado si se hubiera operado con distintos umbrales de confianza sobre los mismos "
-             "partidos en vivo. Para el clon se aplica también el guard de margen (margin ≥ 0).\n")
+             "partidos en vivo. Para el clon se aplica también el guard de margen (margin ≥ 0). Bank inicial $1,000, $100 por apuesta.\n")
 for odds in (1.40, 1.83):
     lines.append(f"### Momio {odds:.2f}\n")
     so = sweep(False, odds)
     sc = sweep(True, odds)
-    lines.append("| Umbral | O:apuestas | O:WR | O:ROI | O:ganancia | O:bankroll | C:apuestas | C:WR | C:ROI | C:ganancia | C:bankroll |")
+    lines.append("| Umbral | O:apuestas | O:WR | O:ROI | C:apuestas | C:WR | C:ROI | O:ganancia | C:ganancia | O:bank final | C:bank final |")
     lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
     import sqlite3 as _sq
     _conn = _sq.connect(str(ROOT / "matches.db"))
@@ -277,7 +277,7 @@ for odds in (1.40, 1.83):
         gain_c = bank_c - 1000
         tag_o = " *" if stopped_o else ""
         tag_c = " *" if stopped_c else ""
-        lines.append(f"| {thr:.2f} | {bo} | {wro:.1f} % | {roio:+.2f} % | ${gain_o:+,.2f}{tag_o} | ${bank_o:,.2f} | {bc} | {wrc:.1f} % | {roic:+.2f} % | ${gain_c:+,.2f}{tag_c} | ${bank_c:,.2f} |")
+        lines.append(f"| {thr:.2f} | {bo} | {wro:.1f} % | {roio:+.2f} % | {bc} | {wrc:.1f} % | {roic:+.2f} % | ${gain_o:+,.2f}{tag_o} | ${gain_c:+,.2f}{tag_c} | ${bank_o:,.2f} | ${bank_c:,.2f} |")
     lines.append("> * = se detuvo por falta de fondos.\n")
     lines.append("")
 
