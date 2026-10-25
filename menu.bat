@@ -45,6 +45,8 @@ if /i "%~1"=="smart_backfill" goto RUN_SMART_BACKFILL_CLI
 if /i "%~1"=="backfill_smart" goto RUN_SMART_BACKFILL_CLI
 if /i "%~1"=="backfill_team_stats" goto RUN_BACKFILL_TEAM_STATS_CLI
 if /i "%~1"=="team_stats" goto RUN_BACKFILL_TEAM_STATS_CLI
+if /i "%~1"=="backfill_tournament" goto RUN_BACKFILL_TOURNAMENT_CLI
+if /i "%~1"=="tournament" goto RUN_BACKFILL_TOURNAMENT_CLI
 
 :: ── Verificar .venv ───────────────────────────────
 if not exist ".venv\Scripts\activate.bat" (
@@ -96,6 +98,7 @@ echo   21) Rellenar datos de detalle faltantes (lineups, stats, odds, pbp, team_
 echo   22) Backfill solo team_strength (fortaleza de equipos)
 echo   23) Comparar scraper tradicional vs obscura
 echo   40) Backfill team stats por cuarto (faltas, tiros libres, tiempo en ventaja)
+echo   41) Backfill historico por torneo (SofaScore API, por unique-tournament id)
 echo.
 echo  [4] SMART BACKFILL HISTORICO (2015-2026)
 echo   24) Submenu Smart Backfill (Modo interactivo y fases guiadas)
@@ -164,6 +167,8 @@ if /i "%OPT%"=="backfill_team_strength" goto BACKFILL_TEAM_STRENGTH
 if "%OPT%"=="23" goto COMPARE_SCRAPER
 if "%OPT%"=="40" goto BACKFILL_TEAM_STATS
 if /i "%OPT%"=="backfill_team_stats" goto BACKFILL_TEAM_STATS
+if "%OPT%"=="41" goto BACKFILL_TOURNAMENT
+if /i "%OPT%"=="backfill_tournament" goto BACKFILL_TOURNAMENT
 
 :: [4] Smart Backfill historico
 if "%OPT%"=="24" goto MENU_SMART_BACKFILL
@@ -1256,6 +1261,45 @@ exit /b %ERRORLEVEL%
 call .venv\Scripts\activate
 python tools\backfill_team_stats.py %2 %3 %4 %5 %6 %7 %8 %9
 exit /b %ERRORLEVEL%
+
+:RUN_BACKFILL_TOURNAMENT_CLI
+call .venv\Scripts\activate
+python tools\backfill_tournament.py %2 %3 %4 %5 %6 %7 %8 %9
+exit /b %ERRORLEVEL%
+
+:: ─────────────────────────────────────────────────
+:BACKFILL_TOURNAMENT
+cls
+echo.
+echo ========================================================
+echo  Backfill historico por torneo (SofaScore API)
+echo ========================================================
+echo.
+echo  Descarga partidos historicos de un torneo de SofaScore
+echo  (baloncesto) por unique-tournament id, con cuartos Q1-Q4.
+echo.
+echo  Uso CLI:
+echo   menu.bat backfill_tournament --tid 33655 --league "NCAA Women's Division I, Regular season" --seasons 23/24,24/25
+echo   menu.bat backfill_tournament --tid 33655 --league "NCAA Women's Division I, Regular season" --seasons all
+echo.
+echo  Parametros:
+echo   --tid       unique-tournament id de SofaScore
+echo   --league    nombre de liga para guardar en matches.league
+echo   --seasons   lista de years (ej. 23/24,24/25) o 'all'
+echo   --rate      segundos entre requests (default 0.5 = 2 req/s)
+echo.
+echo  Checkpoint: tools\backfill_tournament_state_{tid}.json (reanudable)
+echo.
+set /p BT_TID="  Tournament id: "
+if "%BT_TID%"=="" goto MENU
+set /p BT_LEAGUE="  Nombre de liga: "
+if "%BT_LEAGUE%"=="" goto MENU
+set /p BT_SEASONS="  Seasons (ej. 23/24,24/25 o all): "
+if "%BT_SEASONS%"=="" set BT_SEASONS=all
+call .venv\Scripts\activate
+python tools\backfill_tournament.py --tid %BT_TID% --league "%BT_LEAGUE%" --seasons %BT_SEASONS% --rate 0.5
+pause
+goto MENU
 
 :: ─────────────────────────────────────────────────
 :FIN
