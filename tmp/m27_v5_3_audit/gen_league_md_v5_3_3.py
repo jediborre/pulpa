@@ -16,6 +16,13 @@ _conn.row_factory = _sq.Row
 _country = {r["league"]: r["country_or_region"] for r in _conn.execute(
     "SELECT league, country_or_region FROM leagues_classification")}
 _conn.close()
+# fallback: API-filled countries for leagues missing from leagues_classification
+try:
+    _fill = json.load(open(ROOT / "tmp" / "m27_v5_3_audit" / "country_fill.json", encoding="utf-8"))
+    for k, v in _fill.items():
+        _country.setdefault(k, v)
+except Exception:
+    pass
 for l in leagues:
     l["country"] = _country.get(l["league"], "?")
 # ordenar por WR @0.75 descendente (None al final), luego por apuestas desc

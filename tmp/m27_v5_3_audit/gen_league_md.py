@@ -16,6 +16,12 @@ _conn.row_factory = _sq.Row
 _country = {r["league"]: r["country_or_region"] for r in _conn.execute(
     "SELECT league, country_or_region FROM leagues_classification")}
 _conn.close()
+try:
+    _fill = json.load(open(ROOT / "tmp" / "m27_v5_3_audit" / "country_fill.json", encoding="utf-8"))
+    for k, v in _fill.items():
+        _country.setdefault(k, v)
+except Exception:
+    pass
 for l in leagues:
     l["country"] = _country.get(l["league"], "?")
 THRS = D["thresholds"]
