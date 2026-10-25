@@ -55,7 +55,7 @@ for t in SUM["tiers_anchor"]:
 lines.append("")
 
 # tabla resumen por liga
-lines.append("## 3. Tabla resumen por liga (ordenada por apuestas a 0.75)\n")
+lines.append("## 3. Tabla resumen por liga (ordenada por WR descendente a 0.75)\n")
 lines.append("| Liga | Entrenado (A) | Holdout (C) | Apuestas @0.75 | WR @0.75 | IC95 | ROI @1.40 | ROI @1.83 | Bloqueo |")
 lines.append("|---|---:|---:|---:|---:|---|---:|---:|---|")
 for l in leagues:

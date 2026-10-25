@@ -26,7 +26,7 @@
 | 0.75 | 2,771    | 81.4 % (79.9–82.8) | +13.93 %  | +48.92 %  |
 | 0.80 | 1,326    | 86.3 % (84.3–88.0) | +20.78 %  | +57.88 %  |
 
-## 3. Tabla resumen por liga (ordenada por apuestas a 0.75)
+## 3. Tabla resumen por liga (ordenada por WR descendente a 0.75)
 
 | Liga                                                        | Entrenado (A) | Holdout (C) | Apuestas @0.75 | WR @0.75 | IC95      | ROI @1.40 | ROI @1.83 | Bloqueo |
 | ---                                                         | ---:          | ---:        | ---:           | ---:     | ---       | ---:      | ---:      | ---     |
