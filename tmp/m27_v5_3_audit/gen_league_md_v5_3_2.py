@@ -342,8 +342,42 @@ lines.append("**Lectura:** el clon es más conservador (59 vs 85 apuestas) con a
              "(79.7 % vs 78.8 %). Diferencia pequeña, muestra diminuta. No se justifica cambio de modelo solo "
              "con esta evidencia.\n")
 
+# --- Configuracion del modelo ---
+SUM2 = SUM
+lines.append("## 9. Configuración del modelo m27_v5_3_2\n")
+lines.append("| Parámetro | Valor |")
+lines.append("|---|---|")
+lines.append(f"| AUC train / calib (B) / test (C) | {SUM2['auc_train']} / {SUM2['auc_calib']} / {SUM2['auc_test']} |")
+lines.append(f"| Brier / LogLoss / Acc (test) | {SUM2['brier_test']} / {SUM2['logloss_test']} / {SUM2['acc_test']} |")
+lines.append(f"| AUC gap (train−test) | {SUM2['auc_gap']} |")
+lines.append(f"| Partidos elegibles | {SUM2['split']['eligible_matches']:,} |")
+lines.append(f"| Filas A / B / C | {SUM2['split']['A_rows']:,} / {SUM2['split']['B_rows']:,} / {SUM2['split']['C_rows']:,} |")
+lines.append(f"| Umbral operativo (min_conf) | {SUM2['operating']['thr']} |")
+lines.append(f"| Ventana de inferencia | [25.5, 30.0] (fuera → unavailable) |")
+lines.append(f"| Ligas únicas (clean_name) | 1,311 |")
+lines.append(f"| Ligas en arranque en frío (trained=0) | {len(cold_lgs)} |")
+lines.append(f"| Ligas candidatas a bloqueo (IC95 sup < 71.4 %) | {len(weak)} |")
+lines.append("")
+lines.append("### Formatos de torneo bloqueados (is_excluded_stage)\n")
+lines.append("amistosos, 2ª fase, promoción/relegation, preliminar, colocación "
+             "(misma lista que m27_v5_3, vía `models/common/competition_stage.py`).\n")
+lines.append("### Ligas bloqueadas por medición propia\n")
+lines.append("Ninguna con la evidencia actual (0 candidatas), igual que m27_v5_3.\n")
+lines.append("### Walk-forward (3 cortes)\n")
+lines.append("| Corte | AUC | Apuestas | WR | ROI @1.40 | ROI @1.83 |")
+lines.append("|---|---:|---:|---:|---:|---:|")
+for k, v in SUM2["walk_forward_cuts"].items():
+    lines.append(f"| {k} | {v['auc']:.4f} | {v['bets']:,} | {v['wr']:.2f} % | {v['roi_140']:+.2f} % | {v['roi_183']:+.2f} % |")
+lines.append("")
+lines.append("### Ligas con más partidos de entrenamiento (top 10)\n")
+lines.append("| País | Liga (clean_name) | Entrenado (A) | Holdout (C) |")
+lines.append("|---|---|---:|---:|")
+for l in sorted(leagues, key=lambda x: x["matches_train"], reverse=True)[:10]:
+    lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_train']:,} | {l['matches_holdout']:,} |")
+lines.append("")
+
 # conclusiones
-lines.append("## 9. Conclusiones\n")
+lines.append("## 10. Conclusiones\n")
 lines.append("1. La inclusión de las 2 ligas polacas (Runda Zasadnicza) **no cambia materialmente** las métricas globales "
              "(AUC 0.6544 vs 0.6545, +1906 partidos elegibles).")
 lines.append("2. En vivo, el clon es más conservador y ligeramente más preciso, pero la muestra es diminuta (94 partidos).")
@@ -351,8 +385,9 @@ lines.append("3. El caso polaco es prometedor: evitó las 2 apuestas perdedoras 
 lines.append("4. **Recomendación:** mantener `m27_v5_3` en producción (modo sombra) y seguir acumulando evidencia. "
              "El clon puede re-evaluarse cuando haya ≥ 200 apuestas liquidadas.\n")
 
-lines.append("## 10. Notas metodológicas\n")
-lines.append("- Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis_clone.py`.\n")
+lines.append("## 11. Notas metodológicas\n")
+lines.append("- Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis_v5_3_2.py`.\n")
+lines.append("- Walk-forward: 3 cortes temporales (train ≤ 2022→2023, ≤2023→2024, ≤2024→2025-26).\n")
 
 # align tables
 def _vw(s):

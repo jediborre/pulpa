@@ -925,13 +925,61 @@ A 0.75: **166 apuestas, WR 78.31 %, ROI@1.40 +9.64 %** (en vivo: 4 partidos, v5_
 
 **Lectura:** el clon es más conservador (59 vs 85 apuestas) con acierto ligeramente superior (79.7 % vs 78.8 %). Diferencia pequeña, muestra diminuta. No se justifica cambio de modelo solo con esta evidencia.
 
-## 9. Conclusiones
+## 9. Configuración del modelo m27_v5_3_2
+
+| Parámetro                                      | Valor                              |
+| ---                                            | ---                                |
+| AUC train / calib (B) / test (C)               | 0.6459 / 0.6509 / 0.6548           |
+| Brier / LogLoss / Acc (test)                   | 0.2304 / 0.6517 / 0.6128           |
+| AUC gap (train−test)                           | -0.0089                            |
+| Partidos elegibles                             | 184,878                            |
+| Filas A / B / C                                | 191,244 / 58,045 / 92,225          |
+| Umbral operativo (min_conf)                    | 0.75                               |
+| Ventana de inferencia                          | [25.5, 30.0] (fuera → unavailable) |
+| Ligas únicas (clean_name)                      | 1,311                              |
+| Ligas en arranque en frío (trained=0)          | 78                                 |
+| Ligas candidatas a bloqueo (IC95 sup < 71.4 %) | 0                                  |
+
+### Formatos de torneo bloqueados (is_excluded_stage)
+
+amistosos, 2ª fase, promoción/relegation, preliminar, colocación (misma lista que m27_v5_3, vía `models/common/competition_stage.py`).
+
+### Ligas bloqueadas por medición propia
+
+Ninguna con la evidencia actual (0 candidatas), igual que m27_v5_3.
+
+### Walk-forward (3 cortes)
+
+| Corte                                    | AUC    | Apuestas | WR      | ROI @1.40 | ROI @1.83 |
+| ---                                      | ---:   | ---:     | ---:    | ---:      | ---:      |
+| Corte 1: Train <= 2022 -> Test 2023      | 0.6274 | 358      | 76.26 % | +6.76 %   | +39.55 %  |
+| Corte 2: Train <= 2023 -> Test 2024      | 0.6369 | 2,954    | 80.16 % | +12.23 %  | +46.70 %  |
+| Corte 3: Train <= 2024 -> Test 2025-2026 | 0.6485 | 14,360   | 80.06 % | +12.09 %  | +46.51 %  |
+
+### Ligas con más partidos de entrenamiento (top 10)
+
+| País      | Liga (clean_name)       | Entrenado (A) | Holdout (C) |
+| ---       | ---                     | ---:          | ---:        |
+| Japan     | B League Premier        | 3,136         | 568         |
+| Japan     | B League One            | 3,097         | 369         |
+| Argentina | Argentina Liga Nacional | 2,972         | 273         |
+| Australia | NBL                     | 2,647         | 536         |
+| Italy     | Serie A2                | 2,619         | 388         |
+| Other     | Élite 2                 | 1,989         | 274         |
+| Germany   | Germany BBL             | 1,904         | 257         |
+| Spain     | Liga ACB                | 1,885         | 271         |
+| France    | France Pro A            | 1,864         | 204         |
+| Spain     | Primera FEB             | 1,810         | 215         |
+
+## 10. Conclusiones
 
 1. La inclusión de las 2 ligas polacas (Runda Zasadnicza) **no cambia materialmente** las métricas globales (AUC 0.6544 vs 0.6545, +1906 partidos elegibles).
 2. En vivo, el clon es más conservador y ligeramente más preciso, pero la muestra es diminuta (94 partidos).
 3. El caso polaco es prometedor: evitó las 2 apuestas perdedoras (2/2 = 100 % en 4 partidos).
 4. **Recomendación:** mantener `m27_v5_3` en producción (modo sombra) y seguir acumulando evidencia. El clon puede re-evaluarse cuando haya ≥ 200 apuestas liquidadas.
 
-## 10. Notas metodológicas
+## 11. Notas metodológicas
 
-- Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis_clone.py`.
+- Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis_v5_3_2.py`.
+
+- Walk-forward: 3 cortes temporales (train ≤ 2022→2023, ≤2023→2024, ≤2024→2025-26).
