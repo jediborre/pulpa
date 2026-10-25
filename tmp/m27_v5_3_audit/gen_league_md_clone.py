@@ -240,12 +240,46 @@ for odds in (1.40, 1.83):
     lines.append(f"### Momio {odds:.2f}\n")
     so = sweep(False, odds)
     sc = sweep(True, odds)
-    lines.append("| Umbral | Original: apuestas | Original: WR | Original: ROI | Clon: apuestas | Clon: WR | Clon: ROI |")
-    lines.append("|---|---:|---:|---:|---:|---:|---:|")
+    lines.append("| Umbral | Original: apuestas | Original: WR | Original: ROI | Original: bankroll final | Clon: apuestas | Clon: WR | Clon: ROI | Clon: bankroll final |")
+    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|")
+    # chronological order
+    import sqlite3 as _sq
+    _conn = _sq.connect(str(ROOT / "matches.db"))
+    _conn.row_factory = _sq.Row
+    _dates = {r["match_id"]: r["created_at"] for r in _conn.execute(
+        "SELECT match_id, created_at FROM bet_monitor_log_v3 WHERE model_version='m27_v5_3' AND signal_type LIKE 'BET%'")}
+    _conn.close()
+    ordered = sorted(EVAL["rows"], key=lambda r: _dates.get(r["match_id"], ""))
     for thr in THRS_SWEEP:
         bo, wo, lo, wro, roio, po = so[thr]
         bc, wc, lc, wrc, roic, pc = sc[thr]
-        lines.append(f"| {thr:.2f} | {bo} | {wro:.1f} % | {roio:+.2f} % | {bc} | {wrc:.1f} % | {roic:+.2f} % |")
+        # bankroll sim for original (bank inicial 1000, apuesta 100, para si no hay fondos)
+        bank_o = 1000.0; n_o = 0; stopped_o = False
+        for r in ordered:
+            if r["orig_conf"] < thr:
+                continue
+            if bank_o < 100:
+                stopped_o = True
+                break
+            bank_o -= 100
+            if r["orig_result"] == "win":
+                bank_o += 100 * odds
+            n_o += 1
+        bank_c = 1000.0; n_c = 0; stopped_c = False
+        for r in ordered:
+            new_bet = (r["new_p"] >= thr and r["new_margin"] >= 0) or (r["new_p"] <= 1-thr and r["new_margin"] <= 0)
+            if not new_bet:
+                continue
+            if bank_c < 100:
+                stopped_c = True
+                break
+            bank_c -= 100
+            if r["new_won"]:
+                bank_c += 100 * odds
+            n_c += 1
+        tag_o = " (se detuvo)" if stopped_o else ""
+        tag_c = " (se detuvo)" if stopped_c else ""
+        lines.append(f"| {thr:.2f} | {bo} | {wro:.1f} % | {roio:+.2f} % | ${bank_o:,.2f}{tag_o} | {bc} | {wrc:.1f} % | {roic:+.2f} % | ${bank_c:,.2f}{tag_c} |")
     lines.append("")
 
 lines.append("**Lectura:** el clon es más conservador (59 vs 85 apuestas) con acierto ligeramente superior "
