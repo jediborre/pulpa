@@ -17,6 +17,8 @@
 
 **Comparación con m27_v5_3_3 (anterior):** eligible +0. AUC 0.6541 vs 0.6541. WR @0.75 81.66 % vs 81.66 %.
 
+**Comparación con m27_v5_3 (original):** eligible matches 201,660 vs 182,803 (+18,857). AUC test 0.6541 vs 0.6545. Apuestas @0.75 (ancla): 2,879 vs 2,538.
+
 ## 2. Tabla global de umbrales (anclas t=30, bloque C)
 
 | P ≥  | Apuestas | Ganados | Perdidos | WR (IC95)          | ROI @1.40 | ROI @1.83 |

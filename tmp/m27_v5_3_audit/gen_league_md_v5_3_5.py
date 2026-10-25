@@ -63,6 +63,10 @@ lines.append(f"**Comparación con m27_v5_3 (original):** eligible matches {SUM['
              f"Apuestas @0.75 (ancla): {SUM['tiers_anchor'][4]['bets']:,} vs {ORIG_SUM['tiers_anchor'][4]['bets']:,}.\n")
 lines.append(f"**Comparación con m27_v5_3_3 (anterior):** eligible +{SUM['split']['eligible_matches']-201660:,}. "
              f"AUC {SUM['auc_test']} vs 0.6541. WR @0.75 {SUM['tiers_anchor'][4]['wr']:.2f} % vs 81.66 %.\n")
+lines.append(f"**Comparación con m27_v5_3 (original):** eligible matches {SUM['split']['eligible_matches']:,} vs 182,803 "
+             f"(+{SUM['split']['eligible_matches']-182803:,}). "
+             f"AUC test {SUM['auc_test']} vs 0.6545. "
+             f"Apuestas @0.75 (ancla): {SUM['tiers_anchor'][4]['bets']:,} vs 2,538.\n")
 
 # tabla global de umbrales
 lines.append("## 2. Tabla global de umbrales (anclas t=30, bloque C)\n")
