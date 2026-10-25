@@ -3,9 +3,9 @@ from pathlib import Path
 from collections import defaultdict
 
 ROOT = Path(__file__).resolve().parents[2]
-D = json.load(open(ROOT / "tmp" / "m27_v5_3_audit" / "league_threshold_analysis_v5_3_2.json", encoding="utf-8"))
-SUM = json.load(open(ROOT / "models" / "m27_v5_3_2" / "model_outputs" / "m27_v5_3_2_summary.json", encoding="utf-8"))
-EVAL = json.load(open(ROOT / "tmp" / "m27_v5_3_audit" / "eval_live_v5_3_2.json", encoding="utf-8"))
+D = json.load(open(ROOT / "tmp" / "m27_v5_3_audit" / "league_threshold_analysis_v5_3_3.json", encoding="utf-8"))
+SUM = json.load(open(ROOT / "models" / "m27_v5_3_3" / "model_outputs" / "m27_v5_3_3_summary.json", encoding="utf-8"))
+EVAL = json.load(open(ROOT / "tmp" / "m27_v5_3_audit" / "eval_live_v5_3_3.json", encoding="utf-8"))
 ORIG_SUM = json.load(open(ROOT / "models" / "m27_v5_3" / "model_outputs" / "m27_v5_3_summary.json", encoding="utf-8"))
 
 leagues = D["leagues"]
