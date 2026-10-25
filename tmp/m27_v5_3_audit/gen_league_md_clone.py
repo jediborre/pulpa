@@ -105,19 +105,19 @@ lines.append("## 5. Ligas destacadas\n")
 rich = [l for l in leagues if (next((t for t in l["tiers"] if t["thr"]==0.75),{}) or {}).get("bets",0) >= 30]
 rich_sorted = sorted(rich, key=lambda l: next((t for t in l["tiers"] if t["thr"]==0.75),{}).get("roi_140", -999), reverse=True)[:10]
 lines.append("### 5.1 Mejores ROI @1.40 a 0.75 (mín. 30 apuestas)\n")
-lines.append("| Liga | Entrenado | Apuestas @0.75 | WR | ROI @1.40 |")
-lines.append("|---|---:|---:|---:|---:|")
+lines.append("| País | Liga | Entrenado | Apuestas @0.75 | WR | ROI @1.40 |")
+lines.append("|---|---|---:|---:|---:|---:|")
 for l in rich_sorted:
     t75 = next((t for t in l["tiers"] if t["thr"]==0.75), None)
-    lines.append(f"| {l['league']} | {l['matches_train']:,} | {t75['bets']:,} | {t75['wr']:.1f} % | {t75['roi_140']:+.2f} % |")
+    lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_train']:,} | {t75['bets']:,} | {t75['wr']:.1f} % | {t75['roi_140']:+.2f} % |")
 lines.append("")
 poor_sorted = sorted(rich, key=lambda l: next((t for t in l["tiers"] if t["thr"]==0.75),{}).get("roi_140", 999))[:10]
 lines.append("### 5.2 Peores ROI @1.40 a 0.75 (mín. 30 apuestas)\n")
-lines.append("| Liga | Entrenado | Apuestas @0.75 | WR | ROI @1.40 |")
-lines.append("|---|---:|---:|---:|---:|")
+lines.append("| País | Liga | Entrenado | Apuestas @0.75 | WR | ROI @1.40 |")
+lines.append("|---|---|---:|---:|---:|---:|")
 for l in poor_sorted:
     t75 = next((t for t in l["tiers"] if t["thr"]==0.75), None)
-    lines.append(f"| {l['league']} | {l['matches_train']:,} | {t75['bets']:,} | {t75['wr']:.1f} % | {t75['roi_140']:+.2f} % |")
+    lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_train']:,} | {t75['bets']:,} | {t75['wr']:.1f} % | {t75['roi_140']:+.2f} % |")
 lines.append("")
 
 # caso polaco

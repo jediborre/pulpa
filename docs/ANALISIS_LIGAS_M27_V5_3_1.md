@@ -678,33 +678,33 @@
 
 ### 5.1 Mejores ROI @1.40 a 0.75 (mín. 30 apuestas)
 
-| Liga                                           | Entrenado | Apuestas @0.75 | WR     | ROI @1.40 |
-| ---                                            | ---:      | ---:           | ---:   | ---:      |
-| LNB, Women                                     | 184       | 39             | 92.3 % | +29.23 %  |
-| ZBL, Women                                     | 694       | 36             | 88.9 % | +24.44 %  |
-| Top Division Women, Regular Season             | 0         | 35             | 88.6 % | +24.00 %  |
-| NBL, East                                      | 78        | 31             | 87.1 % | +21.94 %  |
-| MPBL                                           | 319       | 31             | 87.1 % | +21.94 %  |
-| NBL1 East, Women                               | 153       | 36             | 86.1 % | +20.56 %  |
-| FSHB Superliga, K.K.M 2025-26                  | 0         | 38             | 81.6 % | +14.21 %  |
-| NCAA Women's Division I, Regular season        | 0         | 261            | 81.2 % | +13.72 %  |
-| Basketligaen                                   | 651       | 30             | 80.0 % | +12.00 %  |
-| Poland 2nd Basketball League, Runda Zasadnicza | 0         | 164            | 79.9 % | +11.83 %  |
+| País      | Liga                                           | Entrenado | Apuestas @0.75 | WR     | ROI @1.40 |
+| ---       | ---                                            | ---:      | ---:           | ---:   | ---:      |
+| France    | LNB, Women                                     | 184       | 39             | 92.3 % | +29.23 %  |
+| Other     | ZBL, Women                                     | 694       | 36             | 88.9 % | +24.44 %  |
+| Other     | Top Division Women, Regular Season             | 0         | 35             | 88.6 % | +24.00 %  |
+| Australia | NBL, East                                      | 78        | 31             | 87.1 % | +21.94 %  |
+| Poland    | MPBL                                           | 319       | 31             | 87.1 % | +21.94 %  |
+| Australia | NBL1 East, Women                               | 153       | 36             | 86.1 % | +20.56 %  |
+| Other     | FSHB Superliga, K.K.M 2025-26                  | 0         | 38             | 81.6 % | +14.21 %  |
+| USA       | NCAA Women's Division I, Regular season        | 0         | 261            | 81.2 % | +13.72 %  |
+| Other     | Basketligaen                                   | 651       | 30             | 80.0 % | +12.00 %  |
+| Poland    | Poland 2nd Basketball League, Runda Zasadnicza | 0         | 164            | 79.9 % | +11.83 %  |
 
 ### 5.2 Peores ROI @1.40 a 0.75 (mín. 30 apuestas)
 
-| Liga                                           | Entrenado | Apuestas @0.75 | WR     | ROI @1.40 |
-| ---                                            | ---:      | ---:           | ---:   | ---:      |
-| Premijer ženska liga                           | 305       | 32             | 68.8 % | -3.75 %   |
-| Swedish Basketball League Women                | 239       | 32             | 71.9 % | +0.62 %   |
-| United League                                  | 1,143     | 37             | 75.7 % | +5.95 %   |
-| Hungary Divison A Women                        | 284       | 35             | 77.1 % | +8.00 %   |
-| Tipos Extraliga, Women                         | 424       | 40             | 77.5 % | +8.50 %   |
-| Poland 2nd Basketball League, Runda Zasadnicza | 0         | 164            | 79.9 % | +11.83 %  |
-| Basketligaen                                   | 651       | 30             | 80.0 % | +12.00 %  |
-| NCAA Women's Division I, Regular season        | 0         | 261            | 81.2 % | +13.72 %  |
-| FSHB Superliga, K.K.M 2025-26                  | 0         | 38             | 81.6 % | +14.21 %  |
-| NBL1 East, Women                               | 153       | 36             | 86.1 % | +20.56 %  |
+| País      | Liga                                           | Entrenado | Apuestas @0.75 | WR     | ROI @1.40 |
+| ---       | ---                                            | ---:      | ---:           | ---:   | ---:      |
+| Other     | Premijer ženska liga                           | 305       | 32             | 68.8 % | -3.75 %   |
+| Other     | Swedish Basketball League Women                | 239       | 32             | 71.9 % | +0.62 %   |
+| Other     | United League                                  | 1,143     | 37             | 75.7 % | +5.95 %   |
+| Other     | Hungary Divison A Women                        | 284       | 35             | 77.1 % | +8.00 %   |
+| Other     | Tipos Extraliga, Women                         | 424       | 40             | 77.5 % | +8.50 %   |
+| Poland    | Poland 2nd Basketball League, Runda Zasadnicza | 0         | 164            | 79.9 % | +11.83 %  |
+| Other     | Basketligaen                                   | 651       | 30             | 80.0 % | +12.00 %  |
+| USA       | NCAA Women's Division I, Regular season        | 0         | 261            | 81.2 % | +13.72 %  |
+| Other     | FSHB Superliga, K.K.M 2025-26                  | 0         | 38             | 81.6 % | +14.21 %  |
+| Australia | NBL1 East, Women                               | 153       | 36             | 86.1 % | +20.56 %  |
 
 ## 6. Caso específico — `Poland 2nd Basketball League, Runda Zasadnicza`
 

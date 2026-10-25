@@ -215,10 +215,11 @@ if MIS:
                  "ni las opera** (Entrenado = 0, Backtest = `—`), aunque la DB sí tenga histórico. "
                  "Ejemplo claro: `Poland 2nd Basketball League, Runda Zasadnicza` (1072 partidos, cobertura 100 %) "
                  "se marca como `SEGUNDA_FASE` porque el clasificador asocia \"Runda\" con segunda fase.\n")
-    lines.append("| Liga | Partidos (DB) | stage | stage_detail | Clasificado como |")
-    lines.append("|---|---:|---|---|---|")
+    lines.append("| País | Liga | Partidos (DB) | stage | stage_detail | Clasificado como |")
+    lines.append("|---|---|---:|---|---|---|")
     for m in MIS:
-        lines.append(f"| {m['league']} | {m['match_count']:,} | {m['stage']} | {m['stage_detail']} | {m['classified_as']} |")
+        ctry = _country.get(m['league'], "?")
+        lines.append(f"| {ctry} | {m['league']} | {m['match_count']:,} | {m['stage']} | {m['stage_detail']} | {m['classified_as']} |")
     lines.append("")
     lines.append("**Ligas claramente mal clasificadas (stage_detail = Regular Season pero bloqueadas):** "
                  "`Poland 2nd Basketball League, Runda Zasadnicza`, `1 Liga Kobiet, Runda Zasadnicza`, "

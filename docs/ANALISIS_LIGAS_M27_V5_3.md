@@ -848,16 +848,16 @@ _...y 68 ligas más con menos volumen._
 
 > Varios nombres de liga se catalogan como fase descartada (`SEGUNDA_FASE`, `AMISTOSOS`, `PRELIMINAR`, `PROMOCION`) aunque su `stage_detail` sea `Regular Season`. Consecuencia: el modelo **no las entrena ni las opera** (Entrenado = 0, Backtest = `—`), aunque la DB sí tenga histórico. Ejemplo claro: `Poland 2nd Basketball League, Runda Zasadnicza` (1072 partidos, cobertura 100 %) se marca como `SEGUNDA_FASE` porque el clasificador asocia "Runda" con segunda fase.
 
-| Liga                                           | Partidos (DB) | stage            | stage_detail   | Clasificado como |
-| ---                                            | ---:          | ---              | ---            | ---              |
-| Poland 2nd Basketball League, Runda Zasadnicza | 852           | Runda Zasadnicza | Regular Season | SEGUNDA_FASE     |
-| Liga Argentina, Group Stage                    | 518           | Group Stage      | Group Stage    | SEGUNDA_FASE     |
-| NBA G League Tip-Off Tournament                | 377           | Regular season   | Regular Season | AMISTOSOS        |
-| 1 Liga Kobiet, Runda Zasadnicza                | 270           | Runda Zasadnicza | Regular Season | SEGUNDA_FASE     |
-| Club Friendlies                                | 198           | Regular season   | Regular Season | AMISTOSOS        |
-| National Basketball Championship, Women        | 126           | Regular season   | Regular Season | SEGUNDA_FASE     |
-| The Basketball Tournament                      | 123           | Regular season   | Regular Season | AMISTOSOS        |
-| Women's Super League Basketball , Championship | 108           | Regular season   | Regular Season | SEGUNDA_FASE     |
+| País       | Liga                                           | Partidos (DB) | stage            | stage_detail   | Clasificado como |
+| ---        | ---                                            | ---:          | ---              | ---            | ---              |
+| Poland     | Poland 2nd Basketball League, Runda Zasadnicza | 852           | Runda Zasadnicza | Regular Season | SEGUNDA_FASE     |
+| Argentina  | Liga Argentina, Group Stage                    | 518           | Group Stage      | Group Stage    | SEGUNDA_FASE     |
+| Historical | NBA G League Tip-Off Tournament                | 377           | Regular season   | Regular Season | AMISTOSOS        |
+| Other      | 1 Liga Kobiet, Runda Zasadnicza                | 270           | Runda Zasadnicza | Regular Season | SEGUNDA_FASE     |
+| Other      | Club Friendlies                                | 198           | Regular season   | Regular Season | AMISTOSOS        |
+| Historical | National Basketball Championship, Women        | 126           | Regular season   | Regular Season | SEGUNDA_FASE     |
+| Historical | The Basketball Tournament                      | 123           | Regular season   | Regular Season | AMISTOSOS        |
+| Historical | Women's Super League Basketball , Championship | 108           | Regular season   | Regular Season | SEGUNDA_FASE     |
 
 **Ligas claramente mal clasificadas (stage_detail = Regular Season pero bloqueadas):** `Poland 2nd Basketball League, Runda Zasadnicza`, `1 Liga Kobiet, Runda Zasadnicza`, `National Basketball Championship, Women`, `Women's Super League Basketball, Championship`, `NBA G League Tip-Off Tournament` (stage_detail Regular Season). `Liga Argentina, Group Stage` y `Women's Super League Basketball, Championship` tienen stage_detail distinto y requieren revisión manual.
 
