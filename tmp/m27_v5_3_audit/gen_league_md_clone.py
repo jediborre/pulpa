@@ -9,6 +9,15 @@ EVAL = json.load(open(ROOT / "tmp" / "m27_v5_3_audit" / "eval_live_clone.json", 
 ORIG_SUM = json.load(open(ROOT / "models" / "m27_v5_3" / "model_outputs" / "m27_v5_3_summary.json", encoding="utf-8"))
 
 leagues = D["leagues"]
+# country map
+import sqlite3 as _sq
+_conn = _sq.connect(str(ROOT / "matches.db"))
+_conn.row_factory = _sq.Row
+_country = {r["league"]: r["country_or_region"] for r in _conn.execute(
+    "SELECT league, country_or_region FROM leagues_classification")}
+_conn.close()
+for l in leagues:
+    l["country"] = _country.get(l["league"], "?")
 # ordenar por WR @0.75 descendente (None al final), luego por apuestas desc
 def _wr75(l):
     t75 = next((t for t in l["tiers"] if t["thr"] == 0.75), {})
@@ -56,8 +65,8 @@ lines.append("")
 
 # tabla resumen por liga
 lines.append("## 3. Tabla resumen por liga (ordenada por WR descendente a 0.75)\n")
-lines.append("| Liga | Entrenado (A) | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 | IC95 | ROI @1.40 | ROI @1.83 | Bloqueo |")
-lines.append("|---|---:|---:|---:|---:|---:|---:|---|---:|---:|---|")
+lines.append("| País | Liga | Entrenado (A) | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 | IC95 | ROI @1.40 | ROI @1.83 | Bloqueo |")
+lines.append("|---|---|---:|---:|---:|---:|---:|---:|---|---:|---:|---|")
 for l in leagues:
     t75 = next((t for t in l["tiers"] if t["thr"] == 0.75), None)
     bets = t75.get("bets") if t75 else 0
@@ -71,14 +80,14 @@ for l in leagues:
     t75blk = "⚠️" if (t75 and t75.get("roi_140") is not None and t75["roi_140"] < 0) else ""
     if l["matches_train"] == 0:
         t75blk = (t75blk + " 🆕").strip()
-    lines.append(f"| {l['league']} | {l['matches_train']:,} | {l['matches_holdout']:,} | {bets:,} | {wins:,} | {losses:,} | {wr} | {ci} | {roi140} | {roi183} | {t75blk} |")
+    lines.append(f"| {l['country']} | {l['league']} | {l['matches_train']:,} | {l['matches_holdout']:,} | {bets:,} | {wins:,} | {losses:,} | {wr} | {ci} | {roi140} | {roi183} | {t75blk} |")
 lines.append("")
 
 # detalle top 30
 top = sorted(leagues, key=lambda l: next((t.get("bets") or 0 for t in l["tiers"] if t.get("thr")==0.75), 0), reverse=True)[:30]
 lines.append("## 4. Detalle por liga y por umbral — Top 30 por volumen\n")
 for l in top:
-    lines.append(f"### {l['league']}\n")
+    lines.append(f"### {l.get('country','?')} — {l['league']}\n")
     lines.append(f"- Entrenado (A): **{l['matches_train']:,}** · Holdout (C): **{l['matches_holdout']:,}** · Sesgo @0.75: {l['bias_at_075']:+.4f}\n")
     lines.append("| P ≥ | Apuestas | WR | IC95 | ROI @1.40 | ROI @1.83 |")
     lines.append("|---|---:|---:|---|---:|---:|")
@@ -158,8 +167,8 @@ lines.append("## 7. Prueba contra los partidos en vivo de `m27_v5_3`\n")
 lines.append(f"- **m27_v5_3 (original):** {s['orig_bets']} apuestas, {s['orig_wins']} ganadas, {s['orig_losses']} perdidas → WR {s['orig_wins']/(s['orig_wins']+s['orig_losses'])*100:.1f} %.")
 lines.append(f"- **m27_v5_3_1 (clon):** {s['new_bets']} apuestas, {s['new_wins']} ganadas, {s['new_losses']} perdidas → WR {s['new_wins']/s['new_bets']*100:.1f} %.\n")
 lines.append("### 7.1 Resumen por liga — apuestas en vivo (original vs clon)\n")
-lines.append("| Liga | En vivo (partidos) | v5_3: apuestas | v5_3: ganadas | v5_3: perdidas | v5_3: WR | v5_3_1: apuestas | v5_3_1: ganadas | v5_3_1: perdidas | v5_3_1: WR | Dif. WR |")
-lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+lines.append("| País | Liga | En vivo (partidos) | v5_3: apuestas | v5_3: ganadas | v5_3: perdidas | v5_3: WR | v5_3_1: apuestas | v5_3_1: ganadas | v5_3_1: perdidas | v5_3_1: WR | Dif. WR |")
+lines.append("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
 tot_live = tot_o_bets = tot_o_wins = tot_o_losses = tot_n_bets = tot_n_wins = tot_n_losses = 0
 for lg in sorted(agg, key=lambda x: (agg[x]["new_bets"], agg[x]["orig_bets"]), reverse=True):
     a = agg[lg]
@@ -171,7 +180,8 @@ for lg in sorted(agg, key=lambda x: (agg[x]["new_bets"], agg[x]["orig_bets"]), r
         diff = "🟢" if new_wr_v > orig_wr_v else ("🔴" if new_wr_v < orig_wr_v else "⚪")
     else:
         diff = "—"
-    lines.append(f"| {lg} | {a['live']} | {a['orig_bets']} | {a['orig_wins']} | {a['orig_losses']} | {orig_wr} | {a['new_bets']} | {a['new_wins']} | {a['new_losses']} | {new_wr} | {diff} |")
+    ctry = _country.get(lg, "?")
+    lines.append(f"| {ctry} | {lg} | {a['live']} | {a['orig_bets']} | {a['orig_wins']} | {a['orig_losses']} | {orig_wr} | {a['new_bets']} | {a['new_wins']} | {a['new_losses']} | {new_wr} | {diff} |")
     tot_live += a["live"]; tot_o_bets += a["orig_bets"]; tot_o_wins += a["orig_wins"]; tot_o_losses += a["orig_losses"]
     tot_n_bets += a["new_bets"]; tot_n_wins += a["new_wins"]; tot_n_losses += a["new_losses"]
 tot_o_wr = (tot_o_wins/tot_o_bets*100) if tot_o_bets else 0

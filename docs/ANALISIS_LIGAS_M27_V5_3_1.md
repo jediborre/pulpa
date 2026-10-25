@@ -28,263 +28,263 @@
 
 ## 3. Tabla resumen por liga (ordenada por WR descendente a 0.75)
 
-| Liga                                                        | Entrenado (A) | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 | IC95      | ROI @1.40 | ROI @1.83 | Bloqueo |
-| ---                                                         | ---:          | ---:        | ---:           | ---:    | ---:     | ---:     | ---       | ---:      | ---:      | ---     |
-| CBI U19, Sede Rio                                           | 0             | 37          | 21             | 20      | 1        | 95.2 %   | 77.3–99.2 | +33.33 %  | +74.29 %  | 🆕       |
-| Saudi Basketball League, Premier League                     | 0             | 45          | 20             | 19      | 1        | 95.0 %   | 76.4–99.1 | +33.00 %  | +73.85 %  | 🆕       |
-| BNXT League                                                 | 222           | 224         | 18             | 17      | 1        | 94.4 %   | 74.2–99.0 | +32.22 %  | +72.83 %  |         |
-| CBI U15 , Classificatória A                                 | 0             | 76          | 27             | 25      | 2        | 92.6 %   | 76.6–97.9 | +29.63 %  | +69.44 %  | 🆕       |
-| LNB, Women                                                  | 184           | 60          | 39             | 36      | 3        | 92.3 %   | 79.7–97.3 | +29.23 %  | +68.92 %  |         |
-| ZBL, Women                                                  | 694           | 74          | 36             | 32      | 4        | 88.9 %   | 74.7–95.6 | +24.44 %  | +62.67 %  |         |
-| Prva Liga                                                   | 0             | 135         | 27             | 24      | 3        | 88.9 %   | 71.9–96.1 | +24.44 %  | +62.67 %  | 🆕       |
-| Top Division Women, Regular Season                          | 0             | 88          | 35             | 31      | 4        | 88.6 %   | 74.0–95.5 | +24.00 %  | +62.09 %  | 🆕       |
-| Finland Division 1A Women                                   | 307           | 87          | 17             | 15      | 2        | 88.2 %   | 65.7–96.7 | +23.53 %  | +61.47 %  |         |
-| LDB, Primeira fase                                          | 0             | 128         | 16             | 14      | 2        | 87.5 %   | 64.0–96.5 | +22.50 %  | +60.13 %  | 🆕       |
-| NBL, East                                                   | 78            | 87          | 31             | 27      | 4        | 87.1 %   | 71.1–94.9 | +21.94 %  | +59.39 %  |         |
-| MPBL                                                        | 319           | 264         | 31             | 27      | 4        | 87.1 %   | 71.1–94.9 | +21.94 %  | +59.39 %  |         |
-| CBI U17, Sede Curitiba                                      | 0             | 67          | 15             | 13      | 2        | 86.7 %   | 62.1–96.3 | +21.33 %  | +58.60 %  | 🆕       |
-| NBL1 East, Women                                            | 153           | 118         | 36             | 31      | 5        | 86.1 %   | 71.3–93.9 | +20.56 %  | +57.58 %  |         |
-| Estonian-Latvian Basketball League                          | 610           | 159         | 25             | 21      | 4        | 84.0 %   | 65.3–93.6 | +17.60 %  | +53.72 %  |         |
-| 1 Division, Women                                           | 17            | 89          | 18             | 15      | 3        | 83.3 %   | 60.8–94.2 | +16.67 %  | +52.50 %  |         |
-| 1st Division Women                                          | 0             | 52          | 23             | 19      | 4        | 82.6 %   | 62.9–93.0 | +15.65 %  | +51.17 %  | 🆕       |
-| NBL Women , Regular Season                                  | 0             | 106         | 17             | 14      | 3        | 82.3 %   | 59.0–93.8 | +15.29 %  | +50.71 %  | 🆕       |
-| Big V, Women                                                | 108           | 82          | 28             | 23      | 5        | 82.1 %   | 64.4–92.1 | +15.00 %  | +50.32 %  |         |
-| FSHB Superliga, K.K.M 2025-26                               | 0             | 84          | 38             | 31      | 7        | 81.6 %   | 66.6–90.8 | +14.21 %  | +49.29 %  | 🆕       |
-| Brazil NBB                                                  | 1,444         | 272         | 16             | 13      | 3        | 81.2 %   | 57.0–93.4 | +13.75 %  | +48.69 %  |         |
-| NCAA Women's Division I, Regular season                     | 0             | 1,566       | 261            | 212     | 49       | 81.2 %   | 76.0–85.5 | +13.72 %  | +48.64 %  | 🆕       |
-| Basketligaen                                                | 651           | 108         | 30             | 24      | 6        | 80.0 %   | 62.7–90.5 | +12.00 %  | +46.40 %  |         |
-| Swiss Basketball League Women                               | 147           | 67          | 15             | 12      | 3        | 80.0 %   | 54.8–93.0 | +12.00 %  | +46.40 %  |         |
-| LNB, Clausura                                               | 0             | 49          | 15             | 12      | 3        | 80.0 %   | 54.8–93.0 | +12.00 %  | +46.40 %  | 🆕       |
-| Poland 2nd Basketball League, Runda Zasadnicza              | 0             | 771         | 164            | 131     | 33       | 79.9 %   | 73.1–85.3 | +11.83 %  | +46.18 %  | 🆕       |
-| Tipos Extraliga, Women                                      | 424           | 63          | 40             | 31      | 9        | 77.5 %   | 62.5–87.7 | +8.50 %   | +41.83 %  |         |
-| 2nd League                                                  | 271           | 131         | 22             | 17      | 5        | 77.3 %   | 56.6–89.9 | +8.18 %   | +41.41 %  |         |
-| Hungary Divison A Women                                     | 284           | 107         | 35             | 27      | 8        | 77.1 %   | 61.0–87.9 | +8.00 %   | +41.17 %  |         |
-| 1 Liga Kobiet, Runda Zasadnicza                             | 0             | 239         | 17             | 13      | 4        | 76.5 %   | 52.7–90.4 | +7.06 %   | +39.94 %  | 🆕       |
-| Switzerland LNA                                             | 695           | 91          | 21             | 16      | 5        | 76.2 %   | 54.9–89.4 | +6.67 %   | +39.43 %  |         |
-| United League                                               | 1,143         | 169         | 37             | 28      | 9        | 75.7 %   | 59.9–86.6 | +5.95 %   | +38.49 %  |         |
-| CBI U15 , Classificatória B                                 | 0             | 78          | 20             | 15      | 5        | 75.0 %   | 53.1–88.8 | +5.00 %   | +37.25 %  | 🆕       |
-| Russian Women's Basketball Premier League                   | 726           | 102         | 27             | 20      | 7        | 74.1 %   | 55.3–86.8 | +3.70 %   | +35.56 %  |         |
-| Nostra.lt-RKL Division B, Reguliarusis sezonas              | 0             | 164         | 22             | 16      | 6        | 72.7 %   | 51.8–86.8 | +1.82 %   | +33.09 %  | 🆕       |
-| Swedish Basketball League Women                             | 239           | 112         | 32             | 23      | 9        | 71.9 %   | 54.6–84.4 | +0.62 %   | +31.53 %  |         |
-| NBL, West                                                   | 75            | 84          | 24             | 17      | 7        | 70.8 %   | 50.8–85.1 | -0.83 %   | +29.62 %  | ⚠️      |
-| SLB, Women                                                  | 0             | 87          | 24             | 17      | 7        | 70.8 %   | 50.8–85.1 | -0.83 %   | +29.62 %  | ⚠️ 🆕    |
-| Premijer ženska liga                                        | 305           | 96          | 32             | 22      | 10       | 68.8 %   | 51.4–82.0 | -3.75 %   | +25.81 %  | ⚠️      |
-| Liga 1 Masculin, Faza II                                    | 21            | 119         | 17             | 11      | 6        | 64.7 %   | 41.3–82.7 | -9.41 %   | +18.41 %  | ⚠️      |
-| Sparkasse Prva Liga Zeni                                    | 0             | 63          | 17             | 9       | 8        | 52.9 %   | 31.0–73.8 | -25.88 %  | -3.12 %   | ⚠️ 🆕    |
-| 1. SKL, Women                                               | 44            | 48          | 14             | 0       | 14       | —        | —         | —         | —         |         |
-| A1 Women                                                    | 821           | 78          | 14             | 0       | 14       | —        | —         | —         | —         |         |
-| Rwanda Basketball League, Regular Season                    | 0             | 65          | 14             | 0       | 14       | —        | —         | —         | —         | 🆕       |
-| EYBL U13, Group D                                           | 0             | 34          | 12             | 0       | 12       | —        | —         | —         | —         | 🆕       |
-| 1. Division B                                               | 100           | 99          | 12             | 0       | 12       | —        | —         | —         | —         |         |
-| EYBL U14, Group E                                           | 0             | 52          | 12             | 0       | 12       | —        | —         | —         | —         | 🆕       |
-| Jedinstvena kadetska liga                                   | 0             | 64          | 12             | 0       | 12       | —        | —         | —         | —         | 🆕       |
-| Liga Nacional Femenina Chile, Fase regular                  | 0             | 34          | 12             | 0       | 12       | —        | —         | —         | —         | 🆕       |
-| Liga Femenina, Women, Clausura                              | 0             | 115         | 11             | 0       | 11       | —        | —         | —         | —         | 🆕       |
-| B League Premier                                            | 3,136         | 568         | 10             | 0       | 10       | —        | —         | —         | —         |         |
-| B League One                                                | 3,097         | 369         | 10             | 0       | 10       | —        | —         | —         | —         |         |
-| Basket Liga, Women                                          | 785           | 110         | 10             | 0       | 10       | —        | —         | —         | —         |         |
-| Rwanda Basketball League Women, Regular Season              | 0             | 42          | 10             | 0       | 10       | —        | —         | —         | —         | 🆕       |
-| 1. ZLS, Women                                               | 53            | 59          | 10             | 0       | 10       | —        | —         | —         | —         |         |
-| NBL1 West, Women                                            | 127           | 95          | 10             | 0       | 10       | —        | —         | —         | —         |         |
-| VBA                                                         | 119           | 57          | 10             | 0       | 10       | —        | —         | —         | —         |         |
-| Estonian National Women's Basketball League                 | 57            | 49          | 9              | 0       | 9        | —        | —         | —         | —         |         |
-| Austrian Women's Basketball Bundesliga                      | 144           | 48          | 9              | 0       | 9        | —        | —         | —         | —         |         |
-| LF Challenge, Regular Season                                | 0             | 145         | 9              | 0       | 9        | —        | —         | —         | —         | 🆕       |
-| Latvian Basketball Cup                                      | 0             | 31          | 9              | 0       | 9        | —        | —         | —         | —         | 🆕       |
-| EYBL U15, Group D                                           | 0             | 41          | 9              | 0       | 9        | —        | —         | —         | —         | 🆕       |
-| NBL Men , Regular Season                                    | 0             | 125         | 9              | 0       | 9        | —        | —         | —         | —         | 🆕       |
-| LBF, Women                                                  | 184           | 61          | 9              | 0       | 9        | —        | —         | —         | —         |         |
-| NBL1 Central, Women                                         | 84            | 58          | 9              | 0       | 9        | —        | —         | —         | —         |         |
-| LMB, Clausura                                               | 120           | 67          | 9              | 0       | 9        | —        | —         | —         | —         |         |
-| Swedish Basketball League                                   | 917           | 124         | 8              | 0       | 8        | —        | —         | —         | —         |         |
-| Liga Femenina, Women                                        | 1,185         | 190         | 8              | 0       | 8        | —        | —         | —         | —         |         |
-| EYBL U17, Group E                                           | 0             | 49          | 8              | 0       | 8        | —        | —         | —         | —         | 🆕       |
-| Indonesian Basketball League                                | 768           | 91          | 8              | 0       | 8        | —        | —         | —         | —         |         |
-| EYBL U17, Group G                                           | 0             | 37          | 8              | 0       | 8        | —        | —         | —         | —         | 🆕       |
-| The Basketball League, Regular Season                       | 63            | 126         | 8              | 0       | 8        | —        | —         | —         | —         |         |
-| NBL, Playoffs                                               | 71            | 41          | 8              | 0       | 8        | —        | —         | —         | —         |         |
-| Liga e Parë                                                 | 277           | 70          | 7              | 0       | 7        | —        | —         | —         | —         |         |
-| NBL                                                         | 1,965         | 301         | 7              | 0       | 7        | —        | —         | —         | —         |         |
-| France Pro A                                                | 1,740         | 184         | 7              | 0       | 7        | —        | —         | —         | —         |         |
-| Superliga, Women                                            | 0             | 36          | 7              | 0       | 7        | —        | —         | —         | —         | 🆕       |
-| Superliga e Femrave                                         | 0             | 41          | 7              | 0       | 7        | —        | —         | —         | —         | 🆕       |
-| Campeonato Nacional da 1ª Divisao Feminina, 1ª Fase - Sul   | 0             | 50          | 7              | 0       | 7        | —        | —         | —         | —         | 🆕       |
-| Liga 1 Masculin, Faza I                                     | 101           | 47          | 7              | 0       | 7        | —        | —         | —         | —         |         |
-| 1. liga, Women                                              | 0             | 75          | 7              | 0       | 7        | —        | —         | —         | —         | 🆕       |
-| U21 Espoirs Elite                                           | 0             | 142         | 7              | 0       | 7        | —        | —         | —         | —         | 🆕       |
-| Portugal LBP                                                | 772           | 101         | 7              | 0       | 7        | —        | —         | —         | —         |         |
-| NCAA Women's March Madness                                  | 0             | 59          | 7              | 0       | 7        | —        | —         | —         | —         | 🆕       |
-| CBI U19, Sede Curitiba                                      | 0             | 44          | 7              | 0       | 7        | —        | —         | —         | —         | 🆕       |
-| Liga ACB                                                    | 1,770         | 250         | 6              | 0       | 6        | —        | —         | —         | —         |         |
-| Campeonato Nacional da 1ª Divisao Feminina, 1ª Fase - Norte | 0             | 35          | 6              | 0       | 6        | —        | —         | —         | —         | 🆕       |
-| Kvindebasketligaen , Grundspil                              | 0             | 43          | 6              | 0       | 6        | —        | —         | —         | —         | 🆕       |
-| Euroleague: regular season                                  | 223           | 88          | 6              | 0       | 6        | —        | —         | —         | —         |         |
-| NBL1, East                                                  | 148           | 118         | 6              | 0       | 6        | —        | —         | —         | —         |         |
-| FBU Superleague                                             | 739           | 79          | 5              | 0       | 5        | —        | —         | —         | —         |         |
-| Liga Nationala                                              | 752           | 152         | 5              | 0       | 5        | —        | —         | —         | —         |         |
-| I B MCKL                                                    | 0             | 36          | 5              | 0       | 5        | —        | —         | —         | —         | 🆕       |
-| Primera FEB                                                 | 1,670         | 205         | 5              | 0       | 5        | —        | —         | —         | —         |         |
-| EYBL U20, Group E                                           | 0             | 37          | 5              | 0       | 5        | —        | —         | —         | —         | 🆕       |
-| EYBL U15, Group F                                           | 0             | 31          | 5              | 0       | 5        | —        | —         | —         | —         | 🆕       |
-| CBI U15 Fem, CBI U15 Fem                                    | 0             | 34          | 5              | 0       | 5        | —        | —         | —         | —         | 🆕       |
-| EYBL U14, Group G                                           | 0             | 42          | 5              | 0       | 5        | —        | —         | —         | —         | 🆕       |
-| EYBL U13, SUPERFINAL - 12./15.03.2026 - Riga, Latvia        | 0             | 30          | 5              | 0       | 5        | —        | —         | —         | —         | 🆕       |
-| EYBL U16, CHALLENGE CUP                                     | 0             | 37          | 5              | 0       | 5        | —        | —         | —         | —         | 🆕       |
-| Uruguay LUB                                                 | 250           | 83          | 4              | 0       | 4        | —        | —         | —         | —         |         |
-| WNBL                                                        | 553           | 67          | 4              | 0       | 4        | —        | —         | —         | —         |         |
-| Serie A2, Women, Group A                                    | 146           | 118         | 4              | 0       | 4        | —        | —         | —         | —         |         |
-| Turkish Basketball Super League                             | 1,387         | 164         | 4              | 0       | 4        | —        | —         | —         | —         |         |
-| Stoiximan GBL                                               | 1,024         | 127         | 4              | 0       | 4        | —        | —         | —         | —         |         |
-| Lebanese Basketball League                                  | 94            | 85          | 4              | 0       | 4        | —        | —         | —         | —         |         |
-| Liga Košarkaškog saveza Herceg Bosne                        | 0             | 40          | 4              | 0       | 4        | —        | —         | —         | —         | 🆕       |
-| 1. Division                                                 | 264           | 97          | 4              | 0       | 4        | —        | —         | —         | —         |         |
-| Eurocup, Group B                                            | 279           | 64          | 4              | 0       | 4        | —        | —         | —         | —         |         |
-| Germany BBL                                                 | 1,750         | 240         | 4              | 0       | 4        | —        | —         | —         | —         |         |
-| France LF2, Women, Regular Season                           | 104           | 103         | 4              | 0       | 4        | —        | —         | —         | —         |         |
-| Mexico LNBP Women                                           | 93            | 52          | 4              | 0       | 4        | —        | —         | —         | —         |         |
-| NBL1 South, Women                                           | 198           | 153         | 4              | 0       | 4        | —        | —         | —         | —         |         |
-| Iraqi Professional League, Iraqi Professional league        | 0             | 53          | 4              | 0       | 4        | —        | —         | —         | —         | 🆕       |
-| LNB Clausura                                                | 0             | 67          | 4              | 0       | 4        | —        | —         | —         | —         | 🆕       |
-| 1st Division Men                                            | 0             | 91          | 3              | 0       | 3        | —        | —         | —         | —         | 🆕       |
-| Argentina Liga Nacional                                     | 2,654         | 251         | 3              | 0       | 3        | —        | —         | —         | —         |         |
-| Cyprus Basketball Division A                                | 354           | 66          | 3              | 0       | 3        | —        | —         | —         | —         |         |
-| Super League                                                | 650           | 242         | 3              | 0       | 3        | —        | —         | —         | —         |         |
-| A1                                                          | 0             | 69          | 3              | 0       | 3        | —        | —         | —         | —         | 🆕       |
-| EYBL U15, Group C                                           | 0             | 32          | 3              | 0       | 3        | —        | —         | —         | —         | 🆕       |
-| Swedish Basketball Superettan                               | 357           | 135         | 3              | 0       | 3        | —        | —         | —         | —         |         |
-| Kızlar Basketbol Gençler Ligi - A Grubu                     | 0             | 34          | 3              | 0       | 3        | —        | —         | —         | —         | 🆕       |
-| NBL1, Central                                               | 88            | 51          | 3              | 0       | 3        | —        | —         | —         | —         |         |
-| WNBA                                                        | 1,206         | 292         | 3              | 0       | 3        | —        | —         | —         | —         |         |
-| Liga de Ascenso                                             | 360           | 88          | 3              | 0       | 3        | —        | —         | —         | —         |         |
-| CBI U17, Fase Final                                         | 0             | 49          | 3              | 0       | 3        | —        | —         | —         | —         | 🆕       |
-| I A MCKL                                                    | 122           | 117         | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| Israeli National League Basketball                          | 450           | 176         | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| Saku I liiga                                                | 125           | 95          | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| Azerbaijan Basketball League, B Group                       | 0             | 38          | 2              | 0       | 2        | —        | —         | —         | —         | 🆕       |
-| Serie A2                                                    | 652           | 246         | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| Korisliiga                                                  | 1,116         | 105         | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| Hungary NB 1.A                                              | 779           | 141         | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| SuperSport Premijer Liga                                    | 902           | 151         | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| 1st Division                                                | 337           | 122         | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| A1 Liga                                                     | 0             | 105         | 2              | 0       | 2        | —        | —         | —         | —         | 🆕       |
-| Azerbaijan Basketball League, A Group                       | 0             | 37          | 2              | 0       | 2        | —        | —         | —         | —         | 🆕       |
-| Eurocup, Group A                                            | 270           | 70          | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| 1. A SKL                                                    | 646           | 108         | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| Nationale 1, Group A                                        | 0             | 120         | 2              | 0       | 2        | —        | —         | —         | —         | 🆕       |
-| Iceland Women's Basketball Premier League                   | 203           | 69          | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| Segunda FEB, Group West                                     | 137           | 112         | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| Portugal LFB Women                                          | 185           | 92          | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| Israeli Women Basketball Premier League                     | 300           | 70          | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| France LFB Women                                            | 873           | 107         | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| 2. Muška Liga                                               | 288           | 43          | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| Prva RL Istok                                               | 314           | 31          | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| 2. ZLS, Women                                               | 0             | 37          | 2              | 0       | 2        | —        | —         | —         | —         | 🆕       |
-| NBL1, West                                                  | 141           | 108         | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| Colombia LPB                                                | 206           | 46          | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| Brazil NBB, Playoffs                                        | 246           | 30          | 2              | 0       | 2        | —        | —         | —         | —         |         |
-| CBI U19, Fase Final                                         | 0             | 32          | 2              | 0       | 2        | —        | —         | —         | —         | 🆕       |
-| Belgian Basketball 2nd Division                             | 164           | 161         | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| Princ Caffe Superliga                                       | 591           | 77          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| 1. Liga, Group East                                         | 338           | 66          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| Austrian Basketball Superliga                               | 919           | 75          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| Poland 1st Division Basketball                              | 782           | 202         | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| Iranian Basketball Super League                             | 366           | 38          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| Liga de Baloncesto Puertorriquena , Seccion Este            | 90            | 65          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| Euroleague                                                  | 1,211         | 300         | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| Iceland Basketball Premier League                           | 467           | 88          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| EYBL U16, Group B                                           | 0             | 31          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
-| EYBL U17, Group A                                           | 0             | 30          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
-| Zain Basketball League, Premier League                      | 0             | 41          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
-| Qatari Basketball League, Regular Season                    | 49            | 48          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| EYBL U20, Group B                                           | 0             | 30          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
-| EYBL U14, Group D                                           | 0             | 34          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
-| Elite League                                                | 338           | 57          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| Türkiye Kadınlar Basketbol Ligi                             | 0             | 36          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
-| Divisione Regionale 1 Toscana, Girone A                     | 0             | 66          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
-| CIBACOPA , Primera Vuelta                                   | 27            | 96          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| A1 ESKAH                                                    | 291           | 32          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| A2 ESKAH                                                    | 284           | 35          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| Superliga                                                   | 210           | 119         | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| EYBL U15, SUPERFINAL - 12./15.03.2026 - Riga, Latvia        | 0             | 32          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
-| Chile LNB                                                   | 701           | 47          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| NBL1, South                                                 | 194           | 135         | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| Big V                                                       | 594           | 82          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| Liga Argentina, Playoffs                                    | 74            | 56          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| NBL1, North                                                 | 113           | 71          | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| Mexico LNBP                                                 | 1,265         | 162         | 1              | 0       | 1        | —        | —         | —         | —         |         |
-| Saku II Liiga                                               | 0             | 35          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
-| 1. liga, Women, základní část                               | 0             | 31          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
-| Nostra.lt-RKL Division A, Reguliarus sezonas                | 0             | 38          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
-| Liga Femenina                                               | 64            | 36          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Liga de Baloncesto Puertorriquena , Seccion Oeste           | 85            | 64          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Liga de Baloncesto Puertorriquena , Seccion Sur             | 86            | 67          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| AdmiralBet ABA League, Group B                              | 0             | 59          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| PGE Basket Liga                                             | 1,352         | 165         | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Élite 2                                                     | 1,887         | 261         | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Lega A Basket                                               | 1,418         | 153         | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Serie B, Group A                                            | 583           | 204         | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| NKL                                                         | 700           | 165         | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| RKL Division A                                              | 0             | 185         | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Superleague                                                 | 407           | 82          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Liga de Baloncesto Puertorriquena , Seccion Norte           | 85            | 68          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| 1. Liga, Group West                                         | 309           | 61          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| SLB                                                         | 90            | 115         | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Enovos League, Regular Season                               | 0             | 85          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| AdmiralBet ABA League, Group A                              | 0             | 57          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Meridianbet KLS                                             | 1,266         | 182         | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| ABA League 2                                                | 251           | 39          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Nationale 1, Group B                                        | 0             | 132         | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| The League                                                  | 135           | 84          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Segunda FEB, Group East                                     | 140           | 110         | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Slovenian Second Basketball League, Regular Season          | 0             | 70          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| U19 ABA League                                              | 0             | 33          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| French Basketball Cup                                       | 221           | 40          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| EuroCup, Women, Playoffs                                    | 287           | 55          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| EYBL U20, Group D                                           | 0             | 30          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Bulgaria NBL                                                | 684           | 85          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Germany Pro A                                               | 1,534         | 100         | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Pro B, South                                                | 0             | 59          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Druga muška liga - Centar                                   | 113           | 34          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Serie B Interregionale, Girone C                            | 0             | 40          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Serie B Interregionale, Girone E                            | 0             | 33          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Erkekler Basketbol Gençler Ligi - A Grubu                   | 0             | 35          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Serie B Interregionale, Girone D                            | 0             | 46          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Divisione Regionale 2 - Lazio, Girone C                     | 0             | 30          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Serie C Toscana                                             | 0             | 49          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Serie B Interregionale, Girone A                            | 0             | 45          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Serie B Interregionale, Girone B                            | 0             | 39          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Serie C Girone H sud                                        | 0             | 30          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| B Ethniki - Group 1                                         | 0             | 32          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| B Ethniki - Group 2                                         | 0             | 30          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| B Ethniki - Group 3                                         | 0             | 33          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| TBL                                                         | 723           | 56          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Divisione Regionale 1 Toscana, Girone B                     | 0             | 60          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Basket World League                                         | 0             | 31          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Pro B, North                                                | 0             | 57          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Serie B Interregionale, Girone F                            | 0             | 42          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Belize Elite Basketball League, Regular Season              | 0             | 31          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Egyptian Women's Basketball Super League, Regular Season    | 0             | 55          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| EYBL U16, SUPERFINAL - 12./15.03.2026 - Riga, Latvia        | 0             | 32          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| NKL, Playoffs                                               | 89            | 32          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Puerto Rico BSN                                             | 247           | 156         | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| LNB 2                                                       | 0             | 44          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| CIBACOPA , Segunda Vuelta                                   | 0             | 88          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| New Zealand NBL                                             | 184           | 73          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Rapid League, Regular Season                                | 5             | 83          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| NBL1 North, Women                                           | 113           | 74          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Canadian Elite Basketball League                            | 95            | 103         | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Serie B, Playoffs                                           | 61            | 43          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| CBI U17, Sede Vila Velha                                    | 0             | 57          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Puerto Rico BSN, Playoffs                                   | 43            | 32          | 0              | 0       | 0        | —        | —         | —         | —         |         |
-| Copa Espana                                                 | 0             | 41          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| LDB, Fase Final                                             | 0             | 39          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| BSNF, Women                                                 | 0             | 62          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| Divisional Tercera de Ascenso, Fase Regular DTA 2026        | 0             | 44          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
-| 2. MLS                                                      | 0             | 30          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| País          | Liga                                                        | Entrenado (A) | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 | IC95      | ROI @1.40 | ROI @1.83 | Bloqueo |
+| ---           | ---                                                         | ---:          | ---:        | ---:           | ---:    | ---:     | ---:     | ---       | ---:      | ---:      | ---     |
+| USA           | CBI U19, Sede Rio                                           | 0             | 37          | 21             | 20      | 1        | 95.2 %   | 77.3–99.2 | +33.33 %  | +74.29 %  | 🆕       |
+| Other         | Saudi Basketball League, Premier League                     | 0             | 45          | 20             | 19      | 1        | 95.0 %   | 76.4–99.1 | +33.00 %  | +73.85 %  | 🆕       |
+| International | BNXT League                                                 | 222           | 224         | 18             | 17      | 1        | 94.4 %   | 74.2–99.0 | +32.22 %  | +72.83 %  |         |
+| USA           | CBI U15 , Classificatória A                                 | 0             | 76          | 27             | 25      | 2        | 92.6 %   | 76.6–97.9 | +29.63 %  | +69.44 %  | 🆕       |
+| France        | LNB, Women                                                  | 184           | 60          | 39             | 36      | 3        | 92.3 %   | 79.7–97.3 | +29.23 %  | +68.92 %  |         |
+| Other         | ZBL, Women                                                  | 694           | 74          | 36             | 32      | 4        | 88.9 %   | 74.7–95.6 | +24.44 %  | +62.67 %  |         |
+| Other         | Prva Liga                                                   | 0             | 135         | 27             | 24      | 3        | 88.9 %   | 71.9–96.1 | +24.44 %  | +62.67 %  | 🆕       |
+| Other         | Top Division Women, Regular Season                          | 0             | 88          | 35             | 31      | 4        | 88.6 %   | 74.0–95.5 | +24.00 %  | +62.09 %  | 🆕       |
+| Other         | Finland Division 1A Women                                   | 307           | 87          | 17             | 15      | 2        | 88.2 %   | 65.7–96.7 | +23.53 %  | +61.47 %  |         |
+| Other         | LDB, Primeira fase                                          | 0             | 128         | 16             | 14      | 2        | 87.5 %   | 64.0–96.5 | +22.50 %  | +60.13 %  | 🆕       |
+| Australia     | NBL, East                                                   | 78            | 87          | 31             | 27      | 4        | 87.1 %   | 71.1–94.9 | +21.94 %  | +59.39 %  |         |
+| Poland        | MPBL                                                        | 319           | 264         | 31             | 27      | 4        | 87.1 %   | 71.1–94.9 | +21.94 %  | +59.39 %  |         |
+| USA           | CBI U17, Sede Curitiba                                      | 0             | 67          | 15             | 13      | 2        | 86.7 %   | 62.1–96.3 | +21.33 %  | +58.60 %  | 🆕       |
+| Australia     | NBL1 East, Women                                            | 153           | 118         | 36             | 31      | 5        | 86.1 %   | 71.3–93.9 | +20.56 %  | +57.58 %  |         |
+| Other         | Estonian-Latvian Basketball League                          | 610           | 159         | 25             | 21      | 4        | 84.0 %   | 65.3–93.6 | +17.60 %  | +53.72 %  |         |
+| Other         | 1 Division, Women                                           | 17            | 89          | 18             | 15      | 3        | 83.3 %   | 60.8–94.2 | +16.67 %  | +52.50 %  |         |
+| Other         | 1st Division Women                                          | 0             | 52          | 23             | 19      | 4        | 82.6 %   | 62.9–93.0 | +15.65 %  | +51.17 %  | 🆕       |
+| Australia     | NBL Women , Regular Season                                  | 0             | 106         | 17             | 14      | 3        | 82.3 %   | 59.0–93.8 | +15.29 %  | +50.71 %  | 🆕       |
+| Other         | Big V, Women                                                | 108           | 82          | 28             | 23      | 5        | 82.1 %   | 64.4–92.1 | +15.00 %  | +50.32 %  |         |
+| Other         | FSHB Superliga, K.K.M 2025-26                               | 0             | 84          | 38             | 31      | 7        | 81.6 %   | 66.6–90.8 | +14.21 %  | +49.29 %  | 🆕       |
+| Brazil        | Brazil NBB                                                  | 1,444         | 272         | 16             | 13      | 3        | 81.2 %   | 57.0–93.4 | +13.75 %  | +48.69 %  |         |
+| USA           | NCAA Women's Division I, Regular season                     | 0             | 1,566       | 261            | 212     | 49       | 81.2 %   | 76.0–85.5 | +13.72 %  | +48.64 %  | 🆕       |
+| Other         | Basketligaen                                                | 651           | 108         | 30             | 24      | 6        | 80.0 %   | 62.7–90.5 | +12.00 %  | +46.40 %  |         |
+| Other         | Swiss Basketball League Women                               | 147           | 67          | 15             | 12      | 3        | 80.0 %   | 54.8–93.0 | +12.00 %  | +46.40 %  |         |
+| France        | LNB, Clausura                                               | 0             | 49          | 15             | 12      | 3        | 80.0 %   | 54.8–93.0 | +12.00 %  | +46.40 %  | 🆕       |
+| Poland        | Poland 2nd Basketball League, Runda Zasadnicza              | 0             | 771         | 164            | 131     | 33       | 79.9 %   | 73.1–85.3 | +11.83 %  | +46.18 %  | 🆕       |
+| Other         | Tipos Extraliga, Women                                      | 424           | 63          | 40             | 31      | 9        | 77.5 %   | 62.5–87.7 | +8.50 %   | +41.83 %  |         |
+| Other         | 2nd League                                                  | 271           | 131         | 22             | 17      | 5        | 77.3 %   | 56.6–89.9 | +8.18 %   | +41.41 %  |         |
+| Other         | Hungary Divison A Women                                     | 284           | 107         | 35             | 27      | 8        | 77.1 %   | 61.0–87.9 | +8.00 %   | +41.17 %  |         |
+| Other         | 1 Liga Kobiet, Runda Zasadnicza                             | 0             | 239         | 17             | 13      | 4        | 76.5 %   | 52.7–90.4 | +7.06 %   | +39.94 %  | 🆕       |
+| Other         | Switzerland LNA                                             | 695           | 91          | 21             | 16      | 5        | 76.2 %   | 54.9–89.4 | +6.67 %   | +39.43 %  |         |
+| Other         | United League                                               | 1,143         | 169         | 37             | 28      | 9        | 75.7 %   | 59.9–86.6 | +5.95 %   | +38.49 %  |         |
+| USA           | CBI U15 , Classificatória B                                 | 0             | 78          | 20             | 15      | 5        | 75.0 %   | 53.1–88.8 | +5.00 %   | +37.25 %  | 🆕       |
+| Other         | Russian Women's Basketball Premier League                   | 726           | 102         | 27             | 20      | 7        | 74.1 %   | 55.3–86.8 | +3.70 %   | +35.56 %  |         |
+| Lithuania     | Nostra.lt-RKL Division B, Reguliarusis sezonas              | 0             | 164         | 22             | 16      | 6        | 72.7 %   | 51.8–86.8 | +1.82 %   | +33.09 %  | 🆕       |
+| Other         | Swedish Basketball League Women                             | 239           | 112         | 32             | 23      | 9        | 71.9 %   | 54.6–84.4 | +0.62 %   | +31.53 %  |         |
+| Australia     | NBL, West                                                   | 75            | 84          | 24             | 17      | 7        | 70.8 %   | 50.8–85.1 | -0.83 %   | +29.62 %  | ⚠️      |
+| Other         | SLB, Women                                                  | 0             | 87          | 24             | 17      | 7        | 70.8 %   | 50.8–85.1 | -0.83 %   | +29.62 %  | ⚠️ 🆕    |
+| Other         | Premijer ženska liga                                        | 305           | 96          | 32             | 22      | 10       | 68.8 %   | 51.4–82.0 | -3.75 %   | +25.81 %  | ⚠️      |
+| Other         | Liga 1 Masculin, Faza II                                    | 21            | 119         | 17             | 11      | 6        | 64.7 %   | 41.3–82.7 | -9.41 %   | +18.41 %  | ⚠️      |
+| Other         | Sparkasse Prva Liga Zeni                                    | 0             | 63          | 17             | 9       | 8        | 52.9 %   | 31.0–73.8 | -25.88 %  | -3.12 %   | ⚠️ 🆕    |
+| Other         | 1. SKL, Women                                               | 44            | 48          | 14             | 0       | 14       | —        | —         | —         | —         |         |
+| Other         | A1 Women                                                    | 821           | 78          | 14             | 0       | 14       | —        | —         | —         | —         |         |
+| Other         | Rwanda Basketball League, Regular Season                    | 0             | 65          | 14             | 0       | 14       | —        | —         | —         | —         | 🆕       |
+| Other         | EYBL U13, Group D                                           | 0             | 34          | 12             | 0       | 12       | —        | —         | —         | —         | 🆕       |
+| Other         | 1. Division B                                               | 100           | 99          | 12             | 0       | 12       | —        | —         | —         | —         |         |
+| Other         | EYBL U14, Group E                                           | 0             | 52          | 12             | 0       | 12       | —        | —         | —         | —         | 🆕       |
+| Other         | Jedinstvena kadetska liga                                   | 0             | 64          | 12             | 0       | 12       | —        | —         | —         | —         | 🆕       |
+| Other         | Liga Nacional Femenina Chile, Fase regular                  | 0             | 34          | 12             | 0       | 12       | —        | —         | —         | —         | 🆕       |
+| Other         | Liga Femenina, Women, Clausura                              | 0             | 115         | 11             | 0       | 11       | —        | —         | —         | —         | 🆕       |
+| Japan         | B League Premier                                            | 3,136         | 568         | 10             | 0       | 10       | —        | —         | —         | —         |         |
+| Japan         | B League One                                                | 3,097         | 369         | 10             | 0       | 10       | —        | —         | —         | —         |         |
+| Other         | Basket Liga, Women                                          | 785           | 110         | 10             | 0       | 10       | —        | —         | —         | —         |         |
+| Other         | Rwanda Basketball League Women, Regular Season              | 0             | 42          | 10             | 0       | 10       | —        | —         | —         | —         | 🆕       |
+| Other         | 1. ZLS, Women                                               | 53            | 59          | 10             | 0       | 10       | —        | —         | —         | —         |         |
+| Australia     | NBL1 West, Women                                            | 127           | 95          | 10             | 0       | 10       | —        | —         | —         | —         |         |
+| Other         | VBA                                                         | 119           | 57          | 10             | 0       | 10       | —        | —         | —         | —         |         |
+| Other         | Estonian National Women's Basketball League                 | 57            | 49          | 9              | 0       | 9        | —        | —         | —         | —         |         |
+| Other         | Austrian Women's Basketball Bundesliga                      | 144           | 48          | 9              | 0       | 9        | —        | —         | —         | —         |         |
+| Other         | LF Challenge, Regular Season                                | 0             | 145         | 9              | 0       | 9        | —        | —         | —         | —         | 🆕       |
+| Other         | Latvian Basketball Cup                                      | 0             | 31          | 9              | 0       | 9        | —        | —         | —         | —         | 🆕       |
+| Other         | EYBL U15, Group D                                           | 0             | 41          | 9              | 0       | 9        | —        | —         | —         | —         | 🆕       |
+| Australia     | NBL Men , Regular Season                                    | 0             | 125         | 9              | 0       | 9        | —        | —         | —         | —         | 🆕       |
+| Brazil        | LBF, Women                                                  | 184           | 61          | 9              | 0       | 9        | —        | —         | —         | —         |         |
+| Australia     | NBL1 Central, Women                                         | 84            | 58          | 9              | 0       | 9        | —        | —         | —         | —         |         |
+| Other         | LMB, Clausura                                               | 120           | 67          | 9              | 0       | 9        | —        | —         | —         | —         |         |
+| Other         | Swedish Basketball League                                   | 917           | 124         | 8              | 0       | 8        | —        | —         | —         | —         |         |
+| Other         | Liga Femenina, Women                                        | 1,185         | 190         | 8              | 0       | 8        | —        | —         | —         | —         |         |
+| Other         | EYBL U17, Group E                                           | 0             | 49          | 8              | 0       | 8        | —        | —         | —         | —         | 🆕       |
+| Other         | Indonesian Basketball League                                | 768           | 91          | 8              | 0       | 8        | —        | —         | —         | —         |         |
+| Other         | EYBL U17, Group G                                           | 0             | 37          | 8              | 0       | 8        | —        | —         | —         | —         | 🆕       |
+| Other         | The Basketball League, Regular Season                       | 63            | 126         | 8              | 0       | 8        | —        | —         | —         | —         |         |
+| Australia     | NBL, Playoffs                                               | 71            | 41          | 8              | 0       | 8        | —        | —         | —         | —         |         |
+| Other         | Liga e Parë                                                 | 277           | 70          | 7              | 0       | 7        | —        | —         | —         | —         |         |
+| Australia     | NBL                                                         | 1,965         | 301         | 7              | 0       | 7        | —        | —         | —         | —         |         |
+| France        | France Pro A                                                | 1,740         | 184         | 7              | 0       | 7        | —        | —         | —         | —         |         |
+| Other         | Superliga, Women                                            | 0             | 36          | 7              | 0       | 7        | —        | —         | —         | —         | 🆕       |
+| Other         | Superliga e Femrave                                         | 0             | 41          | 7              | 0       | 7        | —        | —         | —         | —         | 🆕       |
+| Other         | Campeonato Nacional da 1ª Divisao Feminina, 1ª Fase - Sul   | 0             | 50          | 7              | 0       | 7        | —        | —         | —         | —         | 🆕       |
+| Other         | Liga 1 Masculin, Faza I                                     | 101           | 47          | 7              | 0       | 7        | —        | —         | —         | —         |         |
+| Other         | 1. liga, Women                                              | 0             | 75          | 7              | 0       | 7        | —        | —         | —         | —         | 🆕       |
+| Other         | U21 Espoirs Elite                                           | 0             | 142         | 7              | 0       | 7        | —        | —         | —         | —         | 🆕       |
+| Other         | Portugal LBP                                                | 772           | 101         | 7              | 0       | 7        | —        | —         | —         | —         |         |
+| USA           | NCAA Women's March Madness                                  | 0             | 59          | 7              | 0       | 7        | —        | —         | —         | —         | 🆕       |
+| USA           | CBI U19, Sede Curitiba                                      | 0             | 44          | 7              | 0       | 7        | —        | —         | —         | —         | 🆕       |
+| Spain         | Liga ACB                                                    | 1,770         | 250         | 6              | 0       | 6        | —        | —         | —         | —         |         |
+| Other         | Campeonato Nacional da 1ª Divisao Feminina, 1ª Fase - Norte | 0             | 35          | 6              | 0       | 6        | —        | —         | —         | —         | 🆕       |
+| Other         | Kvindebasketligaen , Grundspil                              | 0             | 43          | 6              | 0       | 6        | —        | —         | —         | —         | 🆕       |
+| International | Euroleague: regular season                                  | 223           | 88          | 6              | 0       | 6        | —        | —         | —         | —         |         |
+| Australia     | NBL1, East                                                  | 148           | 118         | 6              | 0       | 6        | —        | —         | —         | —         |         |
+| Other         | FBU Superleague                                             | 739           | 79          | 5              | 0       | 5        | —        | —         | —         | —         |         |
+| Other         | Liga Nationala                                              | 752           | 152         | 5              | 0       | 5        | —        | —         | —         | —         |         |
+| Other         | I B MCKL                                                    | 0             | 36          | 5              | 0       | 5        | —        | —         | —         | —         | 🆕       |
+| Spain         | Primera FEB                                                 | 1,670         | 205         | 5              | 0       | 5        | —        | —         | —         | —         |         |
+| Other         | EYBL U20, Group E                                           | 0             | 37          | 5              | 0       | 5        | —        | —         | —         | —         | 🆕       |
+| Other         | EYBL U15, Group F                                           | 0             | 31          | 5              | 0       | 5        | —        | —         | —         | —         | 🆕       |
+| USA           | CBI U15 Fem, CBI U15 Fem                                    | 0             | 34          | 5              | 0       | 5        | —        | —         | —         | —         | 🆕       |
+| Other         | EYBL U14, Group G                                           | 0             | 42          | 5              | 0       | 5        | —        | —         | —         | —         | 🆕       |
+| Other         | EYBL U13, SUPERFINAL - 12./15.03.2026 - Riga, Latvia        | 0             | 30          | 5              | 0       | 5        | —        | —         | —         | —         | 🆕       |
+| Other         | EYBL U16, CHALLENGE CUP                                     | 0             | 37          | 5              | 0       | 5        | —        | —         | —         | —         | 🆕       |
+| Other         | Uruguay LUB                                                 | 250           | 83          | 4              | 0       | 4        | —        | —         | —         | —         |         |
+| Australia     | WNBL                                                        | 553           | 67          | 4              | 0       | 4        | —        | —         | —         | —         |         |
+| Italy         | Serie A2, Women, Group A                                    | 146           | 118         | 4              | 0       | 4        | —        | —         | —         | —         |         |
+| Other         | Turkish Basketball Super League                             | 1,387         | 164         | 4              | 0       | 4        | —        | —         | —         | —         |         |
+| Greece        | Stoiximan GBL                                               | 1,024         | 127         | 4              | 0       | 4        | —        | —         | —         | —         |         |
+| Other         | Lebanese Basketball League                                  | 94            | 85          | 4              | 0       | 4        | —        | —         | —         | —         |         |
+| Other         | Liga Košarkaškog saveza Herceg Bosne                        | 0             | 40          | 4              | 0       | 4        | —        | —         | —         | —         | 🆕       |
+| Other         | 1. Division                                                 | 264           | 97          | 4              | 0       | 4        | —        | —         | —         | —         |         |
+| International | Eurocup, Group B                                            | 279           | 64          | 4              | 0       | 4        | —        | —         | —         | —         |         |
+| Germany       | Germany BBL                                                 | 1,750         | 240         | 4              | 0       | 4        | —        | —         | —         | —         |         |
+| France        | France LF2, Women, Regular Season                           | 104           | 103         | 4              | 0       | 4        | —        | —         | —         | —         |         |
+| France        | Mexico LNBP Women                                           | 93            | 52          | 4              | 0       | 4        | —        | —         | —         | —         |         |
+| Australia     | NBL1 South, Women                                           | 198           | 153         | 4              | 0       | 4        | —        | —         | —         | —         |         |
+| Other         | Iraqi Professional League, Iraqi Professional league        | 0             | 53          | 4              | 0       | 4        | —        | —         | —         | —         | 🆕       |
+| France        | LNB Clausura                                                | 0             | 67          | 4              | 0       | 4        | —        | —         | —         | —         | 🆕       |
+| Other         | 1st Division Men                                            | 0             | 91          | 3              | 0       | 3        | —        | —         | —         | —         | 🆕       |
+| Argentina     | Argentina Liga Nacional                                     | 2,654         | 251         | 3              | 0       | 3        | —        | —         | —         | —         |         |
+| Other         | Cyprus Basketball Division A                                | 354           | 66          | 3              | 0       | 3        | —        | —         | —         | —         |         |
+| Other         | Super League                                                | 650           | 242         | 3              | 0       | 3        | —        | —         | —         | —         |         |
+| Other         | A1                                                          | 0             | 69          | 3              | 0       | 3        | —        | —         | —         | —         | 🆕       |
+| Other         | EYBL U15, Group C                                           | 0             | 32          | 3              | 0       | 3        | —        | —         | —         | —         | 🆕       |
+| Other         | Swedish Basketball Superettan                               | 357           | 135         | 3              | 0       | 3        | —        | —         | —         | —         |         |
+| Other         | Kızlar Basketbol Gençler Ligi - A Grubu                     | 0             | 34          | 3              | 0       | 3        | —        | —         | —         | —         | 🆕       |
+| Australia     | NBL1, Central                                               | 88            | 51          | 3              | 0       | 3        | —        | —         | —         | —         |         |
+| USA           | WNBA                                                        | 1,206         | 292         | 3              | 0       | 3        | —        | —         | —         | —         |         |
+| Other         | Liga de Ascenso                                             | 360           | 88          | 3              | 0       | 3        | —        | —         | —         | —         |         |
+| USA           | CBI U17, Fase Final                                         | 0             | 49          | 3              | 0       | 3        | —        | —         | —         | —         | 🆕       |
+| Other         | I A MCKL                                                    | 122           | 117         | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Israel        | Israeli National League Basketball                          | 450           | 176         | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Other         | Saku I liiga                                                | 125           | 95          | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Other         | Azerbaijan Basketball League, B Group                       | 0             | 38          | 2              | 0       | 2        | —        | —         | —         | —         | 🆕       |
+| Italy         | Serie A2                                                    | 652           | 246         | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Other         | Korisliiga                                                  | 1,116         | 105         | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Other         | Hungary NB 1.A                                              | 779           | 141         | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Other         | SuperSport Premijer Liga                                    | 902           | 151         | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Other         | 1st Division                                                | 337           | 122         | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Other         | A1 Liga                                                     | 0             | 105         | 2              | 0       | 2        | —        | —         | —         | —         | 🆕       |
+| Other         | Azerbaijan Basketball League, A Group                       | 0             | 37          | 2              | 0       | 2        | —        | —         | —         | —         | 🆕       |
+| International | Eurocup, Group A                                            | 270           | 70          | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Other         | 1. A SKL                                                    | 646           | 108         | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Other         | Nationale 1, Group A                                        | 0             | 120         | 2              | 0       | 2        | —        | —         | —         | —         | 🆕       |
+| Other         | Iceland Women's Basketball Premier League                   | 203           | 69          | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Spain         | Segunda FEB, Group West                                     | 137           | 112         | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Other         | Portugal LFB Women                                          | 185           | 92          | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Israel        | Israeli Women Basketball Premier League                     | 300           | 70          | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| France        | France LFB Women                                            | 873           | 107         | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Other         | 2. Muška Liga                                               | 288           | 43          | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Other         | Prva RL Istok                                               | 314           | 31          | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Other         | 2. ZLS, Women                                               | 0             | 37          | 2              | 0       | 2        | —        | —         | —         | —         | 🆕       |
+| Australia     | NBL1, West                                                  | 141           | 108         | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Other         | Colombia LPB                                                | 206           | 46          | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| Brazil        | Brazil NBB, Playoffs                                        | 246           | 30          | 2              | 0       | 2        | —        | —         | —         | —         |         |
+| USA           | CBI U19, Fase Final                                         | 0             | 32          | 2              | 0       | 2        | —        | —         | —         | —         | 🆕       |
+| Other         | Belgian Basketball 2nd Division                             | 164           | 161         | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Other         | Princ Caffe Superliga                                       | 591           | 77          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Other         | 1. Liga, Group East                                         | 338           | 66          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Other         | Austrian Basketball Superliga                               | 919           | 75          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Poland        | Poland 1st Division Basketball                              | 782           | 202         | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Other         | Iranian Basketball Super League                             | 366           | 38          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Other         | Liga de Baloncesto Puertorriquena , Seccion Este            | 90            | 65          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| International | Euroleague                                                  | 1,211         | 300         | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Other         | Iceland Basketball Premier League                           | 467           | 88          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Other         | EYBL U16, Group B                                           | 0             | 31          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
+| Other         | EYBL U17, Group A                                           | 0             | 30          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
+| Other         | Zain Basketball League, Premier League                      | 0             | 41          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
+| Other         | Qatari Basketball League, Regular Season                    | 49            | 48          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Other         | EYBL U20, Group B                                           | 0             | 30          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
+| Other         | EYBL U14, Group D                                           | 0             | 34          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
+| Other         | Elite League                                                | 338           | 57          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Turkey        | Türkiye Kadınlar Basketbol Ligi                             | 0             | 36          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
+| Other         | Divisione Regionale 1 Toscana, Girone A                     | 0             | 66          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
+| Other         | CIBACOPA , Primera Vuelta                                   | 27            | 96          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Other         | A1 ESKAH                                                    | 291           | 32          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Other         | A2 ESKAH                                                    | 284           | 35          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Other         | Superliga                                                   | 210           | 119         | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Other         | EYBL U15, SUPERFINAL - 12./15.03.2026 - Riga, Latvia        | 0             | 32          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
+| France        | Chile LNB                                                   | 701           | 47          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Australia     | NBL1, South                                                 | 194           | 135         | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Other         | Big V                                                       | 594           | 82          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Argentina     | Liga Argentina, Playoffs                                    | 74            | 56          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Australia     | NBL1, North                                                 | 113           | 71          | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| France        | Mexico LNBP                                                 | 1,265         | 162         | 1              | 0       | 1        | —        | —         | —         | —         |         |
+| Other         | Saku II Liiga                                               | 0             | 35          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
+| Other         | 1. liga, Women, základní část                               | 0             | 31          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
+| Historical    | Nostra.lt-RKL Division A, Reguliarus sezonas                | 0             | 38          | 1              | 0       | 1        | —        | —         | —         | —         | 🆕       |
+| Other         | Liga Femenina                                               | 64            | 36          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | Liga de Baloncesto Puertorriquena , Seccion Oeste           | 85            | 64          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | Liga de Baloncesto Puertorriquena , Seccion Sur             | 86            | 67          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| International | AdmiralBet ABA League, Group B                              | 0             | 59          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Historical    | PGE Basket Liga                                             | 1,352         | 165         | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | Élite 2                                                     | 1,887         | 261         | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Italy         | Lega A Basket                                               | 1,418         | 153         | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Italy         | Serie B, Group A                                            | 583           | 204         | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Lithuania     | NKL                                                         | 700           | 165         | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Lithuania     | RKL Division A                                              | 0             | 185         | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | Superleague                                                 | 407           | 82          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | Liga de Baloncesto Puertorriquena , Seccion Norte           | 85            | 68          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | 1. Liga, Group West                                         | 309           | 61          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | SLB                                                         | 90            | 115         | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | Enovos League, Regular Season                               | 0             | 85          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| International | AdmiralBet ABA League, Group A                              | 0             | 57          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | Meridianbet KLS                                             | 1,266         | 182         | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| International | ABA League 2                                                | 251           | 39          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | Nationale 1, Group B                                        | 0             | 132         | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | The League                                                  | 135           | 84          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Spain         | Segunda FEB, Group East                                     | 140           | 110         | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | Slovenian Second Basketball League, Regular Season          | 0             | 70          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| International | U19 ABA League                                              | 0             | 33          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | French Basketball Cup                                       | 221           | 40          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| International | EuroCup, Women, Playoffs                                    | 287           | 55          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | EYBL U20, Group D                                           | 0             | 30          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Australia     | Bulgaria NBL                                                | 684           | 85          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Germany       | Germany Pro A                                               | 1,534         | 100         | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| France        | Pro B, South                                                | 0             | 59          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | Druga muška liga - Centar                                   | 113           | 34          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Italy         | Serie B Interregionale, Girone C                            | 0             | 40          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Italy         | Serie B Interregionale, Girone E                            | 0             | 33          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | Erkekler Basketbol Gençler Ligi - A Grubu                   | 0             | 35          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Italy         | Serie B Interregionale, Girone D                            | 0             | 46          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | Divisione Regionale 2 - Lazio, Girone C                     | 0             | 30          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | Serie C Toscana                                             | 0             | 49          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Italy         | Serie B Interregionale, Girone A                            | 0             | 45          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Italy         | Serie B Interregionale, Girone B                            | 0             | 39          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | Serie C Girone H sud                                        | 0             | 30          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | B Ethniki - Group 1                                         | 0             | 32          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | B Ethniki - Group 2                                         | 0             | 30          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | B Ethniki - Group 3                                         | 0             | 33          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | TBL                                                         | 723           | 56          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | Divisione Regionale 1 Toscana, Girone B                     | 0             | 60          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | Basket World League                                         | 0             | 31          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| France        | Pro B, North                                                | 0             | 57          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Italy         | Serie B Interregionale, Girone F                            | 0             | 42          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | Belize Elite Basketball League, Regular Season              | 0             | 31          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | Egyptian Women's Basketball Super League, Regular Season    | 0             | 55          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | EYBL U16, SUPERFINAL - 12./15.03.2026 - Riga, Latvia        | 0             | 32          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Lithuania     | NKL, Playoffs                                               | 89            | 32          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | Puerto Rico BSN                                             | 247           | 156         | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| France        | LNB 2                                                       | 0             | 44          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | CIBACOPA , Segunda Vuelta                                   | 0             | 88          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Australia     | New Zealand NBL                                             | 184           | 73          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | Rapid League, Regular Season                                | 5             | 83          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Australia     | NBL1 North, Women                                           | 113           | 74          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | Canadian Elite Basketball League                            | 95            | 103         | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Italy         | Serie B, Playoffs                                           | 61            | 43          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| USA           | CBI U17, Sede Vila Velha                                    | 0             | 57          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | Puerto Rico BSN, Playoffs                                   | 43            | 32          | 0              | 0       | 0        | —        | —         | —         | —         |         |
+| Other         | Copa Espana                                                 | 0             | 41          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | LDB, Fase Final                                             | 0             | 39          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | BSNF, Women                                                 | 0             | 62          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | Divisional Tercera de Ascenso, Fase Regular DTA 2026        | 0             | 44          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
+| Other         | 2. MLS                                                      | 0             | 30          | 0              | 0       | 0        | —        | —         | —         | —         | 🆕       |
 
 ## 4. Detalle por liga y por umbral — Top 30 por volumen
 
-### NCAA Women's Division I, Regular season
+### USA — NCAA Women's Division I, Regular season
 
 - Entrenado (A): **0** · Holdout (C): **1,566** · Sesgo @0.75: +0.0129
 
@@ -297,7 +297,7 @@
 | 0.75 | 261      | 81.2 % | 76.0–85.5 | +13.72 %  | +48.64 %  |
 | 0.80 | 164      | 88.4 % | 82.6–92.5 | +23.78 %  | +61.80 %  |
 
-### Poland 2nd Basketball League, Runda Zasadnicza
+### Poland — Poland 2nd Basketball League, Runda Zasadnicza
 
 - Entrenado (A): **0** · Holdout (C): **771** · Sesgo @0.75: +0.0172
 
@@ -310,7 +310,7 @@
 | 0.75 | 164      | 79.9 % | 73.1–85.3 | +11.83 %  | +46.18 %  |
 | 0.80 | 93       | 85.0 % | 76.3–90.8 | +18.92 %  | +55.45 %  |
 
-### Tipos Extraliga, Women
+### Other — Tipos Extraliga, Women
 
 - Entrenado (A): **424** · Holdout (C): **63** · Sesgo @0.75: +0.0881
 
@@ -323,7 +323,7 @@
 | 0.75 | 40       | 77.5 % | 62.5–87.7 | +8.50 %   | +41.83 %  |
 | 0.80 | 31       | 83.9 % | 67.4–92.9 | +17.42 %  | +53.48 %  |
 
-### LNB, Women
+### France — LNB, Women
 
 - Entrenado (A): **184** · Holdout (C): **60** · Sesgo @0.75: -0.0224
 
@@ -336,7 +336,7 @@
 | 0.75 | 39       | 92.3 % | 79.7–97.3 | +29.23 %  | +68.92 %  |
 | 0.80 | 37       | 91.9 % | 78.7–97.2 | +28.65 %  | +68.16 %  |
 
-### FSHB Superliga, K.K.M 2025-26
+### Other — FSHB Superliga, K.K.M 2025-26
 
 - Entrenado (A): **0** · Holdout (C): **84** · Sesgo @0.75: +0.0047
 
@@ -349,7 +349,7 @@
 | 0.75 | 38       | 81.6 % | 66.6–90.8 | +14.21 %  | +49.29 %  |
 | 0.80 | 23       | 91.3 % | 73.2–97.6 | +27.83 %  | +67.09 %  |
 
-### United League
+### Other — United League
 
 - Entrenado (A): **1,143** · Holdout (C): **169** · Sesgo @0.75: +0.0379
 
@@ -362,7 +362,7 @@
 | 0.75 | 37       | 75.7 % | 59.9–86.6 | +5.95 %   | +38.49 %  |
 | 0.80 | 16       | 75.0 % | 50.5–89.8 | +5.00 %   | +37.25 %  |
 
-### ZBL, Women
+### Other — ZBL, Women
 
 - Entrenado (A): **694** · Holdout (C): **74** · Sesgo @0.75: -0.0485
 
@@ -375,7 +375,7 @@
 | 0.75 | 36       | 88.9 % | 74.7–95.6 | +24.44 %  | +62.67 %  |
 | 0.80 | 24       | 87.5 % | 69.0–95.7 | +22.50 %  | +60.12 %  |
 
-### NBL1 East, Women
+### Australia — NBL1 East, Women
 
 - Entrenado (A): **153** · Holdout (C): **118** · Sesgo @0.75: -0.0445
 
@@ -388,7 +388,7 @@
 | 0.75 | 36       | 86.1 % | 71.3–93.9 | +20.56 %  | +57.58 %  |
 | 0.80 | 20       | 90.0 % | 69.9–97.2 | +26.00 %  | +64.70 %  |
 
-### Top Division Women, Regular Season
+### Other — Top Division Women, Regular Season
 
 - Entrenado (A): **0** · Holdout (C): **88** · Sesgo @0.75: -0.0493
 
@@ -401,7 +401,7 @@
 | 0.75 | 35       | 88.6 % | 74.0–95.5 | +24.00 %  | +62.09 %  |
 | 0.80 | 25       | 88.0 % | 70.0–95.8 | +23.20 %  | +61.04 %  |
 
-### Hungary Divison A Women
+### Other — Hungary Divison A Women
 
 - Entrenado (A): **284** · Holdout (C): **107** · Sesgo @0.75: +0.0656
 
@@ -414,7 +414,7 @@
 | 0.75 | 35       | 77.1 % | 61.0–87.9 | +8.00 %   | +41.17 %  |
 | 0.80 | 27       | 74.1 % | 55.3–86.8 | +3.70 %   | +35.56 %  |
 
-### Swedish Basketball League Women
+### Other — Swedish Basketball League Women
 
 - Entrenado (A): **239** · Holdout (C): **112** · Sesgo @0.75: +0.1073
 
@@ -427,7 +427,7 @@
 | 0.75 | 32       | 71.9 % | 54.6–84.4 | +0.62 %   | +31.53 %  |
 | 0.80 | 19       | 68.4 % | 46.0–84.6 | -4.21 %   | +25.21 %  |
 
-### Premijer ženska liga
+### Other — Premijer ženska liga
 
 - Entrenado (A): **305** · Holdout (C): **96** · Sesgo @0.75: +0.1371
 
@@ -440,7 +440,7 @@
 | 0.75 | 32       | 68.8 % | 51.4–82.0 | -3.75 %   | +25.81 %  |
 | 0.80 | 20       | 65.0 % | 43.3–81.9 | -9.00 %   | +18.95 %  |
 
-### NBL, East
+### Australia — NBL, East
 
 - Entrenado (A): **78** · Holdout (C): **87** · Sesgo @0.75: -0.0561
 
@@ -453,7 +453,7 @@
 | 0.75 | 31       | 87.1 % | 71.1–94.9 | +21.94 %  | +59.39 %  |
 | 0.80 | 15       | 86.7 % | 62.1–96.3 | +21.33 %  | +58.60 %  |
 
-### MPBL
+### Poland — MPBL
 
 - Entrenado (A): **319** · Holdout (C): **264** · Sesgo @0.75: -0.0851
 
@@ -466,7 +466,7 @@
 | 0.75 | 31       | 87.1 % | 71.1–94.9 | +21.94 %  | +59.39 %  |
 | 0.80 | 7        | —      | —         | —         | —         |
 
-### Basketligaen
+### Other — Basketligaen
 
 - Entrenado (A): **651** · Holdout (C): **108** · Sesgo @0.75: +0.0024
 
@@ -479,7 +479,7 @@
 | 0.75 | 30       | 80.0 % | 62.7–90.5 | +12.00 %  | +46.40 %  |
 | 0.80 | 15       | 86.7 % | 62.1–96.3 | +21.33 %  | +58.60 %  |
 
-### Big V, Women
+### Other — Big V, Women
 
 - Entrenado (A): **108** · Holdout (C): **82** · Sesgo @0.75: +0.0013
 
@@ -492,7 +492,7 @@
 | 0.75 | 28       | 82.1 % | 64.4–92.1 | +15.00 %  | +50.32 %  |
 | 0.80 | 14       | —      | —         | —         | —         |
 
-### CBI U15 , Classificatória A
+### USA — CBI U15 , Classificatória A
 
 - Entrenado (A): **0** · Holdout (C): **76** · Sesgo @0.75: -0.0879
 
@@ -505,7 +505,7 @@
 | 0.75 | 27       | 92.6 % | 76.6–97.9 | +29.63 %  | +69.44 %  |
 | 0.80 | 21       | 95.2 % | 77.3–99.2 | +33.33 %  | +74.29 %  |
 
-### Prva Liga
+### Other — Prva Liga
 
 - Entrenado (A): **0** · Holdout (C): **135** · Sesgo @0.75: -0.0713
 
@@ -518,7 +518,7 @@
 | 0.75 | 27       | 88.9 % | 71.9–96.1 | +24.44 %  | +62.67 %  |
 | 0.80 | 16       | 93.8 % | 71.7–98.9 | +31.25 %  | +71.56 %  |
 
-### Russian Women's Basketball Premier League
+### Other — Russian Women's Basketball Premier League
 
 - Entrenado (A): **726** · Holdout (C): **102** · Sesgo @0.75: +0.0829
 
@@ -531,7 +531,7 @@
 | 0.75 | 27       | 74.1 % | 55.3–86.8 | +3.70 %   | +35.56 %  |
 | 0.80 | 20       | 70.0 % | 48.1–85.5 | -2.00 %   | +28.10 %  |
 
-### Estonian-Latvian Basketball League
+### Other — Estonian-Latvian Basketball League
 
 - Entrenado (A): **610** · Holdout (C): **159** · Sesgo @0.75: -0.0701
 
@@ -544,7 +544,7 @@
 | 0.75 | 25       | 84.0 % | 65.3–93.6 | +17.60 %  | +53.72 %  |
 | 0.80 | 3        | —      | —         | —         | —         |
 
-### NBL, West
+### Australia — NBL, West
 
 - Entrenado (A): **75** · Holdout (C): **84** · Sesgo @0.75: +0.0979
 
@@ -557,7 +557,7 @@
 | 0.75 | 24       | 70.8 % | 50.8–85.1 | -0.83 %   | +29.62 %  |
 | 0.80 | 12       | —      | —         | —         | —         |
 
-### SLB, Women
+### Other — SLB, Women
 
 - Entrenado (A): **0** · Holdout (C): **87** · Sesgo @0.75: +0.1151
 
@@ -570,7 +570,7 @@
 | 0.75 | 24       | 70.8 % | 50.8–85.1 | -0.83 %   | +29.62 %  |
 | 0.80 | 16       | 75.0 % | 50.5–89.8 | +5.00 %   | +37.25 %  |
 
-### 1st Division Women
+### Other — 1st Division Women
 
 - Entrenado (A): **0** · Holdout (C): **52** · Sesgo @0.75: +0.0080
 
@@ -583,7 +583,7 @@
 | 0.75 | 23       | 82.6 % | 62.9–93.0 | +15.65 %  | +51.17 %  |
 | 0.80 | 16       | 87.5 % | 64.0–96.5 | +22.50 %  | +60.13 %  |
 
-### 2nd League
+### Other — 2nd League
 
 - Entrenado (A): **271** · Holdout (C): **131** · Sesgo @0.75: +0.0226
 
@@ -596,7 +596,7 @@
 | 0.75 | 22       | 77.3 % | 56.6–89.9 | +8.18 %   | +41.41 %  |
 | 0.80 | 8        | —      | —         | —         | —         |
 
-### Nostra.lt-RKL Division B, Reguliarusis sezonas
+### Lithuania — Nostra.lt-RKL Division B, Reguliarusis sezonas
 
 - Entrenado (A): **0** · Holdout (C): **164** · Sesgo @0.75: +0.0664
 
@@ -609,7 +609,7 @@
 | 0.75 | 22       | 72.7 % | 51.8–86.8 | +1.82 %   | +33.09 %  |
 | 0.80 | 8        | —      | —         | —         | —         |
 
-### CBI U19, Sede Rio
+### USA — CBI U19, Sede Rio
 
 - Entrenado (A): **0** · Holdout (C): **37** · Sesgo @0.75: -0.1058
 
@@ -622,7 +622,7 @@
 | 0.75 | 21       | 95.2 % | 77.3–99.2 | +33.33 %  | +74.29 %  |
 | 0.80 | 13       | —      | —         | —         | —         |
 
-### Switzerland LNA
+### Other — Switzerland LNA
 
 - Entrenado (A): **695** · Holdout (C): **91** · Sesgo @0.75: +0.0325
 
@@ -635,7 +635,7 @@
 | 0.75 | 21       | 76.2 % | 54.9–89.4 | +6.67 %   | +39.43 %  |
 | 0.80 | 8        | —      | —         | —         | —         |
 
-### Saudi Basketball League, Premier League
+### Other — Saudi Basketball League, Premier League
 
 - Entrenado (A): **0** · Holdout (C): **45** · Sesgo @0.75: -0.1263
 
@@ -648,7 +648,7 @@
 | 0.75 | 20       | 95.0 % | 76.4–99.1 | +33.00 %  | +73.85 %  |
 | 0.80 | 13       | —      | —         | —         | —         |
 
-### CBI U15 , Classificatória B
+### USA — CBI U15 , Classificatória B
 
 - Entrenado (A): **0** · Holdout (C): **78** · Sesgo @0.75: +0.0748
 
@@ -661,7 +661,7 @@
 | 0.75 | 20       | 75.0 % | 53.1–88.8 | +5.00 %   | +37.25 %  |
 | 0.80 | 12       | —      | —         | —         | —         |
 
-### BNXT League
+### International — BNXT League
 
 - Entrenado (A): **222** · Holdout (C): **224** · Sesgo @0.75: -0.1677
 
@@ -730,62 +730,62 @@ A 0.75: **164 apuestas, WR 79.88 %, ROI@1.40 +11.83 %** (en vivo: 4 partidos, v5
 
 ### 7.1 Resumen por liga — apuestas en vivo (original vs clon)
 
-| Liga                                                                        | En vivo (partidos) | v5_3: apuestas | v5_3: ganadas | v5_3: perdidas | v5_3: WR | v5_3_1: apuestas | v5_3_1: ganadas | v5_3_1: perdidas | v5_3_1: WR | Dif. WR |
-| ---                                                                         | ---:               | ---:           | ---:          | ---:           | ---:     | ---:             | ---:            | ---:             | ---:       | ---:    |
-| LBP, Group B                                                                | 5                  | 5              | 4             | 1              | 80 %     | 5                | 4               | 1                | 80 %       | ⚪       |
-| LNB, Women                                                                  | 5                  | 5              | 4             | 1              | 80 %     | 4                | 4               | 0                | 100 %      | 🟢       |
-| 1. ZLS, Women                                                               | 4                  | 4              | 3             | 1              | 75 %     | 4                | 3               | 1                | 75 %       | ⚪       |
-| Road to Basketball Africa League, Group D                                   | 3                  | 3              | 3             | 0              | 100 %    | 3                | 3               | 0                | 100 %      | ⚪       |
-| NBL, West                                                                   | 3                  | 3              | 1             | 2              | 33 %     | 3                | 1               | 2                | 33 %       | ⚪       |
-| Poland 2nd Basketball League, Runda Zasadnicza                              | 4                  | 4              | 2             | 2              | 50 %     | 2                | 2               | 0                | 100 %      | 🟢       |
-| Swedish Basketball League Women                                             | 3                  | 3              | 3             | 0              | 100 %    | 2                | 2               | 0                | 100 %      | ⚪       |
-| United League                                                               | 2                  | 2              | 2             | 0              | 100 %    | 2                | 2               | 0                | 100 %      | ⚪       |
-| L1BF BT, Faza I                                                             | 2                  | 2              | 2             | 0              | 100 %    | 2                | 2               | 0                | 100 %      | ⚪       |
-| Estonian-Latvian Basketball League                                          | 2                  | 2              | 2             | 0              | 100 %    | 2                | 2               | 0                | 100 %      | ⚪       |
-| Tipos Extraliga, Women                                                      | 2                  | 2              | 2             | 0              | 100 %    | 2                | 2               | 0                | 100 %      | ⚪       |
-| Basketligaen                                                                | 4                  | 4              | 4             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| 2nd League                                                                  | 2                  | 2              | 1             | 1              | 50 %     | 1                | 0               | 1                | 0 %        | 🔴       |
-| FIBA Women Basketball League Africa - Qualifers, Group A                    | 2                  | 2              | 1             | 1              | 50 %     | 1                | 0               | 1                | 0 %        | 🔴       |
-| LMB, Clausura                                                               | 2                  | 2              | 2             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| B League One                                                                | 2                  | 2              | 1             | 1              | 50 %     | 1                | 0               | 1                | 0 %        | 🔴       |
-| A1 Women                                                                    | 2                  | 2              | 1             | 1              | 50 %     | 1                | 0               | 1                | 0 %        | 🔴       |
-| FIBA Women Basketball League Africa - Qualifers, Zone 5 - Quarter-Finals 13 | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| Brazil NBB                                                                  | 1                  | 1              | 0             | 1              | 0 %      | 1                | 0               | 1                | 0 %        | ⚪       |
-| Stoiximan GBL                                                               | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| Turkish Basketball Super League                                             | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| Switzerland LNA                                                             | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| Nostra.lt-RKL Division A, Reguliarus sezonas                                | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| Women's Basketball Division A                                               | 1                  | 1              | 0             | 1              | 0 %      | 1                | 0               | 1                | 0 %        | ⚪       |
-| Russian Women's Basketball Premier League                                   | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| Kvindebasketligaen , Grundspil                                              | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| FIBA Women Basketball League Africa - Qualifers, Zone 5 - Quarter-Finals 14 | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| Super League                                                                | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| Eurocup, Group B                                                            | 1                  | 1              | 0             | 1              | 0 %      | 1                | 0               | 1                | 0 %        | ⚪       |
-| Liga Nationala                                                              | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| Liga Nacional Femenina Chile, Fase zonal                                    | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| FIBA Women Basketball League Africa - Qualifers, Zone 5 - Semi-Finals 19    | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| 2. ZLS, Women                                                               | 1                  | 1              | 0             | 1              | 0 %      | 1                | 0               | 1                | 0 %        | ⚪       |
-| Premijer ženska liga                                                        | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| FSHB Superliga                                                              | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| 1 Liga Kobiet, Runda Zasadnicza                                             | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| Liga 1 Masculin, Faza I                                                     | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| Top Division Women, Regular Season                                          | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| Catarinense, Women, Playoffs                                                | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
-| B League Premier                                                            | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
-| FIBA Women Basketball League Africa - Qualifers, Group B                    | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
-| EuroCup, Women, Group B                                                     | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
-| Swedish Basketball Superettan                                               | 1                  | 1              | 0             | 1              | 0 %      | 0                | 0               | 0                | —          | —       |
-| Mexico LNBP, Playoffs                                                       | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
-| Hungary NB 1.A                                                              | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
-| AdmiralBet ABA League, Group B                                              | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
-| Cyprus Basketball Division A                                                | 1                  | 1              | 0             | 1              | 0 %      | 0                | 0               | 0                | —          | —       |
-| 1. Division                                                                 | 1                  | 1              | 0             | 1              | 0 %      | 0                | 0               | 0                | —          | —       |
-| Nostra.lt-RKL Division B, Reguliarus sezonas                                | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
-| Israeli Women Basketball Premier League                                     | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
-| France Pro A                                                                | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
-| 1st Division Women, Deildarkeppni                                           | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
-| Hungary Divison A Women                                                     | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
-| **TOTAL**                                                                   | **85**             | **85**         | **67**        | **18**         | **79 %** | **59**           | **47**          | **12**           | **80 %**   | **🟢**   |
+| País          | Liga                                                                        | En vivo (partidos) | v5_3: apuestas | v5_3: ganadas | v5_3: perdidas | v5_3: WR | v5_3_1: apuestas | v5_3_1: ganadas | v5_3_1: perdidas | v5_3_1: WR | Dif. WR |
+| ---           | ---                                                                         | ---:               | ---:           | ---:          | ---:           | ---:     | ---:             | ---:            | ---:             | ---:       | ---:    |
+| Other         | LBP, Group B                                                                | 5                  | 5              | 4             | 1              | 80 %     | 5                | 4               | 1                | 80 %       | ⚪       |
+| France        | LNB, Women                                                                  | 5                  | 5              | 4             | 1              | 80 %     | 4                | 4               | 0                | 100 %      | 🟢       |
+| Other         | 1. ZLS, Women                                                               | 4                  | 4              | 3             | 1              | 75 %     | 4                | 3               | 1                | 75 %       | ⚪       |
+| Other         | Road to Basketball Africa League, Group D                                   | 3                  | 3              | 3             | 0              | 100 %    | 3                | 3               | 0                | 100 %      | ⚪       |
+| Australia     | NBL, West                                                                   | 3                  | 3              | 1             | 2              | 33 %     | 3                | 1               | 2                | 33 %       | ⚪       |
+| Poland        | Poland 2nd Basketball League, Runda Zasadnicza                              | 4                  | 4              | 2             | 2              | 50 %     | 2                | 2               | 0                | 100 %      | 🟢       |
+| Other         | Swedish Basketball League Women                                             | 3                  | 3              | 3             | 0              | 100 %    | 2                | 2               | 0                | 100 %      | ⚪       |
+| Other         | United League                                                               | 2                  | 2              | 2             | 0              | 100 %    | 2                | 2               | 0                | 100 %      | ⚪       |
+| Historical    | L1BF BT, Faza I                                                             | 2                  | 2              | 2             | 0              | 100 %    | 2                | 2               | 0                | 100 %      | ⚪       |
+| Other         | Estonian-Latvian Basketball League                                          | 2                  | 2              | 2             | 0              | 100 %    | 2                | 2               | 0                | 100 %      | ⚪       |
+| Other         | Tipos Extraliga, Women                                                      | 2                  | 2              | 2             | 0              | 100 %    | 2                | 2               | 0                | 100 %      | ⚪       |
+| Other         | Basketligaen                                                                | 4                  | 4              | 4             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Other         | 2nd League                                                                  | 2                  | 2              | 1             | 1              | 50 %     | 1                | 0               | 1                | 0 %        | 🔴       |
+| International | FIBA Women Basketball League Africa - Qualifers, Group A                    | 2                  | 2              | 1             | 1              | 50 %     | 1                | 0               | 1                | 0 %        | 🔴       |
+| Other         | LMB, Clausura                                                               | 2                  | 2              | 2             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Japan         | B League One                                                                | 2                  | 2              | 1             | 1              | 50 %     | 1                | 0               | 1                | 0 %        | 🔴       |
+| Other         | A1 Women                                                                    | 2                  | 2              | 1             | 1              | 50 %     | 1                | 0               | 1                | 0 %        | 🔴       |
+| ?             | FIBA Women Basketball League Africa - Qualifers, Zone 5 - Quarter-Finals 13 | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Brazil        | Brazil NBB                                                                  | 1                  | 1              | 0             | 1              | 0 %      | 1                | 0               | 1                | 0 %        | ⚪       |
+| Greece        | Stoiximan GBL                                                               | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Other         | Turkish Basketball Super League                                             | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Other         | Switzerland LNA                                                             | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Historical    | Nostra.lt-RKL Division A, Reguliarus sezonas                                | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Other         | Women's Basketball Division A                                               | 1                  | 1              | 0             | 1              | 0 %      | 1                | 0               | 1                | 0 %        | ⚪       |
+| Other         | Russian Women's Basketball Premier League                                   | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Other         | Kvindebasketligaen , Grundspil                                              | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| ?             | FIBA Women Basketball League Africa - Qualifers, Zone 5 - Quarter-Finals 14 | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Other         | Super League                                                                | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| International | Eurocup, Group B                                                            | 1                  | 1              | 0             | 1              | 0 %      | 1                | 0               | 1                | 0 %        | ⚪       |
+| Other         | Liga Nationala                                                              | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Historical    | Liga Nacional Femenina Chile, Fase zonal                                    | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| ?             | FIBA Women Basketball League Africa - Qualifers, Zone 5 - Semi-Finals 19    | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Other         | 2. ZLS, Women                                                               | 1                  | 1              | 0             | 1              | 0 %      | 1                | 0               | 1                | 0 %        | ⚪       |
+| Other         | Premijer ženska liga                                                        | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Historical    | FSHB Superliga                                                              | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Other         | 1 Liga Kobiet, Runda Zasadnicza                                             | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Other         | Liga 1 Masculin, Faza I                                                     | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Other         | Top Division Women, Regular Season                                          | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Historical    | Catarinense, Women, Playoffs                                                | 1                  | 1              | 1             | 0              | 100 %    | 1                | 1               | 0                | 100 %      | ⚪       |
+| Japan         | B League Premier                                                            | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
+| International | FIBA Women Basketball League Africa - Qualifers, Group B                    | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
+| International | EuroCup, Women, Group B                                                     | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
+| Other         | Swedish Basketball Superettan                                               | 1                  | 1              | 0             | 1              | 0 %      | 0                | 0               | 0                | —          | —       |
+| France        | Mexico LNBP, Playoffs                                                       | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
+| Other         | Hungary NB 1.A                                                              | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
+| International | AdmiralBet ABA League, Group B                                              | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
+| Other         | Cyprus Basketball Division A                                                | 1                  | 1              | 0             | 1              | 0 %      | 0                | 0               | 0                | —          | —       |
+| Other         | 1. Division                                                                 | 1                  | 1              | 0             | 1              | 0 %      | 0                | 0               | 0                | —          | —       |
+| ?             | Nostra.lt-RKL Division B, Reguliarus sezonas                                | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
+| Israel        | Israeli Women Basketball Premier League                                     | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
+| France        | France Pro A                                                                | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
+| Other         | 1st Division Women, Deildarkeppni                                           | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
+| Other         | Hungary Divison A Women                                                     | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
+| **TOTAL**     | **85**                                                                      | **85**             | **67**         | **18**        | **79 %**       | **59**   | **47**           | **12**          | **80 %**         | **🟢**      |         |
 
 > Nota: la simulación secuencial con $100 por apuesta se integra en el barrido de umbrales de la sección 8 (columnas de bankroll final). El umbral operativo es 0.75.
 
