@@ -167,8 +167,8 @@ lines.append("## 7. Prueba contra los partidos en vivo de `m27_v5_3`\n")
 lines.append(f"- **m27_v5_3 (original):** {s['orig_bets']} apuestas, {s['orig_wins']} ganadas, {s['orig_losses']} perdidas → WR {s['orig_wins']/(s['orig_wins']+s['orig_losses'])*100:.1f} %.")
 lines.append(f"- **m27_v5_3_1 (clon):** {s['new_bets']} apuestas, {s['new_wins']} ganadas, {s['new_losses']} perdidas → WR {s['new_wins']/s['new_bets']*100:.1f} %.\n")
 lines.append("### 7.1 Resumen por liga — apuestas en vivo (original vs clon)\n")
-lines.append("| Dif. WR | WR v5_3 | WR v5_3_1 | V5_3 Wins | V5_3_1 Wins | País | Liga | En vivo (partidos) | v5_3: apuestas | v5_3: ganadas | v5_3: perdidas | v5_3_1: apuestas | v5_3_1: ganadas | v5_3_1: perdidas |")
-lines.append("|---|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+lines.append("| Dif. WR | WR v5_3 | WR v5_3_1 | V5_3 Wins | V5_3_1 Wins | País | Liga | En vivo (partidos) | v5_3: apuestas | v5_3: perdidas | v5_3_1: apuestas | v5_3_1: perdidas |")
+lines.append("|---|---:|---:|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|")
 tot_live = tot_o_bets = tot_o_wins = tot_o_losses = tot_n_bets = tot_n_wins = tot_n_losses = 0
 for lg in sorted(agg, key=lambda x: (agg[x]["new_bets"], agg[x]["orig_bets"]), reverse=True):
     a = agg[lg]
@@ -181,7 +181,7 @@ for lg in sorted(agg, key=lambda x: (agg[x]["new_bets"], agg[x]["orig_bets"]), r
     else:
         diff = "—"
     ctry = _country.get(lg, "?")
-    lines.append(f"| {diff} | {orig_wr} | {new_wr} | {a['orig_wins']} | {a['new_wins']} | {ctry} | {lg} | {a['live']} | {a['orig_bets']} | {a['orig_wins']} | {a['orig_losses']} | {a['new_bets']} | {a['new_wins']} | {a['new_losses']} |")
+    lines.append(f"| {diff} | {orig_wr} | {new_wr} | {a['orig_wins']} | {a['new_wins']} | {ctry} | {lg} | {a['live']} | {a['orig_bets']} | {a['orig_losses']} | {a['new_bets']} | {a['new_losses']} |")
     tot_live += a["live"]; tot_o_bets += a["orig_bets"]; tot_o_wins += a["orig_wins"]; tot_o_losses += a["orig_losses"]
     tot_n_bets += a["new_bets"]; tot_n_wins += a["new_wins"]; tot_n_losses += a["new_losses"]
 tot_o_wr = (tot_o_wins/tot_o_bets*100) if tot_o_bets else 0
