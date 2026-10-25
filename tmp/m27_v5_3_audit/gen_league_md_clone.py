@@ -240,8 +240,8 @@ for odds in (1.40, 1.83):
     lines.append(f"### Momio {odds:.2f}\n")
     so = sweep(False, odds)
     sc = sweep(True, odds)
-    lines.append("| Umbral | O:apuestas | O:ganados | C:ganados | O:perdidos | C:perdidos | O:WR | O:ROI | C:apuestas | C:WR | C:ROI | O:ganancia | C:ganancia | O:bank final | C:bank final |")
-    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+    lines.append("| Umbral | O:apuestas | O:ganados | C:ganados | O:perdidos | C:perdidos | O:WR | O:ROI | C:apuestas | C:WR | C:ROI | O:ganancia | C:ganancia | O:bank final | C:bank final | Viable (clon) |")
+    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
     import sqlite3 as _sq
     _conn = _sq.connect(str(ROOT / "matches.db"))
     _conn.row_factory = _sq.Row
@@ -277,7 +277,8 @@ for odds in (1.40, 1.83):
         gain_c = bank_c - 1000
         tag_o = " *" if stopped_o else ""
         tag_c = " *" if stopped_c else ""
-        lines.append(f"| {thr:.2f} | {bo} | {wo} | {wc} | {lo} | {lc} | {wro:.1f} % | {roio:+.2f} % | {bc} | {wrc:.1f} % | {roic:+.2f} % | ${gain_o:+,.2f}{tag_o} | ${gain_c:+,.2f}{tag_c} | ${bank_o:,.2f} | ${bank_c:,.2f} |")
+        viable = "🟢" if (gain_c > 0 and not stopped_c) else "🔴"
+        lines.append(f"| {thr:.2f} | {bo} | {wo} | {wc} | {lo} | {lc} | {wro:.1f} % | {roio:+.2f} % | {bc} | {wrc:.1f} % | {roic:+.2f} % | ${gain_o:+,.2f}{tag_o} | ${gain_c:+,.2f}{tag_c} | ${bank_o:,.2f} | ${bank_c:,.2f} | {viable} |")
     lines.append("> * = se detuvo por falta de fondos.\n")
     lines.append("")
 
