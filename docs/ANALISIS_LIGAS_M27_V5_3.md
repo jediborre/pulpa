@@ -686,50 +686,111 @@ _Ninguna con la evidencia actual._
 
 108 ligas aparecen solo en el holdout C, es decir, el modelo **no las vio en entrenamiento**. Para ellas los priors (ELO, H2H, win-rate) provienen del estado as-of, pero la liga no aportó filas al ajuste. Conviene vigilar su calibración antes de confiar en ellas.
 
-| País      | Liga                                                        | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 |
-| ---       | ---                                                         | ---:        | ---:           | ---:    | ---:     | ---:     |
-| USA       | NCAA Women's Division I, Regular season                     | 1,620       | 275            | 226     | 49       | 82.2 %   |
-| Other     | FSHB Superliga, K.K.M 2025-26                               | 91          | 39             | 32      | 7        | 82.0 %   |
-| Other     | Top Division Women, Regular Season                          | 89          | 34             | 30      | 4        | 88.2 %   |
-| Other     | Prva Liga                                                   | 139         | 27             | 24      | 3        | 88.9 %   |
-| USA       | CBI U15 , Classificatória A                                 | 76          | 27             | 25      | 2        | 92.6 %   |
-| Other     | 1st Division Women                                          | 57          | 23             | 20      | 3        | 87.0 %   |
-| Lithuania | Nostra.lt-RKL Division B, Reguliarusis sezonas              | 182         | 22             | 16      | 6        | 72.7 %   |
-| Other     | SLB, Women                                                  | 89          | 22             | 15      | 7        | 68.2 %   |
-| USA       | CBI U19, Sede Rio                                           | 37          | 21             | 19      | 2        | 90.5 %   |
-| USA       | CBI U15 , Classificatória B                                 | 78          | 20             | 15      | 5        | 75.0 %   |
-| Other     | Saudi Basketball League, Premier League                     | 45          | 19             | 18      | 1        | 94.7 %   |
-| Other     | Sparkasse Prva Liga Zeni                                    | 66          | 17             | 9       | 8        | 52.9 %   |
-| Australia | NBL Women , Regular Season                                  | 106         | 17             | 14      | 3        | 82.3 %   |
-| Other     | Liga 1 Masculin, Faza II                                    | 119         | 16             | 11      | 5        | 68.8 %   |
-| Other     | LDB, Primeira fase                                          | 128         | 16             | 14      | 2        | 87.5 %   |
-| Other     | Rwanda Basketball League, Regular Season                    | 65          | 15             | 12      | 3        | 80.0 %   |
-| USA       | CBI U17, Sede Curitiba                                      | 67          | 14             | 0       | 14       | —        |
-| France    | LNB, Clausura                                               | 49          | 14             | 0       | 14       | —        |
-| Other     | Liga Nacional Femenina Chile, Fase regular                  | 34          | 13             | 0       | 13       | —        |
-| Other     | EYBL U14, Group E                                           | 52          | 12             | 0       | 12       | —        |
-| Other     | Superleague Women                                           | 32          | 11             | 0       | 11       | —        |
-| Other     | Liga Femenina, Women, Clausura                              | 115         | 11             | 0       | 11       | —        |
-| Other     | EYBL U13, Group D                                           | 35          | 10             | 0       | 10       | —        |
-| Other     | Jedinstvena kadetska liga                                   | 64          | 10             | 0       | 10       | —        |
-| Other     | Rwanda Basketball League Women, Regular Season              | 42          | 10             | 0       | 10       | —        |
-| Other     | LF Challenge, Regular Season                                | 154         | 9              | 0       | 9        | —        |
-| Other     | Latvian Basketball Cup                                      | 31          | 9              | 0       | 9        | —        |
-| Other     | EYBL U15, Group D                                           | 41          | 9              | 0       | 9        | —        |
-| Australia | NBL Men , Regular Season                                    | 126         | 8              | 0       | 8        | —        |
-| Other     | EYBL U17, Group E                                           | 49          | 8              | 0       | 8        | —        |
-| Other     | 1. liga, Women                                              | 87          | 7              | 0       | 7        | —        |
-| Other     | Superliga e Femrave                                         | 44          | 7              | 0       | 7        | —        |
-| Other     | Superliga, Women                                            | 38          | 7              | 0       | 7        | —        |
-| USA       | NCAA Women's March Madness                                  | 59          | 7              | 0       | 7        | —        |
-| USA       | CBI U19, Sede Curitiba                                      | 44          | 7              | 0       | 7        | —        |
-| Other     | Kvindebasketligaen , Grundspil                              | 42          | 5              | 0       | 5        | —        |
-| Other     | Campeonato Nacional da 1ª Divisao Feminina, 1ª Fase - Sul   | 52          | 5              | 0       | 5        | —        |
-| Other     | Campeonato Nacional da 1ª Divisao Feminina, 1ª Fase - Norte | 38          | 5              | 0       | 5        | —        |
-| Other     | I B MCKL                                                    | 38          | 5              | 0       | 5        | —        |
-| Other     | U21 Espoirs Elite                                           | 136         | 5              | 0       | 5        | —        |
+| País          | Liga                                               | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 |
+| ---           | ---                                                | ---:        | ---:           | ---:    | ---:     | ---:     |
+| USA           | NCAA Women's Division I, Regular season            | 1,620       | 275            | 226     | 49       | 82.2 %   |
+| Other         | FSHB Superliga, K.K.M 2025-26                      | 91          | 39             | 32      | 7        | 82.0 %   |
+| Other         | Top Division Women, Regular Season                 | 89          | 34             | 30      | 4        | 88.2 %   |
+| Other         | Prva Liga                                          | 139         | 27             | 24      | 3        | 88.9 %   |
+| USA           | CBI U15 , Classificatória A                        | 76          | 27             | 25      | 2        | 92.6 %   |
+| Other         | 1st Division Women                                 | 57          | 23             | 20      | 3        | 87.0 %   |
+| Lithuania     | Nostra.lt-RKL Division B, Reguliarusis sezonas     | 182         | 22             | 16      | 6        | 72.7 %   |
+| Other         | SLB, Women                                         | 89          | 22             | 15      | 7        | 68.2 %   |
+| USA           | CBI U19, Sede Rio                                  | 37          | 21             | 19      | 2        | 90.5 %   |
+| USA           | CBI U15 , Classificatória B                        | 78          | 20             | 15      | 5        | 75.0 %   |
+| Other         | Saudi Basketball League, Premier League            | 45          | 19             | 18      | 1        | 94.7 %   |
+| Other         | Sparkasse Prva Liga Zeni                           | 66          | 17             | 9       | 8        | 52.9 %   |
+| Australia     | NBL Women , Regular Season                         | 106         | 17             | 14      | 3        | 82.3 %   |
+| Other         | Liga 1 Masculin, Faza II                           | 119         | 16             | 11      | 5        | 68.8 %   |
+| Other         | LDB, Primeira fase                                 | 128         | 16             | 14      | 2        | 87.5 %   |
+| Other         | Rwanda Basketball League, Regular Season           | 65          | 15             | 12      | 3        | 80.0 %   |
+| International | AdmiralBet ABA League, Group B                     | 59          | 0              | 0       | 0        | —        |
+| Other         | Nationale 1, Group B                               | 139         | 0              | 0       | 0        | —        |
+| Lithuania     | RKL Division A                                     | 198         | 0              | 0       | 0        | —        |
+| International | AdmiralBet ABA League, Group A                     | 58          | 0              | 0       | 0        | —        |
+| Other         | Enovos League, Regular Season                      | 90          | 0              | 0       | 0        | —        |
+| Other         | Slovenian Second Basketball League, Regular Season | 76          | 0              | 0       | 0        | —        |
+| International | U19 ABA League                                     | 33          | 0              | 0       | 0        | —        |
+| Other         | EYBL U20, Group D                                  | 30          | 0              | 0       | 0        | —        |
+| France        | Pro B, South                                       | 57          | 0              | 0       | 0        | —        |
+| Italy         | Serie B Interregionale, Girone C                   | 40          | 0              | 0       | 0        | —        |
+| Italy         | Serie B Interregionale, Girone E                   | 33          | 0              | 0       | 0        | —        |
+| Other         | Erkekler Basketbol Gençler Ligi - A Grubu          | 35          | 0              | 0       | 0        | —        |
+| Italy         | Serie B Interregionale, Girone D                   | 46          | 0              | 0       | 0        | —        |
+| Other         | Divisione Regionale 2 - Lazio, Girone C            | 30          | 0              | 0       | 0        | —        |
+| Other         | Serie C Toscana                                    | 49          | 0              | 0       | 0        | —        |
+| Italy         | Serie B Interregionale, Girone A                   | 45          | 0              | 0       | 0        | —        |
+| Italy         | Serie B Interregionale, Girone B                   | 39          | 0              | 0       | 0        | —        |
+| Other         | Serie C Girone H sud                               | 30          | 0              | 0       | 0        | —        |
+| Other         | B Ethniki - Group 1                                | 32          | 0              | 0       | 0        | —        |
+| Other         | B Ethniki - Group 2                                | 30          | 0              | 0       | 0        | —        |
+| Other         | B Ethniki - Group 3                                | 33          | 0              | 0       | 0        | —        |
+| Other         | Divisione Regionale 1 Toscana, Girone B            | 60          | 0              | 0       | 0        | —        |
+| Other         | Basket World League                                | 31          | 0              | 0       | 0        | —        |
+| France        | Pro B, North                                       | 55          | 0              | 0       | 0        | —        |
 
-_...y 68 ligas más con menos volumen._
+_...y 12 ligas más con menos volumen._
+
+### 5.2b Ligas en arranque en frío con **todas** las apuestas perdidas (0 % WR)
+
+| País      | Liga                                                        | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos |
+| ---       | ---                                                         | ---:        | ---:           | ---:    | ---:     |
+| USA       | CBI U17, Sede Curitiba                                      | 67          | 14             | 0       | 14       |
+| France    | LNB, Clausura                                               | 49          | 14             | 0       | 14       |
+| Other     | Liga Nacional Femenina Chile, Fase regular                  | 34          | 13             | 0       | 13       |
+| Other     | EYBL U14, Group E                                           | 52          | 12             | 0       | 12       |
+| Other     | Superleague Women                                           | 32          | 11             | 0       | 11       |
+| Other     | Liga Femenina, Women, Clausura                              | 115         | 11             | 0       | 11       |
+| Other     | EYBL U13, Group D                                           | 35          | 10             | 0       | 10       |
+| Other     | Jedinstvena kadetska liga                                   | 64          | 10             | 0       | 10       |
+| Other     | Rwanda Basketball League Women, Regular Season              | 42          | 10             | 0       | 10       |
+| Other     | LF Challenge, Regular Season                                | 154         | 9              | 0       | 9        |
+| Other     | Latvian Basketball Cup                                      | 31          | 9              | 0       | 9        |
+| Other     | EYBL U15, Group D                                           | 41          | 9              | 0       | 9        |
+| Australia | NBL Men , Regular Season                                    | 126         | 8              | 0       | 8        |
+| Other     | EYBL U17, Group E                                           | 49          | 8              | 0       | 8        |
+| Other     | 1. liga, Women                                              | 87          | 7              | 0       | 7        |
+| Other     | Superliga e Femrave                                         | 44          | 7              | 0       | 7        |
+| Other     | Superliga, Women                                            | 38          | 7              | 0       | 7        |
+| USA       | NCAA Women's March Madness                                  | 59          | 7              | 0       | 7        |
+| USA       | CBI U19, Sede Curitiba                                      | 44          | 7              | 0       | 7        |
+| Other     | Kvindebasketligaen , Grundspil                              | 42          | 5              | 0       | 5        |
+| Other     | Campeonato Nacional da 1ª Divisao Feminina, 1ª Fase - Sul   | 52          | 5              | 0       | 5        |
+| Other     | Campeonato Nacional da 1ª Divisao Feminina, 1ª Fase - Norte | 38          | 5              | 0       | 5        |
+| Other     | I B MCKL                                                    | 38          | 5              | 0       | 5        |
+| Other     | U21 Espoirs Elite                                           | 136         | 5              | 0       | 5        |
+| Other     | EYBL U20, Group E                                           | 37          | 5              | 0       | 5        |
+| Other     | EYBL U15, Group F                                           | 31          | 5              | 0       | 5        |
+| USA       | CBI U15 Fem, CBI U15 Fem                                    | 34          | 5              | 0       | 5        |
+| Other     | EYBL U16, CHALLENGE CUP                                     | 37          | 5              | 0       | 5        |
+| Other     | Iraqi Professional League, Iraqi Professional league        | 53          | 4              | 0       | 4        |
+| France    | LNB Clausura                                                | 67          | 4              | 0       | 4        |
+| Other     | 1st Division Men                                            | 98          | 3              | 0       | 3        |
+| Other     | EYBL U14, Group A                                           | 31          | 3              | 0       | 3        |
+| Other     | A1                                                          | 68          | 3              | 0       | 3        |
+| Other     | Kızlar Basketbol Gençler Ligi - A Grubu                     | 34          | 3              | 0       | 3        |
+| Other     | EYBL U13, SUPERFINAL - 12./15.03.2026 - Riga, Latvia        | 30          | 3              | 0       | 3        |
+| USA       | CBI U17, Fase Final                                         | 49          | 3              | 0       | 3        |
+| Other     | Nationale 1, Group A                                        | 132         | 2              | 0       | 2        |
+| Other     | Azerbaijan Basketball League, A Group                       | 40          | 2              | 0       | 2        |
+| Other     | A1 Liga                                                     | 106         | 2              | 0       | 2        |
+| Other     | Liga Košarkaškog saveza Herceg Bosne                        | 43          | 2              | 0       | 2        |
+| Other     | EYBL U15, Group C                                           | 32          | 2              | 0       | 2        |
+| Other     | EYBL U14, Group G                                           | 30          | 2              | 0       | 2        |
+| USA       | CBI U19, Fase Final                                         | 32          | 2              | 0       | 2        |
+| Other     | Azerbaijan Basketball League, B Group                       | 42          | 1              | 0       | 1        |
+| Other     | Zain Basketball League, Premier League                      | 43          | 1              | 0       | 1        |
+| Other     | EYBL U16, Group B                                           | 31          | 1              | 0       | 1        |
+| Other     | EYBL U17, Group A                                           | 30          | 1              | 0       | 1        |
+| Other     | EYBL U20, Group B                                           | 30          | 1              | 0       | 1        |
+| Other     | EYBL U14, Group D                                           | 34          | 1              | 0       | 1        |
+| Turkey    | Türkiye Kadınlar Basketbol Ligi                             | 36          | 1              | 0       | 1        |
+| Other     | 2. ZLS, Women                                               | 34          | 1              | 0       | 1        |
+| Other     | Divisione Regionale 1 Toscana, Girone A                     | 66          | 1              | 0       | 1        |
+| Other     | CIBACOPA , Primera Vuelta                                   | 96          | 1              | 0       | 1        |
+| Other     | EYBL U15, SUPERFINAL - 12./15.03.2026 - Riga, Latvia        | 32          | 1              | 0       | 1        |
+| Other     | Saku II Liiga                                               | 31          | 1              | 0       | 1        |
+| Other     | 1. liga, Women, základní část                               | 31          | 1              | 0       | 1        |
 
 
 ### 5.3 Mejores ligas por ROI @1.40 a 0.75 (mín. 30 apuestas)

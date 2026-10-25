@@ -114,10 +114,13 @@ lines.append("### 5.2 Arranque en frío (0 partidos en entrenamiento)\n")
 lines.append(f"{len(cold)} ligas aparecen solo en el holdout C, es decir, el modelo **no las vio en entrenamiento**. "
             "Para ellas los priors (ELO, H2H, win-rate) provienen del estado as-of, pero la liga no aportó filas al ajuste. "
             "Conviene vigilar su calibración antes de confiar en ellas.\n")
-if cold:
+cold_allloss = [l for l in cold if (next((t for t in l["tiers"] if t["thr"]==0.75),{}) or {}).get("bets", 0) > 0
+                and ((next((t for t in l["tiers"] if t["thr"]==0.75),{}) or {}).get("wr") or 0) == 0]
+cold_rest = [l for l in cold if l not in cold_allloss]
+if cold_rest:
     lines.append("| País | Liga | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 |")
     lines.append("|---|---|---:|---:|---:|---:|---:|")
-    for l in sorted(cold, key=lambda x: (next((t for t in x["tiers"] if t["thr"]==0.75),{}) or {}).get("bets", 0), reverse=True)[:40]:
+    for l in sorted(cold_rest, key=lambda x: (next((t for t in x["tiers"] if t["thr"]==0.75),{}) or {}).get("bets", 0), reverse=True)[:40]:
         t75 = next((t for t in l["tiers"] if t["thr"]==0.75), None)
         bets = t75.get("bets",0) if t75 else 0
         wrv = t75.get("wr") if t75 else None
@@ -125,8 +128,20 @@ if cold:
         losses = bets - wins if bets else 0
         wr = (f"{wrv:.1f} %" if (wrv is not None) else "—")
         lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_holdout']:,} | {bets:,} | {wins:,} | {losses:,} | {wr} |")
-    if len(cold) > 40:
-        lines.append(f"\n_...y {len(cold)-40} ligas más con menos volumen._\n")
+    if len(cold_rest) > 40:
+        lines.append(f"\n_...y {len(cold_rest)-40} ligas más con menos volumen._\n")
+if cold_allloss:
+    lines.append("### 5.2b Ligas en arranque en frío con **todas** las apuestas perdidas (0 % WR)\n")
+    lines.append("| País | Liga | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos |")
+    lines.append("|---|---|---:|---:|---:|---:|")
+    for l in sorted(cold_allloss, key=lambda x: (next((t for t in x["tiers"] if t["thr"]==0.75),{}) or {}).get("bets", 0), reverse=True):
+        t75 = next((t for t in l["tiers"] if t["thr"]==0.75), None)
+        bets = t75.get("bets",0) if t75 else 0
+        wrv = t75.get("wr") if t75 else None
+        wins = round(wrv * bets / 100) if (wrv is not None and bets) else 0
+        losses = bets - wins if bets else 0
+        lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_holdout']:,} | {bets:,} | {wins:,} | {losses:,} |")
+    lines.append("")
 lines.append("")
 
 lines.append("### 5.3 Mejores ligas por ROI @1.40 a 0.75 (mín. 30 apuestas)\n")
