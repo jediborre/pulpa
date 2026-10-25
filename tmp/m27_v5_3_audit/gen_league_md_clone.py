@@ -197,17 +197,8 @@ o_stake = tot_o_bets * 100
 n_stake = tot_n_bets * 100
 o_roi_183 = o_profit_183 / o_stake * 100
 n_roi_183 = n_profit_183 / n_stake * 100
-lines.append("**Simulación secuencial (bankroll inicial $1,000, apuesta flat de $100 por partido, reinviertiendo, orden cronológico):**")
-lines.append("")
-lines.append("| Momio | Modelo | Apuestas | Apostado | Ganancia | ROI | Bankroll final |")
-lines.append("|---|---|---:|---:|---:|---:|---:|")
-lines.append(f"| 1.40 | m27_v5_3 (original) | {tot_o_bets} | ${o_stake:,.2f} | {money(o_profit_140)} | {o_roi:+.2f} % | ${o_stake+o_profit_140:,.2f} |")
-lines.append(f"| 1.40 | m27_v5_3_1 (clon) | {tot_n_bets} | ${n_stake:,.2f} | {money(n_profit_140)} | {n_roi:+.2f} % | ${n_stake+n_profit_140:,.2f} |")
-lines.append(f"| 1.83 | m27_v5_3 (original) | {tot_o_bets} | ${o_stake:,.2f} | {money(o_profit_183)} | {o_roi_183:+.2f} % | ${o_stake+o_profit_183:,.2f} |")
-lines.append(f"| 1.83 | m27_v5_3_1 (clon) | {tot_n_bets} | ${n_stake:,.2f} | {money(n_profit_183)} | {n_roi_183:+.2f} % | ${n_stake+n_profit_183:,.2f} |")
-lines.append("")
-lines.append("> Nota: el original gana más en absoluto con momio 1.40 ($880 vs $680) porque colocó más apuestas, "
-             "aunque el clon tiene mayor ROI. Con momio 1.83 la ventaja del volumen se amplifica.\n")
+lines.append("> Nota: la simulación secuencial con $100 por apuesta se integra en el barrido de umbrales de la "
+             "sección 8 (columnas de bankroll final). El umbral operativo es 0.75.\n")
 lines.append("")
 # --- Barrido de umbrales sobre las apuestas en vivo ---
 THRS_SWEEP = (0.60, 0.62, 0.65, 0.68, 0.70, 0.72, 0.75, 0.78, 0.80, 0.85)

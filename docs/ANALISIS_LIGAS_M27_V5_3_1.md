@@ -787,16 +787,7 @@ A 0.75: **164 apuestas, WR 79.88 %, ROI@1.40 +11.83 %** (en vivo: 4 partidos, v5
 | Hungary Divison A Women                                                     | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
 | **TOTAL**                                                                   | **85**             | **85**         | **67**        | **18**         | **79 %** | **59**           | **47**          | **12**           | **80 %**   | **🟢**   |
 
-**Simulación secuencial (bankroll inicial $1,000, apuesta flat de $100 por partido, reinviertiendo, orden cronológico):**
-
-| Momio | Modelo              | Apuestas | Apostado  | Ganancia   | ROI      | Bankroll final |
-| ---   | ---                 | ---:     | ---:      | ---:       | ---:     | ---:           |
-| 1.40  | m27_v5_3 (original) | 85       | $8,500.00 | +$880.00   | +10.35 % | $9,380.00      |
-| 1.40  | m27_v5_3_1 (clon)   | 59       | $5,900.00 | +$680.00   | +11.53 % | $6,580.00      |
-| 1.83  | m27_v5_3 (original) | 85       | $8,500.00 | +$3,761.00 | +44.25 % | $12,261.00     |
-| 1.83  | m27_v5_3_1 (clon)   | 59       | $5,900.00 | +$2,701.00 | +45.78 % | $8,601.00      |
-
-> Nota: el original gana más en absoluto con momio 1.40 ($880 vs $680) porque colocó más apuestas, aunque el clon tiene mayor ROI. Con momio 1.83 la ventaja del volumen se amplifica.
+> Nota: la simulación secuencial con $100 por apuesta se integra en el barrido de umbrales de la sección 8 (columnas de bankroll final). El umbral operativo es 0.75.
 
 
 ## 8. Barrido de umbrales sobre las apuestas en vivo (m27_v5_3 vs clon)
