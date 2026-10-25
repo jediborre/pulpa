@@ -795,27 +795,27 @@ _...y 2 ligas más._
 
 > Estas ligas no se entrenaron (arranque en frío) pero tienen buen rendimiento en el holdout C. Si se consigue histórico para ellas (o se agrupan por `clean_name` con variantes que sí tienen historia), entrenar con ellas podría mejorar el modelo. Son las que valen la pena.
 
-| País  | Liga                         | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 | ROI @1.40 |
-| ---   | ---                          | ---:        | ---:           | ---:    | ---:     | ---:     | ---:      |
-| ?     | CBI U17 Feminino             | 54          | 22             | 21      | 1        | 95.5 %   | +33.64 %  |
-| ?     | CBI U15 Fem                  | 138         | 65             | 61      | 4        | 93.8 %   | +31.38 %  |
-| ?     | SWC                          | 39          | 15             | 14      | 1        | 93.3 %   | +30.67 %  |
-| ?     | Top Division Women           | 100         | 38             | 34      | 4        | 89.5 %   | +25.26 %  |
-| ?     | EYBL U17                     | 272         | 42             | 37      | 5        | 88.1 %   | +23.33 %  |
-| Other | Prva Liga                    | 139         | 25             | 22      | 3        | 88.0 %   | +23.20 %  |
-| ?     | EYBL U20                     | 187         | 16             | 14      | 2        | 87.5 %   | +22.50 %  |
-| Other | 1st Division Women           | 69          | 23             | 20      | 3        | 87.0 %   | +21.74 %  |
-| Other | Superleague Women            | 34          | 15             | 13      | 2        | 86.7 %   | +21.33 %  |
-| ?     | CBI U15                      | 199         | 49             | 42      | 7        | 85.7 %   | +20.00 %  |
-| ?     | EGBL U17                     | 74          | 27             | 23      | 4        | 85.2 %   | +19.26 %  |
-| ?     | NBL Women                    | 106         | 17             | 14      | 3        | 82.3 %   | +15.29 %  |
-| ?     | EYBL U16                     | 265         | 33             | 27      | 6        | 81.8 %   | +14.55 %  |
-| ?     | EYBL U13                     | 118         | 32             | 26      | 6        | 81.2 %   | +13.75 %  |
-| ?     | NCAA Women's Division I      | 1,563       | 267            | 214     | 53       | 80.2 %   | +12.21 %  |
-| ?     | EYBL U15                     | 232         | 44             | 35      | 9        | 79.5 %   | +11.36 %  |
-| ?     | CBI U19                      | 113         | 39             | 31      | 8        | 79.5 %   | +11.28 %  |
-| ?     | 1 Liga Kobiet                | 251         | 18             | 14      | 4        | 77.8 %   | +8.89 %   |
-| ?     | Liga Nacional Femenina Chile | 88          | 26             | 20      | 6        | 76.9 %   | +7.69 %   |
+| País  | Liga                         | Partidos en BD (todas las variantes) | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 | ROI @1.40 |
+| ---   | ---                          | ---:                                 | ---:        | ---:           | ---:    | ---:     | ---:     | ---:      |
+| ?     | CBI U17 Feminino             | 54                                   | 54          | 22             | 21      | 1        | 95.5 %   | +33.64 %  |
+| ?     | CBI U15 Fem                  | 145                                  | 138         | 65             | 61      | 4        | 93.8 %   | +31.38 %  |
+| ?     | SWC                          | 40                                   | 39          | 15             | 14      | 1        | 93.3 %   | +30.67 %  |
+| ?     | Top Division Women           | 109                                  | 100         | 38             | 34      | 4        | 89.5 %   | +25.26 %  |
+| ?     | EYBL U17                     | 308                                  | 272         | 42             | 37      | 5        | 88.1 %   | +23.33 %  |
+| Other | Prva Liga                    | 168                                  | 139         | 25             | 22      | 3        | 88.0 %   | +23.20 %  |
+| ?     | EYBL U20                     | 248                                  | 187         | 16             | 14      | 2        | 87.5 %   | +22.50 %  |
+| Other | 1st Division Women           | 83                                   | 69          | 23             | 20      | 3        | 87.0 %   | +21.74 %  |
+| Other | Superleague Women            | 45                                   | 34          | 15             | 13      | 2        | 86.7 %   | +21.33 %  |
+| ?     | CBI U15                      | 207                                  | 199         | 49             | 42      | 7        | 85.7 %   | +20.00 %  |
+| ?     | EGBL U17                     | 76                                   | 74          | 27             | 23      | 4        | 85.2 %   | +19.26 %  |
+| ?     | NBL Women                    | 111                                  | 106         | 17             | 14      | 3        | 82.3 %   | +15.29 %  |
+| ?     | EYBL U16                     | 305                                  | 265         | 33             | 27      | 6        | 81.8 %   | +14.55 %  |
+| ?     | EYBL U13                     | 129                                  | 118         | 32             | 26      | 6        | 81.2 %   | +13.75 %  |
+| ?     | NCAA Women's Division I      | 1,729                                | 1,563       | 267            | 214     | 53       | 80.2 %   | +12.21 %  |
+| ?     | EYBL U15                     | 259                                  | 232         | 44             | 35      | 9        | 79.5 %   | +11.36 %  |
+| ?     | CBI U19                      | 147                                  | 113         | 39             | 31      | 8        | 79.5 %   | +11.28 %  |
+| ?     | 1 Liga Kobiet                | 283                                  | 251         | 18             | 14      | 4        | 77.8 %   | +8.89 %   |
+| ?     | Liga Nacional Femenina Chile | 135                                  | 88          | 26             | 20      | 6        | 76.9 %   | +7.69 %   |
 
 ### 5.5 Ligas con ROI negativo a 0.75 (⚠️)
 
