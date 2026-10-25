@@ -186,11 +186,13 @@ o_roi = o_profit / tot_o_bets * 100 if tot_o_bets else 0
 n_roi = n_profit / tot_n_bets * 100 if tot_n_bets else 0
 o_1000 = (1000 / tot_o_bets * o_profit) if tot_o_bets else 0
 n_1000 = (1000 / tot_n_bets * n_profit) if tot_n_bets else 0
+def money(v):
+    return ("+" if v >= 0 else "-") + "${:,.2f}".format(abs(v))
 lines.append("**Simulación a cuota 1.40 (apuesta flat, bankroll inicial $1,000.00):**")
-lines.append(f"- `m27_v5_3` (original): {tot_o_bets} apuestas → ganancia **${o_1000:+,.2f}** (ROI {o_roi:+.2f} %). "
-             f"Bankroll final: **${1000+o_1000:,.2f}** (stake total $1,000.00; ganancia por apuesta de $1: ${o_profit:+.2f}).")
-lines.append(f"- `m27_v5_3_1` (clon): {tot_n_bets} apuestas → ganancia **${n_1000:+,.2f}** (ROI {n_roi:+.2f} %). "
-             f"Bankroll final: **${1000+n_1000:,.2f}** (stake total $1,000.00; ganancia por apuesta de $1: ${n_profit:+.2f}).")
+lines.append(f"- `m27_v5_3` (original): {tot_o_bets} apuestas → ganancia **{money(o_1000)}** (ROI {o_roi:+.2f} %). "
+             f"Bankroll final: **${1000+o_1000:,.2f}** (stake total $1,000.00; ganancia por apuesta de $1: {money(o_profit)}).")
+lines.append(f"- `m27_v5_3_1` (clon): {tot_n_bets} apuestas → ganancia **{money(n_1000)}** (ROI {n_roi:+.2f} %). "
+             f"Bankroll final: **${1000+n_1000:,.2f}** (stake total $1,000.00; ganancia por apuesta de $1: {money(n_profit)}).")
 lines.append("")
 lines.append("**Lectura:** el clon es más conservador (59 vs 85 apuestas) con acierto ligeramente superior "
              "(79.7 % vs 78.8 %). Diferencia pequeña, muestra diminuta. No se justifica cambio de modelo solo "
