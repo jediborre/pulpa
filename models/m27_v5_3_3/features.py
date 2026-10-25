@@ -123,9 +123,45 @@ BLOCKED_STAGE_CATEGORIES = {
 }
 
 
+# Bloqueo manual temporal (2026-10-25): ligas con ROI negativo en el backtest
+# de m27_v5_3_3 (seccion 5.5 del ANALISIS_LIGAS_M27_V5_3_3.md). Se quitan
+# cuando haya mas evidencia (>= 200 apuestas por liga).
+MANUAL_BLOCKED_LEAGUES: set[str] = {
+    "premijer ženska liga",
+    "russian women's basketball premier league",
+    "liga femenina",
+    "nostra.lt-rkl division b, reguliarusis sezonas",
+    "sparkasse prva liga zeni",
+    "lmb",
+    "lmb, clausura",
+}
+
+
+def _normalize_league_name_static(name: str) -> str:
+    """Normaliza nombre de liga a clean_name (module-level, sin estado)."""
+    s = str(name or "").strip()
+    if not s:
+        return s
+    try:
+        if not hasattr(_normalize_league_name_static, "_m"):
+            import sqlite3
+            from pathlib import Path
+            _ROOT = Path(__file__).resolve().parents[2]
+            _conn = sqlite3.connect(str(_ROOT / "matches.db"))
+            _normalize_league_name_static._m = {r[0]: (r[1] or r[0]) for r in _conn.execute(
+                "SELECT league, clean_name FROM leagues_classification")}
+            _conn.close()
+        return _normalize_league_name_static._m.get(s, s)
+    except Exception:
+        return s
+
+
 def is_toxic_league(name: str) -> bool:
     """Bloqueo por patron literal. Es la regla que se usa al PODAR el train."""
     s = str(name or "").lower()
+    cn = _normalize_league_name_static(str(name or "")).lower()
+    if s in MANUAL_BLOCKED_LEAGUES or cn in MANUAL_BLOCKED_LEAGUES:
+        return True
     return any(p in s for p in TOXIC_LEAGUE_PATTERNS)
 
 
@@ -180,7 +216,9 @@ def block_reason(name: str) -> str | None:
     s = str(name or "").strip()
     if not s:
         return None
-    if is_toxic_league(s):
+    # normalizar para que el bloqueo manual (por clean_name) funcione en vivo
+    cn = _normalize_league_name_static(s)
+    if is_toxic_league(s) or is_toxic_league(cn):
         return "descartada: liga en la lista negra de composicion"
     med = _matches_measured(s)
     if med:
