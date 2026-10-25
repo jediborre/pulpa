@@ -160,7 +160,7 @@ lines.append(f"- **m27_v5_3_1 (clon):** {s['new_bets']} apuestas, {s['new_wins']
 lines.append("### 7.1 Resumen por liga — apuestas en vivo (original vs clon)\n")
 lines.append("| Liga | En vivo (partidos) | v5_3: apuestas | v5_3: ganadas | v5_3: perdidas | v5_3: WR | v5_3_1: apuestas | v5_3_1: ganadas | v5_3_1: perdidas | v5_3_1: WR |")
 lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
-for lg in sorted(agg):
+for lg in sorted(agg, key=lambda x: (agg[x]["new_bets"], agg[x]["orig_bets"]), reverse=True):
     a = agg[lg]
     orig_wr = (f"{a['orig_wins']/a['orig_bets']*100:.0f} %" if a["orig_bets"] else "—")
     new_wr = (f"{a['new_wins']/a['new_bets']*100:.0f} %" if a["new_bets"] else "—")
