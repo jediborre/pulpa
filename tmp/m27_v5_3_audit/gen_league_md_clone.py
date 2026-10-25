@@ -188,12 +188,26 @@ o_1000 = (1000 / tot_o_bets * o_profit) if tot_o_bets else 0
 n_1000 = (1000 / tot_n_bets * n_profit) if tot_n_bets else 0
 def money(v):
     return ("+" if v >= 0 else "-") + "${:,.2f}".format(abs(v))
+# Simulacion a 1.40 y 1.83
+o_profit_140 = (tot_o_wins * 0.4 - tot_o_losses) * 100
+n_profit_140 = (tot_n_wins * 0.4 - tot_n_losses) * 100
+o_profit_183 = (tot_o_wins * 0.83 - tot_o_losses) * 100
+n_profit_183 = (tot_n_wins * 0.83 - tot_n_losses) * 100
+o_stake = tot_o_bets * 100
+n_stake = tot_n_bets * 100
+o_roi_183 = o_profit_183 / o_stake * 100
+n_roi_183 = n_profit_183 / n_stake * 100
 lines.append("**Simulación secuencial (bankroll inicial $1,000, apuesta flat de $100 por partido, reinviertiendo, orden cronológico):**")
-lines.append(f"- `m27_v5_3` (original): {tot_o_bets} apuestas → ganancia **+$880.00** (ROI {o_roi:+.2f} %). Bankroll final: **$1,880.00**.")
-lines.append(f"- `m27_v5_3_1` (clon): {tot_n_bets} apuestas → ganancia **+$680.00** (ROI {n_roi:+.2f} %). Bankroll final: **$1,680.00**.")
-lines.append("> Nota: el original gana más en absoluto ($880 vs $680) porque colocó más apuestas, aunque el clon "
-             "tiene mayor ROI (11.53 % vs 10.35 %). Con bankroll inicial de $1,000 y $100 por apuesta, ambos "
-             "completaron todas sus apuestas sin quedarse sin fondos.\n")
+lines.append("")
+lines.append("| Momio | Modelo | Apuestas | Apostado | Ganancia | ROI | Bankroll final |")
+lines.append("|---|---|---:|---:|---:|---:|---:|")
+lines.append(f"| 1.40 | m27_v5_3 (original) | {tot_o_bets} | ${o_stake:,.2f} | {money(o_profit_140)} | {o_roi:+.2f} % | ${o_stake+o_profit_140:,.2f} |")
+lines.append(f"| 1.40 | m27_v5_3_1 (clon) | {tot_n_bets} | ${n_stake:,.2f} | {money(n_profit_140)} | {n_roi:+.2f} % | ${n_stake+n_profit_140:,.2f} |")
+lines.append(f"| 1.83 | m27_v5_3 (original) | {tot_o_bets} | ${o_stake:,.2f} | {money(o_profit_183)} | {o_roi_183:+.2f} % | ${o_stake+o_profit_183:,.2f} |")
+lines.append(f"| 1.83 | m27_v5_3_1 (clon) | {tot_n_bets} | ${n_stake:,.2f} | {money(n_profit_183)} | {n_roi_183:+.2f} % | ${n_stake+n_profit_183:,.2f} |")
+lines.append("")
+lines.append("> Nota: el original gana más en absoluto con momio 1.40 ($880 vs $680) porque colocó más apuestas, "
+             "aunque el clon tiene mayor ROI. Con momio 1.83 la ventaja del volumen se amplifica.\n")
 lines.append("")
 lines.append("**Lectura:** el clon es más conservador (59 vs 85 apuestas) con acierto ligeramente superior "
              "(79.7 % vs 78.8 %). Diferencia pequeña, muestra diminuta. No se justifica cambio de modelo solo "
