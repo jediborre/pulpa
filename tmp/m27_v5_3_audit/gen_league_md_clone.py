@@ -9,6 +9,13 @@ EVAL = json.load(open(ROOT / "tmp" / "m27_v5_3_audit" / "eval_live_clone.json", 
 ORIG_SUM = json.load(open(ROOT / "models" / "m27_v5_3" / "model_outputs" / "m27_v5_3_summary.json", encoding="utf-8"))
 
 leagues = D["leagues"]
+# ordenar por WR @0.75 descendente (None al final), luego por apuestas desc
+def _wr75(l):
+    t75 = next((t for t in l["tiers"] if t["thr"] == 0.75), {})
+    wr = t75.get("wr")
+    bets = t75.get("bets") or 0
+    return (0 if wr is None else 1, wr if wr is not None else 0, bets)
+leagues.sort(key=_wr75, reverse=True)
 THRS = D["thresholds"]
 
 lines = []
