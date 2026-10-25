@@ -822,6 +822,8 @@ A 0.75: **166 apuestas, WR 78.31 %, ROI@1.40 +9.64 %** (en vivo: 4 partidos, v5_
 - **m27_v5_3 (original):** 89 apuestas, 71 ganadas, 18 perdidas → WR 79.8 %.
 - **m27_v5_3_2 (clon):** 64 apuestas, 53 ganadas, 11 perdidas → WR 82.8 %.
 
+**vs m27_v5_3_1 (clon anterior):** 59 apuestas, 47 ganadas, 12 perdidas → WR 79.7 %. v5_3_2 mejora: +5 apuestas, +6 ganadas, +3.2 pp de WR.
+
 ### 7.1 Resumen por liga — apuestas en vivo (original vs clon)
 
 | Dif. WR   | WR v5_3 | WR v5_3_2 | V5_3 Wins | V5_3_2 Wins | País          | Liga                                                                        | En vivo (partidos) | v5_3: apuestas | v5_3: perdidas | v5_3_2: apuestas | v5_3_2: perdidas |      |
