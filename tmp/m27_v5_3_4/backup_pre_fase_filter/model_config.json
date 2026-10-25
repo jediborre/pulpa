@@ -1,0 +1,63 @@
+{
+  "min_conf": 0.75,
+  "min_margin": 0.0,
+  "weights": {
+    "xgb": 0.4,
+    "hgb": 0.35,
+    "lr": 0.25
+  },
+  "p_clip": [
+    0.03,
+    0.97
+  ],
+  "block_toxic_leagues": true,
+  "snapshot_range": [
+    25.5,
+    30.0
+  ],
+  "features": [
+    "minute",
+    "cur_score_diff",
+    "abs_cur_score_diff",
+    "ht_diff",
+    "q1_diff",
+    "q2_diff",
+    "q3_partial_diff",
+    "q3_pace_diff",
+    "q3_vs_ht_momentum",
+    "recent_pts_diff_2m",
+    "recent_pts_diff_5m",
+    "recent_pace_ratio",
+    "pace_pts_per_min",
+    "pace_vs_league_prior",
+    "gp_val",
+    "gp_slope_3m",
+    "lead_z",
+    "lead_vs_lg_vol",
+    "d_elo_ft",
+    "d_elo_q4",
+    "d_wr15",
+    "d_q4_bayes",
+    "d_ft_margin15",
+    "d_q4_net12",
+    "d_q3_net12",
+    "d_season_wr",
+    "h2h_ft_margin",
+    "h2h_q4_margin",
+    "elo_reliability",
+    "has_ml",
+    "odds_log_ratio",
+    "mkt_p_home",
+    "expected_ft_margin",
+    "mkt_margin_spread",
+    "total_line",
+    "cur_vs_expected",
+    "lg_avg_ft",
+    "lg_avg_q4",
+    "lg_q4_vol",
+    "lg_home_q4_rate",
+    "is_women",
+    "is_home_view"
+  ],
+  "chosen_on": "OPERATING_CONF=0.75 (decision explicita; auto-seleccion en B con suelo WR>=78%)"
+}

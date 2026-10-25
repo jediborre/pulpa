@@ -1,0 +1,460 @@
+{
+  "model_version": "m27_v5_3_3",
+  "created_at": "2026-10-18 04:26:01",
+  "features_count": 42,
+  "features_list": [
+    "minute",
+    "cur_score_diff",
+    "abs_cur_score_diff",
+    "ht_diff",
+    "q1_diff",
+    "q2_diff",
+    "q3_partial_diff",
+    "q3_pace_diff",
+    "q3_vs_ht_momentum",
+    "recent_pts_diff_2m",
+    "recent_pts_diff_5m",
+    "recent_pace_ratio",
+    "pace_pts_per_min",
+    "pace_vs_league_prior",
+    "gp_val",
+    "gp_slope_3m",
+    "lead_z",
+    "lead_vs_lg_vol",
+    "d_elo_ft",
+    "d_elo_q4",
+    "d_wr15",
+    "d_q4_bayes",
+    "d_ft_margin15",
+    "d_q4_net12",
+    "d_q3_net12",
+    "d_season_wr",
+    "h2h_ft_margin",
+    "h2h_q4_margin",
+    "elo_reliability",
+    "has_ml",
+    "odds_log_ratio",
+    "mkt_p_home",
+    "expected_ft_margin",
+    "mkt_margin_spread",
+    "total_line",
+    "cur_vs_expected",
+    "lg_avg_ft",
+    "lg_avg_q4",
+    "lg_q4_vol",
+    "lg_home_q4_rate",
+    "is_women",
+    "is_home_view"
+  ],
+  "split": {
+    "A_rows": 204703,
+    "B_rows": 61474,
+    "C_rows": 98476,
+    "eligible_matches": 197111
+  },
+  "auc_train": 0.6454,
+  "auc_calib": 0.654,
+  "auc_test": 0.653,
+  "auc_gap": -0.0076,
+  "brier_train": 0.2325,
+  "brier_test": 0.2308,
+  "logloss_test": 0.6529,
+  "acc_test": 0.611,
+  "auc_anchor_t30": 0.652,
+  "auc_intra": 0.6536,
+  "mae_q4_margin": 6.204,
+  "operating": {
+    "thr": 0.72,
+    "min_margin": 0.0,
+    "bets": 13277,
+    "wr": 77.68,
+    "roi_140": 8.76,
+    "roi_183": 42.16
+  },
+  "tiers_all_rows": [
+    {
+      "thr": 0.65,
+      "bets": 32318,
+      "wr": 70.67,
+      "wr_ci95": [
+        70.2,
+        71.2
+      ],
+      "roi_140": -1.06,
+      "roi_183": 29.33
+    },
+    {
+      "thr": 0.68,
+      "bets": 17973,
+      "wr": 75.2,
+      "wr_ci95": [
+        74.6,
+        75.8
+      ],
+      "roi_140": 5.28,
+      "roi_183": 37.62
+    },
+    {
+      "thr": 0.7,
+      "bets": 17708,
+      "wr": 75.28,
+      "wr_ci95": [
+        74.6,
+        75.9
+      ],
+      "roi_140": 5.4,
+      "roi_183": 37.77
+    },
+    {
+      "thr": 0.72,
+      "bets": 13277,
+      "wr": 77.68,
+      "wr_ci95": [
+        77.0,
+        78.4
+      ],
+      "roi_140": 8.76,
+      "roi_183": 42.16
+    },
+    {
+      "thr": 0.75,
+      "bets": 10588,
+      "wr": 79.18,
+      "wr_ci95": [
+        78.4,
+        79.9
+      ],
+      "roi_140": 10.86,
+      "roi_183": 44.91
+    },
+    {
+      "thr": 0.8,
+      "bets": 4589,
+      "wr": 84.79,
+      "wr_ci95": [
+        83.7,
+        85.8
+      ],
+      "roi_140": 18.71,
+      "roi_183": 55.17
+    }
+  ],
+  "tiers_anchor": [
+    {
+      "thr": 0.65,
+      "bets": 11126,
+      "wr": 70.91,
+      "wr_ci95": [
+        70.1,
+        71.8
+      ],
+      "roi_140": -0.72,
+      "roi_183": 29.77
+    },
+    {
+      "thr": 0.68,
+      "bets": 6156,
+      "wr": 75.45,
+      "wr_ci95": [
+        74.4,
+        76.5
+      ],
+      "roi_140": 5.64,
+      "roi_183": 38.08
+    },
+    {
+      "thr": 0.7,
+      "bets": 6069,
+      "wr": 75.6,
+      "wr_ci95": [
+        74.5,
+        76.7
+      ],
+      "roi_140": 5.84,
+      "roi_183": 38.34
+    },
+    {
+      "thr": 0.72,
+      "bets": 4563,
+      "wr": 77.76,
+      "wr_ci95": [
+        76.5,
+        78.9
+      ],
+      "roi_140": 8.86,
+      "roi_183": 42.29
+    },
+    {
+      "thr": 0.75,
+      "bets": 3627,
+      "wr": 79.29,
+      "wr_ci95": [
+        77.9,
+        80.6
+      ],
+      "roi_140": 11.01,
+      "roi_183": 45.11
+    },
+    {
+      "thr": 0.8,
+      "bets": 1586,
+      "wr": 84.93,
+      "wr_ci95": [
+        83.1,
+        86.6
+      ],
+      "roi_140": 18.9,
+      "roi_183": 55.42
+    }
+  ],
+  "tiers_intra": [
+    {
+      "thr": 0.65,
+      "bets": 21192,
+      "wr": 70.55,
+      "wr_ci95": [
+        69.9,
+        71.2
+      ],
+      "roi_140": -1.24,
+      "roi_183": 29.1
+    },
+    {
+      "thr": 0.68,
+      "bets": 11817,
+      "wr": 75.07,
+      "wr_ci95": [
+        74.3,
+        75.8
+      ],
+      "roi_140": 5.1,
+      "roi_183": 37.38
+    },
+    {
+      "thr": 0.7,
+      "bets": 11639,
+      "wr": 75.12,
+      "wr_ci95": [
+        74.3,
+        75.9
+      ],
+      "roi_140": 5.17,
+      "roi_183": 37.47
+    },
+    {
+      "thr": 0.72,
+      "bets": 8714,
+      "wr": 77.65,
+      "wr_ci95": [
+        76.8,
+        78.5
+      ],
+      "roi_140": 8.7,
+      "roi_183": 42.09
+    },
+    {
+      "thr": 0.75,
+      "bets": 6961,
+      "wr": 79.13,
+      "wr_ci95": [
+        78.2,
+        80.1
+      ],
+      "roi_140": 10.78,
+      "roi_183": 44.8
+    },
+    {
+      "thr": 0.8,
+      "bets": 3003,
+      "wr": 84.72,
+      "wr_ci95": [
+        83.4,
+        86.0
+      ],
+      "roi_140": 18.6,
+      "roi_183": 55.03
+    }
+  ],
+  "resilience_by_minute": [
+    {
+      "t": "25.5-26.5",
+      "n_rows": 14390,
+      "auc": 0.6559,
+      "brier": 0.2301,
+      "bets": 2012,
+      "wr": 78.83,
+      "bet_rate": 13.98
+    },
+    {
+      "t": "26.5-27.5",
+      "n_rows": 14252,
+      "auc": 0.651,
+      "brier": 0.2312,
+      "bets": 1965,
+      "wr": 77.56,
+      "bet_rate": 13.79
+    },
+    {
+      "t": "27.5-28.5",
+      "n_rows": 14338,
+      "auc": 0.654,
+      "brier": 0.2313,
+      "bets": 2007,
+      "wr": 76.83,
+      "bet_rate": 14.0
+    },
+    {
+      "t": "28.5-29.5",
+      "n_rows": 14412,
+      "auc": 0.649,
+      "brier": 0.2314,
+      "bets": 1953,
+      "wr": 77.06,
+      "bet_rate": 13.55
+    },
+    {
+      "t": "29.5-30.0",
+      "n_rows": 41084,
+      "auc": 0.6538,
+      "brier": 0.2305,
+      "bets": 5340,
+      "wr": 77.85,
+      "bet_rate": 13.0
+    }
+  ],
+  "firing_policy": {
+    "first_fire": {
+      "bets": 4747,
+      "wr": 77.06,
+      "roi_140": 7.88
+    },
+    "anchor_only": {
+      "bets": 4321,
+      "wr": 77.69,
+      "roi_140": 8.77
+    },
+    "random_tick": {
+      "bets": 4372,
+      "wr": 77.54,
+      "roi_140": 8.55
+    }
+  },
+  "walk_forward_cuts": {
+    "Corte 1: Train <= 2022 -> Test 2023": {
+      "n_test_rows": 15585,
+      "auc": 0.6288,
+      "brier": 0.237,
+      "bets": 1157,
+      "wr": 74.94,
+      "roi_140": 4.91,
+      "roi_183": 37.13
+    },
+    "Corte 2: Train <= 2023 -> Test 2024": {
+      "n_test_rows": 78580,
+      "auc": 0.637,
+      "brier": 0.2346,
+      "bets": 7090,
+      "wr": 75.9,
+      "roi_140": 6.25,
+      "roi_183": 38.89
+    },
+    "Corte 3: Train <= 2024 -> Test 2025-2026": {
+      "n_test_rows": 187245,
+      "auc": 0.6484,
+      "brier": 0.2318,
+      "bets": 22942,
+      "wr": 77.3,
+      "roi_140": 8.23,
+      "roi_183": 41.47
+    }
+  },
+  "calibration_matrix": [
+    {
+      "decile": "(0.0,0.1]",
+      "n": 670,
+      "p_mean": 0.0742,
+      "y_mean": 0.1373,
+      "bias": -0.0631,
+      "diag": "Subestimado"
+    },
+    {
+      "decile": "(0.1,0.2]",
+      "n": 1054,
+      "p_mean": 0.1765,
+      "y_mean": 0.1917,
+      "bias": -0.0152,
+      "diag": "Perfecto"
+    },
+    {
+      "decile": "(0.2,0.3]",
+      "n": 4236,
+      "p_mean": 0.2559,
+      "y_mean": 0.2771,
+      "bias": -0.0213,
+      "diag": "Subestimado"
+    },
+    {
+      "decile": "(0.3,0.4]",
+      "n": 9672,
+      "p_mean": 0.3554,
+      "y_mean": 0.3538,
+      "bias": 0.0016,
+      "diag": "Perfecto"
+    },
+    {
+      "decile": "(0.4,0.5]",
+      "n": 21139,
+      "p_mean": 0.4487,
+      "y_mean": 0.4429,
+      "bias": 0.0058,
+      "diag": "Perfecto"
+    },
+    {
+      "decile": "(0.5,0.6]",
+      "n": 32141,
+      "p_mean": 0.5493,
+      "y_mean": 0.5466,
+      "bias": 0.0028,
+      "diag": "Perfecto"
+    },
+    {
+      "decile": "(0.6,0.7]",
+      "n": 17816,
+      "p_mean": 0.6454,
+      "y_mean": 0.6314,
+      "bias": 0.014,
+      "diag": "Perfecto"
+    },
+    {
+      "decile": "(0.7,0.8]",
+      "n": 8883,
+      "p_mean": 0.7416,
+      "y_mean": 0.718,
+      "bias": 0.0236,
+      "diag": "Sobreestimado"
+    },
+    {
+      "decile": "(0.8,0.9]",
+      "n": 1782,
+      "p_mean": 0.8235,
+      "y_mean": 0.8316,
+      "bias": -0.0082,
+      "diag": "Perfecto"
+    },
+    {
+      "decile": "(0.9,1.0]",
+      "n": 1083,
+      "p_mean": 0.9217,
+      "y_mean": 0.904,
+      "bias": 0.0177,
+      "diag": "Perfecto"
+    }
+  ],
+  "ablation_by_group": {
+    "A estado": 0.0007701827104360515,
+    "B fuerza": 0.0025566329677245703,
+    "C mercado": 0.01344878169213981,
+    "D liga": 0.001129889556095831
+  },
+  "ablation_base_auc": 0.6522644651776908
+}
