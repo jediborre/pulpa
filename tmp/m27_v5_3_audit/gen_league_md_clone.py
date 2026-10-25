@@ -120,6 +120,36 @@ for l in poor_sorted:
     lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_train']:,} | {t75['bets']:,} | {t75['wr']:.1f} % | {t75['roi_140']:+.2f} % |")
 lines.append("")
 
+# --- Ligas bloqueadas / arranque en frio ---
+cold_lgs = [l for l in leagues if l["matches_train"] == 0]
+neg_lgs = [l for l in leagues if ((next((t for t in l["tiers"] if t["thr"]==0.75),{}) or {}).get("roi_140") or 0) < 0]
+lines.append("## 5.3 Marcadores de la columna \"Bloqueo\"\n")
+lines.append("- **🆕 (arranque en frío):** la liga no tuvo ningún partido en el bloque de entrenamiento (A). "
+             "El modelo no la vio; sus priors son as-of. Hay %d ligas así.\n" % len(cold_lgs))
+lines.append("- **⚠️ (ROI negativo a 0.75):** la liga tiene ROI@1.40 < 0 %% a umbral 0.75. "
+             "Candidata a bloqueo por medición. Hay %d ligas así.\n" % len(neg_lgs))
+lines.append("- **(vacío):** liga normal, sin alertas.\n")
+if cold_lgs:
+    lines.append("### 5.4 Ligas en arranque en frío (Entrenado = 0)\n")
+    lines.append("| País | Liga | Holdout (C) | Apuestas @0.75 | WR @0.75 |")
+    lines.append("|---|---|---:|---:|---:|")
+    for l in sorted(cold_lgs, key=lambda x: x["matches_holdout"], reverse=True)[:40]:
+        t75 = next((t for t in l["tiers"] if t["thr"]==0.75), None)
+        bets = t75.get("bets", 0) if t75 else 0
+        wr = f"{t75['wr']:.1f} %" if (t75 and t75.get("wr") is not None) else "—"
+        lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_holdout']:,} | {bets:,} | {wr} |")
+    if len(cold_lgs) > 40:
+        lines.append(f"\n_...y {len(cold_lgs)-40} ligas más._\n")
+    lines.append("")
+if neg_lgs:
+    lines.append("### 5.5 Ligas con ROI negativo a 0.75 (⚠️)\n")
+    lines.append("| País | Liga | Entrenado | Apuestas @0.75 | WR @0.75 | ROI @1.40 |")
+    lines.append("|---|---|---:|---:|---:|---:|")
+    for l in sorted(neg_lgs, key=lambda x: next((t for t in x["tiers"] if t["thr"]==0.75),{}).get("roi_140", 0)):
+        t75 = next((t for t in l["tiers"] if t["thr"]==0.75), None)
+        lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_train']:,} | {t75['bets']:,} | {t75['wr']:.1f} % | {t75['roi_140']:+.2f} % |")
+    lines.append("")
+
 # caso polaco
 lines.append("## 6. Caso específico — `Poland 2nd Basketball League, Runda Zasadnicza`\n")
 lines.append("> Esta liga (852 partidos históricos, cobertura 100 %) fue **excluida** en `m27_v5_3` por el bug del "
