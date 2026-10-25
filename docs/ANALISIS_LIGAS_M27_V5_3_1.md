@@ -787,9 +787,9 @@ A 0.75: **164 apuestas, WR 79.88 %, ROI@1.40 +11.83 %** (en vivo: 4 partidos, v5
 | Hungary Divison A Women                                                     | 1                  | 1              | 1             | 0              | 100 %    | 0                | 0               | 0                | —          | —       |
 | **TOTAL**                                                                   | **85**             | **85**         | **67**        | **18**         | **79 %** | **59**           | **47**          | **12**           | **80 %**   | **🟢**   |
 
-**Simulación a cuota 1.40 (apuesta flat, bankroll inicial $1,000.00):**
-- `m27_v5_3` (original): 85 apuestas → ganancia **+$103.53** (ROI +10.35 %). Bankroll final: **$1,103.53** (stake total $1,000.00; ganancia por apuesta de $1: +$8.80).
-- `m27_v5_3_1` (clon): 59 apuestas → ganancia **+$115.25** (ROI +11.53 %). Bankroll final: **$1,115.25** (stake total $1,000.00; ganancia por apuesta de $1: +$6.80).
+**Simulación a cuota 1.40 (apuesta flat de $100 por partido):**
+- `m27_v5_3` (original): 85 apuestas → $8,500.00 apostados → ganancia **+$880.00** (ROI +10.35 %). Bankroll final: **$9,380.00** (ganancia por apuesta de $1: +$8.80).
+- `m27_v5_3_1` (clon): 59 apuestas → $5,900.00 apostados → ganancia **+$680.00** (ROI +11.53 %). Bankroll final: **$6,580.00** (ganancia por apuesta de $1: +$6.80).
 
 **Lectura:** el clon es más conservador (59 vs 85 apuestas) con acierto ligeramente superior (79.7 % vs 78.8 %). Diferencia pequeña, muestra diminuta. No se justifica cambio de modelo solo con esta evidencia.
 
