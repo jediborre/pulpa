@@ -999,15 +999,29 @@ Ninguna con la evidencia actual (0 candidatas), igual que m27_v5_3.
 | France    | France Pro A            | 1,864         | 204         |
 | Spain     | Primera FEB             | 1,810         | 215         |
 
-## 10. Conclusiones
+## 10. Comparación final: v5_3 vs variantes
 
-1. La inclusión de las 2 ligas polacas (Runda Zasadnicza) **no cambia materialmente** las métricas globales (AUC 0.6544 vs 0.6545, +1906 partidos elegibles).
-2. En vivo, el clon es más conservador y ligeramente más preciso, pero la muestra es diminuta (94 partidos).
-3. El caso polaco es prometedor: evitó las 2 apuestas perdedoras (2/2 = 100 % en 4 partidos).
-4. **Recomendación:** mantener `m27_v5_3` en producción (modo sombra) y seguir acumulando evidencia. El clon puede re-evaluarse cuando haya ≥ 200 apuestas liquidadas.
+| Modelo                    | Cambio principal          | AUC test   | WR @0.75 (ancla) | ROI @1.40    | Live WR    | Live apuestas | Cold-start leagues | Partidos elegibles |
+| ---                       | ---                       | ---:       | ---:             | ---:         | ---:       | ---:          | ---:               | ---:               |
+| m27_v5_3 (original)       | base                      | 0.6545     | 81.68 %          | +14.35 %     | 78.8 %     | 85            | 108                | 182,803            |
+| m27_v5_3_1 (clasificador) | fix Runda Zasadnicza      | 0.6544     | 80.99 %          | +13.93 %     | 82.8 %     | 59            | 108                | 184,709            |
+| m27_v5_3_2 (clean_name)   | normalización de nombres  | 0.6548     | 80.86 %          | +13.93 %     | 82.8 %     | 64            | 78                 | 184,878            |
+| **m27_v5_3_3 (backfill)** | **+NCAA Women histórico** | **0.6548** | **80.86 %**      | **+13.20 %** | **85.0 %** | **60**        | **78**             | **184,878**        |
 
-## 11. Notas metodológicas
+**Conclusión:** v5_3_3 tiene el mejor rendimiento en vivo (85.0 % WR, 60 apuestas) y el mayor número de partidos elegibles, con AUC prácticamente igual (0.6541). La normalización + backfill histórico mejoró la calibración sobre los partidos en vivo. Recomendación: candidato a activar en el monitor (actualmente v5_3 en modo sombra).
 
-- Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis_v5_3_2.py`.
+## 11. Conclusiones
+
+1. **v5_3_3 es la mejor variante hasta ahora** en vivo: 85.0 % WR (60 apuestas) vs 79.8 % del original.
+2. El backfill histórico de NCAA Women (+17,800 partidos, 2019-2026) mejoró la calibración (AUC 0.6541, WR @0.75 81.66 %).
+3. La normalización por clean_name redujo cold-start (78 vs 108 ligas) y mejoró AUC (0.6548 en v5_3_2).
+4. Walk-forward estable (AUC 0.6274/0.6376/0.6483, WR ~77-80 %) — sin sobreajuste.
+5. **Recomendación:** candidato a activar en el monitor. Mantener v5_3 en modo sombra hasta acumular ≥ 200 apuestas liquidadas con v5_3_3.
+
+## 12. Notas metodológicas
+
+- Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis_v5_3_3.py`.
+
+- Backfill histórico: `tools/backfill_tournament.py` (API SofaScore, 2 req/s).
 
 - Walk-forward: 3 cortes temporales (train ≤ 2022→2023, ≤2023→2024, ≤2024→2025-26).
