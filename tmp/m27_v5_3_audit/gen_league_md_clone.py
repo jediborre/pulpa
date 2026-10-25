@@ -133,7 +133,7 @@ if cold_lgs:
     lines.append("### 5.4 Ligas en arranque en frío (Entrenado = 0)\n")
     lines.append("| País | Liga | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 |")
     lines.append("|---|---|---:|---:|---:|---:|---:|")
-    for l in sorted(cold_lgs, key=lambda x: x["matches_holdout"], reverse=True)[:40]:
+    for l in sorted(cold_lgs, key=lambda x: (next((t for t in x["tiers"] if t["thr"]==0.75),{}) or {}).get("bets", 0), reverse=True)[:40]:
         t75 = next((t for t in l["tiers"] if t["thr"]==0.75), None)
         bets = t75.get("bets", 0) if t75 else 0
         wrv = t75.get("wr") if t75 else None
