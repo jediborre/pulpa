@@ -121,11 +121,11 @@ Si necesitas investigar o modificar alguna parte del sistema, consulta esta guí
 Toda la documentación conceptual, histórica y técnica del proyecto ha sido consolidada:
 - **`README.md` (Raíz):** Índice general del repositorio, guía de instalación y mapa de documentación en `docs/`.
 - **`modelos.md` (Raíz y `docs/`):** El documento maestro de modelos de ML. Contiene el catálogo de features (F0-F15 y G1-G9), hiperparámetros, snapshots y estadísticas de todas las versiones (V1 a V17, m27, m30).
-- **`docs/ESTADO_DEL_PROYECTO.md`:** Visión general completa del repositorio, arquitectura, base de datos, hallazgos y guía rápida.
-- **`docs/findings.md`:** Hallazgos cuantitativos (por qué el minuto 27 supera al 30, impacto del H2H, correlaciones).
-- **`docs/monitoreo_v2.md` y `docs/glosario.md`:** Especificación formal del daemon asíncrono y glosario de logs coloreados.
-- **`docs/OBSCURA_*.md`:** Investigación de evasión anti-bot, bugs corregidos en Rust y comparativa de scraping.
-- **`docs/ligas_10min.md` y `docs/ligas_12min.md`:** Clasificación de ligas por duración de cuartos reglamentarios (FIBA vs NBA).
+- **`docs/planificacion/ESTADO_DEL_PROYECTO.md`:** Visión general completa del repositorio, arquitectura, base de datos, hallazgos y guía rápida.
+- **`docs/findings/findings.md`:** Hallazgos cuantitativos (por qué el minuto 27 supera al 30, impacto del H2H, correlaciones).
+- **`docs/monitor/monitoreo_v2.md` y `docs/telegram/glosario.md`:** Especificación formal del daemon asíncrono y glosario de logs coloreados.
+- **`docs/scraping/OBSCURA_*.md`:** Investigación de evasión anti-bot, bugs corregidos en Rust y comparativa de scraping.
+- **`docs/ligas/ligas_10min.md` y `docs/ligas/ligas_12min.md`:** Clasificación de ligas por duración de cuartos reglamentarios (FIBA vs NBA).
 
 ### 2. Monitoreo en Vivo (`monitor_v3/`, `monitor_v2/` y `monitor_v1/`)
 - **`monitor_v3/` (Versión Actual de Producción - API Móvil Zero-Browser):** Daemon modular de alto rendimiento y ultra-baja latencia (1.2s) basado en `asyncio`, cliente móvil `tls_client okhttp4_android_13` y rotación multi-JWT:
@@ -201,11 +201,11 @@ Para el funcionamiento de `monitor_v3` y las descargas históricas ultrarrápida
 ### 4. Infraestructura Real de `api.sofascore.com` (Fastly/Varnish, NO Cloudflare):
 > ⚠️ **ANTES de tocar la capa de red móvil, parchear el APK o investigar un 403,
 > revisar obligatoriamente los findings previos de decompilado:**
-> - `docs/REVERSE_ENGINEERING_SOFASCORE.md` → contrato exacto de la app, `User-Agent`
+> - `docs/scraping/REVERSE_ENGINEERING_SOFASCORE.md` → contrato exacto de la app, `User-Agent`
 >   firmado (MD5 + ventana de 100s + salt `sofa2012`), clases ofuscadas, herramientas
 >   (androguard, tls_client, adb `run-as`, WebView CDP) y procedimiento para re-derivar
 >   si se actualiza el APK.
-> - `docs/HALLAZGOS_403_SOFASCORE.md` → bitácora de la investigación del 403.
+> - `docs/scraping/HALLAZGOS_403_SOFASCORE.md` → bitácora de la investigación del 403.
 >
 > **Solución validada (200 OK):** `tls_client` con `client_identifier="okhttp4_android_13"`
 > (huella TLS/HTTP2 OkHttp Android) + `User-Agent` firmado + cabeceras
@@ -219,7 +219,7 @@ Para el funcionamiento de `monitor_v3` y las descargas históricas ultrarrápida
 - **HTTP Toolkit (proxy `127.0.0.1:8000`) NO es la solución:** al activar la intercepción MITM por ADB la app real también recibe 403 (el WAF detecta el MITM); al desactivarla la app vuelve a funcionar. Por eso el token se extrae por ADB sin proxy (opción 38).
 - **La app inyecta cookies del WebView en OkHttp** (`SCSWebviewCookieJar`, `convertCookieManager`, `WebViewCookieManager`), lo que sugiere que el WAF exige una cookie/estado de sesión obtenido por un WebView real (posible `challenge` de Varnish) que la app mantiene en memoria y **no persiste** en `app_webview/Default/Cookies` (se revisó: solo cookies publicitarias).
 - **Próximas líneas de investigación sugeridas:** (a) habilitar/inspeccionar WebView remote debugging (`webview_devtools_remote`) para extraer la cookie de challenge en vivo; (b) decompilar la capa de red de la app (clases `SCSWebviewCookieJar`/interceptores OkHttp) para hallar cabeceras o firmas obligatorias; (c) usar el teléfono como egress real (VPN/reverse) o capturar su `ClientHello` con proxy passthrough (ver `tmp/debug_connection/passthrough_proxy.py`); (d) revisar si el WAF exige un `x-*` calculado por JNI.
-- Scripts de diagnóstico de esta línea: `tmp/debug_connection/` (`test_direct_matrix.py`, `test_exact_endpoints.py`, `test_android_tls.py`, `test_tlsclient.py`, `test_fresh_token.py`, `test_token_init_cookies.py`, `pull_cookie.py`, `read_cookies.py`, `passthrough_proxy.py`). Documento detallado: `docs/HALLAZGOS_403_SOFASCORE.md`.
+- Scripts de diagnóstico de esta línea: `tmp/debug_connection/` (`test_direct_matrix.py`, `test_exact_endpoints.py`, `test_android_tls.py`, `test_tlsclient.py`, `test_fresh_token.py`, `test_token_init_cookies.py`, `pull_cookie.py`, `read_cookies.py`, `passthrough_proxy.py`). Documento detallado: `docs/scraping/HALLAZGOS_403_SOFASCORE.md`.
 
 ---
 
