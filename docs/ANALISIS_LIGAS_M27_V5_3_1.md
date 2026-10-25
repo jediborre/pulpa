@@ -810,6 +810,8 @@ A 0.75: **164 apuestas, WR 79.88 %, ROI@1.40 +11.83 %** (en vivo: 4 partidos, v5
 | 1.83  | m27_v5_3 (original) | 85       | $118,877.92    | $+117,877.92 |
 | 1.83  | m27_v5_3_1 (clon)   | 59       | $41,412.80     | $+40,412.80  |
 
+> **Advertencia:** Kelly (incluso 1/4) compone sobre 85 apuestas con un edge del ~44 % a momio 1.83, lo que produce un crecimiento explosivo e **irrealista** en la práctica (el edge real es menor y variable). En operación real usar 1/10 Kelly o stake fijo. Los números son teóricos.
+
 **Lectura:** con Kelly fraccional el clon, al tener mayor confianza media en sus apuestas y mayor ROI, puede generar mayor crecimiento compuesto. La ventaja se amplifica con momio 1.83.
 
 **Lectura:** el clon es más conservador (59 vs 85 apuestas) con acierto ligeramente superior (79.7 % vs 78.8 %). Diferencia pequeña, muestra diminuta. No se justifica cambio de modelo solo con esta evidencia.

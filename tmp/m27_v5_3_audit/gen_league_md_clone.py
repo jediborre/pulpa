@@ -259,6 +259,9 @@ for odds in (1.40, 1.83):
         note = " (se detuvo)" if stopped else ""
         lines.append(f"| {odds:.2f} | {label} | {n}{note} | ${bank:,.2f} | ${gain:+,.2f} |")
 lines.append("")
+lines.append("> **Advertencia:** Kelly (incluso 1/4) compone sobre 85 apuestas con un edge del ~44 % a momio 1.83, "
+             "lo que produce un crecimiento explosivo e **irrealista** en la práctica (el edge real es menor y "
+             "variable). En operación real usar 1/10 Kelly o stake fijo. Los números son teóricos.\n")
 lines.append("**Lectura:** con Kelly fraccional el clon, al tener mayor confianza media en sus apuestas y mayor ROI, "
              "puede generar mayor crecimiento compuesto. La ventaja se amplifica con momio 1.83.\n")
 
