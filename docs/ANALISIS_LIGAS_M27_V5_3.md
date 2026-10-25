@@ -871,6 +871,8 @@ _...y 68 ligas más con menos volumen._
 - **m27_v5_3 (original):** 85 apuestas, 67 ganadas, 18 perdidas → WR 78.8 %.
 - **m27_v5_3_1 (clon):** 59 apuestas, 47 ganadas, 12 perdidas → WR 79.7 %.
 
+> **Caso específico — `Poland 2nd Basketball League, Runda Zasadnicza`:** 4 partidos en vivo. `m27_v5_3` apostó los 4 (2 ganadas, 2 perdidas → 50 %). `m27_v5_3_1` apostó solo 2 (los 2 que ganó) y pasó los 2 que perdió → 2/2 = **100 %**. Muestra diminuta (4 partidos), pero la señal es positiva: el modelo entrenado con la liga evitó las 2 apuestas perdedoras.
+
 | Liga                                                                        | m27_v5_3 (orig) | m27_v5_3_1 (clon) | Vivo: apuestas | Vivo: ganadas | Vivo: perdidas |
 | ---                                                                         | ---             | ---               | ---:           | ---:          | ---:           |
 | Liga 1 Masculin, Faza I                                                     | 100 % (1/1)     | 100 % (1/1)       | 1              | 1             | 0              |

@@ -242,6 +242,11 @@ if EVAL:
     lines.append(f"- **Entrenamiento:** {s['n_evaluated']} de los 94 partidos en vivo tuvieron ancla (t=30) evaluable.")
     lines.append(f"- **m27_v5_3 (original):** {s['orig_bets']} apuestas, {s['orig_wins']} ganadas, {s['orig_losses']} perdidas → WR {s['orig_wins']/ (s['orig_wins']+s['orig_losses'])*100:.1f} %.")
     lines.append(f"- **m27_v5_3_1 (clon):** {s['new_bets']} apuestas, {s['new_wins']} ganadas, {s['new_losses']} perdidas → WR {s['new_wins']/s['new_bets']*100:.1f} %.\n")
+    lines.append("> **Caso específico — `Poland 2nd Basketball League, Runda Zasadnicza`:** 4 partidos en vivo. "
+                 "`m27_v5_3` apostó los 4 (2 ganadas, 2 perdidas → 50 %). "
+                 "`m27_v5_3_1` apostó solo 2 (los 2 que ganó) y pasó los 2 que perdió → 2/2 = **100 %**. "
+                 "Muestra diminuta (4 partidos), pero la señal es positiva: el modelo entrenado con la liga "
+                 "evitó las 2 apuestas perdedoras.\n")
     lines.append("| Liga | m27_v5_3 (orig) | m27_v5_3_1 (clon) | Vivo: apuestas | Vivo: ganadas | Vivo: perdidas |")
     lines.append("|---|---|---|---:|---:|---:|")
     # aggregate per league from EVAL rows
