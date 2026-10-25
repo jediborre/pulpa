@@ -272,3 +272,74 @@ Bonus de la migración: `quarter_scores_v2` pasó de 2.916 a **250.143 partidos*
 
 **Reentrenamiento final (2026-10-20 14:11)** con el dataset reconstruido (backfill de líneas completo + `quarter_scores_v2` canónica): AUC test 0.6552, Brier 0.2303, LogLoss 0.6518, 7.959 apuestas @0.75 con WR 80.73 % y ROI@1.40 +13.02 %. Umbral operativo conservado en **0.75** (la regla `OPERATING_CONF` del pipeline impidió que volviera a 0.72). Paridad offline/live: **OK**.
 
+---
+
+## 8. Hallazgo nuevo (2026-10-25): blowouts, garbage time y calibración del mercado
+
+### 8.1 El modelo sobreconfía en ventajas grandes
+
+En partidos con ventaja grande al minuto 27 (blowout), el modelo asigna probabilidad muy alta al equipo que va ganando (0.85–0.90) porque `cur_score_diff`, `lead_z` y `lead_vs_lg_vol` crecen con la ventaja. Pero en la práctica, cuando el partido ya está decidido, el equipo que va perdiendo juega sin presión (garbage time) y **suele ganar el Q4**, mientras el ganador relaja la defensa.
+
+**Evidencia en vivo (2026-10-25, 3 derrotas de 8):**
+| Partido | Ventaja al min 27 | Apuesta del modelo | Resultado real |
+|---|---|---|---|
+| Hungary Divison A Women | +28 (local) | local | visitante ganó Q4 |
+| A1 Women | +15 (visitante) | visitante | local ganó Q4 (remontada) |
+| Serie A2 | -2 (visitante arriba) | local (recuperación) | visitante aguantó |
+
+Los 3 fallos son los modos clásicos: **palizas (garbage time)** y **remontadas**. No hay liga tóxica ni error de calibración de liga — es un problema de features de estado en blowouts.
+
+**Por qué la gráfica "se inclina":** la probabilidad del modelo sube conforme la ventaja crece, sin considerar que en blowouts la ventaja ya no es predictiva del Q4.
+
+### 8.2 El mercado ya calibró el blowout (selección adversa)
+
+Las casas de apuestas saben lo mismo que el modelo. En partidos con ventaja grande:
+- El momio del favorito se desploma a **1.2–1.3 o incluso 1.01**.
+- En muchos casos la apuesta **desaparece** o el juego se retira del mercado.
+- El modelo teóricamente "acierta" (el favorito gana el partido), pero la apuesta **no es viable** porque el momio real no cubre el riesgo.
+
+**Consecuencia:** el ROI teórico (calculado a momio 1.40/1.83 conservador) **no se traduce en beneficio real**. El modelo selecciona sistemáticamente partidos donde el mercado ya eliminó el edge. Esto es peor que una mala calibración: es **selección adversa**.
+
+### 8.3 Mejoras incorporadas en las sub-versiones v5_3.x
+
+| Sub-versión | Cambio | Efecto |
+|---|---|---|
+| v5_3_1 | Fix clasificador: `Runda Zasadnicza` = regular (no 2ª fase) | +2 ligas (Poland 2nd, 1 Liga Kobiet) |
+| v5_3_2 | Normalización por `clean_name` (agrupa variantes) | 1,465 → 1,311 ligas; cold-start 108 → 78 |
+| v5_3_3 | Backfill histórico NCAA Women (19,541 partidos, 2019-2026) | AUC 0.6548→0.6541, live WR 82.8→85.0 % |
+| v5_3_4 | Backfill más ligas (Prva Liga, LBP, NBL1, etc.) | +6,181 partidos elegibles |
+| v5_3_5 | Backfill masivo (16 ligas cold-start) | AUC 0.6543, WR @0.75 82.92 %, live 83.3 % |
+| Manual | Bloqueo temporal de 6 ligas con ROI negativo | reduce volumen tóxico |
+
+### 8.4 Propuesta v5_4: cambios concretos (revisada)
+
+1. **EV real (prioridad máxima):** `EV = p_model × cuota_Q4 − (1 − p_model)`. Apostar solo si `EV > 0`. Elimina automáticamente las apuestas en blowouts (donde el momio real es 1.05-1.20 y el EV es negativo aunque P sea alto). Resuelve garbage time + calibración del mercado.
+2. **Feature de garbage time:** añadir `is_blowout` o penalizar confianza en ventajas grandes. Medir ΔAUC en blowouts vs juegos cerrados.
+3. **Calibración condicional al mercado** (candidata): el modelo va 7 pp sobreconfiado con mercado. Requiere validación en holdout C.
+4. **Filtrado por EV en el monitor:** calcular EV con `q4_ml_home/away` antes de alertar.
+5. **Normalización** (ya en v5_3_2+): mantener.
+6. **Backfill incremental:** herramienta lista (`menu.bat` opción 41).
+
+### 8.5 Orden de prioridad para v5_4
+1. EV real (desbloquea todo lo demás).
+2. Feature de garbage time.
+3. Calibración condicional al mercado.
+4. Backfill de más ligas.
+5. Normalización (ya implementado).
+
+### 8.6 Lo que NO hacer (lecciones aprendidas)
+- No transplantar filtros del monitor v1 (lista negra manual, filtros de fase).
+- No decidir con 40-94 apuestas (IC95 ±10-14 pp).
+- No confiar en muestras pequeñas por liga.
+- No usar umbrales por P sin considerar el momio.
+
+### 8.7 Estado actual de los modelos
+| Modelo | AUC test | WR @0.75 | Live WR | Partidos elegibles | Cold-start | En producción |
+|---|---|---|---|---|---|---|
+| m27_v5_3 (original) | 0.6545 | 81.68 % | 78.8 % | 182,803 | 108 | Sí (modo sombra) |
+| m27_v5_3_1 (clasificador) | 0.6544 | 80.99 % | 82.8 % | 184,709 | 108 | No |
+| m27_v5_3_2 (clean_name) | 0.6548 | 80.86 % | 82.8 % | 184,878 | 78 | No |
+| m27_v5_3_3 (backfill NCAA) | 0.6541 | 81.66 % | 85.0 % | 201,660 | 78 | No |
+| m27_v5_3_4 (backfill+) | 0.6541 | 82.21 % | 83.3 % | 207,841 | 78 | No |
+| **m27_v5_3_5 (backfill masivo)** | **0.6543** | **82.92 %** | **83.3 %** | **209,888** | **78** | **Sí (activo, a la par de v5_3)** |
+
