@@ -240,9 +240,8 @@ for odds in (1.40, 1.83):
     lines.append(f"### Momio {odds:.2f}\n")
     so = sweep(False, odds)
     sc = sweep(True, odds)
-    lines.append("| Umbral | Original: apuestas | Original: WR | Original: ROI | Original: bankroll final | Clon: apuestas | Clon: WR | Clon: ROI | Clon: bankroll final |")
-    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|")
-    # chronological order
+    lines.append("| Umbral | O:apuestas | O:WR | O:ROI | O:ganancia | O:bankroll | C:apuestas | C:WR | C:ROI | C:ganancia | C:bankroll |")
+    lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
     import sqlite3 as _sq
     _conn = _sq.connect(str(ROOT / "matches.db"))
     _conn.row_factory = _sq.Row
@@ -253,8 +252,7 @@ for odds in (1.40, 1.83):
     for thr in THRS_SWEEP:
         bo, wo, lo, wro, roio, po = so[thr]
         bc, wc, lc, wrc, roic, pc = sc[thr]
-        # bankroll sim for original (bank inicial 1000, apuesta 100, para si no hay fondos)
-        bank_o = 1000.0; n_o = 0; stopped_o = False
+        bank_o = 1000.0; stopped_o = False
         for r in ordered:
             if r["orig_conf"] < thr:
                 continue
@@ -264,8 +262,8 @@ for odds in (1.40, 1.83):
             bank_o -= 100
             if r["orig_result"] == "win":
                 bank_o += 100 * odds
-            n_o += 1
-        bank_c = 1000.0; n_c = 0; stopped_c = False
+        gain_o = bank_o - 1000
+        bank_c = 1000.0; stopped_c = False
         for r in ordered:
             new_bet = (r["new_p"] >= thr and r["new_margin"] >= 0) or (r["new_p"] <= 1-thr and r["new_margin"] <= 0)
             if not new_bet:
@@ -276,10 +274,11 @@ for odds in (1.40, 1.83):
             bank_c -= 100
             if r["new_won"]:
                 bank_c += 100 * odds
-            n_c += 1
-        tag_o = " (se detuvo)" if stopped_o else ""
-        tag_c = " (se detuvo)" if stopped_c else ""
-        lines.append(f"| {thr:.2f} | {bo} | {wro:.1f} % | {roio:+.2f} % | ${bank_o:,.2f}{tag_o} | {bc} | {wrc:.1f} % | {roic:+.2f} % | ${bank_c:,.2f}{tag_c} |")
+        gain_c = bank_c - 1000
+        tag_o = " *" if stopped_o else ""
+        tag_c = " *" if stopped_c else ""
+        lines.append(f"| {thr:.2f} | {bo} | {wro:.1f} % | {roio:+.2f} % | ${gain_o:+,.2f}{tag_o} | ${bank_o:,.2f} | {bc} | {wrc:.1f} % | {roic:+.2f} % | ${gain_c:+,.2f}{tag_c} | ${bank_c:,.2f} |")
+    lines.append("> * = se detuvo por falta de fondos.\n")
     lines.append("")
 
 lines.append("**Lectura:** el clon es más conservador (59 vs 85 apuestas) con acierto ligeramente superior "
