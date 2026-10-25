@@ -312,6 +312,16 @@ lines.append("- IC95 = Wilson. Bloqueo candidato si el límite superior del IC95
 lines.append("- Ligas con < 30 anclas en C se omiten por falta de muestra.")
 lines.append("- Resultados en vivo: `tmp/m27_v5_3_audit/live_league_stats.py` sobre `bet_monitor_log_v3` (apuestas liquidadas del monitoreo).\n")
 
+def _vw(s):
+    w = 0
+    for ch in s:
+        cp = ord(ch)
+        if cp >= 0x1F000 or (0x2600 <= cp <= 0x27BF) or (0x1F300 <= cp <= 0x1F9FF):
+            w += 2
+        else:
+            w += 1
+    return w
+
 def align_tables(text: str) -> str:
     out_lines = []
     i = 0
@@ -332,10 +342,12 @@ def align_tables(text: str) -> str:
             for r in rows:
                 while len(r) < ncols:
                     r.append("")
-            widths = [max(len(r[c]) for r in rows) for c in range(ncols)]
+            widths = [max(_vw(r[c]) for r in rows) for c in range(ncols)]
             for r in rows:
-                padded = " | ".join(c.ljust(w) for c, w in zip(r, widths))
-                out_lines.append("| " + padded + " |")
+                cells = []
+                for c, w in zip(r, widths):
+                    cells.append(c + " " * (w - _vw(c)))
+                out_lines.append("| " + " | ".join(cells) + " |")
         else:
             out_lines.append(lines[i])
             i += 1

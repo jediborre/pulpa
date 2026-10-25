@@ -300,6 +300,16 @@ lines.append("## 10. Notas metodológicas\n")
 lines.append("- Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis_clone.py`.\n")
 
 # align tables
+def _vw(s):
+    w = 0
+    for ch in s:
+        cp = ord(ch)
+        if cp >= 0x1F000 or (0x2600 <= cp <= 0x27BF) or (0x1F300 <= cp <= 0x1F9FF):
+            w += 2
+        else:
+            w += 1
+    return w
+
 def align_tables(text):
     out_lines = []; i = 0; lines = text.split("\n")
     while i < len(lines):
@@ -311,9 +321,12 @@ def align_tables(text):
             ncols = max(len(r) for r in rows)
             for r in rows:
                 while len(r) < ncols: r.append("")
-            widths = [max(len(r[c]) for r in rows) for c in range(ncols)]
+            widths = [max(_vw(r[c]) for r in rows) for c in range(ncols)]
             for r in rows:
-                out_lines.append("| " + " | ".join(c.ljust(w) for c, w in zip(r, widths)) + " |")
+                cells = []
+                for c, w in zip(r, widths):
+                    cells.append(c + " " * (w - _vw(c)))
+                out_lines.append("| " + " | ".join(cells) + " |")
         else:
             out_lines.append(lines[i]); i += 1
     return "\n".join(out_lines)
