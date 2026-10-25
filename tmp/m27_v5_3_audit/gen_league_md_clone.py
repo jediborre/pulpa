@@ -179,6 +179,19 @@ tot_n_wr = (tot_n_wins/tot_n_bets*100) if tot_n_bets else 0
 tot_diff = "🟢" if tot_n_wr > tot_o_wr else ("🔴" if tot_n_wr < tot_o_wr else "⚪")
 lines.append(f"| **TOTAL** | **{tot_live}** | **{tot_o_bets}** | **{tot_o_wins}** | **{tot_o_losses}** | **{tot_o_wr:.0f} %** | **{tot_n_bets}** | **{tot_n_wins}** | **{tot_n_losses}** | **{tot_n_wr:.0f} %** | **{tot_diff}** |")
 lines.append("")
+# simulacion ROI a 1.40
+o_profit = tot_o_wins * 0.4 - tot_o_losses
+n_profit = tot_n_wins * 0.4 - tot_n_losses
+o_roi = o_profit / tot_o_bets * 100 if tot_o_bets else 0
+n_roi = n_profit / tot_n_bets * 100 if tot_n_bets else 0
+o_1000 = (1000 / tot_o_bets * o_profit) if tot_o_bets else 0
+n_1000 = (1000 / tot_n_bets * n_profit) if tot_n_bets else 0
+lines.append("**Simulación a cuota 1.40 (apuesta flat):**")
+lines.append(f"- `m27_v5_3` (original): {tot_o_bets} apuestas → ganancia **{o_profit:+.2f} u.** (ROI {o_roi:+.2f} %). "
+             f"Equivalente con 1000 u. de stake total: **{o_1000:+.2f} u.**")
+lines.append(f"- `m27_v5_3_1` (clon): {tot_n_bets} apuestas → ganancia **{n_profit:+.2f} u.** (ROI {n_roi:+.2f} %). "
+             f"Equivalente con 1000 u. de stake total: **{n_1000:+.2f} u.**")
+lines.append("")
 lines.append("**Lectura:** el clon es más conservador (59 vs 85 apuestas) con acierto ligeramente superior "
              "(79.7 % vs 78.8 %). Diferencia pequeña, muestra diminuta. No se justifica cambio de modelo solo "
              "con esta evidencia.\n")
