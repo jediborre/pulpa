@@ -136,9 +136,36 @@ if pol:
 
 # prueba en vivo (del clon)
 s = EVAL["summary"]
+# aggregate per league from eval rows
+from collections import defaultdict
+agg = defaultdict(lambda: {"live": 0, "orig_bets": 0, "orig_wins": 0, "orig_losses": 0,
+                            "new_bets": 0, "new_wins": 0, "new_losses": 0})
+for r in EVAL["rows"]:
+    a = agg[r["league"]]
+    a["live"] += 1
+    if r["orig_result"] == "win":
+        a["orig_bets"] += 1; a["orig_wins"] += 1
+    elif r["orig_result"] == "loss":
+        a["orig_bets"] += 1; a["orig_losses"] += 1
+    if r["new_bet"]:
+        a["new_bets"] += 1
+        if r["new_won"]:
+            a["new_wins"] += 1
+        else:
+            a["new_losses"] += 1
+
 lines.append("## 7. Prueba contra los partidos en vivo de `m27_v5_3`\n")
 lines.append(f"- **m27_v5_3 (original):** {s['orig_bets']} apuestas, {s['orig_wins']} ganadas, {s['orig_losses']} perdidas → WR {s['orig_wins']/(s['orig_wins']+s['orig_losses'])*100:.1f} %.")
 lines.append(f"- **m27_v5_3_1 (clon):** {s['new_bets']} apuestas, {s['new_wins']} ganadas, {s['new_losses']} perdidas → WR {s['new_wins']/s['new_bets']*100:.1f} %.\n")
+lines.append("### 7.1 Resumen por liga — apuestas en vivo (original vs clon)\n")
+lines.append("| Liga | En vivo (partidos) | v5_3: apuestas | v5_3: ganadas | v5_3: perdidas | v5_3: WR | v5_3_1: apuestas | v5_3_1: ganadas | v5_3_1: perdidas | v5_3_1: WR |")
+lines.append("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+for lg in sorted(agg):
+    a = agg[lg]
+    orig_wr = (f"{a['orig_wins']/a['orig_bets']*100:.0f} %" if a["orig_bets"] else "—")
+    new_wr = (f"{a['new_wins']/a['new_bets']*100:.0f} %" if a["new_bets"] else "—")
+    lines.append(f"| {lg} | {a['live']} | {a['orig_bets']} | {a['orig_wins']} | {a['orig_losses']} | {orig_wr} | {a['new_bets']} | {a['new_wins']} | {a['new_losses']} | {new_wr} |")
+lines.append("")
 lines.append("**Lectura:** el clon es más conservador (59 vs 85 apuestas) con acierto ligeramente superior "
              "(79.7 % vs 78.8 %). Diferencia pequeña, muestra diminuta. No se justifica cambio de modelo solo "
              "con esta evidencia.\n")
