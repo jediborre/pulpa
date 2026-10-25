@@ -9,6 +9,15 @@ D = json.load(open(ROOT / "tmp" / "m27_v5_3_audit" / "league_threshold_analysis.
 SUM = json.load(open(ROOT / "models" / "m27_v5_3" / "model_outputs" / "m27_v5_3_summary.json", encoding="utf-8"))
 
 leagues = D["leagues"]
+# country map
+import sqlite3 as _sq
+_conn = _sq.connect(str(ROOT / "matches.db"))
+_conn.row_factory = _sq.Row
+_country = {r["league"]: r["country_or_region"] for r in _conn.execute(
+    "SELECT league, country_or_region FROM leagues_classification")}
+_conn.close()
+for l in leagues:
+    l["country"] = _country.get(l["league"], "?")
 THRS = D["thresholds"]
 
 lines = []
@@ -50,28 +59,29 @@ lines.append("## 3. Tabla resumen por liga (ordenada por apuestas a 0.75)\n")
 lines.append("> Nota: solo se incluyen ligas con ≥ 30 anclas en el holdout C (251 ligas). "
              "Las ligas con menos volumen quedan fuera; por eso la suma de apuestas aquí (1,855 a 0.75) "
              "es menor que la tabla global (2,538). El resto corresponde a ligas de cola.\n")
-lines.append("| Liga | Entrenado (A) | Holdout (C) | Apuestas @0.75 | WR @0.75 | IC95 | ROI @1.40 | ROI @1.83 | Bloqueo |")
-lines.append("|---|---:|---:|---:|---:|---|---:|---:|---|")
+lines.append("| País | Liga | Entrenado (A) | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 | IC95 | ROI @1.40 | ROI @1.83 | Bloqueo |")
+lines.append("|---|---|---:|---:|---:|---:|---:|---:|---|---:|---:|---|")
 for l in leagues:
     t75 = next((t for t in l["tiers"] if t["thr"] == 0.75), None)
     bets = t75.get("bets") if t75 else 0
-    wr = f"{t75['wr']:.1f} %" if (t75 and t75.get("wr") is not None) else "—"
+    wrv = t75.get("wr") if t75 else None
+    wins = round(wrv * bets / 100) if (wrv is not None and bets) else 0
+    losses = bets - wins if bets else 0
+    wr = f"{wrv:.1f} %" if (wrv is not None) else "—"
     ci = (f"{t75['wr_ci95'][0]}–{t75['wr_ci95'][1]}" if (t75 and t75.get("wr_ci95")) else "—")
     roi140 = (f"{t75['roi_140']:+.2f} %" if (t75 and t75.get("roi_140") is not None) else "—")
     roi183 = (f"{t75['roi_183']:+.2f} %" if (t75 and t75.get("roi_183") is not None) else "—")
-    blk = ""
-    if t75 and t75.get("roi_140") is not None and t75["roi_140"] < 0:
-        blk = "⚠️"
+    blk = "⚠️" if (t75 and t75.get("roi_140") is not None and t75["roi_140"] < 0) else ""
     if l["matches_train"] == 0:
         blk = (blk + " 🆕").strip()
-    lines.append(f"| {l['league']} | {l['matches_train']:,} | {l['matches_holdout']:,} | {bets:,} | {wr} | {ci} | {roi140} | {roi183} | {blk} |")
+    lines.append(f"| {l['country']} | {l['league']} | {l['matches_train']:,} | {l['matches_holdout']:,} | {bets:,} | {wins:,} | {losses:,} | {wr} | {ci} | {roi140} | {roi183} | {blk} |")
 lines.append("")
 
 # --- Detalle por liga y umbral (top 30) ---
 top = sorted(leagues, key=lambda l: next((t.get("bets") or 0 for t in l["tiers"] if t.get("thr")==0.75), 0), reverse=True)[:30]
 lines.append("## 4. Detalle por liga y por umbral — Top 30 por volumen de apuestas\n")
 for l in top:
-    lines.append(f"### {l['league']}\n")
+    lines.append(f"### {l['country']} — {l['league']}\n")
     lines.append(f"- Partidos entrenados (A): **{l['matches_train']:,}** · Holdout (C): **{l['matches_holdout']:,}** · Sesgo @0.75: {l['bias_at_075']:+.4f}\n")
     lines.append("| P ≥ | Apuestas | WR | IC95 | ROI @1.40 | ROI @1.83 | Bloqueo |")
     lines.append("|---|---:|---:|---|---:|---:|---|")
