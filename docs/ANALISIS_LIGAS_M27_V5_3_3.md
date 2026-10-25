@@ -1022,6 +1022,8 @@ Ninguna con la evidencia actual (0 candidatas), igual que m27_v5_3.
 
 - Cálculo reproducible: `tmp/m27_v5_3_audit/league_threshold_analysis_v5_3_3.py`.
 
-- Backfill histórico: `tools/backfill_tournament.py` (API SofaScore, 2 req/s).
+- Backfill histórico: `tools/backfill_tournament.py` (API SofaScore, 2 req/s). Ejemplo: `menu.bat backfill_tournament --tid 33655 --league "NCAA Women's Division I, Regular season" --seasons all`.
+
+- Hallazgos API: NCAA Women's Division I (tid 33655) tiene 9 temporadas (18/19 a 26/27). EYBL U17/U15 solo 2 temporadas. CBI U15: 2 temporadas.
 
 - Walk-forward: 3 cortes temporales (train ≤ 2022→2023, ≤2023→2024, ≤2024→2025-26).
