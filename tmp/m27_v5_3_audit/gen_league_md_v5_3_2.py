@@ -134,6 +134,9 @@ if cold_lgs:
     cold_allloss = [l for l in cold_lgs if (next((t for t in l["tiers"] if t["thr"]==0.75),{}) or {}).get("bets", 0) > 0
                     and ((next((t for t in l["tiers"] if t["thr"]==0.75),{}) or {}).get("wr") or 0) == 0]
     cold_rest = [l for l in cold_lgs if l not in cold_allloss]
+    # rentables: WR >= 75% y >= 10 apuestas
+    cold_rent = [l for l in cold_lgs if (next((t for t in l["tiers"] if t["thr"]==0.75),{}) or {}).get("bets", 0) >= 10
+                 and (((next((t for t in l["tiers"] if t["thr"]==0.75),{}) or {}).get("wr") or 0) >= 75)]
     lines.append("### 5.4 Ligas en arranque en frío (Entrenado = 0)\n")
     lines.append("| País | Liga | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 |")
     lines.append("|---|---|---:|---:|---:|---:|---:|")
@@ -159,6 +162,21 @@ if cold_lgs:
             wins = round(wrv * bets / 100) if (wrv is not None and bets) else 0
             losses = bets - wins if bets else 0
             lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_holdout']:,} | {bets:,} | {wins:,} | {losses:,} |")
+        lines.append("")
+    if cold_rent:
+        lines.append("### 5.7 Ligas en arranque en frío **rentables** (WR ≥ 75 %, ≥ 10 apuestas) — candidatas a entrenar\n")
+        lines.append("> Estas ligas no se entrenaron (arranque en frío) pero tienen buen rendimiento en el holdout C. "
+                    "Si se consigue histórico para ellas (o se agrupan por `clean_name` con variantes que sí tienen "
+                    "historia), entrenar con ellas podría mejorar el modelo. Son las que valen la pena.\n")
+        lines.append("| País | Liga | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 | ROI @1.40 |")
+        lines.append("|---|---|---:|---:|---:|---:|---:|---:|")
+        for l in sorted(cold_rent, key=lambda x: (next((t for t in x["tiers"] if t["thr"]==0.75),{}) or {}).get("wr", 0), reverse=True):
+            t75 = next((t for t in l["tiers"] if t["thr"]==0.75), None)
+            bets = t75.get("bets", 0) if t75 else 0
+            wrv = t75.get("wr") if t75 else None
+            wins = round(wrv * bets / 100) if (wrv is not None and bets) else 0
+            losses = bets - wins if bets else 0
+            lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_holdout']:,} | {bets:,} | {wins:,} | {losses:,} | {wrv:.1f} % | {t75['roi_140']:+.2f} % |")
         lines.append("")
 if neg_lgs:
     lines.append("### 5.5 Ligas con ROI negativo a 0.75 (⚠️)\n")
