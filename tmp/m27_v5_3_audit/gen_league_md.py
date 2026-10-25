@@ -115,13 +115,16 @@ lines.append(f"{len(cold)} ligas aparecen solo en el holdout C, es decir, el mod
             "Para ellas los priors (ELO, H2H, win-rate) provienen del estado as-of, pero la liga no aportó filas al ajuste. "
             "Conviene vigilar su calibración antes de confiar en ellas.\n")
 if cold:
-    lines.append("| Liga | Holdout (C) | Apuestas @0.75 | WR @0.75 |")
-    lines.append("|---|---:|---:|---:|")
+    lines.append("| País | Liga | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 |")
+    lines.append("|---|---|---:|---:|---:|---:|---:|")
     for l in sorted(cold, key=lambda x: x["matches_holdout"], reverse=True)[:40]:
         t75 = next((t for t in l["tiers"] if t["thr"]==0.75), None)
         bets = t75.get("bets",0) if t75 else 0
-        wr = (f"{t75['wr']:.1f} %" if (t75 and t75.get("wr") is not None) else "—")
-        lines.append(f"| {l['league']} | {l['matches_holdout']:,} | {bets:,} | {wr} |")
+        wrv = t75.get("wr") if t75 else None
+        wins = round(wrv * bets / 100) if (wrv is not None and bets) else 0
+        losses = bets - wins if bets else 0
+        wr = (f"{wrv:.1f} %" if (wrv is not None) else "—")
+        lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_holdout']:,} | {bets:,} | {wins:,} | {losses:,} | {wr} |")
     if len(cold) > 40:
         lines.append(f"\n_...y {len(cold)-40} ligas más con menos volumen._\n")
 lines.append("")

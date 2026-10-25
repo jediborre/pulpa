@@ -131,23 +131,30 @@ lines.append("- **⚠️ (ROI negativo a 0.75):** la liga tiene ROI@1.40 < 0 %% 
 lines.append("- **(vacío):** liga normal, sin alertas.\n")
 if cold_lgs:
     lines.append("### 5.4 Ligas en arranque en frío (Entrenado = 0)\n")
-    lines.append("| País | Liga | Holdout (C) | Apuestas @0.75 | WR @0.75 |")
-    lines.append("|---|---|---:|---:|---:|")
+    lines.append("| País | Liga | Holdout (C) | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 |")
+    lines.append("|---|---|---:|---:|---:|---:|---:|")
     for l in sorted(cold_lgs, key=lambda x: x["matches_holdout"], reverse=True)[:40]:
         t75 = next((t for t in l["tiers"] if t["thr"]==0.75), None)
         bets = t75.get("bets", 0) if t75 else 0
-        wr = f"{t75['wr']:.1f} %" if (t75 and t75.get("wr") is not None) else "—"
-        lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_holdout']:,} | {bets:,} | {wr} |")
+        wrv = t75.get("wr") if t75 else None
+        wins = round(wrv * bets / 100) if (wrv is not None and bets) else 0
+        losses = bets - wins if bets else 0
+        wr = f"{wrv:.1f} %" if (wrv is not None) else "—"
+        lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_holdout']:,} | {bets:,} | {wins:,} | {losses:,} | {wr} |")
     if len(cold_lgs) > 40:
         lines.append(f"\n_...y {len(cold_lgs)-40} ligas más._\n")
     lines.append("")
 if neg_lgs:
     lines.append("### 5.5 Ligas con ROI negativo a 0.75 (⚠️)\n")
-    lines.append("| País | Liga | Entrenado | Apuestas @0.75 | WR @0.75 | ROI @1.40 |")
-    lines.append("|---|---|---:|---:|---:|---:|")
+    lines.append("| País | Liga | Entrenado | Apuestas @0.75 | Ganados | Perdidos | WR @0.75 | ROI @1.40 |")
+    lines.append("|---|---|---:|---:|---:|---:|---:|---:|")
     for l in sorted(neg_lgs, key=lambda x: next((t for t in x["tiers"] if t["thr"]==0.75),{}).get("roi_140", 0)):
         t75 = next((t for t in l["tiers"] if t["thr"]==0.75), None)
-        lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_train']:,} | {t75['bets']:,} | {t75['wr']:.1f} % | {t75['roi_140']:+.2f} % |")
+        bets = t75.get("bets", 0)
+        wrv = t75.get("wr")
+        wins = round(wrv * bets / 100) if (wrv is not None and bets) else 0
+        losses = bets - wins if bets else 0
+        lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_train']:,} | {bets:,} | {wins:,} | {losses:,} | {wrv:.1f} % | {t75['roi_140']:+.2f} % |")
     lines.append("")
 
 # caso polaco
