@@ -57,10 +57,12 @@ lines.append(f"**Comparación con m27_v5_3 (original):** eligible matches {SUM['
 
 # tabla global de umbrales
 lines.append("## 2. Tabla global de umbrales (anclas t=30, bloque C)\n")
-lines.append("| P ≥ | Apuestas | WR (IC95) | ROI @1.40 | ROI @1.83 |")
-lines.append("|---|---:|---|---:|---:|")
+lines.append("| P ≥ | Apuestas | Ganados | Perdidos | WR (IC95) | ROI @1.40 | ROI @1.83 |")
+lines.append("|---|---:|---:|---:|---|---:|---:|")
 for t in SUM["tiers_anchor"]:
-    lines.append(f"| {t['thr']:.2f} | {t['bets']:,} | {t['wr']:.1f} % ({t['wr_ci95'][0]}–{t['wr_ci95'][1]}) | {t['roi_140']:+.2f} % | {t['roi_183']:+.2f} % |")
+    _w = round(t['wr'] * t['bets'] / 100)
+    _l = t['bets'] - _w
+    lines.append(f"| {t['thr']:.2f} | {t['bets']:,} | {_w:,} | {_l:,} | {t['wr']:.1f} % ({t['wr_ci95'][0]}–{t['wr_ci95'][1]}) | {t['roi_140']:+.2f} % | {t['roi_183']:+.2f} % |")
 lines.append("")
 
 # tabla resumen por liga
@@ -89,15 +91,18 @@ lines.append("## 4. Detalle por liga y por umbral — Top 30 por volumen\n")
 for l in top:
     lines.append(f"### {l.get('country','?')} — {l['league']}\n")
     lines.append(f"- Entrenado (A): **{l['matches_train']:,}** · Holdout (C): **{l['matches_holdout']:,}** · Sesgo @0.75: {l['bias_at_075']:+.4f}\n")
-    lines.append("| P ≥ | Apuestas | WR | IC95 | ROI @1.40 | ROI @1.83 |")
-    lines.append("|---|---:|---:|---|---:|---:|")
+    lines.append("| P ≥ | Apuestas | Ganados | Perdidos | WR | IC95 | ROI @1.40 | ROI @1.83 |")
+    lines.append("|---|---:|---:|---:|---:|---|---:|---:|")
     for t in l["tiers"]:
         thr = t["thr"]; bets = t.get("bets", 0)
-        wr = (f"{t['wr']:.1f} %" if t.get("wr") is not None else "—")
+        wrv = t.get("wr")
+        wins = round(wrv * bets / 100) if (wrv is not None and bets) else 0
+        losses = bets - wins if bets else 0
+        wr = (f"{wrv:.1f} %" if wrv is not None else "—")
         ci = (f"{t['wr_ci95'][0]}–{t['wr_ci95'][1]}" if t.get("wr_ci95") else "—")
         r140 = (f"{t['roi_140']:+.2f} %" if t.get("roi_140") is not None else "—")
         r183 = (f"{t['roi_183']:+.2f} %" if t.get("roi_183") is not None else "—")
-        lines.append(f"| {thr:.2f} | {bets:,} | {wr} | {ci} | {r140} | {r183} |")
+        lines.append(f"| {thr:.2f} | {bets:,} | {wins:,} | {losses:,} | {wr} | {ci} | {r140} | {r183} |")
     lines.append("")
 
 # ligas problemáticas
@@ -105,19 +110,27 @@ lines.append("## 5. Ligas destacadas\n")
 rich = [l for l in leagues if (next((t for t in l["tiers"] if t["thr"]==0.75),{}) or {}).get("bets",0) >= 30]
 rich_sorted = sorted(rich, key=lambda l: next((t for t in l["tiers"] if t["thr"]==0.75),{}).get("roi_140", -999), reverse=True)[:10]
 lines.append("### 5.1 Mejores ROI @1.40 a 0.75 (mín. 30 apuestas)\n")
-lines.append("| País | Liga | Entrenado | Apuestas @0.75 | WR | ROI @1.40 |")
-lines.append("|---|---|---:|---:|---:|---:|")
+lines.append("| País | Liga | Entrenado | Apuestas @0.75 | Ganados | Perdidos | WR | ROI @1.40 |")
+lines.append("|---|---|---:|---:|---:|---:|---:|---:|")
 for l in rich_sorted:
     t75 = next((t for t in l["tiers"] if t["thr"]==0.75), None)
-    lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_train']:,} | {t75['bets']:,} | {t75['wr']:.1f} % | {t75['roi_140']:+.2f} % |")
+    bets = t75.get("bets", 0)
+    wrv = t75.get("wr")
+    wins = round(wrv * bets / 100) if (wrv is not None and bets) else 0
+    losses = bets - wins if bets else 0
+    lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_train']:,} | {bets:,} | {wins:,} | {losses:,} | {wrv:.1f} % | {t75['roi_140']:+.2f} % |")
 lines.append("")
 poor_sorted = sorted(rich, key=lambda l: next((t for t in l["tiers"] if t["thr"]==0.75),{}).get("roi_140", 999))[:10]
 lines.append("### 5.2 Peores ROI @1.40 a 0.75 (mín. 30 apuestas)\n")
-lines.append("| País | Liga | Entrenado | Apuestas @0.75 | WR | ROI @1.40 |")
-lines.append("|---|---|---:|---:|---:|---:|")
+lines.append("| País | Liga | Entrenado | Apuestas @0.75 | Ganados | Perdidos | WR | ROI @1.40 |")
+lines.append("|---|---|---:|---:|---:|---:|---:|---:|")
 for l in poor_sorted:
     t75 = next((t for t in l["tiers"] if t["thr"]==0.75), None)
-    lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_train']:,} | {t75['bets']:,} | {t75['wr']:.1f} % | {t75['roi_140']:+.2f} % |")
+    bets = t75.get("bets", 0)
+    wrv = t75.get("wr")
+    wins = round(wrv * bets / 100) if (wrv is not None and bets) else 0
+    losses = bets - wins if bets else 0
+    lines.append(f"| {l.get('country','?')} | {l['league']} | {l['matches_train']:,} | {bets:,} | {wins:,} | {losses:,} | {wrv:.1f} % | {t75['roi_140']:+.2f} % |")
 lines.append("")
 
 # --- Ligas bloqueadas / arranque en frio ---
@@ -209,15 +222,18 @@ pol = [l for l in leagues if l["league"] == "NCAA Women's Division I"]
 if pol:
     l = pol[0]
     lines.append(f"- **Entrenado (A):** {l['matches_train']:,} · **Holdout (C):** {l['matches_holdout']:,}\n")
-    lines.append("| P ≥ | Apuestas | WR | IC95 | ROI @1.40 | ROI @1.83 |")
-    lines.append("|---|---:|---:|---|---:|---:|")
+    lines.append("| P ≥ | Apuestas | Ganados | Perdidos | WR | IC95 | ROI @1.40 | ROI @1.83 |")
+    lines.append("|---|---:|---:|---:|---:|---|---:|---:|")
     for t in l["tiers"]:
         thr = t["thr"]; bets = t.get("bets", 0)
-        wr = (f"{t['wr']:.1f} %" if t.get("wr") is not None else "—")
+        wrv = t.get("wr")
+        wins = round(wrv * bets / 100) if (wrv is not None and bets) else 0
+        losses = bets - wins if bets else 0
+        wr = (f"{wrv:.1f} %" if wrv is not None else "—")
         ci = (f"{t['wr_ci95'][0]}–{t['wr_ci95'][1]}" if t.get("wr_ci95") else "—")
         r140 = (f"{t['roi_140']:+.2f} %" if t.get("roi_140") is not None else "—")
         r183 = (f"{t['roi_183']:+.2f} %" if t.get("roi_183") is not None else "—")
-        lines.append(f"| {thr:.2f} | {bets:,} | {wr} | {ci} | {r140} | {r183} |")
+        lines.append(f"| {thr:.2f} | {bets:,} | {wins:,} | {losses:,} | {wr} | {ci} | {r140} | {r183} |")
     lines.append("")
     t75 = next((t for t in l["tiers"] if t["thr"]==0.75), None)
     if t75:
@@ -401,10 +417,12 @@ lines.append("amistosos, 2ª fase, promoción/relegation, preliminar, colocació
 lines.append("### Ligas bloqueadas por medición propia\n")
 lines.append("Ninguna con la evidencia actual (0 candidatas), igual que m27_v5_3.\n")
 lines.append("### Walk-forward (3 cortes)\n")
-lines.append("| Corte | AUC | Apuestas | WR | ROI @1.40 | ROI @1.83 |")
-lines.append("|---|---:|---:|---:|---:|---:|")
+lines.append("| Corte | AUC | Apuestas | Ganados | Perdidos | WR | ROI @1.40 | ROI @1.83 |")
+lines.append("|---|---:|---:|---:|---:|---:|---:|---:|")
 for k, v in SUM2["walk_forward_cuts"].items():
-    lines.append(f"| {k} | {v['auc']:.4f} | {v['bets']:,} | {v['wr']:.2f} % | {v['roi_140']:+.2f} % | {v['roi_183']:+.2f} % |")
+    _w = round(v['wr'] * v['bets'] / 100)
+    _l = v['bets'] - _w
+    lines.append(f"| {k} | {v['auc']:.4f} | {v['bets']:,} | {_w:,} | {_l:,} | {v['wr']:.2f} % | {v['roi_140']:+.2f} % | {v['roi_183']:+.2f} % |")
 lines.append("")
 lines.append("### Ligas con más partidos de entrenamiento (top 10)\n")
 lines.append("| País | Liga (clean_name) | Entrenado (A) | Holdout (C) |")
